@@ -1,17 +1,36 @@
 ---
 - name: Side Effect
   hosts: all
+  vars:
+    to_repo: "{{ lookup('env', 'TO_REPO') }}"
+    from_repo: "{{ lookup('env', 'FROM_REPO') }}"
+    to_version: "{{ lookup('env', 'TO_PDMDB_VERSION') }}"
+    from_version: "{{ lookup('env', 'FROM_PDMDB_VERSION') }}"
   become: true
   become_method: sudo
   tasks:
-    - name: disable all repos
-      command: percona-release disable all
+    - name: stop services for downgrade
+      service:
+        name: pbm-agent
+        state: stopped
+      when: from_version > to_version 
 
-    - name: enable new pdmdb repo
-      command: percona-release enable {{ version }} {{ repo }}
+    - name: stop services for downgrade
+      service:
+        name: mongod
+        state: stopped  
+      when: from_version > to_version
+
+    - name: install necessary deb packages for downgrade
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: present
       vars:
-        repo: "{{ lookup('env', 'TO_REPO') }}"
-        version: "{{ lookup('env', 'TO_PDMDB_VERSION') }}"
+        packages:
+        - dialog
+        - apt-utils
+      when: ansible_os_family == "Debian" and from_version > to_version
 
     - name: uninstall psmdb and pbm deb packages for downgrade
       apt:
@@ -27,8 +46,6 @@
         - percona-server-mongodb-shell
         - percona-server-mongodb-tools
         - percona-server-mongodb-dbg
-        from_version: "{{ lookup('env', 'FROM_PDMDB_VERSION') }}"
-        to_version: "{{ lookup('env', 'TO_PDMDB_VERSION') }}"
       when: ansible_os_family == "Debian" and from_version > to_version 
 
     - name: uninstall psmdb and pbm rpm packages for downgrade
@@ -49,8 +66,6 @@
         - percona-server-mongodb-tools-debuginfo
         - percona-server-mongodb-mongos-debuginfo
         - percona-server-mongodb-server-debuginfo
-        from_version: "{{ lookup('env', 'FROM_PDMDB_VERSION') }}"
-        to_version: "{{ lookup('env', 'TO_PDMDB_VERSION') }}"
       when: ansible_os_family == "RedHat"  and ansible_distribution_major_version == "8" and from_version > to_version
 
     - name: uninstall psmdb and pbm rpm packages for downgrade
@@ -67,9 +82,13 @@
         - percona-server-mongodb-shell
         - percona-server-mongodb-tools
         - percona-server-mongodb-debuginfo
-        from_version: "{{ lookup('env', 'FROM_PDMDB_VERSION') }}"
-        to_version: "{{ lookup('env', 'TO_PDMDB_VERSION') }}"
       when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7" and from_version > to_version
+
+    - name: disable all repos
+      command: percona-release disable all
+
+    - name: enable new pdmdb repo
+      command: percona-release enable {{ to_version }} {{ to_repo }}
 
     - name: update psmdb deb packages
       apt:
@@ -120,6 +139,11 @@
         - percona-server-mongodb-debuginfo
       when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7"
 
+    - name: perfom daemon-reload for systemd-based os
+      systemd:
+        daemon_reload: yes
+      when: ansible_service_mgr == "systemd"
+
     - name: restart mongod service
       service: 
         name: mongod
@@ -137,6 +161,11 @@
         name: percona-backup-mongodb
         state: latest
       when: ansible_os_family == "RedHat"
+
+    - name: perfom daemon-reload for systemd-based os
+      systemd:
+        daemon_reload: yes
+      when: ansible_service_mgr == "systemd"
 
     - name: restart pbm-agent service
       service: 
