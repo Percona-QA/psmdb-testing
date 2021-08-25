@@ -13,6 +13,64 @@
         repo: "{{ lookup('env', 'TO_REPO') }}"
         version: "{{ lookup('env', 'TO_PDMDB_VERSION') }}"
 
+    - name: uninstall psmdb and pbm deb packages for downgrade
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: absent
+      vars:
+        packages:
+        - percona-backup-mongodb
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-shell
+        - percona-server-mongodb-tools
+        - percona-server-mongodb-dbg
+        from_version: "{{ lookup('env', 'FROM_PDMDB_VERSION') }}"
+        to_version: "{{ lookup('env', 'TO_PDMDB_VERSION') }}"
+      when: ansible_os_family == "Debian" and from_version > to_version 
+
+    - name: uninstall psmdb and pbm rpm packages for downgrade
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: absent
+      vars:
+        packages:
+        - percona-backup-mongodb
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-shell
+        - percona-server-mongodb-tools
+        - percona-server-mongodb-debugsource
+        - percona-server-mongodb-shell-debuginfo
+        - percona-server-mongodb-tools-debuginfo
+        - percona-server-mongodb-mongos-debuginfo
+        - percona-server-mongodb-server-debuginfo
+        from_version: "{{ lookup('env', 'FROM_PDMDB_VERSION') }}"
+        to_version: "{{ lookup('env', 'TO_PDMDB_VERSION') }}"
+      when: ansible_os_family == "RedHat"  and ansible_distribution_major_version == "8" and from_version > to_version
+
+    - name: uninstall psmdb and pbm rpm packages for downgrade
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: absent
+      vars:
+        packages:
+        - percona-backup-mongodb
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-shell
+        - percona-server-mongodb-tools
+        - percona-server-mongodb-debuginfo
+        from_version: "{{ lookup('env', 'FROM_PDMDB_VERSION') }}"
+        to_version: "{{ lookup('env', 'TO_PDMDB_VERSION') }}"
+      when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7" and from_version > to_version
+
     - name: update psmdb deb packages
       apt:
         name: "{{ packages }}"
