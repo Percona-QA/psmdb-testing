@@ -139,7 +139,7 @@
         - percona-server-mongodb-debuginfo
       when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7"
 
-    - name: perfom daemon-reload for systemd-based os
+    - name: perform daemon-reload for systemd-based os
       systemd:
         daemon_reload: yes
       when: ansible_service_mgr == "systemd"
@@ -162,7 +162,7 @@
         state: latest
       when: ansible_os_family == "RedHat"
 
-    - name: perfom daemon-reload for systemd-based os
+    - name: perform daemon-reload for systemd-based os
       systemd:
         daemon_reload: yes
       when: ansible_service_mgr == "systemd"
