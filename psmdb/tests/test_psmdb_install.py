@@ -17,7 +17,7 @@ RPM_NEW_CENTOS_PACKAGES = ['percona-server-mongodb', 'percona-server-mongodb-mon
 BINARIES = ['mongo', 'mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
             'mongofiles', 'mongoimport', 'mongorestore', 'mongotop', 'mongostat']
 
-PSMDB_VER = os.environ.get("PSMDB_VERSION").lstrip("psmdb-")
+PSMDB_VER = os.environ.get("PSMDB_VERSION")
 
 
 def test_mongod_service(host):
@@ -64,3 +64,8 @@ def test_rpm8_packages(host, package):
 def test_binary_version(host, binary):
     result = host.run(f"{binary} --version")
     assert PSMDB_VER in result.stdout, result.stdout
+
+def test_functional(host):
+    with host.sudo():
+        result = host.run("/package-testing/scripts/psmdb_test.sh %PSMDB_VER%")
+    assert result.rc == 0, result.stderr
