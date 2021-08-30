@@ -65,7 +65,34 @@ def test_binary_version(host, binary):
     result = host.run(f"{binary} --version")
     assert PSMDB_VER in result.stdout, result.stdout
 
-def test_functional(host):
+def test_enable_auth(host):
+    cmd = "/package-testing/scripts/psmdb_set_auth.sh"
     with host.sudo():
-        result = host.run("/package-testing/scripts/psmdb_test.sh %PSMDB_VER%")
-    assert result.rc == 0, result.stderr
+        result = host.run(cmd)
+        print(result.stdout)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout
+
+
+def test_bats(host):
+    cmd = "/usr/local/bin/bats /package-testing/bats/mongo-init-scripts.bats"
+    with host.sudo():
+        result = host.run(cmd)
+        print(result.stdout)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout
+
+
+def test_bats_with_numactl(host):
+    with host.sudo():
+        os = host.system_info.distribution
+        cmd = 'apt-get install numactl -y'
+        if os.lower() in ["redhat", "centos", 'rhel']:
+            cmd = 'yum install numactl -y'
+        result = host.run(cmd)
+        assert result.rc == 0, result.stdout
+        cmd = "/usr/local/bin/bats /package-testing/bats/mongo-init-scripts.bats"
+        result = host.run(cmd)
+        print(result.stdout)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout
