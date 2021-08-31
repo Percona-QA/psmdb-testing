@@ -32,15 +32,14 @@
   apt:
     name: "{{ packages }}"
     update_cache: yes
-    state: latest
   vars:
     packages:
-    - percona-server-mongodb-{{ lookup('env', 'PSMDB_VERSION') }}
-    - percona-server-mongodb-server-{{ lookup('env', 'PSMDB_VERSION') }}
-    - percona-server-mongodb-mongos-{{ lookup('env', 'PSMDB_VERSION') }}
-    - percona-server-mongodb-shell-{{ lookup('env', 'PSMDB_VERSION') }}
-    - percona-server-mongodb-tools-{{ lookup('env', 'PSMDB_VERSION') }}
-    - percona-server-mongodb-dbg-{{ lookup('env', 'PSMDB_VERSION') }}
+    - percona-server-mongodb={{ lookup('env', 'PSMDB_VERSION') }}*
+    - percona-server-mongodb-server={{ lookup('env', 'PSMDB_VERSION') }}*
+    - percona-server-mongodb-mongos={{ lookup('env', 'PSMDB_VERSION') }}*
+    - percona-server-mongodb-shell={{ lookup('env', 'PSMDB_VERSION') }}*
+    - percona-server-mongodb-tools={{ lookup('env', 'PSMDB_VERSION') }}*
+    - percona-server-mongodb-dbg={{ lookup('env', 'PSMDB_VERSION') }}*
   when: ansible_os_family == "Debian"
 
 - name: install psmdb rpm packages
