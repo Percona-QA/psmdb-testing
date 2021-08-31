@@ -20,6 +20,7 @@ else
 fi
 
 cp ${CONFIGFILE} ${BACKUP_CONFIGFILE}
+rm -f ~/.mongorc.js
 if [ "$1" == "keyfile" ]; then
   chmod 600 ${KEY_FILE}
   chown mongod:mongod ${KEY_FILE}
