@@ -73,6 +73,13 @@ def test_functional(host):
         print(result.stderr)
     assert result.rc == 0, result.stdout
 
+def test_encryption(host, encryption):
+    with host.sudo():
+        result = host.run("/package-testing/scripts/psmdb_encryption/psmdb-encryption-test.sh keyfile")
+        print(result.stdout)
+        print(result.stderr)
+    assert result.rc == 0, result.stderr
+
 def test_enable_auth(host):
     cmd = "/package-testing/scripts/psmdb_set_auth.sh"
     with host.sudo():

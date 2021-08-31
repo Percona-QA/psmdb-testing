@@ -1,6 +1,5 @@
 #!/bin/bash
 
-source /package-testing/VERSIONS
 source /package-testing/scripts/psmdb_common.sh
 KEY_FILE="/package-testing/scripts/psmdb_encryption/mongodb-keyfile"
 TOKEN_FILE="/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"
