@@ -23,13 +23,6 @@
   include_tasks: ../../../tasks/install_percona_release.yml
 
 - name: enable psmdb repo
-  debug: 
-    msg: "{{ version.split('.')[0] }}{{ version.split('.')[1] }}"
-  vars:
-    repo: "{{ lookup('env', 'REPO') }}"
-    version: "{{ lookup('env', 'PSMDB_VERSION') }}"
-
-- name: enable psmdb repo
   command: percona-release enable psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }} {{ repo }}
   vars:
     repo: "{{ lookup('env', 'REPO') }}"
