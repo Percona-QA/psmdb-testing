@@ -73,13 +73,6 @@ def test_functional(host):
         print(result.stderr)
     assert result.rc == 0, result.stdout
 
-def test_encryption(host, encryption):
-    with host.sudo():
-        result = host.run("/package-testing/scripts/psmdb_encryption/psmdb-encryption-test.sh keyfile")
-        print(result.stdout)
-        print(result.stderr)
-    assert result.rc == 0, result.stderr
-
 def test_enable_auth(host):
     cmd = "/package-testing/scripts/psmdb_set_auth.sh"
     with host.sudo():
@@ -106,6 +99,14 @@ def test_bats_with_numactl(host):
         result = host.run(cmd)
         assert result.rc == 0, result.stdout
         cmd = "/usr/local/bin/bats /package-testing/bats/mongo-init-scripts.bats"
+        result = host.run(cmd)
+        print(result.stdout)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout
+
+def test_keyfile_encryption(host):
+    cmd = "/package-testing/scripts/psmdb_encryption/psmdb-encryption-test.sh keyfile"
+    with host.sudo():
         result = host.run(cmd)
         print(result.stdout)
         print(result.stderr)
