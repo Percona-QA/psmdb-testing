@@ -19,6 +19,11 @@ else
   KEY_STORE="$1"
 fi
 
+if [ -f "${BACKUP_CONFIGFILE}" ]; then 
+  echo "restore default config"
+  cp ${BACKUP_CONFIGFILE} ${CONFIGFILE}
+fi
+
 cp ${CONFIGFILE} ${BACKUP_CONFIGFILE}
 rm -f ~/.mongorc.js
 if [ "$1" == "keyfile" ]; then
