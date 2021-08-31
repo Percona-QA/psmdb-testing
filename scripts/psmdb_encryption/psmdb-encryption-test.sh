@@ -94,8 +94,8 @@ if [ "$1" == "vault" ]; then
     elif [ "$(mongo --quiet --eval "db.serverCmdLineOpts().parsed.security.encryptionCipherMode" | tail -n1)" != "${cipher}" ]; then
       echo "ERROR: Cipher mode is not set to: ${cipher}" | tee -a ${LOG}
       exit 1
-    elif [ "$(mongo --quiet --eval "db.serverCmdLineOpts().parsed.security.vault.serverName" | tail -n1)" != "10.30.6.213" ]; then
-      echo "ERROR: Encryption vault server is not set to: 10.30.6.213" | tee -a ${LOG}
+    elif [ "$(mongo --quiet --eval "db.serverCmdLineOpts().parsed.security.vault.serverName" | tail -n1)" != "127.0.0.1" ]; then
+      echo "ERROR: Encryption vault server is not set to: 127.0.0.1" | tee -a ${LOG}
       exit 1
     fi
     echo "adding some data and indexes with cipher ${cipher}" | tee -a ${LOG}
