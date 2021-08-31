@@ -1,6 +1,5 @@
 #!/bin/bash
 
-source /package-testing/VERSIONS
 source /package-testing/scripts/psmdb_common.sh
 
 echo -n > ${LOG}
