@@ -97,3 +97,18 @@
     - rm -f master.zip
     - bats-master/install.sh /usr/local
     - rm -rf bats-master
+
+- name: Install and configure vault
+  include_tasks: ../../../tasks/install_and_configure_vault.yml
+
+- name: copy certificate for keyring vault
+  copy:
+    remote_src: yes
+    src: "/opt/vault/tls/tls.crt"
+    dest: /package-testing/scripts/psmdb_encryption/test.cer
+
+- name: create token file for vault
+  copy:
+    remote_src: yes
+    src: "/tmp/vault_rootkey_directory/rootkey"
+    dest: "/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"

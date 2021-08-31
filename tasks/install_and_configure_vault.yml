@@ -1,0 +1,129 @@
+---
+- name: Install yum-utils
+  yum: 
+    name: yum-utils
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Add HashiCorp yum repo
+  command: yum-config-manager --add-repo=https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+  args:
+    creates: /etc/yum.repos.d/hashicorp.repo
+  when: ansible_os_family == "RedHat"
+
+- name: Install Vault via yum
+  yum:
+    name: vault
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Add HashiCorp apt signing key
+  apt_key:
+    url: https://apt.releases.hashicorp.com/gpg
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Add HashiCorp apt Repo
+  apt_repository:
+    repo: "deb https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Install Vault via apt
+  apt:
+    name: vault
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Create default ssl options
+  copy:
+    dest: "/tmp/ssl.conf"
+    content: |
+      [req]
+      distinguished_name = req_distinguished_name
+      x509_extensions = v3_req
+      prompt = no
+
+      [req_distinguished_name]
+      C = US
+      ST = NC
+      L =  R
+      O = Percona
+      CN = *
+
+      [v3_req]
+      subjectKeyIdentifier = hash
+      authorityKeyIdentifier = keyid,issuer
+      basicConstraints = CA:TRUE
+      subjectAltName = @alt_names
+
+      [alt_names]
+      IP = 127.0.0.1
+
+- name: Generate certificates for vault
+  shell: openssl req -config /tmp/ssl.conf -x509 -days 3650 -batch -nodes -newkey rsa:2048 -keyout /opt/vault/tls/tls.key -out /opt/vault/tls/tls.crt
+
+- name: Start vault service
+  service:
+    name: vault
+    state: started
+    enabled: yes
+
+- name: Create unseal directories
+  file:
+    path: "/tmp/vault_unseal_keys"
+    state: directory
+
+- name: Create root key directories
+  file:
+    path: "/tmp/vault_rootkey_directory"
+    state: directory
+
+- name: Initialise Vault operator
+  shell: vault operator init -key-shares=5 -key-threshold=3 -format json
+  environment:
+    VAULT_ADDR: "https://127.0.0.1:8200"
+    VAULT_CACERT: "/opt/vault/tls/tls.crt"
+  register: vault_init_results
+
+- name: Parse output of vault init
+  set_fact:
+    vault_init_parsed: "{{ vault_init_results.stdout | from_json }}"
+
+- name: Write unseal keys to files
+  copy:
+    dest: "/tmp/vault_unseal_keys/unseal_key_{{ item.0 }}"
+    content: "{{ item.1 }}"
+  with_indexed_items: "{{ vault_init_parsed.unseal_keys_hex }}"
+
+- name: Write root token to file
+  copy:
+    content: "{{ vault_init_parsed.root_token }}"
+    dest: "/tmp/vault_rootkey_directory/rootkey"
+
+- name: Prepare list of unseal keys
+  find: 
+    paths: /tmp/vault_unseal_keys/
+    recurse: yes 
+  register: unseal_key_files
+
+- name: Reading unseal key contents
+  command: cat {{item.path}}
+  register: unseal_keys
+  with_items: "{{unseal_key_files.files}}"
+
+- name: Unseal vault with unseal keys
+  shell: |
+    vault operator unseal {{ item.stdout }}
+  environment:
+    VAULT_ADDR: "https://127.0.0.1:8200"
+    VAULT_CACERT: "/opt/vault/tls/tls.crt"
+  with_items: "{{unseal_keys.results}}"
+
+- name: Enable KV Secrets Engine – Version 2
+  shell: |
+    vault secrets enable -path secret_v2 kv-v2
+  environment:
+    VAULT_ADDR: "https://127.0.0.1:8200"
+    VAULT_CACERT: "/opt/vault/tls/tls.crt"
+    VAULT_TOKEN: "{{ vault_init_parsed.root_token }}"  

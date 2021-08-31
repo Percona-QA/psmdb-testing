@@ -111,3 +111,11 @@ def test_keyfile_encryption(host):
         print(result.stdout)
         print(result.stderr)
     assert result.rc == 0, result.stdout
+
+def test_vault_encryption(host):
+    cmd = "/package-testing/scripts/psmdb_encryption/psmdb-encryption-test.sh vault"
+    with host.sudo():
+        result = host.run(cmd)
+        print(result.stdout)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout
