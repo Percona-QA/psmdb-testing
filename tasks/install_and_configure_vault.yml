@@ -127,3 +127,15 @@
     VAULT_ADDR: "https://127.0.0.1:8200"
     VAULT_CACERT: "/opt/vault/tls/tls.crt"
     VAULT_TOKEN: "{{ vault_init_parsed.root_token }}"  
+
+- name: Copy certificate file for tests
+  copy:
+    remote_src: yes
+    src: "/opt/vault/tls/tls.crt"
+    dest: /package-testing/scripts/psmdb_encryption/test.cer
+
+- name: Copy root token file for tests
+  copy:
+    remote_src: yes
+    src: "/tmp/vault_rootkey_directory/rootkey"
+    dest: "/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"
