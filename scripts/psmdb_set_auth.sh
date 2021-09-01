@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
+source /package-testing/scripts/psmdb_common.sh
 set -e
+
+if [ -f "${BACKUP_CONFIGFILE}" ]; then 
+  echo "restore defaults"
+  stop_service
+  clean_datadir
+  cp ${BACKUP_CONFIGFILE} ${CONFIGFILE}
+  start_service
+fi
+
 
 /usr/bin/percona-server-mongodb-enable-auth.sh -q > /tmp/psmdb_auth.txt 2>&1
 

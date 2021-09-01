@@ -65,6 +65,14 @@ def test_binary_version(host, binary):
     result = host.run(f"{binary} --version")
     assert PSMDB_VER in result.stdout, result.stdout
 
+def test_loaded_data(host)
+    cmd = "/package-testing/scripts/mongo_check.sh"
+    with host.sudo():
+        result = host.run(cmd)
+        print(result.stdout)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout
+
 def test_functional(host):
     cmd = "/package-testing/scripts/psmdb_test.sh" + ' ' + PSMDB_VER.split('.')[0] + '.' + PSMDB_VER.split('.')[1]
     with host.sudo():
@@ -114,6 +122,14 @@ def test_keyfile_encryption(host):
 
 def test_vault_encryption(host):
     cmd = "/package-testing/scripts/psmdb_encryption/psmdb-encryption-test.sh vault"
+    with host.sudo():
+        result = host.run(cmd)
+        print(result.stdout)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout
+
+def test_load_data(host)
+    cmd = "/package-testing/scripts/mongo_insert.sh"
     with host.sudo():
         result = host.run(cmd)
         print(result.stdout)

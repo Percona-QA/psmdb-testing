@@ -16,6 +16,17 @@ else
   VERSION="$1"
 fi
 
+if [ -f "${BACKUP_CONFIGFILE}" ]; then 
+  echo "restore defaults"
+  stop_service
+  clean_datadir
+  cp ${BACKUP_CONFIGFILE} ${CONFIGFILE}
+  start_service
+fi
+
+# make a backup config file
+cp ${CONFIGFILE} ${BACKUP_CONFIGFILE}
+
 # Enable auditLog and profiling/rate limit to see if services start with those
 if [ "$VERSION" == "3.0" ]; then
   echo "Skipping usage of profiling rate limit functionality because not available in 3.0"
@@ -31,8 +42,6 @@ if [ "$VERSION" == "3.6" ]; then
   sed -i '/engine: rocksdb/a \  useDeprecatedMongoRocks: true' ${CONFIGFILE}
 fi
 
-# make a backup config file
-cp ${CONFIGFILE} ${BACKUP_CONFIGFILE}
 
 for engine in mmapv1 PerconaFT rocksdb inMemory wiredTiger; do
   if [ "$1" != "3.2" -a "${engine}" == "PerconaFT" ]; then

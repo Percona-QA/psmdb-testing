@@ -20,12 +20,16 @@ else
 fi
 
 if [ -f "${BACKUP_CONFIGFILE}" ]; then 
-  echo "restore default config"
+  echo "restore defaults"
+  stop_service
+  clean_datadir
   cp ${BACKUP_CONFIGFILE} ${CONFIGFILE}
+  start_service
 fi
 
 cp ${CONFIGFILE} ${BACKUP_CONFIGFILE}
 rm -f ~/.mongorc.js
+
 if [ "$1" == "keyfile" ]; then
   chmod 600 ${KEY_FILE}
   chown mongod:mongod ${KEY_FILE}
