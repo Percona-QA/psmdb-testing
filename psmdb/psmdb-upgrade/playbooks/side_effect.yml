@@ -91,7 +91,7 @@
       command: percona-release disable all
 
     - name: enable new psmdb repo
-      command: percona-release enable psmdb-{{ to_version.split('.')[0] }}{{ to_version.split('.')[0] }} {{ to_repo }}
+      command: percona-release enable psmdb-{{ to_version.split('.')[0] }}{{ to_version.split('.')[1] }} {{ to_repo }}
 
     - name: update psmdb deb packages
       apt:
