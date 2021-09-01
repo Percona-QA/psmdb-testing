@@ -21,9 +21,15 @@
       yum: name=https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm state=present
       when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
 
-#    - name: setup epel 6 repo
-#      yum: name=http://download.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm state=present
-#      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "6"
+    - name: add the Vault and epel CentOS 6 repos
+      shell: |
+        curl https://www.getpagespeed.com/files/centos6-eol.repo --output /etc/yum.repos.d/CentOS-Base.repo
+        curl https://www.getpagespeed.com/files/centos6-epel-eol.repo --output /etc/yum.repos.d/epel.repo
+        yum -y install centos-release-scl
+        curl https://www.getpagespeed.com/files/centos6-scl-eol.repo --output /etc/yum.repos.d/CentOS-SCLo-scl.repo
+        curl https://www.getpagespeed.com/files/centos6-scl-rh-eol.repo --output /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
+        yum -y install epel-release.noarch
+      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "6"
 
     - name: setup ca-certificates release
       yum:

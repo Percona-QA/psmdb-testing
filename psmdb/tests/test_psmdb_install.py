@@ -65,7 +65,7 @@ def test_binary_version(host, binary):
     result = host.run(f"{binary} --version")
     assert PSMDB_VER in result.stdout, result.stdout
 
-def test_loaded_data(host)
+def test_loaded_data(host):
     cmd = "/package-testing/scripts/mongo_check.sh"
     with host.sudo():
         result = host.run(cmd)
@@ -128,7 +128,7 @@ def test_vault_encryption(host):
         print(result.stderr)
     assert result.rc == 0, result.stdout
 
-def test_load_data(host)
+def test_load_data(host):
     cmd = "/package-testing/scripts/mongo_insert.sh"
     with host.sudo():
         result = host.run(cmd)
