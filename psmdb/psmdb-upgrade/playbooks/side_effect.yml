@@ -9,18 +9,19 @@
   become: true
   become_method: sudo
   tasks:
+    - set_fact: to_maj_version={{ to_version.split('.')[0] }}.{{ to_version.split('.')[1] }}
+
+    - set_fact: from_maj_version={{ from_version.split('.')[0] }}.{{ from_version.split('.')[1] }}
+
+    - name: check maj version
+      debug: msg={{to_maj_version}}_{{from_maj_version}} 
+
     - name: set compatibilty version for downgrade
       shell: |
-        mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{compatibilty_version}}" })'
+        mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{to_maj_version}}" })'
       register: set_version
-      vars:
-        compatibilty_version: "{{ to_version.split('.')[0] }}.{{ to_version.split('.')[1] }}"
-      when: from_version > to_version
+      when: from_maj_version > to_maj_version
     
-    - name: debug output
-      debug:
-        var: set_version
-
     - name: stop services for downgrade
       service:
         name: mongod
@@ -119,11 +120,11 @@
         - percona-server-mongodb-mongos-{{ to_version }}
         - percona-server-mongodb-shell-{{ to_version }}
         - percona-server-mongodb-tools-{{ to_version }}
-        - percona-server-mongodb-debugsource-{{ to_version }}
-        - percona-server-mongodb-shell-debuginfo-{{ to_version }}
-        - percona-server-mongodb-tools-debuginfo-{{ to_version }}
-        - percona-server-mongodb-mongos-debuginfo-{{ to_version }}
-        - percona-server-mongodb-server-debuginfo-{{ to_version }}
+#        - percona-server-mongodb-debugsource-{{ to_version }}
+#        - percona-server-mongodb-shell-debuginfo-{{ to_version }}
+#        - percona-server-mongodb-tools-debuginfo-{{ to_version }}
+#        - percona-server-mongodb-mongos-debuginfo-{{ to_version }}
+#        - percona-server-mongodb-server-debuginfo-{{ to_version }}
       when: ansible_os_family == "RedHat"  and ansible_distribution_major_version == "8"
 
     - name: update psmdb rpm packages
@@ -146,16 +147,21 @@
         daemon_reload: yes
       when: ansible_service_mgr == "systemd"
 
-    - name: change permissions to mongodb directory
+    - name: change permissions to mongodb directory after downgrade
       file:
         path: /var/lib/mongo
         state: directory
         recurse: yes
         owner: mongod
         group: mongod
+      when: from_version > to_version
 
     - name: restart mongod service
       service: 
         name: mongod
         state: restarted
 
+    - name: set compatibilty version after upgrade
+      shell: |
+        mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{to_maj_version}}" })'
+      when: from_maj_version < to_maj_version

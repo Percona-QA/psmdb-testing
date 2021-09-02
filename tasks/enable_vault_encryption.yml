@@ -1,0 +1,104 @@
+- name: Stop mongod 
+  service: 
+    name: mongod
+    state: stopped
+    
+- name: Cleanup mongo directory
+  file:
+    state: "{{ item }}"
+    path: "/var/lib/mongo/"
+    owner: mongod
+    group: mongod
+    mode: '0750'
+  with_items:
+    - absent
+    - directory
+
+- name: Ensure token has correct permissions
+  file:
+    path: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
+    owner: mongod
+    group: mongod
+    mode: '0400'
+
+- name: Ensure cert file has correct permissions        
+  file:
+    path: /package-testing/scripts/psmdb_encryption/test.cer
+    owner: mongod
+    group: mongod
+    mode: '0400'
+
+- name: Update mongo configuration
+  copy:
+    dest: "/etc/mongod.conf"
+    content: |
+      storage:
+        dbPath: /var/lib/mongo
+        journal:
+          enabled: true
+        engine: wiredTiger
+
+      systemLog:
+        destination: file
+        logAppend: true
+        path: /var/log/mongo/mongod.log
+
+      processManagement:
+        fork: true
+        pidFilePath: /var/run/mongod.pid
+
+      net:
+        port: 27017
+        bindIp: 127.0.0.1
+
+      security:
+        enableEncryption: true
+        vault:
+          serverName: 127.0.0.1
+          port: 8200
+          tokenFile: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
+          secret: secret_v2/data/psmdb-test/package-test
+          serverCAFile: /package-testing/scripts/psmdb_encryption/test.cer
+        encryptionCipherMode: AES256-CBC
+  when:
+     lookup('env', 'CIPHER') != "AES256-GCM"
+
+- name: Update mongo configuration
+  copy:
+    dest: "/etc/mongod.conf"
+    content: |
+      storage:
+        dbPath: /var/lib/mongo
+        journal:
+          enabled: true
+        engine: wiredTiger
+
+      systemLog:
+        destination: file
+        logAppend: true
+        path: /var/log/mongo/mongod.log
+
+      processManagement:
+        fork: true
+        pidFilePath: /var/run/mongod.pid
+
+      net:
+        port: 27017
+        bindIp: 127.0.0.1
+
+      security:
+        enableEncryption: true
+        vault:
+          serverName: 127.0.0.1
+          port: 8200
+          tokenFile: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
+          secret: secret_v2/data/psmdb-test/package-test
+          serverCAFile: /package-testing/scripts/psmdb_encryption/test.cer
+        encryptionCipherMode: AES256-GCM
+  when:
+     lookup('env', 'CIPHER') == "AES256-GCM"
+
+- name: Start mongod 
+  service: 
+    name: mongod
+    state: started
