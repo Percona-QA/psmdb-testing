@@ -39,7 +39,7 @@
     - percona-server-mongodb-mongos={{ lookup('env', 'FROM_PSMDB_VERSION') }}*
     - percona-server-mongodb-shell={{ lookup('env', 'FROM_PSMDB_VERSION') }}*
     - percona-server-mongodb-tools={{ lookup('env', 'FROM_PSMDB_VERSION') }}*
-    - percona-server-mongodb-dbg={{ lookup('env', 'FROM_PSMDB_VERSION') }}*
+#    - percona-server-mongodb-dbg={{ lookup('env', 'FROM_PSMDB_VERSION') }}*
   when: ansible_os_family == "Debian"
 
 - name: install psmdb rpm packages

@@ -13,6 +13,20 @@
   with_items:
     - absent
     - directory
+  when: ansible_os_family == "RedHat"
+
+- name: Cleanup mongo directory
+  file:
+    state: "{{ item }}"
+    path: "/var/lib/mongodb/"
+    owner: mongod
+    group: mongod
+    mode: '0750'
+  with_items:
+    - absent
+    - directory
+  when: ansible_os_family == "Debian"
+
 
 - name: Ensure cert file has correct permissions
   file:

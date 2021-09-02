@@ -105,7 +105,7 @@
         - percona-server-mongodb-mongos={{ to_version }}*
         - percona-server-mongodb-shell={{ to_version }}*
         - percona-server-mongodb-tools={{ to_version }}*
-        - percona-server-mongodb-dbg={{ to_version }}*
+#        - percona-server-mongodb-dbg={{ to_version }}*
       when: ansible_os_family == "Debian"
 
     - name: update psmdb rpm packages
