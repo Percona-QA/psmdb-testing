@@ -144,7 +144,7 @@
           serverCAFile: /package-testing/scripts/psmdb_encryption/test.cer
         encryptionCipherMode: AES256-CBC
   when:
-     lookup('env', 'CIPHER') != "AES256-GCM" and ansible_os_family == "RedHat"
+     lookup('env', 'CIPHER') != "AES256-GCM" and ansible_os_family == "Debian"
 
 - name: Update mongo configuration
   copy:
