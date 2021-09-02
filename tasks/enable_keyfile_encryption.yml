@@ -63,7 +63,7 @@
         encryptionCipherMode: AES256-CBC
         encryptionKeyFile: /package-testing/scripts/psmdb_encryption/mongodb-keyfile
   when:
-     lookup('env', 'CIPHER') != "AES256-GCM"
+     lookup('env', 'CIPHER') != "AES256-GCM" and ansible_os_family == "RedHat"
 
 - name: Update mongo configuration
   copy:
@@ -93,9 +93,69 @@
         encryptionCipherMode: AES256-GCM
         encryptionKeyFile: /package-testing/scripts/psmdb_encryption/mongodb-keyfile
   when:
-     lookup('env', 'CIPHER') == "AES256-GCM"    
+     lookup('env', 'CIPHER') == "AES256-GCM" and ansible_os_family == "RedHat"
 
-- name: Stop mongod 
+- name: Update mongo configuration
+  copy:
+    dest: "/etc/mongod.conf"
+    content: |
+      storage:
+        dbPath: /var/lib/mongodb
+        journal:
+          enabled: true
+        engine: wiredTiger
+
+      systemLog:
+        destination: file
+        logAppend: true
+        path: /var/log/mongodb/mongod.log
+
+      processManagement:
+        fork: true
+        pidFilePath: /var/run/mongod.pid
+
+      net:
+        port: 27017
+        bindIp: 127.0.0.1
+
+      security:
+        enableEncryption: true
+        encryptionCipherMode: AES256-CBC
+        encryptionKeyFile: /package-testing/scripts/psmdb_encryption/mongodb-keyfile
+  when:
+     lookup('env', 'CIPHER') != "AES256-GCM" and ansible_os_family == "Debian"
+
+- name: Update mongo configuration
+  copy:
+    dest: "/etc/mongod.conf"
+    content: |
+      storage:
+        dbPath: /var/lib/mongodb
+        journal:
+          enabled: true
+        engine: wiredTiger
+
+      systemLog:
+        destination: file
+        logAppend: true
+        path: /var/log/mongodb/mongod.log
+
+      processManagement:
+        fork: true
+        pidFilePath: /var/run/mongod.pid
+
+      net:
+        port: 27017
+        bindIp: 127.0.0.1
+
+      security:
+        enableEncryption: true
+        encryptionCipherMode: AES256-GCM
+        encryptionKeyFile: /package-testing/scripts/psmdb_encryption/mongodb-keyfile
+  when:
+     lookup('env', 'CIPHER') == "AES256-GCM" and ansible_os_family == "Debian"
+
+- name: Start mongod 
   service: 
     name: mongod
     state: started

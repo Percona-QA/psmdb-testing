@@ -74,7 +74,7 @@
           serverCAFile: /package-testing/scripts/psmdb_encryption/test.cer
         encryptionCipherMode: AES256-CBC
   when:
-     lookup('env', 'CIPHER') != "AES256-GCM"
+     lookup('env', 'CIPHER') != "AES256-GCM" and ansible_os_family == "RedHat"
 
 - name: Update mongo configuration
   copy:
@@ -109,7 +109,77 @@
           serverCAFile: /package-testing/scripts/psmdb_encryption/test.cer
         encryptionCipherMode: AES256-GCM
   when:
-     lookup('env', 'CIPHER') == "AES256-GCM"
+     lookup('env', 'CIPHER') == "AES256-GCM" and ansible_os_family == "RedHat"
+
+- name: Update mongo configuration
+  copy:
+    dest: "/etc/mongod.conf"
+    content: |
+      storage:
+        dbPath: /var/lib/mongodb
+        journal:
+          enabled: true
+        engine: wiredTiger
+
+      systemLog:
+        destination: file
+        logAppend: true
+        path: /var/log/mongodb/mongod.log
+
+      processManagement:
+        fork: true
+        pidFilePath: /var/run/mongod.pid
+
+      net:
+        port: 27017
+        bindIp: 127.0.0.1
+
+      security:
+        enableEncryption: true
+        vault:
+          serverName: 127.0.0.1
+          port: 8200
+          tokenFile: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
+          secret: secret_v2/data/psmdb-test/package-test
+          serverCAFile: /package-testing/scripts/psmdb_encryption/test.cer
+        encryptionCipherMode: AES256-CBC
+  when:
+     lookup('env', 'CIPHER') != "AES256-GCM" and ansible_os_family == "RedHat"
+
+- name: Update mongo configuration
+  copy:
+    dest: "/etc/mongod.conf"
+    content: |
+      storage:
+        dbPath: /var/lib/mongodb
+        journal:
+          enabled: true
+        engine: wiredTiger
+
+      systemLog:
+        destination: file
+        logAppend: true
+        path: /var/log/mongodb/mongod.log
+
+      processManagement:
+        fork: true
+        pidFilePath: /var/run/mongod.pid
+
+      net:
+        port: 27017
+        bindIp: 127.0.0.1
+
+      security:
+        enableEncryption: true
+        vault:
+          serverName: 127.0.0.1
+          port: 8200
+          tokenFile: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
+          secret: secret_v2/data/psmdb-test/package-test
+          serverCAFile: /package-testing/scripts/psmdb_encryption/test.cer
+        encryptionCipherMode: AES256-GCM
+  when:
+     lookup('env', 'CIPHER') == "AES256-GCM" and ansible_os_family == "Debian"
 
 - name: Start mongod 
   service: 
