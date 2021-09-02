@@ -22,11 +22,10 @@
       register: set_version
       when: from_maj_version > to_maj_version
     
-    - name: stop services for downgrade
+    - name: stop mongod service
       service:
         name: mongod
         state: stopped  
-      when: from_version > to_version
 
     - name: install necessary deb packages for downgrade
       apt:
@@ -156,10 +155,10 @@
         group: mongod
       when: from_version > to_version
 
-    - name: restart mongod service
+    - name: start mongod service
       service: 
         name: mongod
-        state: restarted
+        state: started
 
     - name: set compatibilty version after upgrade
       shell: |
