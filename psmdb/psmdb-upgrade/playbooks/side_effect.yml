@@ -146,6 +146,58 @@
         daemon_reload: yes
       when: ansible_service_mgr == "systemd"
 
+    - name: Check if /etc/mongod.conf.rpmsave exists
+      stat:
+        path: /etc/mongod.conf.rpmsave
+      register: stat_rpmsave
+
+    - name: If necessary replace mongod.conf with rpmsave 
+      copy:
+        remote_src: yes
+        src: "/etc/mongod.conf.rpmsave"
+        dest: /etc/mongod.conf
+      when: stat_rpmsave.stat.exists
+
+### all of this make sense until PSMDB-918      
+    - name: Check if vault-token exists
+      stat:
+        path: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
+      register: stat_token
+      
+    - name: Ensure vault-token has correct permissions
+      file:
+        path: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
+        owner: mongod
+        group: mongod
+        mode: '0400'  
+      when: stat_token.stat.exists    
+
+    - name: Check if vault crt exists
+      stat:
+        path: /package-testing/scripts/psmdb_encryption/test.cer
+      register: stat_crt
+      
+    - name: Ensure vault crt has correct permissions
+      file:
+        path: /package-testing/scripts/psmdb_encryption/test.cer
+        owner: mongod
+        group: mongod
+        mode: '0400' 
+      when:  stat_crt.stat.exists  
+        
+    - name: Check if keyfile exists
+      stat:
+        path: /package-testing/scripts/psmdb_encryption/mongodb-keyfile
+      register: stat_key
+      
+    - name: Ensure keyfile has correct permissions
+      file:
+        path: /package-testing/scripts/psmdb_encryption/mongodb-keyfile
+        owner: mongod
+        group: mongod
+        mode: '0400' 
+      when:  stat_key.stat.exists
+
     - name: change permissions to mongodb directory after downgrade
       file:
         path: /var/lib/mongo
@@ -154,6 +206,7 @@
         owner: mongod
         group: mongod
       when: from_version > to_version
+### EOF
 
     - name: start mongod service
       service: 
