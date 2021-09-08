@@ -1,0 +1,14 @@
+dn: olcDatabase={{dbtype}},cn=config
+changetype: modify
+replace: olcSuffix
+olcSuffix: {{ldap_basedn}}
+
+dn: olcDatabase={{dbtype}},cn=config
+changetype: modify
+replace: olcRootDN
+olcRootDN: {{ldap_basedn}}
+
+dn: olcDatabase={{dbtype}},cn=config
+changetype: modify
+replace: olcRootPW
+olcRootPW: {{ldap_encripted_password.stdout}}

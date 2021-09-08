@@ -1,0 +1,26 @@
+---
+- name: Install required packages
+  apt:
+    name: "{{packages}}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+    - slapd
+    - ldap-utils
+    - python3-ldap
+    - jq
+  when: ansible_distribution_major_version != "9"
+
+- name: Install required packages
+  apt:
+    name: "{{packages}}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+    - slapd
+    - ldap-utils
+    - python-ldap
+    - jq
+  when: ansible_distribution_major_version == "9"

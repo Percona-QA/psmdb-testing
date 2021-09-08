@@ -1,0 +1,60 @@
+---
+- name: Install required packages
+  yum:
+    state: present
+    validate_certs: no
+    disable_gpg_check: yes
+    name:
+    - openldap
+    - openldap-servers
+    - openldap-clients
+    - python-ldap
+    - jq
+  when: ansible_distribution_major_version <= "7"
+
+- name: install symas repo
+  shell: |
+    curl https://repo.symas.com/configs/SOFL/rhel8/sofl.repo --output /etc/yum.repos.d/sofl.repo
+  when: ansible_distribution_major_version == "8"  
+
+- name: Import symas gpg key
+  rpm_key:
+    state: present
+    key: https://repo.symas.com/repo/gpg/RPM-GPG-KEY-symas-com-signing-key
+  when: ansible_distribution_major_version == "8"
+
+#- name: Import ltb gpg key
+#  rpm_key:
+#    state: present
+#    key: https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+#  when: ansible_distribution_major_version == "8"
+
+#- name: Add ltb repository
+#  yum_repository:
+#    name: ltb
+#    description: LTB project packages
+#    baseurl: https://ltb-project.org/rpm/$releasever/$basearch
+#    gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project
+#    gpgcheck: yes
+#  when: ansible_distribution_major_version == "8"    
+
+- name: Install required packages
+  yum:
+    name: "{{packages}}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+#    - openldap-ltb
+    - symas-openldap-clients
+    - symas-openldap-servers
+    - openldap-devel
+    - gcc
+    - python3-devel
+    - jq
+  when: ansible_distribution_major_version == "8"
+
+- name: Install ldap python package
+  pip:
+    name: python-ldap
+  when: ansible_distribution_major_version == "8"
