@@ -1,6 +1,8 @@
 ---
 dependency:
   name: galaxy
+  env:
+    CLASSPATH: /workdir/mongo-java-driver.jar
 driver:
   name: docker
 platforms:
