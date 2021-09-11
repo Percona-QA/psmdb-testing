@@ -1,15 +1,28 @@
 ---
 # tasks file for PSMDB
+- name: prerequisite for debian 11
+  apt:
+    name: iproute2
+    update_cache: yes
+  when: ansible_distribution == "Debian" and ansible_distribution_major_version == "11"      
+
+- name: get primary ip adrress
+  set_fact: 
+    rs0_primary_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+  when: inventory_hostname in groups['primary']
+
+- debug:
+    msg: "{{rs0_primary_ip}}"
+  when: inventory_hostname in groups['primary']
+
+- set_fact: 
+    rs0_secondary_ips: "{% for host in groups['secondary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+- debug:
+    msg: "{{rs0_secondary_ips}}"
+
 - set_fact:
     new_tarball: "{{ lookup('env', 'NEW_TARBALL') | default('https://downloads.percona.com/downloads/percona-server-mongodb-4.2/percona-server-mongodb-4.2.15-16/binary/tarball/percona-server-mongodb-4.2.15-16-x86_64.glibc2.17-minimal.tar.gz', true) }}"
-
-- set_fact:
-    layout_type: "{{ lookup('env', 'LAYOUT_TYPE') | default('single', true) }}"
-
-- name: check correct layout type
-  fail: 
-    msg: incorrect layout type {{ layout_type }}
-  when: layout_type != "single" and layout_type != "replicaset" and layout_type != "sharded" 
 
 - set_fact:
     storage: "{{ lookup('env', 'STORAGE') | default('wiredTiger', true) }}"    
@@ -62,7 +75,7 @@
 - set_fact:
     mongo_opts: " --storageEngine {{ storage }} --inMemorySizeGB 0.25"
   when: encryption == "NONE" and storage == "inMemory"
-   
+
 - name: Create data directories
   file:
     path: /usr/share/man/man1
@@ -229,7 +242,7 @@
   git:
     repo: 'https://github.com/Percona-QA/psmdb-testing.git'
     dest: /package-testing
-    version: main
+    version: PSMDB-919_tarball-tests
 
 - name: Download test database
   get_url:
@@ -303,101 +316,21 @@
     state: directory
     mode: 0775
   loop:
-    - /workdir/single
-    - /workdir/rs0-1
-    - /workdir/rs0-2
-    - /workdir/rs0-3
-    - /workdir/rs1-1
-    - /workdir/rs1-2
-    - /workdir/rs1-3
-    - /workdir/cfg1-1
-    - /workdir/cfg1-2
-    - /workdir/cfg1-3
-
-- name: Start single mongo
-  command: /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/single {{ mongo_opts }}
-  when: layout_type == "single"
+    - /workdir/data
 
 - name: Start replicaset
   command: "{{ item }}"
   with_items:    
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-1 --port 27017 --replSet rs0 {{ mongo_opts }}   
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-2 --port 27018 --replSet rs0 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-3 --port 27019 --replSet rs0 {{ mongo_opts }}
-  when: layout_type == "replicaset" 
+    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/data --port 27017 --bind_ip 0.0.0.0 --replSet rs0 {{ mongo_opts }}   
 
 - name: Create a replicaset rs0
   community.mongodb.mongodb_replicaset:
     replica_set: rs0
     members:
-    - host: "localhost:27017"
+    - host: "{{ rs0_primary_ip }}:27017"
       priority: 1
-    - host: "localhost:27018"
+    - host: "{{ rs0_secondary_ips.split(',')[0] }}:27017"
       priority: 0.5
-    - host: "localhost:27019"
+    - host: "{{ rs0_secondary_ips.split(',')[1] }}:27017"
       priority: 0.5
-  when: layout_type == "replicaset"
-
-- name: Start sharded
-  command: "{{ item }}"
-  with_items:
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-1 --port 28017 --shardsvr --replSet rs0 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-2 --port 28018 --shardsvr --replSet rs0 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-3 --port 28019 --shardsvr --replSet rs0 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs1-1 --port 29017 --shardsvr --replSet rs1 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs1-2 --port 29018 --shardsvr --replSet rs1 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs1-3 --port 29019 --shardsvr --replSet rs1 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/cfg1-1 --port 30017 --configsvr --replSet cfg {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/cfg1-2 --port 30018 --configsvr --replSet cfg {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/cfg1-3 --port 30019 --configsvr --replSet cfg {{ mongo_opts }}
-  when: layout_type == "sharded"
-
-- name: Create a replicaset rs0
-  community.mongodb.mongodb_replicaset:
-    login_port: 28017
-    replica_set: rs0
-    members:
-    - host: "localhost:28017"
-      priority: 1
-    - host: "localhost:28018"
-      priority: 0.5
-    - host: "localhost:28019"
-      priority: 0.5
-  when: layout_type == "sharded"
-
-- name: Create a replicaset rs1
-  community.mongodb.mongodb_replicaset:
-    login_port: 29017
-    replica_set: rs1
-    members:
-    - host: "localhost:29017"
-      priority: 1
-    - host: "localhost:29018"
-      priority: 0.5
-    - host: "localhost:29019"
-      priority: 0.5
-  when: layout_type == "sharded"
-
-- name: Create a replicaset cfg
-  community.mongodb.mongodb_replicaset:
-    login_port: 30017
-    replica_set: cfg
-    members:
-    - host: "localhost:30017"
-      priority: 1
-    - host: "localhost:30018"
-      priority: 0.5
-    - host: "localhost:30019"
-      priority: 0.5
-  when: layout_type == "sharded"
-
-- name: Start mongos
-  command: /mongo-new-bindir/bin/mongos --fork --syslog --configdb cfg/localhost:30017,localhost:30018,localhost:30019 --port 27017 --bind_ip 0.0.0.0
-  when: layout_type == "sharded"
-
-- name: Init sharded
-  command: "{{item}}"
-  with_items:
-    - /mongo-new-bindir/bin/mongo --eval 'sh.addShard( "rs0/localhost:28017,localhost:28018,localhost:28019" )'
-    - /mongo-new-bindir/bin/mongo --eval 'sh.addShard( "rs1/localhost:29017,localhost:29018,localhost:29019" )'
-  when: layout_type == "sharded"
+  when: inventory_hostname in groups['primary']
