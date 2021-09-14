@@ -91,6 +91,15 @@
     url: '{{ new_tarball }}'
     dest: /tmp/percona-server-mongodb-new.tar.gz
     mode: '0644'
+  when: new_tarball.startswith('http')
+
+- name: Download new tarball
+  aws_s3:
+    bucket: "{{ new_tarball | urlsplit('hostname') }}"
+    object: "{{ new_tarball | urlsplit('path') }}"
+    dest: /tmp/percona-server-mongodb-new.tar.gz
+    mode: get
+  when: new_tarball.startswith('s3')
 
 - name: Unpack new tarball
   unarchive: 
