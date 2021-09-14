@@ -131,11 +131,3 @@
         msg: "{{primary.stdout}}"
       when: inventory_hostname in groups['primary']      
 
-    - name: some checks
-      shell: |
-        /mongo-new-bindir/bin/mongo mongodb://127.0.0.1/?replicaSet=rs0 --quiet --eval 'db.adminCommand( { getParameter: 1, featureCompatibilityVersion: 1 } )'
-      register: stdout
-
-    - name: debug shell
-      debug:
-        msg: "{{stdout.stdout}}"

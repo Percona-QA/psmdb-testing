@@ -46,11 +46,10 @@ provisioner:
     prepare: ../../../../playbooks/prepare.yml
     cleanup: ../../playbooks/cleanup.yml
     converge: ../../playbooks/playbook.yml
+    side_effect: ../../playbooks/side_effect.yml
 verifier:
   name: testinfra
   directory: ../../../tests/
-  additional_files_or_dirs:
-    - ../psmdb/tests/
   options:
     verbose: true
     s: true

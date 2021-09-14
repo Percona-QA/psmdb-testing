@@ -108,9 +108,9 @@
       register: balancer_state
       when: layout_type == "sharded"
 
-    - name: debug balnacer state for sharded
+    - name: debug balancer state for sharded
       debug:
-        msg: "{{balancer_state}}"
+        msg: "{{balancer_state.stdout}}"
       when: layout_type == "sharded"      
 
     - name: Download new tarball
@@ -257,9 +257,9 @@
       register: balancer_state
       when: layout_type == "sharded"
 
-    - name: debug balnacer state for sharded
+    - name: debug balancer state for sharded
       debug:
-        msg: "{{balancer_state}}"
+        msg: "{{balancer_state.stdout}}"
       when: layout_type == "sharded"
 
     - name: set compatibilty version after upgrade single

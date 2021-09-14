@@ -26,7 +26,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: uxenial-${BUILD_NUMBER}-${JOB_NAME}-seconadry-2
+  - name: uxenial-${BUILD_NUMBER}-${JOB_NAME}-secondary-2
     groups: 
       - secondary
     region: eu-central-1
@@ -49,8 +49,6 @@ provisioner:
 verifier:
   name: testinfra
   directory: ../../../tests/
-  additional_files_or_dirs:
-    - ../psmdb/tests/
   options:
     verbose: true
     s: true

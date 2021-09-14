@@ -26,7 +26,7 @@ platforms:
     root_device_name: xvda
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: debian10-${BUILD_NUMBER}-${JOB_NAME}-seconadry-2
+  - name: debian10-${BUILD_NUMBER}-${JOB_NAME}-secondary-2
     groups: 
       - secondary
     region: eu-central-1
@@ -49,8 +49,6 @@ provisioner:
 verifier:
   name: testinfra
   directory: ../../../tests/
-  additional_files_or_dirs:
-    - ../psmdb/tests/
   options:
     verbose: true
     s: true
