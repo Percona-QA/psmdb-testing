@@ -76,28 +76,52 @@
       debug:
         msg: "{{ mongodb_new_maj_ver[0] }}"
 
+    - name: get test db hash before upgrade
+      shell: |
+        /mongo-old-bindir/bin/mongo mgodatagen_test --eval "db.runCommand({ dbHash: 1 }).md5" --quiet
+      register: ohash
+      when: layout_type == "single"
+    
+    - set_fact: old_hash="{{ohash.stdout}}"
+      when: ohash.changed
+
+    - name: get test db hash before upgrade
+      shell: |
+        /mongo-old-bindir/bin/mongo mongodb://127.0.0.1/mgodatagen_test?replicaSet=rs0 --eval "db.runCommand({ dbHash: 1 }).md5" --quiet | tail -1
+      register: ohash
+      when: layout_type == "replicaset"
+
+    - set_fact: old_hash="{{ohash.stdout}}"
+      when: ohash.changed
+
+    - name: get test db hash before upgrade
+      shell: |
+        /mongo-old-bindir/bin/mongo mongodb://127.0.0.1:28017/mgodatagen_test?replicaSet=rs0 --eval "db.runCommand({ dbHash: 1 }).md5" --quiet | tail -1
+        /mongo-old-bindir/bin/mongo mongodb://127.0.0.1:29017/mgodatagen_test?replicaSet=rs1 --eval "db.runCommand({ dbHash: 1 }).md5" --quiet | tail -1
+      register: ohash
+      when: layout_type == "sharded"
+
+    - set_fact: old_hash="{{ohash.stdout}}"
+      when: ohash.changed
+
+    - name: debug old hash
+      debug:
+        msg: "{{old_hash}}"
+
     - name: set compatibilty version for downgrade single
       shell: |
         /mongo-old-bindir/bin/mongo --quiet --eval "db.adminCommand({setFeatureCompatibilityVersion: '{{mongodb_new_maj_version[0]}}' })"
-      register: set_version
       when: mongodb_prev_maj_ver > mongodb_new_maj_ver and layout_type == "single"
 
     - name: set compatibilty version for downgrade replicaset
       shell: |
         /mongo-old-bindir/bin/mongo mongo://127.0.0.1/?replicaSet=rs0 --quiet --eval "db.adminCommand({setFeatureCompatibilityVersion: '{{mongodb_new_maj_version[0]}}' })"
-      register: set_version
       when: mongodb_prev_maj_ver > mongodb_new_maj_ver and layout_type == "replicaset"
 
     - name: set compatibilty version for downgrade sharded
       shell: |
         /mongo-old-bindir/bin/mongo --quiet --eval "db.adminCommand({setFeatureCompatibilityVersion: '{{mongodb_new_maj_version[0]}}' })"
-      register: set_version
       when: mongodb_prev_maj_ver > mongodb_new_maj_ver and layout_type == "sharded"
-
-    - name: debug version
-      debug:
-        msg: "{{set_version.stdout}}"
-      when: mongodb_prev_maj_ver > mongodb_new_maj_ver
 
     - name: stop balancer for sharded
       command: /mongo-old-bindir/bin/mongo --quiet --eval "sh.stopBalancer()"
@@ -274,23 +298,51 @@
     - name: set compatibilty version after upgrade single
       shell: |
         /mongo-new-bindir/bin/mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{mongodb_new_maj_ver[0]}}" })'
-      register: set_version
       when: mongodb_prev_maj_ver < mongodb_new_maj_ver and layout_type == "single"
 
     - name: set compatibilty version after upgrade sharded
       shell: |
         /mongo-new-bindir/bin/mongo mongodb://127.0.0.1/?replicaSet=rs0 --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{mongodb_new_maj_ver[0]}}" })'
-      register: set_version
       when: mongodb_prev_maj_ver < mongodb_new_maj_ver and layout_type == "replicaset"
 
     - name: set compatibilty version after upgrade single
       shell: |
         /mongo-new-bindir/bin/mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{mongodb_new_maj_ver[0]}}" })'
-      register: set_version
       when: mongodb_prev_maj_ver < mongodb_new_maj_ver and layout_type == "sharded"
 
-    - name: debug version
-      debug:
-        msg: "{{set_version.stdout}}"
-      when: mongodb_prev_maj_ver < mongodb_new_maj_ver
+    - name: get test db hash after upgrade
+      shell: |
+        /mongo-new-bindir/bin/mongo mgodatagen_test --eval "db.runCommand({ dbHash: 1 }).md5" --quiet
+      register: nhash
+      when: layout_type == "single"
 
+    - set_fact: new_hash="{{nhash.stdout}}"
+      when: nhash.changed
+
+    - name: get test db hash after upgrade
+      shell: |
+        /mongo-new-bindir/bin/mongo mongodb://127.0.0.1/mgodatagen_test?replicaSet=rs0 --eval "db.runCommand({ dbHash: 1 }).md5" --quiet | tail -1
+      register: nhash
+      when: layout_type == "replicaset"
+
+    - set_fact: new_hash="{{nhash.stdout}}"
+      when: nhash.changed
+
+    - name: get test db hash after upgrade
+      shell: |
+        /mongo-new-bindir/bin/mongo mongodb://127.0.0.1:28017/mgodatagen_test?replicaSet=rs0 --eval "db.runCommand({ dbHash: 1 }).md5" --quiet | tail -1
+        /mongo-new-bindir/bin/mongo mongodb://127.0.0.1:29017/mgodatagen_test?replicaSet=rs1 --eval "db.runCommand({ dbHash: 1 }).md5" --quiet | tail -1
+      register: nhash
+      when: layout_type == "sharded"
+
+    - set_fact: new_hash="{{nhash.stdout}}"
+      when: nhash.changed
+
+    - name: debug new hash
+      debug:
+        msg: "{{new_hash}}"
+
+    - name: compare hashes
+      fail:
+        msg: "fail in compare db hashes"
+      when: new_hash != old_hash 

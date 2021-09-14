@@ -219,3 +219,31 @@
     - /mongo-old-bindir/bin/mongo --eval 'sh.addShard( "rs0/localhost:28017,localhost:28018,localhost:28019" )'
     - /mongo-old-bindir/bin/mongo --eval 'sh.addShard( "rs1/localhost:29017,localhost:29018,localhost:29019" )'
   when: layout_type == "sharded"
+
+- name: Generate test data for single
+  command: /workdir/mgodatagen -f /workdir/big.json
+  register: datagen
+  when: layout_type == "single"
+
+- set_fact: mgodatagen="{{datagen.stdout_lines}}"
+  when: datagen.changed
+
+- name: Generate test data for replicaset
+  command: /workdir/mgodatagen --uri=mongodb://127.0.0.1/?replicaSet=rs0 -f /workdir/big.json
+  register: datagen
+  when: layout_type == "replicaset"
+
+- set_fact: mgodatagen="{{datagen.stdout_lines}}"
+  when: datagen.changed
+
+- name: Generate test data for sharded
+  command: /workdir/mgodatagen -f /workdir/sharded_id.json
+  register: datagen
+  when: layout_type == "sharded"
+
+- set_fact: mgodatagen="{{datagen.stdout_lines}}"
+  when: datagen.changed
+
+- name: debug mgodatagen result         
+  debug:
+    msg: "{{mgodatagen}}"
