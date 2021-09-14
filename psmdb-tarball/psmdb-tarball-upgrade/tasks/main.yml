@@ -133,7 +133,7 @@
     - /workdir/cfg1-3
 
 - name: Start single mongo
-  command: /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/single {{ mongo_opts }}
+  command: /mongo-old-bindir/bin/mongod --fork --syslog --dbpath /workdir/single {{ mongo_opts }}
   when: layout_type == "single"
 
 - name: Start replicaset
