@@ -15,7 +15,7 @@
         url: '{{ old_tarball }}'
         dest: /tmp/percona-server-mongodb-old.tar.gz
         mode: '0644'
-      when: new_tarball.startswith('http')
+      when: old_tarball.startswith('http')
 
     - name: Download old tarball
       aws_s3:
@@ -23,7 +23,7 @@
         object: "{{ old_tarball | urlsplit('path') }}"
         dest: /tmp/percona-server-mongodb-old.tar.gz
         mode: get
-      when: new_tarball.startswith('s3')
+      when: old_tarball.startswith('s3')
 
     - name: Download new tarball
       get_url:
