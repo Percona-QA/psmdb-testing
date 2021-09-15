@@ -21,8 +21,6 @@ provisioner:
 verifier:
   name: testinfra
   directory: ../../../tests/
-  additional_files_or_dirs:
-    - ../psmdb/tests/
   options:
     verbose: true
     s: true
