@@ -1,9 +1,6 @@
 ---
 # tasks file for PSMDB
 - set_fact:
-    new_tarball: "{{ lookup('env', 'NEW_TARBALL') | default('https://downloads.percona.com/downloads/percona-server-mongodb-4.2/percona-server-mongodb-4.2.15-16/binary/tarball/percona-server-mongodb-4.2.15-16-x86_64.glibc2.17-minimal.tar.gz', true) }}"
-
-- set_fact:
     layout_type: "{{ lookup('env', 'LAYOUT_TYPE') | default('single', true) }}"
 
 - name: check correct layout type
@@ -73,20 +70,11 @@
 - name: Download tests
   include_tasks: ../../../tasks/install_tests_for_tarball.yml
 
-- name: Download new tarball
-  get_url:
-    url: '{{ new_tarball }}'
+- name: Copy tarball
+  copy:
+    src: /tmp/percona-server-mongodb-new.tar.gz
     dest: /tmp/percona-server-mongodb-new.tar.gz
     mode: '0644'
-  when: new_tarball.startswith('http')
-
-- name: Download new tarball
-  aws_s3:
-    bucket: "{{ new_tarball | urlsplit('hostname') }}"
-    object: "{{ new_tarball | urlsplit('path') }}"
-    dest: /tmp/percona-server-mongodb-new.tar.gz
-    mode: get
-  when: new_tarball.startswith('s3')
 
 - name: Unpack new tarball
   unarchive: 
