@@ -1,0 +1,163 @@
+---
+# tasks file for PSMDB
+- name: prerequisite for debian 11
+  apt:
+    name: iproute2
+    update_cache: yes
+  when: ansible_distribution == "Debian" and ansible_distribution_major_version == "11"      
+
+- name: get primary ip adrress
+  set_fact: 
+    rs0_primary_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+  when: inventory_hostname in groups['primary']
+
+- debug:
+    msg: "{{rs0_primary_ip}}"
+  when: inventory_hostname in groups['primary']
+
+- set_fact: 
+    rs0_secondary_ips: "{% for host in groups['secondary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+- debug:
+    msg: "{{rs0_secondary_ips}}"
+
+- set_fact:
+    old_tarball: "{{ lookup('env', 'OLD_TARBALL') | default('https://downloads.percona.com/downloads/percona-server-mongodb-4.2/percona-server-mongodb-4.2.15-16/binary/tarball/percona-server-mongodb-4.2.15-16-x86_64.glibc2.17-minimal.tar.gz', true) }}"
+
+- name: get mongodb maj version
+  set_fact:
+    mongodb_prev_maj_ver: "{{ old_tarball | regex_search('mongodb-([0-9]\\.[0-9])', '\\1') }}"
+
+- name: debug mongodb maj version
+  debug:
+    msg: "{{ mongodb_prev_maj_ver }}"
+
+- set_fact:
+    storage: "{{ lookup('env', 'STORAGE') | default('wiredTiger', true) }}"    
+
+- name: check correct storage
+  fail: 
+    msg: incorrect storage type {{ storage }}
+  when: storage != "wiredTiger" and storage != "inMemory"  
+
+- set_fact:
+    encryption: "{{ lookup('env', 'ENCRYPTION') | default('NONE', true) }}"
+  when: storage == "wiredTiger"   
+
+- name: check correct encryption
+  fail:
+    msg: incorrect encryption {{ encryption }}
+  when: encryption != "NONE" and encryption != "VAULT" and encryption != "KEYFILE"
+
+- set_fact:
+    encryption: "NONE"
+  when: storage == "inMemory"
+
+- set_fact:
+    cipher: "{{ lookup('env', 'CIPHER') | default('AES256-CBC', true) }}"
+
+- set_fact:
+    keyfile: "/package-testing/scripts/psmdb_encryption/mongodb-keyfile"
+
+- set_fact:
+    vault_token: "/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"
+
+- set_fact:
+    vault_cert: "/package-testing/scripts/psmdb_encryption/test.cer"
+
+- set_fact:
+    vault_secret: "secret_v2/data/psmdb-test/package-test"
+
+- set_fact:
+    mongo_opts: " --wiredTigerCacheSizeGB 0.25 --enableEncryption --encryptionKeyFile {{ keyfile }} --encryptionCipherMode {{  cipher }}"
+  when: encryption == "KEYFILE"
+
+- set_fact:
+    mongo_opts: " --wiredTigerCacheSizeGB 0.25 --enableEncryption --vaultServerName 127.0.0.1 --vaultPort 8200 --vaultTokenFile {{ vault_token }} --vaultSecret {{ vault_secret }} --vaultServerCAFile {{ vault_cert }} --encryptionCipherMode {{  cipher }}"
+  when: encryption == "VAULT"
+
+- set_fact:
+    mongo_opts: " --storageEngine {{ storage }} --wiredTigerCacheSizeGB 0.25"
+  when: encryption == "NONE" and storage == "wiredTiger"
+
+- set_fact:
+    mongo_opts: " --storageEngine {{ storage }} --inMemorySizeGB 0.25"
+  when: encryption == "NONE" and storage == "inMemory"
+
+- name: Install neccesary software for different OS 
+  include_tasks: ../../../tasks/install_soft_for_tarball_tests.yml
+
+- name: Install and configure vault
+  include_tasks: ../../../tasks/install_and_configure_vault.yml
+  when: encryption == "VAULT"
+
+- name: Download tests
+  include_tasks: ../../../tasks/install_tests_for_tarball.yml
+
+- name: Download old tarball
+  get_url:
+    url: '{{ old_tarball }}'
+    dest: /tmp/percona-server-mongodb-old.tar.gz
+    mode: '0644'
+  when: old_tarball.startswith('http')
+
+- name: Download old tarball
+  aws_s3:
+    bucket: "{{ old_tarball | urlsplit('hostname') }}"
+    object: "{{ old_tarball | urlsplit('path') }}"
+    dest: /tmp/percona-server-mongodb-old.tar.gz
+    mode: get
+  when: old_tarball.startswith('s3')
+
+- name: Unpack old tarball
+  unarchive: 
+    src: /tmp/percona-server-mongodb-old.tar.gz
+    dest: /                     
+    remote_src: yes
+    extra_opts:
+    - --transform
+    - 's,^/*[^/]*,/mongo-old-bindir,S'
+
+- name: Ensure keyfile has correct permissions
+  file:
+    path: "{{ keyfile }}"
+    mode: '0400'
+  when: encryption == "KEYFILE"
+
+- name: Ensure vault_cert has correct permissions
+  file:
+    path: "{{ vault_token }}"                                            
+    mode: '0400'
+  when: encryption == "VAULT"
+
+- name: Ensure vault_token has correct permissions
+  file:
+    path: "{{ vault_cert }}"                                            
+    mode: '0400'
+  when: encryption == "VAULT"
+
+- name: Create data directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0775
+  loop:
+    - /workdir/data
+
+- name: Start replicaset
+  command: "{{ item }}"
+  with_items:    
+    - /mongo-old-bindir/bin/mongod --fork --syslog --dbpath /workdir/data --port 27017 --bind_ip 0.0.0.0 --replSet rs0 {{ mongo_opts }}   
+
+- name: Create a replicaset rs0
+  community.mongodb.mongodb_replicaset:
+    replica_set: rs0
+    members:
+    - host: "{{ rs0_primary_ip }}:27017"
+      priority: 1
+    - host: "{{ rs0_secondary_ips.split(',')[0] }}:27017"
+      priority: 0.5
+    - host: "{{ rs0_secondary_ips.split(',')[1] }}:27017"
+      priority: 0.5
+  when: inventory_hostname in groups['primary']
+

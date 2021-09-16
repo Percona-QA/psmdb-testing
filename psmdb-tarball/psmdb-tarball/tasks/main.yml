@@ -1,0 +1,209 @@
+---
+# tasks file for PSMDB
+- set_fact:
+    layout_type: "{{ lookup('env', 'LAYOUT_TYPE') | default('single', true) }}"
+
+- name: check correct layout type
+  fail: 
+    msg: incorrect layout type {{ layout_type }}
+  when: layout_type != "single" and layout_type != "replicaset" and layout_type != "sharded" 
+
+- set_fact:
+    storage: "{{ lookup('env', 'STORAGE') | default('wiredTiger', true) }}"    
+
+- name: check correct storage
+  fail: 
+    msg: incorrect storage type {{ storage }}
+  when: storage != "wiredTiger" and storage != "inMemory"  
+
+- set_fact:
+    encryption: "{{ lookup('env', 'ENCRYPTION') | default('NONE', true) }}"
+  when: storage == "wiredTiger"   
+
+- name: check correct encryption
+  fail:
+    msg: incorrect encryption {{ encryption }}
+  when: encryption != "NONE" and encryption != "VAULT" and encryption != "KEYFILE"
+
+- set_fact:
+    encryption: "NONE"
+  when: storage == "inMemory"
+
+- set_fact:
+    cipher: "{{ lookup('env', 'CIPHER') | default('AES256-CBC', true) }}"
+
+- set_fact:
+    keyfile: "/package-testing/scripts/psmdb_encryption/mongodb-keyfile"
+
+- set_fact:
+    vault_token: "/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"
+
+- set_fact:
+    vault_cert: "/package-testing/scripts/psmdb_encryption/test.cer"
+
+- set_fact:
+    vault_secret: "secret_v2/data/psmdb-test/package-test"
+
+- set_fact:
+    mongo_opts: " --wiredTigerCacheSizeGB 0.25 --enableEncryption --encryptionKeyFile {{ keyfile }} --encryptionCipherMode {{  cipher }}"
+  when: encryption == "KEYFILE"
+
+- set_fact:
+    mongo_opts: " --wiredTigerCacheSizeGB 0.25 --enableEncryption --vaultServerName 127.0.0.1 --vaultPort 8200 --vaultTokenFile {{ vault_token }} --vaultSecret {{ vault_secret }} --vaultServerCAFile {{ vault_cert }} --encryptionCipherMode {{  cipher }}"
+  when: encryption == "VAULT"
+
+- set_fact:
+    mongo_opts: " --storageEngine {{ storage }} --wiredTigerCacheSizeGB 0.25"
+  when: encryption == "NONE" and storage == "wiredTiger"
+
+- set_fact:
+    mongo_opts: " --storageEngine {{ storage }} --inMemorySizeGB 0.25"
+  when: encryption == "NONE" and storage == "inMemory"
+   
+- name: Install neccesary software for different OS
+  include_tasks: ../../../tasks/install_soft_for_tarball_tests.yml
+
+- name: Install and configure vault
+  include_tasks: ../../../tasks/install_and_configure_vault.yml
+  when: encryption == "VAULT"
+
+- name: Download tests
+  include_tasks: ../../../tasks/install_tests_for_tarball.yml
+
+- name: Copy tarball
+  copy:
+    src: /tmp/percona-server-mongodb-new.tar.gz
+    dest: /tmp/percona-server-mongodb-new.tar.gz
+    mode: '0644'
+
+- name: Unpack new tarball
+  unarchive: 
+    src: /tmp/percona-server-mongodb-new.tar.gz
+    dest: /                     
+    remote_src: yes
+    extra_opts:
+    - --transform
+    - 's,^/*[^/]*,/mongo-new-bindir,S'
+
+- name: Ensure keyfile has correct permissions
+  file:
+    path: "{{ keyfile }}"
+    mode: '0400'
+  when: encryption == "KEYFILE"
+
+- name: Ensure vault_cert has correct permissions
+  file:
+    path: "{{ vault_token }}"                                            
+    mode: '0400'
+  when: encryption == "VAULT"
+
+- name: Ensure vault_token has correct permissions
+  file:
+    path: "{{ vault_cert }}"                                            
+    mode: '0400'
+  when: encryption == "VAULT"
+
+- name: Create data directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0775
+  loop:
+    - /workdir/single
+    - /workdir/rs0-1
+    - /workdir/rs0-2
+    - /workdir/rs0-3
+    - /workdir/rs1-1
+    - /workdir/rs1-2
+    - /workdir/rs1-3
+    - /workdir/cfg1-1
+    - /workdir/cfg1-2
+    - /workdir/cfg1-3
+
+- name: Start single mongo
+  command: /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/single --port 27017 {{ mongo_opts }}
+  when: layout_type == "single"
+
+- name: Start replicaset
+  command: "{{ item }}"
+  with_items:    
+    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-1 --port 27017 --replSet rs0 {{ mongo_opts }}   
+    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-2 --port 27018 --replSet rs0 {{ mongo_opts }}
+    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-3 --port 27019 --replSet rs0 {{ mongo_opts }}
+  when: layout_type == "replicaset" 
+
+- name: Create a replicaset rs0
+  community.mongodb.mongodb_replicaset:
+    replica_set: rs0
+    members:
+    - host: "localhost:27017"
+      priority: 1
+    - host: "localhost:27018"
+      priority: 0.5
+    - host: "localhost:27019"
+      priority: 0.5
+  when: layout_type == "replicaset"
+
+- name: Start sharded
+  command: "{{ item }}"
+  with_items:
+    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-1 --port 28017 --shardsvr --replSet rs0 {{ mongo_opts }}
+    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-2 --port 28018 --shardsvr --replSet rs0 {{ mongo_opts }}
+    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-3 --port 28019 --shardsvr --replSet rs0 {{ mongo_opts }}
+    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs1-1 --port 29017 --shardsvr --replSet rs1 {{ mongo_opts }}
+    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs1-2 --port 29018 --shardsvr --replSet rs1 {{ mongo_opts }}
+    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs1-3 --port 29019 --shardsvr --replSet rs1 {{ mongo_opts }}
+    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/cfg1-1 --port 30017 --configsvr --replSet cfg {{ mongo_opts }}
+    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/cfg1-2 --port 30018 --configsvr --replSet cfg {{ mongo_opts }}
+    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/cfg1-3 --port 30019 --configsvr --replSet cfg {{ mongo_opts }}
+  when: layout_type == "sharded"
+
+- name: Create a replicaset rs0
+  community.mongodb.mongodb_replicaset:
+    login_port: 28017
+    replica_set: rs0
+    members:
+    - host: "localhost:28017"
+      priority: 1
+    - host: "localhost:28018"
+      priority: 0.5
+    - host: "localhost:28019"
+      priority: 0.5
+  when: layout_type == "sharded"
+
+- name: Create a replicaset rs1
+  community.mongodb.mongodb_replicaset:
+    login_port: 29017
+    replica_set: rs1
+    members:
+    - host: "localhost:29017"
+      priority: 1
+    - host: "localhost:29018"
+      priority: 0.5
+    - host: "localhost:29019"
+      priority: 0.5
+  when: layout_type == "sharded"
+
+- name: Create a replicaset cfg
+  community.mongodb.mongodb_replicaset:
+    login_port: 30017
+    replica_set: cfg
+    members:
+    - host: "localhost:30017"
+      priority: 1
+    - host: "localhost:30018"
+      priority: 0.5
+    - host: "localhost:30019"
+      priority: 0.5
+  when: layout_type == "sharded"
+
+- name: Start mongos
+  command: /mongo-new-bindir/bin/mongos --fork --syslog --configdb cfg/localhost:30017,localhost:30018,localhost:30019 --port 27017 --bind_ip 0.0.0.0
+  when: layout_type == "sharded"
+
+- name: Init sharded
+  command: "{{item}}"
+  with_items:
+    - /mongo-new-bindir/bin/mongo --eval 'sh.addShard( "rs0/localhost:28017,localhost:28018,localhost:28019" )'
+    - /mongo-new-bindir/bin/mongo --eval 'sh.addShard( "rs1/localhost:29017,localhost:29018,localhost:29019" )'
+  when: layout_type == "sharded"

@@ -1,0 +1,53 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: ${MOLECULE_OS:-centos7}-primary
+    groups: 
+      - primary
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+  - name: ${MOLECULE_OS:-centos7}-secondary-1
+    groups:
+      - secondary
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+  - name: ${MOLECULE_OS:-centos7}-secondary-2
+    groups:
+      - secondary
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+provisioner:
+  name: ansible
+  log: true
+  playbooks:
+    prepare: ../../../../playbooks/prepare.yml
+    converge: ../../playbooks/playbook.yml
+    side_effect: ../../playbooks/side_effect.yml
+verifier:
+  name: testinfra
+  directory: ../../../tests/
+  options:
+    verbose: true
+    s: true
+    junitxml: report.xml
+scenario:
+  name: docker
+  test_sequence:
+    - prepare
+    - converge
+    - verify
