@@ -141,7 +141,7 @@
 
     - name: Check that bin directory exists
       stat:
-        path: /mongo-old-bindir
+        path: /mongo-new-bindir
       register: mongo_dir
 
     - name: Copy tarball
