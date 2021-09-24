@@ -18,6 +18,7 @@ provisioner:
     prepare: ../../../../playbooks/prepare.yml
     converge: ../../playbooks/playbook.yml
     side_effect: ../../playbooks/side_effect.yml
+    cleanup: ../../playbooks/cleanup.yml
 verifier:
   name: testinfra
   directory: ../../../tests/

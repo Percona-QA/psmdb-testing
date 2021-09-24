@@ -12,12 +12,6 @@
 
     - set_fact:
         encryption: "{{ lookup('env', 'ENCRYPTION') | default('NONE', true) }}"
-      when: storage == "wiredTiger"   
-
-    - name: check correct encryption
-      fail:
-        msg: incorrect encryption {{ encryption }}
-      when: encryption != "NONE" and encryption != "VAULT" and encryption != "KEYFILE"
 
     - set_fact:
         encryption: "NONE"
@@ -59,6 +53,14 @@
        
     - set_fact:
         new_tarball: "{{ lookup('env', 'NEW_TARBALL') | default('https://downloads.percona.com/downloads/percona-server-mongodb-LATEST/percona-server-mongodb-4.4.8-9/binary/tarball/percona-server-mongodb-4.4.8-9-x86_64.glibc2.17-minimal.tar.gz', true) }}"
+
+    - name: get mongodb old version
+      set_fact:
+        mongodb_old_ver: "{{ old_tarball | regex_search('mongodb-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+
+    - name: get mongodb new version
+      set_fact:
+        mongodb_new_ver: "{{ new_tarball | regex_search('mongodb-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
 
     - name: get mongodb prev maj version
       set_fact:
@@ -110,17 +112,17 @@
 
     - name: set compatibilty version for downgrade single
       shell: |
-        /mongo-old-bindir/bin/mongo --quiet --eval "db.adminCommand({setFeatureCompatibilityVersion: '{{mongodb_new_maj_version[0]}}' })"
+        /mongo-old-bindir/bin/mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{mongodb_new_maj_ver[0]}}" })'
       when: mongodb_prev_maj_ver > mongodb_new_maj_ver and layout_type == "single"
 
     - name: set compatibilty version for downgrade replicaset
       shell: |
-        /mongo-old-bindir/bin/mongo mongo://127.0.0.1/?replicaSet=rs0 --quiet --eval "db.adminCommand({setFeatureCompatibilityVersion: '{{mongodb_new_maj_version[0]}}' })"
+        /mongo-old-bindir/bin/mongo mongodb://127.0.0.1/?replicaSet=rs0 --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{mongodb_new_maj_ver[0]}}" })'
       when: mongodb_prev_maj_ver > mongodb_new_maj_ver and layout_type == "replicaset"
 
     - name: set compatibilty version for downgrade sharded
       shell: |
-        /mongo-old-bindir/bin/mongo --quiet --eval "db.adminCommand({setFeatureCompatibilityVersion: '{{mongodb_new_maj_version[0]}}' })"
+        /mongo-old-bindir/bin/mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{mongodb_new_maj_ver[0]}}" })'
       when: mongodb_prev_maj_ver > mongodb_new_maj_ver and layout_type == "sharded"
 
     - name: stop balancer for sharded
@@ -137,11 +139,17 @@
         msg: "{{balancer_state.stdout}}"
       when: layout_type == "sharded"      
 
+    - name: Check that bin directory exists
+      stat:
+        path: /mongo-old-bindir
+      register: mongo_dir
+
     - name: Copy tarball
       copy:
-        src: /tmp/percona-server-mongodb-new.tar.gz
+        src: /tmp/percona-server-mongodb-new-{{mongodb_new_ver[0]}}.tar.gz
         dest: /tmp/percona-server-mongodb-new.tar.gz
         mode: '0644'
+      when: not mongo_dir.stat.exists
 
     - name: Unpack new tarball
       unarchive:
@@ -151,6 +159,7 @@
         extra_opts:
         - --transform
         - 's,^/*[^/]*,/mongo-new-bindir,S'
+      when: not mongo_dir.stat.exists
 
     - name: Update single mongo
       command: "{{ item }}"
@@ -164,7 +173,13 @@
       with_items:
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/rs0-2 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-2 --port 27018 --replSet rs0 {{ mongo_opts }}
-        - sleep 10
+      when: layout_type == "replicaset"
+
+    - name: Ensure replicaset is stable
+      community.mongodb.mongodb_status:
+        replica_set: rs0
+        poll: 3
+        interval: 10
       when: layout_type == "replicaset"
 
     - name: Update second secondary rs0
@@ -172,17 +187,29 @@
       with_items:
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/rs0-3 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-3 --port 27019 --replSet rs0 {{ mongo_opts }}
-        - sleep 10
+      when: layout_type == "replicaset"
+
+    - name: Ensure replicaset is stable
+      community.mongodb.mongodb_status:
+        replica_set: rs0
+        poll: 3
+        interval: 10
       when: layout_type == "replicaset"
      
     - name: Update primary rs0
       command: "{{ item }}"
       with_items:
         - /mongo-old-bindir/bin/mongo --quiet --eval 'rs.stepDown()'
-        - sleep 10
+        - sleep 1
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/rs0-1 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-1 --port 27017 --replSet rs0 {{ mongo_opts }}
-        - sleep 10
+      when: layout_type == "replicaset"
+
+    - name: Ensure replicaset is stable
+      community.mongodb.mongodb_status:
+        replica_set: rs0
+        poll: 3
+        interval: 10
       when: layout_type == "replicaset"
 
     - name: Update first secondary cfg
@@ -190,7 +217,14 @@
       with_items:
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/cfg1-2 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/cfg1-2 --port 30018 --configsvr --replSet cfg {{ mongo_opts }}
-        - sleep 10
+      when: layout_type == "sharded"
+
+    - name: Ensure replicaset is stable
+      community.mongodb.mongodb_status:
+        replica_set: cfg
+        login_port: 30017
+        poll: 3
+        interval: 10
       when: layout_type == "sharded"
 
     - name: Update second secondary cfg
@@ -198,17 +232,31 @@
       with_items:
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/cfg1-3 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/cfg1-3 --port 30019 --configsvr --replSet cfg {{ mongo_opts }}
-        - sleep 10
+      when: layout_type == "sharded"
+
+    - name: Ensure replicaset is stable
+      community.mongodb.mongodb_status:
+        replica_set: cfg
+        login_port: 30017
+        poll: 3
+        interval: 10
       when: layout_type == "sharded"
 
     - name: Update primary cfg
       command: "{{ item }}"
       with_items:
         - /mongo-old-bindir/bin/mongo mongodb://127.0.0.1:30017 --quiet --eval 'rs.stepDown()'
-        - sleep 10
+        - sleep 1
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/cfg1-1 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/cfg1-1 --port 30017 --configsvr --replSet cfg {{ mongo_opts }}
-        - sleep 10
+      when: layout_type == "sharded"
+
+    - name: Ensure replicaset is stable
+      community.mongodb.mongodb_status:
+        replica_set: cfg
+        login_port: 30017
+        poll: 3
+        interval: 10
       when: layout_type == "sharded"
 
     - name: Update first secondary rs0
@@ -216,26 +264,46 @@
       with_items:
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/rs0-2 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-2 --port 28018 --replSet rs0 {{ mongo_opts }}
-        - sleep 10
       when: layout_type == "sharded"
 
+    - name: Ensure replicaset is stable
+      community.mongodb.mongodb_status:
+        replica_set: rs0
+        login_port: 28017
+        poll: 3
+        interval: 10
+      when: layout_type == "sharded"
 
     - name: Update second secondary rs0
       command: "{{ item }}"
       with_items:
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/rs0-3 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-3 --port 28019 --replSet rs0 {{ mongo_opts }}
-        - sleep 10
+      when: layout_type == "sharded"
+
+    - name: Ensure replicaset is stable
+      community.mongodb.mongodb_status:
+        replica_set: rs0
+        login_port: 28017
+        poll: 3
+        interval: 10
       when: layout_type == "sharded"
 
     - name: Update primary rs0
       command: "{{ item }}"
       with_items:
         - /mongo-old-bindir/bin/mongo mongodb://127.0.0.1:28017 --quiet --eval 'rs.stepDown()'
-        - sleep 10
+        - sleep 1
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/rs0-1 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-1 --port 28017 --replSet rs0 {{ mongo_opts }}
-        - sleep 10
+      when: layout_type == "sharded"
+
+    - name: Ensure replicaset is stable
+      community.mongodb.mongodb_status:
+        replica_set: rs0
+        login_port: 28017
+        poll: 3
+        interval: 10
       when: layout_type == "sharded"
 
     - name: Update first secondary rs1
@@ -243,26 +311,46 @@
       with_items:
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/rs1-2 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs1-2 --port 29018 --replSet rs1 {{ mongo_opts }}
-        - sleep 10
       when: layout_type == "sharded"
 
+    - name: Ensure replicaset is stable
+      community.mongodb.mongodb_status:
+        replica_set: rs1
+        login_port: 29017
+        poll: 3
+        interval: 10
+      when: layout_type == "sharded"
 
     - name: Update second secondary rs1
       command: "{{ item }}"
       with_items:
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/rs1-3 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs1-3 --port 29019 --replSet rs1 {{ mongo_opts }}
-        - sleep 10
+      when: layout_type == "sharded"
+
+    - name: Ensure replicaset is stable
+      community.mongodb.mongodb_status:
+        replica_set: rs1
+        login_port: 29017
+        poll: 3
+        interval: 10
       when: layout_type == "sharded"
 
     - name: Update primary rs1
       command: "{{ item }}"
       with_items:
         - /mongo-old-bindir/bin/mongo mongodb://127.0.0.1:29017 --quiet --eval 'rs.stepDown()'
-        - sleep 10
+        - sleep 1
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/rs1-1 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs1-1 --port 29017 --replSet rs1 {{ mongo_opts }}
-        - sleep 10
+      when: layout_type == "sharded"
+
+    - name: Ensure replicaset is stable
+      community.mongodb.mongodb_status:
+        replica_set: rs1
+        login_port: 29017
+        poll: 3
+        interval: 10
       when: layout_type == "sharded"
 
     - name: update mongos

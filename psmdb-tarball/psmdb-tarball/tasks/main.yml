@@ -1,36 +1,27 @@
 ---
 # tasks file for PSMDB
 - set_fact:
-    layout_type: "{{ lookup('env', 'LAYOUT_TYPE') | default('single', true) }}"
+    new_tarball: "{{ lookup('env', 'NEW_TARBALL') | default('https://downloads.percona.com/downloads/percona-server-mongodb-4.2/percona-server-mongodb-4.2.15-16/binary/tarball/percona-server-mongodb-4.2.15-16-x86_64.glibc2.17-minimal.tar.gz', true) }}"
 
-- name: check correct layout type
-  fail: 
-    msg: incorrect layout type {{ layout_type }}
-  when: layout_type != "single" and layout_type != "replicaset" and layout_type != "sharded" 
+- name: get mongodb new version
+  set_fact:
+    mongodb_new_ver: "{{ new_tarball | regex_search('mongodb-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+
+- set_fact:
+    layout_type: "{{ lookup('env', 'LAYOUT_TYPE') | default('single', true) }}"
 
 - set_fact:
     storage: "{{ lookup('env', 'STORAGE') | default('wiredTiger', true) }}"    
 
-- name: check correct storage
-  fail: 
-    msg: incorrect storage type {{ storage }}
-  when: storage != "wiredTiger" and storage != "inMemory"  
-
 - set_fact:
     encryption: "{{ lookup('env', 'ENCRYPTION') | default('NONE', true) }}"
-  when: storage == "wiredTiger"   
 
-- name: check correct encryption
-  fail:
-    msg: incorrect encryption {{ encryption }}
-  when: encryption != "NONE" and encryption != "VAULT" and encryption != "KEYFILE"
+- set_fact:
+    cipher: "{{ lookup('env', 'CIPHER') | default('AES256-CBC', true) }}"
 
 - set_fact:
     encryption: "NONE"
   when: storage == "inMemory"
-
-- set_fact:
-    cipher: "{{ lookup('env', 'CIPHER') | default('AES256-CBC', true) }}"
 
 - set_fact:
     keyfile: "/package-testing/scripts/psmdb_encryption/mongodb-keyfile"
@@ -63,16 +54,16 @@
 - name: Install neccesary software for different OS
   include_tasks: ../../../tasks/install_soft_for_tarball_tests.yml
 
+- name: Download tests
+  include_tasks: ../../../tasks/install_tests_for_tarball.yml
+
 - name: Install and configure vault
   include_tasks: ../../../tasks/install_and_configure_vault.yml
   when: encryption == "VAULT"
 
-- name: Download tests
-  include_tasks: ../../../tasks/install_tests_for_tarball.yml
-
 - name: Copy tarball
   copy:
-    src: /tmp/percona-server-mongodb-new.tar.gz
+    src: /tmp/percona-server-mongodb-new-{{mongodb_new_ver[0]}}.tar.gz
     dest: /tmp/percona-server-mongodb-new.tar.gz
     mode: '0644'
 
@@ -144,6 +135,13 @@
       priority: 0.5
   when: layout_type == "replicaset"
 
+- name: Ensure replicaset is stable
+  community.mongodb.mongodb_status:
+    replica_set: rs0
+    poll: 3
+    interval: 10
+  when: layout_type == "replicaset"
+
 - name: Start sharded
   command: "{{ item }}"
   with_items:
@@ -171,6 +169,14 @@
       priority: 0.5
   when: layout_type == "sharded"
 
+- name: Ensure replicaset is stable                                                              
+  community.mongodb.mongodb_status:
+    replica_set: rs0
+    login_port: 28017
+    poll: 3
+    interval: 10
+  when: layout_type == "sharded"
+
 - name: Create a replicaset rs1
   community.mongodb.mongodb_replicaset:
     login_port: 29017
@@ -184,6 +190,14 @@
       priority: 0.5
   when: layout_type == "sharded"
 
+- name: Ensure replicaset is stable
+  community.mongodb.mongodb_status:
+    replica_set: rs1
+    login_port: 29017
+    poll: 3
+    interval: 10
+  when: layout_type == "sharded"
+
 - name: Create a replicaset cfg
   community.mongodb.mongodb_replicaset:
     login_port: 30017
@@ -195,6 +209,14 @@
       priority: 0.5
     - host: "localhost:30019"
       priority: 0.5
+  when: layout_type == "sharded"
+
+- name: Ensure replicaset is stable
+  community.mongodb.mongodb_status:
+    replica_set: cfg
+    login_port: 30017
+    poll: 3
+    interval: 10
   when: layout_type == "sharded"
 
 - name: Start mongos

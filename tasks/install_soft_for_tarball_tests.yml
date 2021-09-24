@@ -141,3 +141,9 @@
     - boto3
     - botocore
     - futures
+
+- name: create check file
+  file:
+    path: /pkgs_installed
+    state: touch
+    mode: 0644
