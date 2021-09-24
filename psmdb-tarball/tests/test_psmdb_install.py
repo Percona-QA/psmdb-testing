@@ -10,15 +10,16 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
 BINARIES = ['mongo', 'mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
             'mongofiles', 'mongoimport', 'mongorestore', 'mongotop', 'mongostat']
 
-#PSMDB_VER = os.environ.get("PSMDB_VERSION")
 PSMDB_VER = re.search(r'mongodb-(\d+\.\d+\.\d+)',os.environ.get("PSMDB_VERSION")).group(1)
 
-@pytest.mark.parametrize("binary", BINARIES)
-def test_binary_version(host, binary):
+def test_binary_version(host):
     mongod_process = host.process.filter(comm='mongod')
     cur_dir = mongod_process[0].args.split(sep="mongod")[0]
-    result = host.run(f"{cur_dir}{binary} --version")
-    assert PSMDB_VER in result.stdout, result.stdout
+    print()
+    for i in BINARIES:
+        print('check',i,'version')
+        result = host.run(f"{cur_dir}{i} --version")
+        assert PSMDB_VER in result.stdout, result.stdout
 
 def test_running_version(host):
     mongod_process = host.process.filter(comm='mongod')
