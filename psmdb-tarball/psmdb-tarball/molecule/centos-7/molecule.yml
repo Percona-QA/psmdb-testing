@@ -29,7 +29,9 @@ verifier:
     - ../psmdb-tarball/tests/
   options:
     verbose: true
-    s: true
+#    s: true
+    capture: sys
+    o: junit_logging=system-out
     junitxml: report.xml
 scenario:
   name: centos-7
