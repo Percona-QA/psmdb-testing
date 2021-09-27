@@ -50,22 +50,45 @@
 - set_fact:
     mongo_opts: " --storageEngine {{ storage }} --inMemorySizeGB 0.25"
   when: encryption == "NONE" and storage == "inMemory"
+
+- name: check if packages installed
+  stat:
+    path: /pkgs_installed
+  register: pkgs_installed
    
 - name: Install neccesary software for different OS
   include_tasks: ../../../tasks/install_soft_for_tarball_tests.yml
+  when: not pkgs_installed.stat.exists
+
+- name: Check that testing directory exists
+  stat:
+    path: /package-testing
+  register: testing_dir
 
 - name: Download tests
   include_tasks: ../../../tasks/install_tests_for_tarball.yml
+  when: not testing_dir.stat.exists
+
+- name: Check that the vault_token exists
+  stat:
+    path: "{{ vault_token }}"
+  register: vault_exists
 
 - name: Install and configure vault
   include_tasks: ../../../tasks/install_and_configure_vault.yml
-  when: encryption == "VAULT"
+  when: encryption == "VAULT" and not vault_exists.stat.exists
+
+- name: Check that bin directory exists
+  stat:
+    path: /mongo-new-bindir
+  register: mongo_dir
 
 - name: Copy tarball
   copy:
     src: /tmp/percona-server-mongodb-new-{{mongodb_new_ver[0]}}.tar.gz
     dest: /tmp/percona-server-mongodb-new.tar.gz
     mode: '0644'
+  when: not mongo_dir.stat.exists
 
 - name: Unpack new tarball
   unarchive: 
@@ -75,6 +98,7 @@
     extra_opts:
     - --transform
     - 's,^/*[^/]*,/mongo-new-bindir,S'
+  when: not mongo_dir.stat.exists
 
 - name: Ensure keyfile has correct permissions
   file:

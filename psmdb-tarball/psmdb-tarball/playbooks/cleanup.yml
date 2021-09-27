@@ -4,53 +4,26 @@
   become: true
   become_method: sudo
   tasks:
-    - name: remove PBM deb packages
-      apt:
-        name: percona-backup-mongodb
-        state: absent
-      when: ansible_os_family == "Debian"
-    - name: remove PBM rpm packages
-      yum:
-        name: percona-backup-mongodb
-        state: absent
-      when: ansible_os_family == "RedHat"
+    - name: kill all mongo instances
+      command: "{{ item }}"
+      with_items:
+        - killall -9 mongos --wait
+        - killall -9 mongod --wait
+      ignore_errors: true
 
-    - name: install psmdb deb packages
-      apt:
-        name: "{{ packages }}"
-        update_cache: yes
+    - name: remove files and directories
+      file:
+        path: "{{ item }}"
         state: absent
-      vars:
-        packages:
-        - percona-server-mongodb
-        - percona-server-mongodb-server
-        - percona-server-mongodb-mongos
-        - percona-server-mongodb-shell
-        - percona-server-mongodb-tools
-      when: ansible_os_family == "Debian"
-
-    - name: install psmdb rpm packages
-      yum:
-        name: "{{ packages }}"
-        state: absent
-      vars:
-        packages:
-        - percona-server-mongodb
-        - percona-server-mongodb-server
-        - percona-server-mongodb-mongos
-        - percona-server-mongodb-shell
-        - percona-server-mongodb-tools
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "7"
-
-    - name: install psmdb rpm packages
-      yum:
-        name: "{{ packages }}"
-        state: absent
-      vars:
-        packages:
-          - percona-server-mongodb
-          - percona-server-mongodb-server
-          - percona-server-mongodb-mongos
-          - percona-server-mongodb-shell
-          - percona-server-mongodb-tools
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+      with_items:
+        - /workdir/single
+        - /workdir/rs0-1
+        - /workdir/rs0-2
+        - /workdir/rs0-3
+        - /workdir/rs1-1
+        - /workdir/rs1-2
+        - /workdir/rs1-3
+        - /workdir/cfg1-1
+        - /workdir/cfg1-2
+        - /workdir/cfg1-3
+ 
