@@ -1,12 +1,21 @@
-- name: install python2 for ubuntu or debian11
+- name: install python2 for  debian11
   apt:
     name: "{{ packages }}"
     update_cache: yes
   vars:
     packages:
     - python2
-  when: (ansible_distribution == "Ubuntu" and ansible_distribution_major_version > "16") or
-        (ansible_distribution == "Debian" and ansible_distribution_major_version == "11")
+  when: ansible_distribution == "Debian" and ansible_distribution_major_version == "11"
+
+- name: install python2 for ubuntu 
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+    - python2.7
+  when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version > "16"
+
 
 - name: install python2 for RHEL8
   yum:
