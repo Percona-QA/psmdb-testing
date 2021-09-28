@@ -5,3 +5,4 @@ docker-image-tests/pxc/.DS_Store
 #testing staff
 **/__pycache__
 **/report.xml
+**/*report.xml
