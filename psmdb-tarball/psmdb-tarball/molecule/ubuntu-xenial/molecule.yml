@@ -27,7 +27,8 @@ verifier:
   directory: ../../../tests/
   options:
     verbose: true
-    s: true
+    capture: sys
+    o: junit_logging=system-out
     junitxml: report.xml
 scenario:
   name: ubuntu-xenial
