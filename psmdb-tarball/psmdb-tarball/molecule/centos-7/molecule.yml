@@ -31,7 +31,7 @@ verifier:
     verbose: true
     capture: sys
     o: junit_logging=system-out
-    junitxml: report.xml
+    junitxml: centos-7-report.xml
 scenario:
   name: centos-7
   destroy_sequence:

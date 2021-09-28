@@ -28,7 +28,7 @@ verifier:
 #    s: true
     capture: sys
     o: junit_logging=system-out
-    junitxml: report.xml
+    junitxml: ${MOLECULE_OS:-centos7}-report.xml
 scenario:
   name: docker
   test_sequence:

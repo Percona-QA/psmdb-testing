@@ -31,7 +31,7 @@ verifier:
     verbose: true
     capture: sys
     o: junit_logging=system-out
-    junitxml: report.xml
+    junitxml: debian-10-report.xml
 scenario:
   name: debian-10
   destroy_sequence:

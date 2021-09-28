@@ -31,7 +31,7 @@ verifier:
     verbose: true
     capture: sys
     o: junit_logging=system-out
-    junitxml: report.xml
+    junitxml: ubuntu-bionic-report.xml
 scenario:
   name: ubuntu-bionic
   destroy_sequence:
