@@ -77,6 +77,15 @@
   include_tasks: ../../../tasks/install_tests_for_tarball.yml
   when: not testing_dir.stat.exists
 
+- name: check if python2 installed
+  stat:
+    path: /python2_installed
+  register: python2_installed
+
+- name: Install neccesary software for different OS
+  include_tasks: ../../../tasks/install_soft_for_ycsb_tests.yml
+  when: not python2_installed.stat.exists
+
 - name: Check that the vault_token exists
   stat:
     path: "{{ vault_token }}"

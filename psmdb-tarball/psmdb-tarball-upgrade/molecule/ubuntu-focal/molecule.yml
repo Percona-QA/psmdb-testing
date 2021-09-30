@@ -28,8 +28,9 @@ verifier:
   directory: ../../../tests/
   options:
     verbose: true
-    s: true
-    junitxml: report.xml
+    capture: sys
+    o: junit_logging=system-out
+    junitxml: ubuntu-focal-report.xml
 scenario:
   name: ubuntu-focal
   destroy_sequence:

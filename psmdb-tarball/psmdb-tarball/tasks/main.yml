@@ -78,7 +78,6 @@
   include_tasks: ../../../tasks/install_soft_for_ycsb_tests.yml
   when: not python2_installed.stat.exists
 
-
 - name: Check that the vault_token exists
   stat:
     path: "{{ vault_token }}"
