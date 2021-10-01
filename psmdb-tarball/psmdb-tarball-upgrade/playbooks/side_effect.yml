@@ -113,16 +113,19 @@
     - name: set compatibilty version for downgrade single
       shell: |
         /mongo-old-bindir/bin/mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{mongodb_new_maj_ver[0]}}" })'
+        sleep 10
       when: mongodb_prev_maj_ver > mongodb_new_maj_ver and layout_type == "single"
 
     - name: set compatibilty version for downgrade replicaset
       shell: |
         /mongo-old-bindir/bin/mongo mongodb://127.0.0.1/?replicaSet=rs0 --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{mongodb_new_maj_ver[0]}}" })'
+        sleep 10
       when: mongodb_prev_maj_ver > mongodb_new_maj_ver and layout_type == "replicaset"
 
     - name: set compatibilty version for downgrade sharded
       shell: |
         /mongo-old-bindir/bin/mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{mongodb_new_maj_ver[0]}}" })'
+        sleep 10
       when: mongodb_prev_maj_ver > mongodb_new_maj_ver and layout_type == "sharded"
 
     - name: stop balancer for sharded
