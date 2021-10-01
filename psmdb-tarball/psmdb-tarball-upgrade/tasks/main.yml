@@ -298,3 +298,23 @@
 - name: debug mgodatagen result         
   debug:
     msg: "{{mgodatagen}}"
+
+- name: Generate ycsb data for single or sharded
+  command: /workdir/ycsb-mongodb-binding/bin/ycsb load mongodb -s -P /workdir/ycsb-mongodb-binding/workloads/workloadb -p recordcount=100000 -p mongodb.auth="false"
+  register: ycsb_load
+  when: layout_type == "single" or layout_type == "sharded"
+
+- set_fact: ycsb="{{ycsb_load.stdout_lines}}"
+  when: ycsb_load.changed
+
+- name: Generate ycsb data for replicaset
+  command: /workdir/ycsb-mongodb-binding/bin/ycsb load mongodb -s -P /workdir/ycsb-mongodb-binding/workloads/workloadb  -p recordcount=100000 -p mongodb.url="mongodb://localhost:27017/ycsb?replicaSet=rs0&w=1" -p mongodb.auth="false"
+  register: ycsb_load
+  when: layout_type == "replicaset"
+
+- set_fact: ycsb="{{ycsb_load.stdout_lines}}"
+  when: ycsb_load.changed
+
+- name: debug ycsb result
+  debug:
+    msg: "{{ycsb}}"
