@@ -15,5 +15,5 @@
   - name: clean and update yum cache
     shell: |
       yum clean all
-      yum makecache
+#   yum makecache
     when: ansible_os_family == "RedHat"
