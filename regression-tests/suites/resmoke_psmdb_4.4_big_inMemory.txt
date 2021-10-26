@@ -1,0 +1,264 @@
+aggregation|inMemory
+aggregation_auth|inMemory
+aggregation_disabled_optimization|inMemory
+aggregation_facet_unwind_passthrough|inMemory
+aggregation_mongos_passthrough|inMemory
+aggregation_one_shard_sharded_collections|inMemory
+aggregation_read_concern_majority_passthrough|inMemory
+aggregation_secondary_reads|inMemory
+aggregation_sharded_collections_causally_consistent_passthrough|inMemory
+aggregation_sharded_collections_passthrough|inMemory
+ aggregation_tde_cbc|inMemory
+ aggregation_tde_gcm|inMemory
+audit|inMemory
+auth|inMemory
+auth_audit|inMemory
+ backup|inMemory
+ backup_tde_cbc|inMemory
+ backup_tde_gcm|inMemory
+ benchmarks --jobs=1 --perfReportFile=perf.json|inMemory
+ benchmarks_sharding --jobs=1 --perfReportFile=perf_sharding.json|inMemory
+ buildscripts_test|inMemory
+bulk_gle_passthrough|inMemory
+causally_consistent_hedged_reads_jscore_passthrough|inMemory
+causally_consistent_jscore_passthrough|inMemory
+causally_consistent_jscore_passthrough_auth|inMemory
+causally_consistent_jscore_txns_passthrough|inMemory
+change_streams|inMemory
+change_streams_mongos_passthrough|inMemory
+change_streams_mongos_sessions_passthrough|inMemory
+change_streams_multi_stmt_txn_mongos_passthrough|inMemory
+change_streams_multi_stmt_txn_passthrough|inMemory
+change_streams_multi_stmt_txn_sharded_collections_passthrough|inMemory
+ change_streams_secondary_reads|inMemory
+change_streams_sharded_collections_passthrough|inMemory
+change_streams_whole_cluster_mongos_passthrough|inMemory
+change_streams_whole_cluster_passthrough|inMemory
+change_streams_whole_cluster_secondary_reads_passthrough|inMemory
+change_streams_whole_cluster_sharded_collections_passthrough|inMemory
+change_streams_whole_db_mongos_passthrough|inMemory
+change_streams_whole_db_passthrough|inMemory
+change_streams_whole_db_secondary_reads_passthrough|inMemory
+change_streams_whole_db_sharded_collections_passthrough|inMemory
+client_encrypt|inMemory
+concurrency --jobs=1|inMemory
+concurrency_replication --jobs=1|inMemory
+concurrency_replication_causal_consistency --jobs=1|inMemory
+concurrency_replication_causal_consistency_ubsan --jobs=1|inMemory
+concurrency_replication_for_backup_restore --jobs=1|inMemory
+concurrency_replication_multi_stmt_txn --jobs=1|inMemory
+concurrency_replication_multi_stmt_txn_ubsan --jobs=1|inMemory
+concurrency_replication_ubsan --jobs=1|inMemory
+concurrency_replication_wiredtiger_cursor_sweeps --jobs=1|inMemory
+concurrency_replication_wiredtiger_eviction_debug --jobs=1|inMemory
+concurrency_sharded_causal_consistency --jobs=1|inMemory
+concurrency_sharded_causal_consistency_and_balancer --jobs=1|inMemory
+concurrency_sharded_clusterwide_ops_add_remove_shards --jobs=1|inMemory
+concurrency_sharded_kill_primary_with_balancer --jobs=1|inMemory
+concurrency_sharded_local_read_write_multi_stmt_txn --jobs=1|inMemory
+concurrency_sharded_local_read_write_multi_stmt_txn_with_balancer --jobs=1|inMemory
+concurrency_sharded_multi_stmt_txn --jobs=1|inMemory
+concurrency_sharded_multi_stmt_txn_kill_primary --jobs=1|inMemory
+concurrency_sharded_multi_stmt_txn_terminate_primary --jobs=1|inMemory
+concurrency_sharded_multi_stmt_txn_with_balancer --jobs=1|inMemory
+concurrency_sharded_multi_stmt_txn_with_stepdowns --jobs=1|inMemory
+concurrency_sharded_replication --jobs=1|inMemory
+concurrency_sharded_replication_with_balancer --jobs=1|inMemory
+concurrency_sharded_terminate_primary_with_balancer --jobs=1|inMemory
+concurrency_sharded_with_stepdowns --jobs=1|inMemory
+concurrency_sharded_with_stepdowns_and_balancer --jobs=1|inMemory
+concurrency_simultaneous --jobs=1|inMemory
+concurrency_simultaneous_replication --jobs=1|inMemory
+concurrency_simultaneous_replication_wiredtiger_cursor_sweeps --jobs=1|inMemory
+concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|inMemory
+core|inMemory
+core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command|inMemory
+core_auth|inMemory
+core_minimum_batch_size|inMemory
+core_op_query|inMemory
+ core_tde_cbc|inMemory
+ core_tde_gcm|inMemory
+core_txns|inMemory
+core_txns_large_txns_format|inMemory
+cwrwc_passthrough|inMemory
+cwrwc_rc_majority_passthrough|inMemory
+cwrwc_wc_majority_passthrough|inMemory
+dbtest|inMemory
+decimal|inMemory
+ disk_wiredtiger|inMemory
+ese|inMemory
+ external_auth|inMemory
+external_auth_aws|inMemory
+failpoints|inMemory
+failpoints_auth|inMemory
+fle|inMemory
+free_monitoring|inMemory
+generational_fuzzer|inMemory
+generational_fuzzer_replication|inMemory
+gle_auth --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
+gle_auth --shellWriteMode=commands|inMemory
+gle_auth_basics_passthrough --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
+gle_auth_basics_passthrough --shellWriteMode=commands|inMemory
+initial_sync_fuzzer|inMemory
+initial_sync_multiversion_fuzzer|inMemory
+ integration_tests_replset|inMemory
+ integration_tests_sharded|inMemory
+ integration_tests_standalone|inMemory
+integration_tests_standalone_audit|inMemory
+json_schema|inMemory
+ jstestfuzz|inMemory
+ jstestfuzz_interrupt|inMemory
+ jstestfuzz_interrupt_replication|inMemory
+ jstestfuzz_replication|inMemory
+ jstestfuzz_replication_continuous_stepdown|inMemory
+ jstestfuzz_replication_fcv42|inMemory
+ jstestfuzz_replication_initsync|inMemory
+ jstestfuzz_replication_session|inMemory
+ jstestfuzz_sharded|inMemory
+ jstestfuzz_sharded_causal_consistency|inMemory
+ jstestfuzz_sharded_continuous_stepdown|inMemory
+ jstestfuzz_sharded_fcv42|inMemory
+ jstestfuzz_sharded_session|inMemory
+knobs|inMemory
+ldapauthz|inMemory
+libfuzzer|inMemory
+libunwind|inMemory
+ logging_perf|inMemory
+logical_session_cache_replication_100ms_refresh_jscore_passthrough|inMemory
+logical_session_cache_replication_10sec_refresh_jscore_passthrough|inMemory
+logical_session_cache_replication_1sec_refresh_jscore_passthrough|inMemory
+logical_session_cache_replication_default_refresh_jscore_passthrough|inMemory
+logical_session_cache_sharding_100ms_refresh_jscore_passthrough|inMemory
+logical_session_cache_sharding_100ms_refresh_jscore_txns_passthrough|inMemory
+logical_session_cache_sharding_10sec_refresh_jscore_passthrough|inMemory
+logical_session_cache_sharding_1sec_refresh_jscore_passthrough|inMemory
+logical_session_cache_sharding_default_refresh_jscore_passthrough|inMemory
+logical_session_cache_standalone_100ms_refresh_jscore_passthrough|inMemory
+logical_session_cache_standalone_10sec_refresh_jscore_passthrough|inMemory
+logical_session_cache_standalone_1sec_refresh_jscore_passthrough|inMemory
+logical_session_cache_standalone_default_refresh_jscore_passthrough|inMemory
+ mongos_test|inMemory
+mql_model_haskell|inMemory
+mql_model_mongod|inMemory
+mqlrun|inMemory
+multi_shard_local_read_write_multi_stmt_txn_jscore_passthrough|inMemory
+multi_shard_multi_stmt_txn_jscore_passthrough|inMemory
+multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough|inMemory
+multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|inMemory
+multi_stmt_txn_jscore_passthrough_with_migration|inMemory
+ multiversion|inMemory
+  $ rm -rf ${DBPATH}/install ${DBPATH}/multiversion
+  $ python buildscripts/setup_multiversion_mongodb.py --installDir ${DBPATH}/install --linkDir ${DBPATH}/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4.1
+  $ [[ ${PATH} == *"/data/multiversion"* ]] || export PATH=${PATH}:/data/multiversion
+ multiversion_auth|inMemory
+  $ rm -rf ${DBPATH}/install ${DBPATH}/multiversion
+  $ python buildscripts/setup_multiversion_mongodb.py --installDir ${DBPATH}/install --linkDir ${DBPATH}/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4.1
+  $ [[ ${PATH} == *"/data/multiversion"* ]] || export PATH=${PATH}:/data/multiversion
+no_passthrough|inMemory
+no_passthrough_with_mongod|inMemory
+ no_server|inMemory
+ocsp --jobs=1|inMemory
+parallel --jobs=1|inMemory
+parallel --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command --jobs=1|inMemory
+percona_no_passthrough_with_mongod|inMemory
+ratelimit|inMemory
+read_concern_linearizable_passthrough|inMemory
+read_concern_majority_passthrough|inMemory
+ read_only|inMemory
+ read_only_sharded|inMemory
+ redaction|inMemory
+replica_sets|inMemory
+replica_sets_auth|inMemory
+ replica_sets_initsync_jscore_passthrough|inMemory
+ replica_sets_initsync_static_jscore_passthrough|inMemory
+replica_sets_jscore_passthrough|inMemory
+replica_sets_kill_primary_jscore_passthrough|inMemory
+ replica_sets_kill_secondaries_jscore_passthrough|inMemory
+replica_sets_large_txns_format|inMemory
+replica_sets_large_txns_format_jscore_passthrough|inMemory
+replica_sets_max_mirroring|inMemory
+replica_sets_multi_stmt_txn_jscore_passthrough|inMemory
+replica_sets_multi_stmt_txn_kill_primary_jscore_passthrough|inMemory
+replica_sets_multi_stmt_txn_stepdown_jscore_passthrough|inMemory
+replica_sets_multi_stmt_txn_terminate_primary_jscore_passthrough|inMemory
+replica_sets_multiversion|inMemory
+  $ rm -rf ${DBPATH}/install ${DBPATH}/multiversion
+  $ python buildscripts/setup_multiversion_mongodb.py --installDir ${DBPATH}/install --linkDir ${DBPATH}/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1
+  $ [[ ${PATH} == *"/data/multiversion"* ]] || export PATH=${PATH}:/data/multiversion
+  $ export PYTHONPATH="$(pwd):$(pwd)/src"
+  $ python  buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --task-path-suffix=/data/multiversion --output=multiversion_exclude_tags.yml
+replica_sets_reconfig_jscore_passthrough|inMemory
+replica_sets_reconfig_jscore_stepdown_passthrough|inMemory
+replica_sets_reconfig_kill_primary_jscore_passthrough|inMemory
+ replica_sets_tde_cbc|inMemory
+ replica_sets_tde_gcm|inMemory
+replica_sets_terminate_primary_jscore_passthrough|inMemory
+retryable_writes_jscore_passthrough|inMemory
+retryable_writes_jscore_stepdown_passthrough|inMemory
+rollback_fuzzer|inMemory
+rollback_fuzzer_clean_shutdowns|inMemory
+rollback_fuzzer_unclean_shutdowns|inMemory
+rollback_multiversion_fuzzer|inMemory
+sasl|inMemory
+sdam_json_test|inMemory
+search|inMemory
+search_auth|inMemory
+search_ssl|inMemory
+secondary_reads_passthrough|inMemory
+serial_run|inMemory
+server_selection_json_test|inMemory
+session_jscore_passthrough|inMemory
+sharded_causally_consistent_jscore_passthrough|inMemory
+sharded_causally_consistent_jscore_txns_passthrough|inMemory
+sharded_collections_causally_consistent_jscore_txns_passthrough|inMemory
+sharded_collections_jscore_passthrough|inMemory
+sharded_jscore_op_query_txns|inMemory
+sharded_jscore_txns|inMemory
+sharded_jscore_txns_sharded_collections|inMemory
+sharded_multi_stmt_txn_jscore_passthrough|inMemory
+sharding|inMemory
+sharding --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
+sharding_auth|inMemory
+sharding_auth_audit|inMemory
+sharding_continuous_config_stepdown|inMemory
+sharding_gle_auth_basics_passthrough --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
+sharding_gle_auth_basics_passthrough --shellWriteMode=commands|inMemory
+sharding_jscore_op_query_passthrough|inMemory
+sharding_jscore_passthrough|inMemory
+sharding_jscore_passthrough --shellWriteMode=compatibility --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
+ sharding_last_stable_mongos_and_mixed_shards|inMemory
+  $ rm -rf ${DBPATH}/install ${DBPATH}/multiversion
+  $ python buildscripts/setup_multiversion_mongodb.py --installDir ${DBPATH}/install --linkDir ${DBPATH}/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2
+  $ [[ ${PATH} == *"/data/multiversion"* ]] || export PATH=${PATH}:/data/multiversion
+  $ export PYTHONPATH="$(pwd):$(pwd)/src"
+  $ python  buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --task-path-suffix=/data/multiversion --output=multiversion_exclude_tags.yml
+sharding_max_mirroring|inMemory
+sharding_misc|inMemory
+sharding_multiversion|inMemory
+  $ rm -rf ${DBPATH}/install ${DBPATH}/multiversion
+  $ python buildscripts/setup_multiversion_mongodb.py --installDir ${DBPATH}/install --linkDir ${DBPATH}/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1
+  $ [[ ${PATH} == *"/data/multiversion"* ]] || export PATH=${PATH}:/data/multiversion
+  $ export PYTHONPATH="$(pwd):$(pwd)/src"
+  $ python  buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --task-path-suffix=/data/multiversion --output=multiversion_exclude_tags.yml
+sharding_rs_matching_disabled|inMemory
+sharding_rs_matching_match_busiest_node|inMemory
+ sharding_tde_cbc|inMemory
+ sharding_tde_gcm|inMemory
+slow1 --jobs=1|inMemory
+snmp|inMemory
+ssl|inMemory
+ssl_special|inMemory
+ tde_cbc|inMemory
+ tde_gcm|inMemory
+ unittests|inMemory
+unittests_auth|inMemory
+unittests_client|inMemory
+unittest_shell_hang_analyzer|inMemory
+unittests_query|inMemory
+unittests_repl|inMemory
+unittests_sharding|inMemory
+watchdog --jobs=1|inMemory
+  $ jstests/watchdog/charybdefs_setup.sh
+ with_external_server|inMemory
+with_server|inMemory
+write_concern_majority_passthrough|inMemory
