@@ -13,7 +13,7 @@ RUN wget -O psmdb_builder.sh $builder && chmod +x psmdb_builder.sh \
     && tar -C /opt/percona-server-mongodb --transform='s,^/*[^/]*,,S' -xzvf percona-server-mongodb-sources.tar.gz \
     && rm -rf *
 WORKDIR /opt/percona-server-mongodb
-ADD https://raw.githubusercontent.com/Percona-QA/psmdb-misc-scripts/master/resmoke2junit.py .
+ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/resmoke2junit.py .
 RUN find jstests -type f | xargs chmod 400 \
     && pip install -r etc/pip/dev-requirements.txt \
     && support-files/ldap-sasl/deploy_ldap_and_sasl.sh
