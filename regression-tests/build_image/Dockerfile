@@ -11,7 +11,8 @@ RUN if [ -f "/usr/bin/yum" ] ; then yum -y update && yum install -y wget redhat-
 WORKDIR work
 ADD https://raw.githubusercontent.com/percona/percona-server-mongodb/$branch/percona-packaging/scripts/psmdb_builder.sh .
 RUN chmod +x psmdb_builder.sh && ./psmdb_builder.sh --builddir=/opt/percona-server-mongodb --install_deps=1 \
-    && ./psmdb_builder.sh --builddir=/opt/percona-server-mongodb --repo=$repo --branch=$branch --psm_ver=$psm_ver --psm_release=$psm_release --get_sources=1 --mongo_tools_tag=$mongo_tools_tag --jemalloc_tag=$jemalloc_tag --build_tarball=1 \
+    && ./psmdb_builder.sh --builddir=/opt/percona-server-mongodb --repo=$repo --branch=$branch --psm_ver=$psm_ver --psm_release=$psm_release \
+    --get_sources=1 --mongo_tools_tag=$mongo_tools_tag --jemalloc_tag=$jemalloc_tag --debug --special_targets=wt --build_tarball=1 \
     && rm -rf /opt/percona-server-mongodb/* \
     && find tarball/ -name '*tar.gz' | sort | tail -1 | xargs tar -C /usr --transform='s,^/*[^/]*,,S' -xzvf \
     && find source_tarball/ -name '*tar.gz' | sort | tail -1 | xargs tar -C /opt/percona-server-mongodb --transform='s,^/*[^/]*,,S' -xzvf \
