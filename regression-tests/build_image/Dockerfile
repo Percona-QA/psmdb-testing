@@ -26,10 +26,8 @@ RUN find jstests -type f | xargs chmod 400 \
     && support-files/ldap-sasl/deploy_ldap_and_sasl.sh
 ENV PATH="${PATH}:/data/multiversion"
 ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
-ENV CC=/usr/bin/gcc-8 
-ENV CXX=/usr/bin/g++-8
-ENV CPPPATH=/usr/local/include
-ENV LIBPATH="${LIBPATH}:/usr/local/lib:/usr/local/lib64"
 ENV TZ=America/New_York
+ENV PORTABLE=1
+ENV USE_SSE=1
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
