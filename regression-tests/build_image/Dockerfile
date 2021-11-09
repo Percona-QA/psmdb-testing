@@ -6,7 +6,7 @@ ARG psm_release=10
 ARG mongo_tools_tag=100.4.1
 ARG jemalloc_tag=psmdb-3.2.11-3.1
 ARG repo=https://github.com/percona/percona-server-mongodb.git
-ARG special_targets=wt
+ARG special_targets="wt dbtest"
 RUN mkdir -p /opt/percona-server-mongodb/ && mkdir -p /work
 RUN if [ -f "/usr/bin/yum" ] ; then yum -y update && yum install -y wget redhat-lsb-core tzdata ; else apt-get update && apt-get -y upgrade && apt-get -y install wget lsb-release iproute2 net-tools tzdata ; fi
 WORKDIR work
@@ -23,7 +23,8 @@ WORKDIR /opt/percona-server-mongodb
 ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/resmoke2junit.py .
 RUN find jstests -type f | xargs chmod 400 \
     && pip install -r etc/pip/dev-requirements.txt \
-    && support-files/ldap-sasl/deploy_ldap_and_sasl.sh
+    && support-files/ldap-sasl/deploy_ldap_and_sasl.sh \
+    && cp -r /usr/bin/dbtest .
 ENV PATH="${PATH}:/data/multiversion"
 ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
 ENV TZ=America/New_York
