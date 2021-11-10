@@ -36,7 +36,7 @@
         packages:
         - dialog
         - apt-utils
-      when: ansible_os_family == "Debian" and from_version > to_version
+      when: ansible_os_family == "Debian" and from_version is version(to_version, '>')
 
     - name: uninstall psmdb deb packages for downgrade
       apt:
@@ -51,7 +51,7 @@
         - percona-server-mongodb-shell
         - percona-server-mongodb-tools
         - percona-server-mongodb-dbg
-      when: ansible_os_family == "Debian" and from_version > to_version 
+      when: ansible_os_family == "Debian" and from_version is version(to_version, '>') 
 
     - name: uninstall psmdb rpm packages for downgrade
       yum:
@@ -70,7 +70,7 @@
         - percona-server-mongodb-tools-debuginfo
         - percona-server-mongodb-mongos-debuginfo
         - percona-server-mongodb-server-debuginfo
-      when: ansible_os_family == "RedHat"  and ansible_distribution_major_version == "8" and from_version > to_version
+      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and from_version is version(to_version, '>')
 
     - name: uninstall psmdb rpm packages for downgrade
       yum:
@@ -85,7 +85,7 @@
         - percona-server-mongodb-shell
         - percona-server-mongodb-tools
         - percona-server-mongodb-debuginfo
-      when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7" and from_version > to_version
+      when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7" and from_version is version(to_version, '>')
 
     - name: disable all repos
       command: percona-release disable all
