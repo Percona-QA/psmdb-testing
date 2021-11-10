@@ -50,7 +50,7 @@
         - percona-server-mongodb-mongos
         - percona-server-mongodb-shell
         - percona-server-mongodb-tools
-        - percona-server-mongodb-dbg
+#        - percona-server-mongodb-dbg
       when: ansible_os_family == "Debian" and from_version is version(to_version, '>') 
 
     - name: uninstall psmdb rpm packages for downgrade
@@ -65,11 +65,11 @@
         - percona-server-mongodb-mongos
         - percona-server-mongodb-shell
         - percona-server-mongodb-tools
-        - percona-server-mongodb-debugsource
-        - percona-server-mongodb-shell-debuginfo
-        - percona-server-mongodb-tools-debuginfo
-        - percona-server-mongodb-mongos-debuginfo
-        - percona-server-mongodb-server-debuginfo
+#        - percona-server-mongodb-debugsource
+#        - percona-server-mongodb-shell-debuginfo
+#        - percona-server-mongodb-tools-debuginfo
+#        - percona-server-mongodb-mongos-debuginfo
+#        - percona-server-mongodb-server-debuginfo
       when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and from_version is version(to_version, '>')
 
     - name: uninstall psmdb rpm packages for downgrade
@@ -84,7 +84,7 @@
         - percona-server-mongodb-mongos
         - percona-server-mongodb-shell
         - percona-server-mongodb-tools
-        - percona-server-mongodb-debuginfo
+#        - percona-server-mongodb-debuginfo
       when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7" and from_version is version(to_version, '>')
 
     - name: disable all repos
@@ -104,7 +104,7 @@
         - percona-server-mongodb-mongos={{ to_version }}*
         - percona-server-mongodb-shell={{ to_version }}*
         - percona-server-mongodb-tools={{ to_version }}*
-        - percona-server-mongodb-dbg={{ to_version }}*
+#        - percona-server-mongodb-dbg={{ to_version }}*
       when: ansible_os_family == "Debian"
 
     - name: update psmdb rpm packages
@@ -119,11 +119,11 @@
         - percona-server-mongodb-mongos-{{ to_version }}
         - percona-server-mongodb-shell-{{ to_version }}
         - percona-server-mongodb-tools-{{ to_version }}
-        - percona-server-mongodb-debugsource-{{ to_version }}
-        - percona-server-mongodb-shell-debuginfo-{{ to_version }}
-        - percona-server-mongodb-tools-debuginfo-{{ to_version }}
-        - percona-server-mongodb-mongos-debuginfo-{{ to_version }}
-        - percona-server-mongodb-server-debuginfo-{{ to_version }}
+#        - percona-server-mongodb-debugsource-{{ to_version }}
+#        - percona-server-mongodb-shell-debuginfo-{{ to_version }}
+#        - percona-server-mongodb-tools-debuginfo-{{ to_version }}
+#        - percona-server-mongodb-mongos-debuginfo-{{ to_version }}
+#        - percona-server-mongodb-server-debuginfo-{{ to_version }}
       when: ansible_os_family == "RedHat"  and ansible_distribution_major_version == "8"
 
     - name: update psmdb rpm packages
@@ -138,7 +138,7 @@
         - percona-server-mongodb-mongos-{{ to_version }}
         - percona-server-mongodb-shell-{{ to_version }}
         - percona-server-mongodb-tools-{{ to_version }}
-        - percona-server-mongodb-debuginfo-{{ to_version }}
+#        - percona-server-mongodb-debuginfo-{{ to_version }}
       when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7"
 
     - name: perform daemon-reload for systemd-based os
