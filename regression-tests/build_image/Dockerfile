@@ -27,6 +27,7 @@ RUN find jstests -type f | xargs chmod 400 \
     && buildscripts/scons.py CC=/usr/bin/gcc-8 CXX=/usr/bin/g++-8 CPPPATH=/usr/local/include LIBPATH="/usr/local/lib /usr/local/lib64" -j4 build/install/bin/wt \
     && cp build/install/bin/wt /usr/bin/ \
     && rm -rf build \
+    && rm -f resmoke.ini \
     && cp -r /usr/bin/dbtest .
 ENV PATH="${PATH}:/data/multiversion"
 ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
