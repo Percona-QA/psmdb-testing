@@ -251,7 +251,7 @@ tenant_migration_kill_primary_jscore_passthrough|wiredTiger
 tenant_migration_multi_stmt_txn_jscore_passthrough|wiredTiger
 tenant_migration_stepdown_jscore_passthrough|wiredTiger
 tenant_migration_terminate_primary_jscore_passthrough|wiredTiger
-tla_plus|wiredTiger
+tla_plus|wiredTiger|apt install -y default-jre && mkdir -p /opt/java/jdk11/bin/ && ln -s /usr/bin/java /opt/java/jdk11/bin/java && src/mongo/db/repl/tla_plus/download-tlc.sh && cp tla2tools.jar src/mongo/db/repl/tla_plus/
 unittests|wiredTiger
 unittests_auth|wiredTiger
 unittests_client|wiredTiger
@@ -516,7 +516,7 @@ tenant_migration_kill_primary_jscore_passthrough|inMemory
 tenant_migration_multi_stmt_txn_jscore_passthrough|inMemory
 tenant_migration_stepdown_jscore_passthrough|inMemory
 tenant_migration_terminate_primary_jscore_passthrough|inMemory
-tla_plus|inMemory
+tla_plus|inMemory|apt install -y default-jre && mkdir -p /opt/java/jdk11/bin/ && ln -s /usr/bin/java /opt/java/jdk11/bin/java && src/mongo/db/repl/tla_plus/download-tlc.sh && cp tla2tools.jar src/mongo/db/repl/tla_plus/
 unittests|inMemory
 unittests_auth|inMemory
 unittests_client|inMemory
