@@ -18,6 +18,9 @@ secondary1_rs0 = testinfra.utils.ansible_runner.AnsibleRunner(
 secondary2_rs0 = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('secondary2-rs0')
 
+STORAGE = int(os.getenv("STORAGE"))
+TIMEOUT = int(os.getenv("TIMEOUT"))
+
 def find_backup(node,name):
     list = node.check_output('pbm list --out=json')
     parsed_list = json.loads(list)
@@ -45,7 +48,7 @@ def check_status(node):
         return running
 
 def make_backup(node,type):
-    for i in range(30):
+    for i in range(TIMEOUT):
         running = check_status(node)
         if not running:
             if type:
@@ -60,7 +63,7 @@ def make_backup(node,type):
             print("unable to start backup - another operation in work")
             print(running)
             time.sleep(1)
-    for i in range(30):
+    for i in range(TIMEOUT):
         running = check_status(node)
         print("current operation:")
         print(running)
@@ -75,7 +78,7 @@ def make_backup(node,type):
             time.sleep(1)
 
 def make_logical_restore(node,name):
-    for i in range(30):
+    for i in range(TIMEOUT):
         running = check_status(node)
         if not running:
             output = node.check_output('pbm restore ' + name)
@@ -85,7 +88,7 @@ def make_logical_restore(node,name):
             print("unable to start restore - another operation in work")
             print(running)
             time.sleep(1)
-    for i in range(30):
+    for i in range(TIMEOUT):
         running = check_status(node)
         print("current operation:")
         print(running)
@@ -97,7 +100,7 @@ def make_logical_restore(node,name):
             time.sleep(1)
 
 def make_physical_restore(node,name):
-    for i in range(30):
+    for i in range(TIMEOUT):
         running = check_status(node)
         if not running:
             output = node.check_output('pbm restore ' + name + ' --wait')
@@ -126,7 +129,8 @@ def load_data(node,count):
     config_json = json.dumps(config, indent=4)
     print(config_json)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json') 
-    result = node.run('mgodatagen --uri=mongodb://127.0.0.1:27017/?replicaSet=rs0 -f /tmp/generated_config.json')
+    result = node.check_output('mgodatagen --uri=mongodb://127.0.0.1:27017/?replicaSet=rs0 -f /tmp/generated_config.json --batchsize 10')
+    print(result)
 
 def check_count_data(node):
     result = node.check_output("mongo mongodb://127.0.0.1:27017/test?replicaSet=rs0 --eval 'db.binary.count()' --quiet | tail -1")
@@ -154,7 +158,7 @@ def test_agent_status(host):
 
 def test_backup_logical_restore_minio():
     drop_database(primary_rs0)
-    load_data(primary_rs0,100)
+    load_data(primary_rs0,STORAGE)
     count = check_count_data(primary_rs0)
     backup_name = make_backup(primary_rs0,'logical')
     drop_database(primary_rs0)
@@ -164,7 +168,7 @@ def test_backup_logical_restore_minio():
 
 def test_backup_physical_restore_minio():
     drop_database(primary_rs0)
-    load_data(primary_rs0,100)
+    load_data(primary_rs0,STORAGE)
     count = check_count_data(primary_rs0)
     backup_name = make_backup(primary_rs0,'physical')
     drop_database(primary_rs0)
