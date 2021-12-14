@@ -120,17 +120,21 @@ def restart_pbm_agent(node):
     result = node.check_output('systemctl restart pbm-agent')
     print('restarting pbm-agent: ' + result)
 
-def load_data(node):
-    #ideally - generate own mgodatagen config
-    result = node.run('mgodatagen --uri=mongodb://127.0.0.1:27017/?replicaSet=rs0 -f /tmp/index_basic.json')
+def load_data(node,count):
+    config = [{'database': 'test','collection': 'binary','count': 1,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}]
+    config[0]["count"] = count
+    config_json = json.dumps(config, indent=4)
+    print(config_json)
+    node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json') 
+    result = node.run('mgodatagen --uri=mongodb://127.0.0.1:27017/?replicaSet=rs0 -f /tmp/generated_config.json')
 
 def check_count_data(node):
-    result = node.check_output("mongo mongodb://127.0.0.1:27017/mgodatagen_test?replicaSet=rs0 --eval 'db.index_basic.count()' --quiet | tail -1")
+    result = node.check_output("mongo mongodb://127.0.0.1:27017/test?replicaSet=rs0 --eval 'db.binary.count()' --quiet | tail -1")
     print('count objects in collection: ' + result)
     return result
 
 def drop_database(node):
-    result = node.check_output("mongo mongodb://127.0.0.1:27017/mgodatagen_test?replicaSet=rs0 --eval 'db.dropDatabase()' --quiet")
+    result = node.check_output("mongo mongodb://127.0.0.1:27017/test?replicaSet=rs0 --eval 'db.dropDatabase()' --quiet")
     print(result)
 
 def test_setup_minio():
@@ -150,7 +154,7 @@ def test_agent_status(host):
 
 def test_backup_logical_restore_minio():
     drop_database(primary_rs0)
-    load_data(primary_rs0)
+    load_data(primary_rs0,100)
     count = check_count_data(primary_rs0)
     backup_name = make_backup(primary_rs0,'logical')
     drop_database(primary_rs0)
@@ -160,7 +164,7 @@ def test_backup_logical_restore_minio():
 
 def test_backup_physical_restore_minio():
     drop_database(primary_rs0)
-    load_data(primary_rs0)
+    load_data(primary_rs0,100)
     count = check_count_data(primary_rs0)
     backup_name = make_backup(primary_rs0,'physical')
     drop_database(primary_rs0)
