@@ -26,6 +26,9 @@
     - set_fact:
         psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-44', true) }}"
 
+    - set_fact:
+        storage: "{{ lookup('env', 'STORAGE') }}"
+
     - name: prerequisite for debian 11
       apt:
         name: iproute2
@@ -87,11 +90,49 @@
     - name: setup psmdb repo with percona-release
       command: percona-release enable {{ psmdb_to_test }} testing
 
-    - name: include tasks for PSMDB install
-      include_tasks: install_psmdb_full.yml
+    - name: install psmdb deb packages
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-shell
+        - percona-server-mongodb-tools
+      when: ansible_os_family == "Debian"
+
+    - name: install psmdb rpm packages
+      yum:
+        name: "{{ packages }}"
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-shell
+        - percona-server-mongodb-tools
+      when: ansible_os_family == "RedHat"
 
     - name: stop mongod service
       service: name=mongod state=stopped
+
+    - name: create data directory for mongod
+      file:
+        path: /mnt/data/db
+        state: directory
+        mode: '0755'
+        owner: mongod
+        group: mongod
+
+    - name: switch mongod to new dbPath
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  dbPath: /var/lib/mongo'
+        replace: '  dbPath: /mnt/data/db'
 
     - name: add replica set name into mongod config
       replace:
@@ -237,19 +278,13 @@
         dest: /usr/bin/
         remote_src: yes
 
-    - name: Download mgodatagen test config
-      get_url:
-        url: 'https://raw.githubusercontent.com/feliixx/mgodatagen/master/datagen/testdata/index_basic.json'
-        dest: /tmp/index_basic.json
-        mode: '0644'
-
     - name: configure minio
       command: /usr/bin/mc config host add myminio http://minio:9000 minio1234 minio1234
-      when: inventory_hostname in groups['mc']
+      when: inventory_hostname in groups['mc'] and storage == "minio"
 
     - name: create bucket on minio
       command: /usr/bin/mc mb myminio/bcp
-      when: inventory_hostname in groups['mc']
+      when: inventory_hostname in groups['mc'] and storage == "minio"
 
     - name: add minio storage for pbm-agent
       blockinfile:

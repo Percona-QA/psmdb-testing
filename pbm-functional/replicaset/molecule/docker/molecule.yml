@@ -15,7 +15,6 @@ platforms:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
     pre_build_image: true
-    env: "PBM_MONGODB_URI=mongodb://localhost:27017/"
     networks: 
       - name: test
   - name: secondary1-rs0
@@ -28,7 +27,6 @@ platforms:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
     pre_build_image: true
-    env: "PBM_MONGODB_URI=mongodb://localhost:27017/"
     networks: 
        - name: test
   - name: secondary2-rs0
@@ -41,7 +39,6 @@ platforms:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
     pre_build_image: true
-    env: "PBM_MONGODB_URI=mongodb://localhost:27017/"
     networks: 
       - name: test
   - name: minio
@@ -59,9 +56,7 @@ provisioner:
   name: ansible
   log: true
   playbooks:
-#    prepare: ../../../../playbooks/prepare.yml
     converge: ../../playbooks/converge.yml
-#    side_effect: ../../playbooks/side_effect.yml
     cleanup: ../../playbooks/cleanup.yml
 verifier:
   name: testinfra

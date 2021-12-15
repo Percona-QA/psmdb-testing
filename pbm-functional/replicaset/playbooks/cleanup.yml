@@ -1,5 +1,5 @@
 ---
-- name: Build pbm locally
+- name: cleanup
   hosts: localhost
   connection: local
   gather_facts: false

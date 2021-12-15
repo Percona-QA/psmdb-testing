@@ -1,0 +1,12 @@
+- name: Converge
+  hosts: mongo
+  become: true
+  become_method: sudo
+  tasks:
+    - name: Create and mount disks
+      mount:
+        path: "/mnt/data"
+        src: "/dev/nvme0n1"
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted

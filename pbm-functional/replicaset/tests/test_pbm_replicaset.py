@@ -18,11 +18,12 @@ secondary1_rs0 = testinfra.utils.ansible_runner.AnsibleRunner(
 secondary2_rs0 = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('secondary2-rs0')
 
-STORAGE = int(os.getenv("STORAGE"))
+SIZE = int(os.getenv("SIZE"))
 TIMEOUT = int(os.getenv("TIMEOUT"))
+STORAGE = os.getenv("STORAGE")
 
 def find_backup(node,name):
-    list = node.check_output('pbm list --out=json')
+    list = node.check_output('pbm list --mongodb-uri=mongodb://localhost:27017/ --out=json')
     parsed_list = json.loads(list)
     if parsed_list['snapshots']:
         for snapshot in parsed_list['snapshots']:
@@ -32,9 +33,9 @@ def find_backup(node,name):
 
 def find_event_msg(node,event,msg):
     if event:
-        command = "pbm logs --tail=0 --out=json --event=" + event
+        command = "pbm logs --mongodb-uri=mongodb://localhost:27017/ --tail=0 --out=json --event=" + event
     else:
-        command = "pbm logs --tail=0 --out=json"
+        command = "pbm logs --mongodb-uri=mongodb://localhost:27017/ --tail=0 --out=json"
     logs = node.check_output(command) 
     for log in json.loads(logs):
         if log['msg'] == msg:
@@ -42,7 +43,7 @@ def find_event_msg(node,event,msg):
              break
 
 def check_status(node):
-    status = node.check_output('pbm status --out=json')
+    status = node.check_output('pbm status --mongodb-uri=mongodb://localhost:27017/ --out=json')
     running = json.loads(status)['running']
     if running:
         return running
@@ -52,9 +53,9 @@ def make_backup(node,type):
         running = check_status(node)
         if not running:
             if type:
-                start = node.check_output('pbm backup --out=json --type='+type )
+                start = node.check_output('pbm backup --mongodb-uri=mongodb://localhost:27017/ --out=json --type='+type )
             else:
-                start = node.check_output('pbm backup --out=json')
+                start = node.check_output('pbm backup --mongodb-uri=mongodb://localhost:27017/ --out=json')
             name = json.loads(start)['name']
             print("backup started:")
             print(name)
@@ -81,7 +82,7 @@ def make_logical_restore(node,name):
     for i in range(TIMEOUT):
         running = check_status(node)
         if not running:
-            output = node.check_output('pbm restore ' + name)
+            output = node.check_output('pbm restore --mongodb-uri=mongodb://localhost:27017/ ' + name)
             print(output)
             break
         else:
@@ -103,7 +104,7 @@ def make_physical_restore(node,name):
     for i in range(TIMEOUT):
         running = check_status(node)
         if not running:
-            output = node.check_output('pbm restore ' + name + ' --wait')
+            output = node.check_output('pbm restore --mongodb-uri=mongodb://localhost:27017/ ' + name + ' --wait')
             print(output)
             break
         else:
@@ -128,9 +129,9 @@ def load_data(node,count):
     config[0]["count"] = count
     config_json = json.dumps(config, indent=4)
     print(config_json)
-    node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json') 
+    node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
     result = node.check_output('mgodatagen --uri=mongodb://127.0.0.1:27017/?replicaSet=rs0 -f /tmp/generated_config.json --batchsize 10')
-    print(result)
+#    print(result)
 
 def check_count_data(node):
     result = node.check_output("mongo mongodb://127.0.0.1:27017/test?replicaSet=rs0 --eval 'db.binary.count()' --quiet | tail -1")
@@ -141,35 +142,42 @@ def drop_database(node):
     result = node.check_output("mongo mongodb://127.0.0.1:27017/test?replicaSet=rs0 --eval 'db.dropDatabase()' --quiet")
     print(result)
 
-def test_setup_minio():
-    result = primary_rs0.check_output('pbm config --file=/etc/pbm-agent-storage-minio.conf --out=json')
+def test_setup_storage():
+    result = primary_rs0.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
     store_out = json.loads(result)
-    assert store_out['storage']['type'] == 's3'
-    assert store_out['storage']['s3']['region'] == 'us-east-1'
-    assert store_out['storage']['s3']['endpointUrl'] == 'http://minio:9000'
+    if STORAGE == "minio":
+        assert store_out['storage']['type'] == 's3'
+        assert store_out['storage']['s3']['region'] == 'us-east-1'
+        assert store_out['storage']['s3']['endpointUrl'] == 'http://minio:9000'
+    if STORAGE == "aws":
+        assert store_out['storage']['type'] == 's3'
+        assert store_out['storage']['s3']['region'] == 'us-east-1'
+        assert store_out['storage']['s3']['bucket'] == 'operator-testing' 
     time.sleep(5)
 
 def test_agent_status(host):
-    result = host.run('pbm status --out=json')
+    result = host.run('pbm status --mongodb-uri=mongodb://localhost:27017/ --out=json')
     parsed_result = json.loads(result.stdout)
     for replicaset in parsed_result['cluster']:
         for host in replicaset['nodes']:
             assert host['ok'] == True
 
-def test_backup_logical_restore_minio():
+def test_backup_logical_restore():
     drop_database(primary_rs0)
-    load_data(primary_rs0,STORAGE)
+    load_data(primary_rs0,SIZE)
     count = check_count_data(primary_rs0)
+    assert int(count) == SIZE
     backup_name = make_backup(primary_rs0,'logical')
     drop_database(primary_rs0)
     make_logical_restore(secondary1_rs0,backup_name)
     new_count = check_count_data(primary_rs0)
     assert count == new_count
 
-def test_backup_physical_restore_minio():
+def test_backup_physical_restore():
     drop_database(primary_rs0)
-    load_data(primary_rs0,STORAGE)
+    load_data(primary_rs0,SIZE)
     count = check_count_data(primary_rs0)
+    assert int(count) == SIZE
     backup_name = make_backup(primary_rs0,'physical')
     drop_database(primary_rs0)
     make_physical_restore(secondary1_rs0,backup_name)
