@@ -149,9 +149,21 @@
     - name: start mongod service
       service: name=mongod state=started
 
+    - name: get routing table
+      command: 'ip route'
+      register: results
+
+    - name: Create variable block_devices
+      set_fact:
+        routing_table: "{{ results.stdout_lines }}"
+
+    - debug:
+        var: routing_table
+
     - name: Create a replicaset rs0
       community.mongodb.mongodb_replicaset:
         replica_set: rs0
+        login_host: 127.0.0.1
         members:
         - host: "{{ rs0_primary_ip }}:27017"
           priority: 1

@@ -8,6 +8,7 @@ platforms:
     groups:
       - mongo
       - primary
+      - mc
     region: us-west-2
     image: ami-087c2c50437d0b80d
     vpc_subnet_id: subnet-03136d8c244f56036
