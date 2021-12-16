@@ -153,10 +153,11 @@ def test_setup_storage():
         assert store_out['storage']['type'] == 's3'
         assert store_out['storage']['s3']['region'] == 'us-east-1'
         assert store_out['storage']['s3']['bucket'] == 'operator-testing' 
-    time.sleep(5)
+    time.sleep(10)
 
 def test_agent_status(host):
     result = host.run('pbm status --mongodb-uri=mongodb://localhost:27017/ --out=json')
+    print(result.stdout)
     parsed_result = json.loads(result.stdout)
     for replicaset in parsed_result['cluster']:
         for host in replicaset['nodes']:
