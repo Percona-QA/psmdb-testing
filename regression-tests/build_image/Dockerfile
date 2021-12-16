@@ -12,7 +12,6 @@ RUN if [ -f "/usr/bin/yum" ] ; then yum -y update && yum install -y wget redhat-
 WORKDIR work
 ADD https://raw.githubusercontent.com/percona/percona-server-mongodb/$branch/percona-packaging/scripts/psmdb_builder.sh .
 RUN chmod +x psmdb_builder.sh && ./psmdb_builder.sh --builddir=/opt/percona-server-mongodb --install_deps=1 \
-    && echo $special_targets \
     && ./psmdb_builder.sh --builddir=/opt/percona-server-mongodb --repo=$repo --branch=$branch --psm_ver=$psm_ver --psm_release=$psm_release \
     --get_sources=1 --mongo_tools_tag=$mongo_tools_tag --jemalloc_tag=$jemalloc_tag --special_targets="$special_targets" --build_tarball=1 \
     && rm -rf /opt/percona-server-mongodb/* \
@@ -23,6 +22,7 @@ WORKDIR /opt/percona-server-mongodb
 ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/resmoke2junit.py .
 RUN find jstests -type f | xargs chmod 400 \
     && pip install -r etc/pip/dev-requirements.txt \
+    && pip uninstall -y pymongo && pip install pymongo==3.12 \
     && support-files/ldap-sasl/deploy_ldap_and_sasl.sh \
     && buildscripts/scons.py CC=/usr/bin/gcc-8 CXX=/usr/bin/g++-8 CPPPATH=/usr/local/include LIBPATH="/usr/local/lib /usr/local/lib64" -j4 build/install/bin/wt \
     && cp build/install/bin/wt /usr/bin/ \
