@@ -171,7 +171,19 @@
           priority: 0.5
         - host: "{{ rs0_secondary_ips.split(',')[1] }}:27017"
           priority: 0.5
+        validate: no
       when: inventory_hostname in groups['primary']
+
+    - name: get rs.status
+      command: "mongo --eval 'rs.status()' "
+      register: rs_results
+
+    - name: create variable status
+      set_fact:
+        rs_status: "{{ rs_results.stdout_lines }}"
+
+    - debug:
+        var: rs_status
 
     - name: Install PBM
       copy:
