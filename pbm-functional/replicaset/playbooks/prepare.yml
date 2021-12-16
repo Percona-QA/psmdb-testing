@@ -1,8 +1,20 @@
-- name: Converge
+- name: Prepare
   hosts: mongo
   become: true
   become_method: sudo
   tasks:
+    - name: Get list of block devices
+      command: 'lsblk -lno NAME'
+      register: results
+    - name: Create variable block_devices
+      set_fact:
+        block_devices: "{{ results.stdout_lines }}"
+    - debug:
+        var: block_devices
+    - name: Create File System
+      filesystem:
+        fstype: xfs
+        dev: "/dev/nvme0n1"
     - name: Create and mount disks
       mount:
         path: "/mnt/data"
