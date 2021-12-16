@@ -149,24 +149,10 @@
     - name: start mongod service
       service: name=mongod state=started
 
-    - name: check mongo connectivity
-      command: "mongo mongodb://{{ rs0_secondary_ips.split(',')[0] }}:27017 --eval 'db.stats()'"
-      register: results
-      when: inventory_hostname in groups['primary']
-
-    - name: Create connection
-      set_fact:
-        connection: "{{ results.stdout_lines }}"
-      when: inventory_hostname in groups['primary']
-
-    - debug:
-        var: connection
-      when: inventory_hostname in groups['primary']
-
     - name: Create a replicaset rs0
       community.mongodb.mongodb_replicaset:
         replica_set: rs0
-        login_host: 127.0.0.1
+        login_host: "{{ rs0_primary_ip }}"
         members:
         - host: "{{ rs0_primary_ip }}:27017"
           priority: 1
@@ -174,19 +160,8 @@
           priority: 0.5
         - host: "{{ rs0_secondary_ips.split(',')[1] }}:27017"
           priority: 0.5
-        validate: no
       when: inventory_hostname in groups['primary']
 
-    - name: get rs.status
-      command: "mongo --eval 'rs.status()' "
-      register: rs_results
-
-    - name: create variable status
-      set_fact:
-        rs_status: "{{ rs_results.stdout_lines }}"
-
-    - debug:
-        var: rs_status
 
     - name: Install PBM
       copy:
