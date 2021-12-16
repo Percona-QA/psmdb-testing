@@ -59,7 +59,7 @@ verifier:
 #    s: true
     junitxml: report.xml
 scenario:
-  name: docker
+  name: aws
   test_sequence:
     - create
     - prepare
