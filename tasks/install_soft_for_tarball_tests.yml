@@ -129,7 +129,7 @@
     name: "{{ packages }}"
   vars:
     packages:
-    - pymongo 
+    - pymongo==3.12 
     - subprocess32 
     - PyYAML 
     - typing 
