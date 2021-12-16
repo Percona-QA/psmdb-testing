@@ -9,7 +9,7 @@ platforms:
       - mongo
       - primary
     region: us-west-2
-    image: ami-036d2cdf95d86d256
+    image: ami-087c2c50437d0b80d
     vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: centos
