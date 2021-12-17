@@ -155,7 +155,11 @@ def test_setup_storage():
         assert store_out['storage']['s3']['bucket'] == 'operator-testing' 
     time.sleep(10)
 
-def test_agent_status(host):
+def test_agent_status_plain(host):
+    result = host.run('pbm status --mongodb-uri=mongodb://localhost:27017/')
+    print(result.stdout)
+
+def test_agent_status_json(host):
     result = host.run('pbm status --mongodb-uri=mongodb://localhost:27017/ --out=json')
     print(result.stdout)
     parsed_result = json.loads(result.stdout)
