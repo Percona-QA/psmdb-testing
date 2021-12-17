@@ -156,13 +156,11 @@ def test_setup_storage():
     time.sleep(10)
 
 def test_agent_status_plain(host):
-    result = host.run('pbm status --mongodb-uri=mongodb://localhost:27017/')
-    print(result.stdout)
+    result = host.check_output('pbm status --mongodb-uri=mongodb://localhost:27017/')
 
 def test_agent_status_json(host):
-    result = host.run('pbm status --mongodb-uri=mongodb://localhost:27017/ --out=json')
-    print(result.stdout)
-    parsed_result = json.loads(result.stdout)
+    result = host.check_output('pbm status --mongodb-uri=mongodb://localhost:27017/ --out=json')
+    parsed_result = json.loads(result)
     for replicaset in parsed_result['cluster']:
         for host in replicaset['nodes']:
             assert host['ok'] == True

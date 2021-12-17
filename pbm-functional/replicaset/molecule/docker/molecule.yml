@@ -63,9 +63,9 @@ verifier:
   directory: ../../tests/
   options:
     verbose: true
-    capture: sys
-    o: junit_logging=system-out
-#    s: true
+#    capture: sys
+#    o: junit_logging=system-out
+    s: true
     junitxml: report.xml
 scenario:
   name: docker
