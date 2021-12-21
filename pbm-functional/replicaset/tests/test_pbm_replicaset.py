@@ -53,7 +53,7 @@ def make_backup(node,type):
         running = check_status(node)
         if not running:
             if type:
-                start = node.check_output('pbm backup --mongodb-uri=mongodb://localhost:27017/ --out=json --type='+type )
+                start = node.check_output('pbm backup --mongodb-uri=mongodb://localhost:27017/ --out=json --type=' + type )
             else:
                 start = node.check_output('pbm backup --mongodb-uri=mongodb://localhost:27017/ --out=json')
             name = json.loads(start)['name']
@@ -82,22 +82,12 @@ def make_logical_restore(node,name):
     for i in range(TIMEOUT):
         running = check_status(node)
         if not running:
-            output = node.check_output('pbm restore --mongodb-uri=mongodb://localhost:27017/ ' + name)
+            output = node.check_output('pbm restore --mongodb-uri=mongodb://localhost:27017/ ' + name + ' --wait')
             print(output)
             break
         else:
             print("unable to start restore - another operation in work")
             print(running)
-            time.sleep(1)
-    for i in range(TIMEOUT):
-        running = check_status(node)
-        print("current operation:")
-        print(running)
-        result = find_event_msg(node,"restore/" + name,"restore finished successfully")
-        if result:
-            print(result)
-            break
-        else:
             time.sleep(1)
 
 def make_physical_restore(node,name):
@@ -151,8 +141,8 @@ def test_setup_storage():
         assert store_out['storage']['s3']['endpointUrl'] == 'http://minio:9000'
     if STORAGE == "aws":
         assert store_out['storage']['type'] == 's3'
-        assert store_out['storage']['s3']['region'] == 'us-east-1'
-        assert store_out['storage']['s3']['bucket'] == 'operator-testing' 
+        assert store_out['storage']['s3']['region'] == 'us-east-2'
+        assert store_out['storage']['s3']['bucket'] == 'pbm-testing' 
     time.sleep(10)
 
 def test_agent_status_plain(host):
