@@ -107,11 +107,13 @@ def make_physical_restore(node,name):
     time.sleep(5)
 
 def restart_mongod(node):
-    result = node.check_output('systemctl restart mongod')
+    with node.sudo():
+        result = node.check_output('systemctl restart mongod')
     print('restarting mongod: ' + result)
 
 def restart_pbm_agent(node):
-    result = node.check_output('systemctl restart pbm-agent')
+    with node.sudo():
+        result = node.check_output('systemctl restart pbm-agent')
     print('restarting pbm-agent: ' + result)
 
 def load_data(node,count):
