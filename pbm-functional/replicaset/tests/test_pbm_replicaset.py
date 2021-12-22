@@ -22,6 +22,9 @@ SIZE = int(os.getenv("SIZE"))
 TIMEOUT = int(os.getenv("TIMEOUT"))
 STORAGE = os.getenv("STORAGE")
 
+def pytest_configure():
+    pytest.backup_name = ''
+
 def find_backup(node,name):
     list = node.check_output('pbm list --mongodb-uri=mongodb://localhost:27017/ --out=json')
     parsed_list = json.loads(list)
@@ -123,7 +126,6 @@ def load_data(node,count):
     print(config_json)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
     result = node.check_output('mgodatagen --uri=mongodb://127.0.0.1:27017/?replicaSet=rs0 -f /tmp/generated_config.json --batchsize 10')
-#    print(result)
 
 def check_count_data(node):
     result = node.check_output("mongo mongodb://127.0.0.1:27017/test?replicaSet=rs0 --eval 'db.binary.count()' --quiet | tail -1")
@@ -147,9 +149,6 @@ def test_setup_storage():
         assert store_out['storage']['s3']['bucket'] == 'pbm-testing' 
     time.sleep(10)
 
-def test_agent_status_plain(host):
-    result = host.check_output('pbm status --mongodb-uri=mongodb://localhost:27017/')
-
 def test_agent_status_json(host):
     result = host.check_output('pbm status --mongodb-uri=mongodb://localhost:27017/ --out=json')
     parsed_result = json.loads(result)
@@ -157,24 +156,36 @@ def test_agent_status_json(host):
         for host in replicaset['nodes']:
             assert host['ok'] == True
 
-def test_backup_logical_restore():
+def test_prepare_data_first():
     drop_database(primary_rs0)
     load_data(primary_rs0,SIZE)
     count = check_count_data(primary_rs0)
     assert int(count) == SIZE
-    backup_name = make_backup(primary_rs0,'logical')
-    drop_database(primary_rs0)
-    make_logical_restore(secondary1_rs0,backup_name)
-    new_count = check_count_data(primary_rs0)
-    assert count == new_count
 
-def test_backup_physical_restore():
+def test_logical_backup():
+    pytest.backup_name = make_backup(primary_rs0,'logical')
+
+def test_drop_data_first():
+    drop_database(primary_rs0)
+
+def test_logical_restore():
+    make_logical_restore(secondary1_rs0,pytest.backup_name)
+    count = check_count_data(primary_rs0)
+    assert count == SIZE
+
+def test_prepare_data_second():
     drop_database(primary_rs0)
     load_data(primary_rs0,SIZE)
     count = check_count_data(primary_rs0)
     assert int(count) == SIZE
-    backup_name = make_backup(primary_rs0,'physical')
+
+def test_physical_backup():
+    pytest.backup_name = make_backup(primary_rs0,'physical')
+
+def test_drop_data_second():
     drop_database(primary_rs0)
-    make_physical_restore(secondary1_rs0,backup_name)
-    new_count = check_count_data(primary_rs0)
-    assert count == new_count
+
+def test_physical_restore():
+    make_physical_restore(secondary1_rs0,pytest.backup_name)
+    count = check_count_data(primary_rs0)
+    assert count == SIZE

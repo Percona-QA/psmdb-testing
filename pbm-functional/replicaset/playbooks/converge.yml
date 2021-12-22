@@ -88,7 +88,7 @@
       when: not pkgs_installed.stat.exists
 
     - name: setup psmdb repo with percona-release
-      command: percona-release enable {{ psmdb_to_test }} testing
+      command: percona-release enable {{ psmdb_to_test }} release
 
     - name: install psmdb deb packages
       apt:
@@ -107,6 +107,7 @@
     - name: install psmdb rpm packages
       yum:
         name: "{{ packages }}"
+        update_cache: yes
         state: latest
       vars:
         packages:
