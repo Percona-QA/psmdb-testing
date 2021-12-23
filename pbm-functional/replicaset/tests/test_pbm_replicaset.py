@@ -142,7 +142,7 @@ def test_setup_storage():
         assert store_out['storage']['s3']['bucket'] == 'pbm-testing' 
     time.sleep(10)
 
-def test_agent_status_before(host):
+def test_agent_status(host):
     result = host.check_output('pbm status --mongodb-uri=mongodb://localhost:27017/ --out=json')
     parsed_result = json.loads(result)
     for replicaset in parsed_result['cluster']:
@@ -167,9 +167,3 @@ def test_restore():
     count = check_count_data(primary_rs0)
     assert int(count) == SIZE
 
-def test_agent_status_after(host):
-    result = host.check_output('pbm status --mongodb-uri=mongodb://localhost:27017/ --out=json')
-    parsed_result = json.loads(result)
-    for replicaset in parsed_result['cluster']:
-        for host in replicaset['nodes']:
-            assert host['ok'] == True
