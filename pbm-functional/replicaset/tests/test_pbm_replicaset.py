@@ -21,6 +21,7 @@ secondary2_rs0 = testinfra.utils.ansible_runner.AnsibleRunner(
 SIZE = int(os.getenv("SIZE"))
 TIMEOUT = int(os.getenv("TIMEOUT"))
 STORAGE = os.getenv("STORAGE")
+BACKUP_TYPE = os.getenv("BACKUP_TYPE")
 
 def pytest_configure():
     pytest.backup_name = ''
@@ -50,6 +51,16 @@ def check_status(node):
     running = json.loads(status)['running']
     if running:
         return running
+
+def restart_mongod(node):
+    with node.sudo():
+        result = node.check_output('systemctl restart mongod')
+    print('restarting mongod: ' + result)
+
+def restart_pbm_agent(node):
+    with node.sudo():
+        result = node.check_output('systemctl restart pbm-agent')
+    print('restarting pbm-agent: ' + result)
 
 def make_backup(node,type):
     for i in range(TIMEOUT):
@@ -81,19 +92,7 @@ def make_backup(node,type):
         else:
             time.sleep(1)
 
-def make_logical_restore(node,name):
-    for i in range(TIMEOUT):
-        running = check_status(node)
-        if not running:
-            output = node.check_output('pbm restore --mongodb-uri=mongodb://localhost:27017/ ' + name + ' --wait')
-            print(output)
-            break
-        else:
-            print("unable to start restore - another operation in work")
-            print(running)
-            time.sleep(1)
-
-def make_physical_restore(node,name):
+def make_restore(node,name):
     for i in range(TIMEOUT):
         running = check_status(node)
         if not running:
@@ -108,16 +107,10 @@ def make_physical_restore(node,name):
         restart_mongod(i)
         time.sleep(5)
     time.sleep(5)
-
-def restart_mongod(node):
-    with node.sudo():
-        result = node.check_output('systemctl restart mongod')
-    print('restarting mongod: ' + result)
-
-def restart_pbm_agent(node):
-    with node.sudo():
-        result = node.check_output('systemctl restart pbm-agent')
-    print('restarting pbm-agent: ' + result)
+    for i in [secondary1_rs0, secondary2_rs0, primary_rs0]:
+        restart_pbm_agent(i)
+        time.sleep(5)
+    time.sleep(5)
 
 def load_data(node,count):
     config = [{'database': 'test','collection': 'binary','count': 1,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}]
@@ -149,47 +142,34 @@ def test_setup_storage():
         assert store_out['storage']['s3']['bucket'] == 'pbm-testing' 
     time.sleep(10)
 
-def test_agent_status_json(host):
+def test_agent_status_before(host):
     result = host.check_output('pbm status --mongodb-uri=mongodb://localhost:27017/ --out=json')
     parsed_result = json.loads(result)
     for replicaset in parsed_result['cluster']:
         for host in replicaset['nodes']:
             assert host['ok'] == True
 
-def test_prepare_data_first():
-    drop_database(primary_rs0)
+def test_prepare_data():
     load_data(primary_rs0,SIZE)
     count = check_count_data(primary_rs0)
     assert int(count) == SIZE
 
-def test_logical_backup():
-    pytest.backup_name = make_backup(primary_rs0,'logical')
+def test_backup():
+    pytest.backup_name = make_backup(primary_rs0,BACKUP_TYPE)
 
-def test_drop_data_first():
+def test_drop_data():
     drop_database(primary_rs0)
     count = check_count_data(primary_rs0)
     assert int(count) == 0
 
-def test_logical_restore():
+def test_restore():
     make_logical_restore(secondary1_rs0,pytest.backup_name)
     count = check_count_data(primary_rs0)
     assert int(count) == SIZE
 
-def test_prepare_data_second():
-    drop_database(primary_rs0)
-    load_data(primary_rs0,SIZE)
-    count = check_count_data(primary_rs0)
-    assert int(count) == SIZE
-
-def test_physical_backup():
-    pytest.backup_name = make_backup(primary_rs0,'physical')
-
-def test_drop_data_second():
-    drop_database(primary_rs0)
-    count = check_count_data(primary_rs0)
-    assert int(count) == 0
-
-def test_physical_restore():
-    make_physical_restore(secondary1_rs0,pytest.backup_name)
-    count = check_count_data(primary_rs0)
-    assert int(count) == SIZE
+def test_agent_status_after(host):
+    result = host.check_output('pbm status --mongodb-uri=mongodb://localhost:27017/ --out=json')
+    parsed_result = json.loads(result)
+    for replicaset in parsed_result['cluster']:
+        for host in replicaset['nodes']:
+            assert host['ok'] == True
