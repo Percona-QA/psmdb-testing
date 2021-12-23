@@ -163,7 +163,7 @@ def test_drop_data():
     assert int(count) == 0
 
 def test_restore():
-    make_logical_restore(secondary1_rs0,pytest.backup_name)
+    make_restore(secondary1_rs0,pytest.backup_name)
     count = check_count_data(primary_rs0)
     assert int(count) == SIZE
 
