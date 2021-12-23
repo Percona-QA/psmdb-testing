@@ -228,6 +228,9 @@
                credentials:
                  access-key-id: {{ access_key }}
                  secret-access-key: {{ access_secret }}
+          restore:
+            batchSize: 50
+            numInsertionWorkers: 10 
       vars:
         access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
         access_secret: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"

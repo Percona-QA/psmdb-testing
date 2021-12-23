@@ -167,11 +167,13 @@ def test_logical_backup():
 
 def test_drop_data_first():
     drop_database(primary_rs0)
+    count = check_count_data(primary_rs0)
+    assert int(count) == 0
 
 def test_logical_restore():
     make_logical_restore(secondary1_rs0,pytest.backup_name)
     count = check_count_data(primary_rs0)
-    assert count == SIZE
+    assert int(count) == SIZE
 
 def test_prepare_data_second():
     drop_database(primary_rs0)
@@ -184,8 +186,10 @@ def test_physical_backup():
 
 def test_drop_data_second():
     drop_database(primary_rs0)
+    count = check_count_data(primary_rs0)
+    assert int(count) == 0
 
 def test_physical_restore():
     make_physical_restore(secondary1_rs0,pytest.backup_name)
     count = check_count_data(primary_rs0)
-    assert count == SIZE
+    assert int(count) == SIZE
