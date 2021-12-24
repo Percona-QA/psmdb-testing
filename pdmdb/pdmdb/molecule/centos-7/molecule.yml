@@ -5,9 +5,9 @@ driver:
   name: ec2
 platforms:
   - name: centos7-${BUILD_NUMBER}-${JOB_NAME}
-    region: eu-central-1
-    image: ami-04cf43aca3e6f3de3
-    vpc_subnet_id: subnet-085deaca8c1c59a4f
+    region: us-west-2
+    image: ami-01ed306a12b7d1c96
+    vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: t2.micro
     ssh_user: centos
     root_device_name: /dev/sda1
