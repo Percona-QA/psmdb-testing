@@ -27,15 +27,23 @@
         opts: defaults,noatime,nodiscard
         state: mounted
 
+    - set_fact:
+        ssh_pubkey: "{{ lookup('env', 'SSH_PUBKEY') | default('none', true) }}"
+
+    - set_fact:
+        ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
+
     - name: Add user
       user:
-        name: olexandr
+        name: "{{ ssh_user }}"
         shell: /bin/bash
         groups: wheel
         append: yes
+      when: ssh_user != "none" and ssh_pubkey != "none"
 
     - name: Add pub key
       authorized_key:
-        user: olexandr
+        user: "{{ ssh_user }}"
         state: present
-        key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDJTcaMVEYgzszavPIgYoVX+OqRPDSLN9n/gdus47P0gIq6TfGma+fdh1sGLE2UmWJKIAJGQxVOKGMHkyqh/4eK27OjZJ/6jMwnQECmtgOPsPAC78g417tca6zv9uBME2ygS1WFPHMVU4ubXkyNYbFGy46SX2bdQeDHAazojYaxF84RX84eV6dH6m0TCQd6IiiuEInaSUbJg7tMsmMIAercRj8XuwV9WZC+3zKvTuKysiHfLP18jjEtI6G5ykqR7a8iWBbqm9uxAuYCZ4OegbtHZtYmLsZu2D87IteGT/zt1DFQJ4GVg2kb0+yv+VFpZYycz9uO/6RAdDkC7SJDYV+fL9Kkjzyc7UAdnlGaxFE2J2NuJgKGLK0lKu4l7yjIRn9+DdPr0USj2UT53/gzseKcWRLUee5oPXQaeNSO/zQmtFBbNtx36FjVN85Z1SWZTdCddksR9KNNeG+zoTMv/BIdwqq2xppcVJ6Mo9uEnLPC1V+3QceSMLph5L/OfUgkAkk= olexandr.havryliak@percona.com"
+        key: "{{ ssh_pubkey }}"
+      when: ssh_user != "none" and ssh_pubkey != "none"
