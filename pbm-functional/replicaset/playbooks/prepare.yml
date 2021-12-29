@@ -6,15 +6,19 @@
     - name: Get list of block devices
       command: 'lsblk -lno NAME'
       register: results
+
     - name: Create variable block_devices
       set_fact:
         block_devices: "{{ results.stdout_lines }}"
+
     - debug:
         var: block_devices
+
     - name: Create File System
       filesystem:
         fstype: xfs
         dev: "/dev/nvme0n1"
+
     - name: Create and mount disks
       mount:
         path: "/mnt/data"
@@ -22,3 +26,16 @@
         fstype: xfs
         opts: defaults,noatime,nodiscard
         state: mounted
+
+    - name: Add user
+      user:
+        name: olexandr
+        shell: /bin/bash
+        groups: wheel
+        append: yes
+
+    - name: Add pub key
+      authorized_key:
+        user: olexandr
+        state: present
+        key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDJTcaMVEYgzszavPIgYoVX+OqRPDSLN9n/gdus47P0gIq6TfGma+fdh1sGLE2UmWJKIAJGQxVOKGMHkyqh/4eK27OjZJ/6jMwnQECmtgOPsPAC78g417tca6zv9uBME2ygS1WFPHMVU4ubXkyNYbFGy46SX2bdQeDHAazojYaxF84RX84eV6dH6m0TCQd6IiiuEInaSUbJg7tMsmMIAercRj8XuwV9WZC+3zKvTuKysiHfLP18jjEtI6G5ykqR7a8iWBbqm9uxAuYCZ4OegbtHZtYmLsZu2D87IteGT/zt1DFQJ4GVg2kb0+yv+VFpZYycz9uO/6RAdDkC7SJDYV+fL9Kkjzyc7UAdnlGaxFE2J2NuJgKGLK0lKu4l7yjIRn9+DdPr0USj2UT53/gzseKcWRLUee5oPXQaeNSO/zQmtFBbNtx36FjVN85Z1SWZTdCddksR9KNNeG+zoTMv/BIdwqq2xppcVJ6Mo9uEnLPC1V+3QceSMLph5L/OfUgkAkk= olexandr.havryliak@percona.com"
