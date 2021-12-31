@@ -14,10 +14,20 @@
     - debug:
         var: block_devices
 
+    - set_fact:
+        instance_type: "{{ lookup('env', 'INSTANCE_TYPE') }}"
+
     - name: Create File System
       filesystem:
         fstype: xfs
         dev: "/dev/nvme0n1"
+      when: instance_type == "i3.large"
+
+    - name: Create File System
+      filesystem:
+        fstype: xfs
+        dev: "/dev/nvme1n1"
+      when: instance_type == "i3en.large"
 
     - name: Create and mount disks
       mount:
@@ -26,6 +36,16 @@
         fstype: xfs
         opts: defaults,noatime,nodiscard
         state: mounted
+      when: instance_type == "i3.large"
+
+    - name: Create and mount disks
+      mount:
+        path: "/mnt/data"
+        src: "/dev/nvme1n1"
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted
+      when: instance_type == "i3en.large"
 
     - set_fact:
         ssh_pubkey: "{{ lookup('env', 'SSH_PUBKEY') | default('none', true) }}"
