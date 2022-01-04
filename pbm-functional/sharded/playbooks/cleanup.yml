@@ -1,0 +1,9 @@
+---
+- name: cleanup
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: remove pbm repo
+      command: rm -rf /tmp/percona-backup-mongodb
+

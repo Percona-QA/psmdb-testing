@@ -1,0 +1,171 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: primary-rs0
+    groups: 
+      - mongo
+      - primary
+      - mc
+      - rs0
+      - rs0-primary
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    networks: 
+      - name: test
+  - name: secondary1-rs0
+    groups:
+      - mongo
+      - secondary
+      - rs0
+      - rs0-secondary
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    networks: 
+       - name: test
+  - name: secondary2-rs0
+    groups:
+      - mongo
+      - secondary
+      - rs0
+      - rs0-secondary
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    networks: 
+      - name: test
+  - name: primary-rs1
+    groups:
+      - mongo
+      - primary    
+      - rs1
+      - rs1-primary
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: test
+  - name: secondary1-rs1
+    groups:
+      - mongo
+      - secondary
+      - rs1
+      - rs1-secondary
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    networks:
+       - name: test
+  - name: secondary2-rs1
+    groups:
+      - mongo
+      - secondary
+      - rs1
+      - rs1-secondary
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: test
+  - name: primary-cfg
+    groups:
+      - mongo
+      - primary    
+      - cfg
+      - cfg-primary
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: test
+  - name: secondary1-cfg
+    groups:
+      - mongo
+      - secondary
+      - cfg
+      - cfg-secondary
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    networks:
+       - name: test
+  - name: secondary2-cfg
+    groups:
+      - mongo
+      - secondary
+      - cfg
+      - cfg-secondary
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: test
+  - name: minio
+    groups:
+      - minio
+    image: "minio/minio"
+    exposed_ports: 
+      - 9000
+    env: "MINIO_ACCESS_KEY=minio1234 MINIO_SECRET_KEY=minio1234"
+    command: "server /backup"
+    pre_build_image: true
+    networks: 
+      - name: test
+provisioner:
+  name: ansible
+  log: true
+  playbooks:
+    converge: ../../playbooks/converge.yml
+    cleanup: ../../playbooks/cleanup.yml
+verifier:
+  name: testinfra
+  directory: ../../tests/
+  options:
+    verbose: true
+#    capture: sys
+#    o: junit_logging=system-out
+    s: true
+    junitxml: report.xml
+scenario:
+  name: docker
+  test_sequence:
+    - create
+    - converge
+    - verify
+    - cleanup
+    - destroy
+  destroy_sequence:
+    - destroy
+  cleanup_sequence:
+    - cleanup

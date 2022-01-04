@@ -1,0 +1,551 @@
+- name: Build pbm locally
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - set_fact:
+        branch: "{{ lookup('env', 'BRANCH') | default('pbm_2.0', true) }}"
+
+    - name: Clone PBM repo
+      git:
+        repo: 'https://github.com/percona/percona-backup-mongodb.git'
+        dest: /tmp/percona-backup-mongodb               
+        version: "{{ branch }}"
+
+    - name: Build PBM
+      command: make build
+      args:
+        chdir: /tmp/percona-backup-mongodb
+        creates: /tmp/percona-backup-mongodb/bin
+
+- name: Converge
+  hosts: mongo
+  become: true
+  become_method: sudo
+  tasks:
+    - set_fact:
+        psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-44', true) }}"
+
+    - set_fact:
+        storage: "{{ lookup('env', 'STORAGE') }}"
+
+    - name: prerequisite for debian 11
+      apt:
+        name: iproute2
+        update_cache: yes
+      when: ansible_distribution == "Debian" and ansible_distribution_major_version == "11"      
+
+    - name: install GPG key for epel 8
+      rpm_key:
+        state: present
+        key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
+      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+    - name: install GPG key for Percona repos
+      rpm_key:
+        state: present
+        key: https://repo.percona.com/yum/RPM-GPG-KEY-Percona
+      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+    - name: setup epel 7 repo
+      yum: name=https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm state=present
+      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
+    - name: Install percona repository package
+      apt:
+        deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+      when: ansible_os_family == "Debian"
+
+    - name: add the Percona testing yum repos for centos 6 and 7
+      yum: name=https://repo.percona.com/yum/percona-release-latest.noarch.rpm state=present
+      when: ansible_os_family == "RedHat"
+
+    - name: check if packages installed
+      stat:
+        path: /pkgs_installed
+      register: pkgs_installed
+       
+    - name: Install neccesary software for different OS
+      include_tasks: ../../../tasks/install_soft_for_tarball_tests.yml
+      when: not pkgs_installed.stat.exists
+
+    - name: setup psmdb repo with percona-release
+      command: percona-release enable {{ psmdb_to_test }} release
+
+    - name: install psmdb deb packages
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-shell
+        - percona-server-mongodb-tools
+      when: ansible_os_family == "Debian"
+
+    - name: install psmdb rpm packages
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-shell
+        - percona-server-mongodb-tools
+      when: ansible_os_family == "RedHat"
+
+    - name: stop mongod service
+      service: name=mongod state=stopped
+
+    - name: create data directory for mongod
+      file:
+        path: /mnt/data/db
+        state: directory
+        mode: '0755'
+        owner: mongod
+        group: mongod
+
+    - name: switch mongod to new dbPath
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  dbPath: /var/lib/mongo'
+        replace: '  dbPath: /mnt/data/db'
+
+    - name: bind mongod to 0.0.0.0
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  bindIp: 127.0.0.1'
+        replace: '  bindIp: 0.0.0.0'
+
+    - name: Install PBM
+      copy:
+        src: /tmp/percona-backup-mongodb/bin/
+        dest: /usr/bin/
+        mode: '0755'
+
+    - name: Create systemd unit-file
+      blockinfile:
+        path: /usr/lib/systemd/system/pbm-agent.service
+        mode: '0644'
+        create: true
+        block: |
+          [Unit]
+          Description=pbm-agent
+          After=time-sync.target network.target
+
+          [Service]
+          EnvironmentFile=-/etc/sysconfig/pbm-agent
+          Type=simple
+          User=mongod
+          Group=mongod
+          PermissionsStartOnly=true
+          ExecStart=/usr/bin/pbm-agent
+
+          [Install]
+          WantedBy=multi-user.target
+      when: ansible_os_family == "RedHat"
+
+    - name: add AWS storage for pbm-agent
+      blockinfile:
+        path: /etc/pbm-agent-storage-aws.conf
+        mode: '0666'
+        create: true
+        block: |
+          storage:
+            type: s3
+            s3:
+               region: us-east-2
+               bucket: pbm-testing
+               credentials:
+                 access-key-id: {{ access_key }}
+                 secret-access-key: {{ access_secret }}
+          restore:
+            batchSize: 50
+            numInsertionWorkers: 10 
+      vars:
+        access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+        access_secret: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+
+    - name: add GCP storage for pbm-agent
+      blockinfile:
+        path: /etc/pbm-agent-storage-gcp.conf
+        mode: '0666'
+        create: true
+        block: |
+          storage:
+            type: s3
+            s3:
+               region: us-east-1
+               endpointUrl: https://storage.googleapis.com
+               bucket: operator-testing
+               prefix: pbme2etest
+               credentials:
+                 access-key-id: {{ access_key }}
+                 secret-access-key: {{ access_secret }}
+      vars:
+        access_key: "{{ lookup('env', 'GCP_ACCESS_KEY') }}"
+        access_secret: "{{ lookup('env', 'GCP_SECRET_KEY') }}"
+
+    - name: add local storage for pbm-agent
+      blockinfile:
+        path: /etc/pbm-agent-storage-local.conf
+        mode: '0666'
+        create: true
+        block: |
+          storage:
+              type: filesystem
+              filesystem:
+                  path: /tmp
+
+    - name: Download and install mc
+      get_url:
+        url: 'https://dl.min.io/client/mc/release/linux-amd64/mc'
+        dest: /usr/bin/mc
+        mode: '0755'
+      when: inventory_hostname in groups['mc']
+
+    - name: Download mgodatagen
+      get_url:
+        url: 'https://github.com/feliixx/mgodatagen/releases/download/v0.9.2/mgodatagen_0.9.2_Linux_x86_64.tar.gz'
+        dest: /tmp/mgodatagen.tar.gz
+        mode: '0644'
+
+    - name: Unpack mgodatagen
+      unarchive:
+        src: /tmp/mgodatagen.tar.gz
+        dest: /usr/bin/
+        remote_src: yes
+
+    - name: configure minio
+      command: /usr/bin/mc config host add myminio http://minio:9000 minio1234 minio1234
+      when: inventory_hostname in groups['mc'] and storage == "minio"
+
+    - name: create bucket on minio
+      command: /usr/bin/mc mb myminio/bcp
+      when: inventory_hostname in groups['mc'] and storage == "minio"
+
+    - name: add minio storage for pbm-agent
+      blockinfile:
+        path: /etc/pbm-agent-storage-minio.conf
+        mode: '0666'
+        create: true
+        block: |
+          storage:
+              type: s3
+              s3:
+                 endpointUrl: http://minio:9000
+                 bucket: bcp
+                 prefix: pbme2etest
+                 credentials:
+                   access-key-id: "minio1234"
+                   secret-access-key: "minio1234"
+
+- name: Setup rs0
+  hosts: rs0
+  become: true
+  become_method: sudo
+  tasks:
+    - name: get primary ip adrress
+      set_fact:
+        rs0_primary_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+      when: inventory_hostname in groups['rs0-primary']
+
+    - name: debug primary ip adress
+      debug:
+        msg: "{{rs0_primary_ip}}"
+      when: inventory_hostname in groups['rs0-primary']
+
+    - name: get secondaries ip adresses
+      set_fact:
+        rs0_secondary_ips: "{% for host in groups['rs0-secondary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+    - name: debug secondaries ip adresses
+      debug:
+        msg: "{{rs0_secondary_ips}}"
+
+    - name: stop mongod service
+      service: name=mongod state=stopped
+
+    - name: add replica set name into mongod config
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#replication:'
+        replace: 'sharding:\n  clusterRole: shardsvr\nreplication:\n  replSetName: "rs0"'
+
+    - name: bind mongod to 27018
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  port: 27017'
+        replace: '  port: 27018'
+
+    - name: start mongod service
+      service: name=mongod state=started
+
+    - name: Create a replicaset rs0
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs0
+        login_host: "{{ rs0_primary_ip }}"
+        login_port: 27018
+        members:
+        - host: "{{ rs0_primary_ip }}:27018"
+          priority: 1
+        - host: "{{ rs0_secondary_ips.split(',')[0] }}:27018"
+          priority: 0.5
+        - host: "{{ rs0_secondary_ips.split(',')[1] }}:27018"
+          priority: 0.5
+      when: inventory_hostname in groups['primary']
+
+    - name: edit pbm-agent service config for deb
+      blockinfile:
+        path: /etc/default/pbm-agent
+        mode: '0644'
+        create: true
+        block: |
+          PBM_MONGODB_URI="mongodb://localhost:27018/"
+      when: ansible_os_family == "Debian"
+
+    - name: edit pbm-agent service config for rhel
+      blockinfile:
+        path: /etc/sysconfig/pbm-agent
+        mode: '0644'
+        create: true
+        block: |
+          PBM_MONGODB_URI="mongodb://localhost:27018/"
+      when: ansible_os_family == "RedHat"
+
+- name: Setup rs1
+  hosts: rs1
+  become: true
+  become_method: sudo
+  tasks:
+    - name: get primary ip adrress
+      set_fact:
+        rs1_primary_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+      when: inventory_hostname in groups['rs1-primary']
+
+    - name: debug primary ip adress
+      debug:
+        msg: "{{rs1_primary_ip}}"
+      when: inventory_hostname in groups['rs1-primary']
+
+    - name: get secondaries ip adresses
+      set_fact:
+        rs1_secondary_ips: "{% for host in groups['rs1-secondary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+    - name: debug secondaries ip adresses
+      debug:
+        msg: "{{rs1_secondary_ips}}"
+
+    - name: stop mongod service
+      service: name=mongod state=stopped
+
+    - name: add replica set name into mongod config
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#replication:'
+        replace: 'sharding:\n  clusterRole: shardsvr\nreplication:\n  replSetName: "rs1"'
+
+    - name: bind mongod to 27018  
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  port: 27017'
+        replace: '  port: 27018'
+
+    - name: start mongod service
+      service: name=mongod state=started
+
+    - name: Create a replicaset rs0
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs1
+        login_host: "{{ rs1_primary_ip }}"
+        login_port: 27018
+        members:
+        - host: "{{ rs1_primary_ip }}:27018"
+          priority: 1
+        - host: "{{ rs1_secondary_ips.split(',')[0] }}:27018"
+          priority: 0.5
+        - host: "{{ rs1_secondary_ips.split(',')[1] }}:27018"
+          priority: 0.5
+      when: inventory_hostname in groups['primary']
+
+    - name: edit pbm-agent service config for deb
+      blockinfile:
+        path: /etc/default/pbm-agent
+        mode: '0644'
+        create: true
+        block: |
+          PBM_MONGODB_URI="mongodb://localhost:27018/"
+      when: ansible_os_family == "Debian"
+
+    - name: edit pbm-agent service config for rhel
+      blockinfile:
+        path: /etc/sysconfig/pbm-agent
+        mode: '0644'
+        create: true
+        block: |
+          PBM_MONGODB_URI="mongodb://localhost:27018/"
+      when: ansible_os_family == "RedHat"
+
+- name: Setup cfg
+  hosts: cfg
+  become: true
+  become_method: sudo
+  tasks:
+    - name: get primary ip adrress
+      set_fact:
+        cfg_primary_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+      when: inventory_hostname in groups['cfg-primary']
+
+    - name: debug primary ip adress
+      debug:
+        msg: "{{cfg_primary_ip}}"
+      when: inventory_hostname in groups['cfg-primary']
+
+    - name: get secondaries ip adresses
+      set_fact:
+        cfg_secondary_ips: "{% for host in groups['cfg-secondary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+    - name: debug secondaries ip adresses
+      debug:
+        msg: "{{cfg_secondary_ips}}"
+
+    - name: stop mongod service
+      service: name=mongod state=stopped
+
+    - name: add replica set name into mongod config
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#replication:'
+        replace: 'sharding:\n  clusterRole: configsvr\nreplication:\n  replSetName: "cfg"'
+
+    - name: bind mongod to 27019  
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  port: 27017'
+        replace: '  port: 27019'
+
+    - name: start mongod service
+      service: name=mongod state=started
+
+    - name: Create a replicaset rs0
+      community.mongodb.mongodb_replicaset:
+        replica_set: cfg
+        login_host: "{{ cfg_primary_ip }}"
+        login_port: 27019
+        members:
+        - host: "{{ cfg_primary_ip }}:27019"
+          priority: 1
+        - host: "{{ cfg_secondary_ips.split(',')[0] }}:27019"
+          priority: 0.5
+        - host: "{{ cfg_secondary_ips.split(',')[1] }}:27019"
+          priority: 0.5
+      when: inventory_hostname in groups['primary']
+
+    - name: Create mongos config
+      blockinfile:
+        path: /etc/mongos.conf
+        mode: '0644'
+        create: true
+        block: |
+          sharding:
+            configDB: cfg/127.0.0.1:27019
+          net:
+            bindIp: 0.0.0.0          
+
+    - name: Create systemd unit-file for mongos
+      blockinfile:
+        path: /usr/lib/systemd/system/mongos.service
+        mode: '0644'
+        create: true
+        block: |
+          [Unit]
+          Description=Mongo Cluster Router
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=mongod
+          Group=mongod
+          ExecStart=/usr/bin/mongos --config /etc/mongos.conf
+          LimitFSIZE=infinity
+          LimitCPU=infinity
+          LimitAS=infinity
+          LimitNOFILE=64000
+          LimitNPROC=64000
+          TasksMax=infinity
+          TasksAccounting=false
+          
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: start mongos
+      service:
+        name: mongos
+        state: started
+        enabled: yes
+
+    - name: edit pbm-agent service config for deb
+      blockinfile:
+        path: /etc/default/pbm-agent
+        mode: '0644'
+        create: true
+        block: |
+          PBM_MONGODB_URI="mongodb://localhost:27019/"
+      when: ansible_os_family == "Debian"
+
+    - name: edit pbm-agent service config for rhel
+      blockinfile:
+        path: /etc/sysconfig/pbm-agent
+        mode: '0644'
+        create: true
+        block: |
+          PBM_MONGODB_URI="mongodb://localhost:27019/"
+      when: ansible_os_family == "RedHat"
+
+- name: Add shards
+  hosts: cfg-primary
+  become: true
+  become_method: sudo
+  tasks:
+    - name: get rs0 primary ip adrress
+      set_fact:
+        rs0_primary_ip: "{% for host in groups['rs0-primary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+    - name: debug rs0 primary ip adress
+      debug:
+        msg: "{{rs0_primary_ip}}"
+
+    - name: get rs1 primary ip adrress
+      set_fact:
+        rs1_primary_ip: "{% for host in groups['rs1-primary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+    - name: debug rs1 primary ip adress
+      debug:
+        msg: "{{rs1_primary_ip}}"
+
+    - name: Init sharded
+      command: "{{item}}"
+      with_items:
+        - mongo --eval 'sh.addShard( "rs0/{{ rs0_primary_ip }}:27018" )'
+        - mongo --eval 'sh.addShard( "rs1/{{ rs1_primary_ip }}:27018" )'
+
+- name: start pbm-agents
+  hosts: mongo
+  become: true
+  become_method: sudo
+  tasks:
+    - name: start pbm-agent
+      service:
+        name: pbm-agent
+        state: started
+        enabled: yes
