@@ -360,7 +360,7 @@
     - name: start mongod service
       service: name=mongod state=started
 
-    - name: Create a replicaset rs0
+    - name: Create a replicaset rs1
       community.mongodb.mongodb_replicaset:
         replica_set: rs1
         login_host: "{{ rs1_primary_ip }}"
@@ -433,7 +433,7 @@
     - name: start mongod service
       service: name=mongod state=started
 
-    - name: Create a replicaset rs0
+    - name: Create a replicaset cfg
       community.mongodb.mongodb_replicaset:
         replica_set: cfg
         login_host: "{{ cfg_primary_ip }}"
@@ -488,11 +488,10 @@
       systemd:
         daemon_reload: yes
 
-    - name: start mongos
+    - name: start mongos on configserver nodes
       service:
         name: mongos
         state: started
-        enabled: yes
 
     - name: edit pbm-agent service config for deb
       blockinfile:
@@ -548,4 +547,3 @@
       service:
         name: pbm-agent
         state: started
-        enabled: yes
