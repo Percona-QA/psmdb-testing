@@ -10,6 +10,7 @@ platforms:
       - primary
       - rs0
       - rs0-primary
+      - mc
     region: us-west-2
     image: ami-01ed306a12b7d1c96
     vpc_subnet_id: subnet-03136d8c244f56036
