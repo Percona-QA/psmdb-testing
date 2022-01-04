@@ -148,7 +148,7 @@ def drop_database(node):
     print(result)
 
 def test_setup_storage():
-    result = primary_rs0.check_output('pbm config --mongodb-uri=mongodb://localhost:27019/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
+    result = primary_cfg.check_output('pbm config --mongodb-uri=mongodb://localhost:27019/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
     store_out = json.loads(result)
     if STORAGE == "minio":
         assert store_out['storage']['type'] == 's3'
