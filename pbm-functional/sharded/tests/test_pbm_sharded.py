@@ -75,6 +75,11 @@ def restart_mongod(node):
         result = node.check_output('systemctl restart mongod')
     print('restarting mongod: ' + result)
 
+def restart_mongos(node):
+    with node.sudo():
+        result = node.check_output('systemctl restart mongos')
+    print('restarting mongos: ' + result)
+
 def restart_pbm_agent(node):
     with node.sudo():
         result = node.check_output('systemctl restart pbm-agent')
@@ -129,6 +134,10 @@ def make_restore(node,name):
         restart_pbm_agent(i)
         time.sleep(5)
     time.sleep(5)
+    for i in [secondary1_cfg, secondary2_cfg, primary_cfg]:
+        restart_mongos(i)
+        time.sleep(10)
+    time.sleep(10)
 
 def load_data(node,count):
     config = [{'database': 'test','collection': 'binary','count': 1,'shardConfig': {'shardCollection': 'test.binary', 'key': {'_id': 'hashed'}}, 'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}]
