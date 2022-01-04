@@ -535,9 +535,9 @@
     - name: Init sharded
       command: "{{item}}"
       with_items:
-        - sleep 10
+        - sleep 60
         - mongo --eval 'sh.addShard( "rs0/{{ rs0_primary_ip }}:27018" )'
-        - sleep 10
+        - sleep 60
         - mongo --eval 'sh.addShard( "rs1/{{ rs1_primary_ip }}:27018" )'
 
 - name: start pbm-agents
