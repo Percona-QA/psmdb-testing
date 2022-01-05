@@ -178,6 +178,7 @@ def test_agent_status():
 
 def test_prepare_data():
     load_data(primary_cfg,SIZE)
+    time.sleep(300)
     count = check_count_data(primary_cfg)
     assert int(count) == SIZE
 
@@ -191,6 +192,7 @@ def test_drop_data():
 
 def test_restore():
     make_restore(primary_cfg,pytest.backup_name)
+    time.sleep(300)
     count = check_count_data(primary_cfg)
     assert int(count) == SIZE
 
