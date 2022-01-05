@@ -148,7 +148,7 @@ def load_data(node,count):
     result = node.check_output('mgodatagen -f /tmp/generated_config.json --batchsize 10')
 
 def check_count_data(node):
-    result = node.check_output("mongo mongodb://127.0.0.1:27017/test --eval 'db.binary.count()' --quiet | tail -1")
+    result = node.check_output("mongo mongodb://127.0.0.1:27017/test --eval 'db.binary.countDocuments({})' --quiet | tail -1")
     print('count objects in collection: ' + result)
     return result
 
@@ -178,7 +178,6 @@ def test_agent_status():
 
 def test_prepare_data():
     load_data(primary_cfg,SIZE)
-    time.sleep(300)
     count = check_count_data(primary_cfg)
     assert int(count) == SIZE
 
@@ -192,7 +191,6 @@ def test_drop_data():
 
 def test_restore():
     make_restore(primary_cfg,pytest.backup_name)
-    time.sleep(300)
     count = check_count_data(primary_cfg)
     assert int(count) == SIZE
 
