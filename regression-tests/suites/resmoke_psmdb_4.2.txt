@@ -1,0 +1,307 @@
+aggregation|inMemory
+aggregation_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+aggregation_facet_unwind_passthrough|inMemory
+aggregation_mongos_passthrough|inMemory
+aggregation_one_shard_sharded_collections|inMemory
+aggregation_read_concern_majority_passthrough|inMemory
+aggregation_sharded_collections_passthrough|inMemory
+audit|inMemory
+auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+auth_audit|inMemory
+ backup|wiredTiger
+ benchmarks --jobs=1 --perfReportFile=perf.json|wiredTiger
+ benchmarks_sharding --jobs=1 --perfReportFile=perf_sharding.json|wiredTiger
+ buildscripts_test|wiredTiger
+bulk_gle_passthrough|inMemory
+causally_consistent_jscore_passthrough|inMemory
+causally_consistent_jscore_passthrough_auth|inMemory
+causally_consistent_jscore_txns_passthrough|inMemory
+change_streams|inMemory
+change_streams_mongos_passthrough|inMemory
+change_streams_mongos_sessions_passthrough|inMemory
+ change_streams_secondary_reads|wiredTiger
+change_streams_sharded_collections_passthrough|inMemory
+change_streams_whole_cluster_mongos_passthrough|inMemory
+change_streams_whole_cluster_passthrough|inMemory
+change_streams_whole_cluster_sharded_collections_passthrough|inMemory
+change_streams_whole_db_mongos_passthrough|inMemory
+change_streams_whole_db_passthrough|inMemory
+change_streams_whole_db_sharded_collections_passthrough|inMemory
+client_encrypt|inMemory
+concurrency --jobs=1|inMemory
+concurrency_replication --jobs=1|inMemory
+concurrency_replication_causal_consistency --jobs=1|inMemory
+concurrency_replication_multi_stmt_txn --jobs=1|inMemory
+concurrency_sharded_causal_consistency --jobs=1|inMemory
+concurrency_sharded_causal_consistency_and_balancer --jobs=1|inMemory
+concurrency_sharded_local_read_write_multi_stmt_txn --jobs=1|inMemory
+concurrency_sharded_local_read_write_multi_stmt_txn_with_balancer --jobs=1|inMemory
+concurrency_sharded_multi_stmt_txn --jobs=1|inMemory
+concurrency_sharded_multi_stmt_txn_with_balancer --jobs=1|inMemory
+concurrency_sharded_multi_stmt_txn_with_stepdowns --jobs=1|inMemory
+concurrency_sharded_replication --jobs=1|inMemory
+concurrency_sharded_replication_with_balancer --jobs=1|inMemory
+concurrency_sharded_with_stepdowns --jobs=1|inMemory
+concurrency_sharded_with_stepdowns_and_balancer --jobs=1|inMemory
+concurrency_simultaneous --jobs=1|inMemory
+concurrency_simultaneous_replication --jobs=1|inMemory
+core|inMemory
+core_auth|inMemory
+core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command|inMemory
+core_minimum_batch_size|inMemory
+core_op_query|inMemory
+core_txns|inMemory
+core_txns_large_txns_format|inMemory
+dbtest|inMemory
+decimal|inMemory
+ disk_wiredtiger|wiredTiger
+ external_auth|wiredTiger
+failpoints|inMemory
+failpoints_auth|inMemory
+gle_auth --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
+gle_auth --shellWriteMode=commands|inMemory
+gle_auth_basics_passthrough --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
+gle_auth_basics_passthrough --shellWriteMode=commands|inMemory
+ integration_tests_replset|wiredTiger
+ integration_tests_sharded|wiredTiger
+ integration_tests_standalone|wiredTiger
+ jstestfuzz|inMemory
+ jstestfuzz_replication|inMemory
+ jstestfuzz_sharded|inMemory
+json_schema|inMemory
+knobs|inMemory
+ldapauthz|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+ logging_perf|inMemory
+logical_session_cache_replication_100ms_refresh_jscore_passthrough|inMemory
+logical_session_cache_replication_10sec_refresh_jscore_passthrough|inMemory
+logical_session_cache_replication_1sec_refresh_jscore_passthrough|inMemory
+logical_session_cache_replication_default_refresh_jscore_passthrough|inMemory
+logical_session_cache_sharding_100ms_refresh_jscore_passthrough|inMemory
+logical_session_cache_sharding_10sec_refresh_jscore_passthrough|inMemory
+logical_session_cache_sharding_1sec_refresh_jscore_passthrough|inMemory
+logical_session_cache_sharding_default_refresh_jscore_passthrough|inMemory
+logical_session_cache_standalone_100ms_refresh_jscore_passthrough|inMemory
+logical_session_cache_standalone_10sec_refresh_jscore_passthrough|inMemory
+logical_session_cache_standalone_1sec_refresh_jscore_passthrough|inMemory
+logical_session_cache_standalone_default_refresh_jscore_passthrough|inMemory
+ mongos_test|wiredTiger
+multi_shard_local_read_write_multi_stmt_txn_jscore_passthrough|inMemory
+multi_shard_multi_stmt_txn_jscore_passthrough|inMemory
+multi_stmt_txn_jscore_passthrough_with_migration|inMemory
+ multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2.1 4.2.3
+ multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2.1 4.2.3
+no_passthrough|inMemory
+no_passthrough_with_mongod|inMemory
+parallel --jobs=1|inMemory
+parallel --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command --jobs=1|inMemory
+percona_no_passthrough_with_mongod|inMemory
+ratelimit|inMemory
+read_concern_linearizable_passthrough|inMemory
+read_concern_majority_passthrough|inMemory
+ read_only|wiredTiger
+ read_only_sharded|wiredTiger
+ redaction|wiredTiger
+replica_sets|inMemory
+replica_sets_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+ replica_sets_initsync_jscore_passthrough|wiredTiger
+ replica_sets_initsync_static_jscore_passthrough|wiredTiger
+replica_sets_jscore_passthrough|inMemory
+ replica_sets_kill_secondaries_jscore_passthrough|wiredTiger
+replica_sets_large_txns_format|inMemory
+replica_sets_large_txns_format_jscore_passthrough|inMemory
+replica_sets_multi_stmt_txn_jscore_passthrough|inMemory
+replica_sets_multi_stmt_txn_stepdown_jscore_passthrough|inMemory
+retryable_writes_jscore_passthrough|inMemory
+retryable_writes_jscore_stepdown_passthrough|inMemory
+secondary_reads_passthrough|inMemory
+serial_run|inMemory
+session_jscore_passthrough|inMemory
+sharded_causally_consistent_jscore_passthrough|inMemory
+sharded_causally_consistent_jscore_txns_passthrough|inMemory
+sharded_collections_jscore_passthrough|inMemory
+sharded_collections_causally_consistent_jscore_txns_passthrough|inMemory
+sharded_jscore_txns|inMemory
+sharded_jscore_txns_sharded_collections|inMemory
+sharded_multi_stmt_txn_jscore_passthrough|inMemory
+sharding|inMemory
+sharding --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
+sharding_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+sharding_auth_audit|inMemory
+sharding_continuous_config_stepdown|inMemory
+sharding_gle_auth_basics_passthrough --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
+sharding_gle_auth_basics_passthrough --shellWriteMode=commands|inMemory
+sharding_jscore_op_query_passthrough|inMemory
+sharding_jscore_passthrough|inMemory
+sharding_jscore_passthrough --shellWriteMode=compatibility --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
+ sharding_last_stable_mongos_and_mixed_shards|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5
+sharding_rs_matching_disabled|inMemory
+sharding_rs_matching_match_busiest_node|inMemory
+slow1 --jobs=1|inMemory
+ssl|inMemory
+ssl_special|inMemory
+tool|inMemory
+ unittests|wiredTiger
+watchdog --jobs=1|inMemory|chmod +x jstests/watchdog/charybdefs_setup.sh && jstests/watchdog/charybdefs_setup.sh
+write_concern_majority_passthrough|inMemory
+aggregation|wiredTiger
+aggregation_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+aggregation_facet_unwind_passthrough|wiredTiger
+aggregation_mongos_passthrough|wiredTiger
+aggregation_one_shard_sharded_collections|wiredTiger
+aggregation_read_concern_majority_passthrough|wiredTiger
+aggregation_sharded_collections_passthrough|wiredTiger
+aggregation_tde_cbc|wiredTiger
+aggregation_tde_gcm|wiredTiger
+audit|wiredTiger
+auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+auth_audit|wiredTiger
+backup|wiredTiger
+backup_tde_cbc|wiredTiger
+backup_tde_gcm|wiredTiger
+benchmarks --jobs=1 --perfReportFile=perf.json|wiredTiger
+benchmarks_sharding --jobs=1 --perfReportFile=perf_sharding.json|wiredTiger
+buildscripts_test|wiredTiger
+bulk_gle_passthrough|wiredTiger
+causally_consistent_jscore_passthrough|wiredTiger
+causally_consistent_jscore_passthrough_auth|wiredTiger
+causally_consistent_jscore_txns_passthrough|wiredTiger
+change_streams|wiredTiger
+change_streams_mongos_passthrough|wiredTiger
+change_streams_mongos_sessions_passthrough|wiredTiger
+change_streams_secondary_reads|wiredTiger
+change_streams_sharded_collections_passthrough|wiredTiger
+change_streams_whole_cluster_mongos_passthrough|wiredTiger
+change_streams_whole_cluster_passthrough|wiredTiger
+change_streams_whole_cluster_secondary_reads_passthrough|wiredTiger
+change_streams_whole_cluster_sharded_collections_passthrough|wiredTiger
+change_streams_whole_db_mongos_passthrough|wiredTiger
+change_streams_whole_db_passthrough|wiredTiger
+change_streams_whole_db_secondary_reads_passthrough|wiredTiger
+change_streams_whole_db_sharded_collections_passthrough|wiredTiger
+client_encrypt|wiredTiger
+concurrency --jobs=1|wiredTiger
+concurrency_replication --jobs=1|wiredTiger
+concurrency_replication_causal_consistency --jobs=1|wiredTiger
+concurrency_replication_causal_consistency_ubsan --jobs=1|wiredTiger
+concurrency_replication_multi_stmt_txn --jobs=1|wiredTiger
+concurrency_replication_multi_stmt_txn_ubsan --jobs=1|wiredTiger
+concurrency_sharded_causal_consistency --jobs=1|wiredTiger
+concurrency_sharded_causal_consistency_and_balancer --jobs=1|wiredTiger
+concurrency_sharded_local_read_write_multi_stmt_txn --jobs=1|wiredTiger
+concurrency_sharded_local_read_write_multi_stmt_txn_with_balancer --jobs=1|wiredTiger
+concurrency_sharded_multi_stmt_txn --jobs=1|wiredTiger
+concurrency_sharded_multi_stmt_txn_with_balancer --jobs=1|wiredTiger
+concurrency_sharded_multi_stmt_txn_with_stepdowns --jobs=1|wiredTiger
+concurrency_sharded_replication --jobs=1|wiredTiger
+concurrency_sharded_replication_with_balancer --jobs=1|wiredTiger
+concurrency_sharded_with_stepdowns --jobs=1|wiredTiger
+concurrency_sharded_with_stepdowns_and_balancer --jobs=1|wiredTiger
+concurrency_simultaneous --jobs=1|wiredTiger
+concurrency_simultaneous_replication --jobs=1|wiredTiger
+core|wiredTiger
+core_auth|wiredTiger
+core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command|wiredTiger
+core_minimum_batch_size|wiredTiger
+core_op_query|wiredTiger
+core_tde_cbc|wiredTiger
+core_tde_gcm|wiredTiger
+core_txns|wiredTiger
+core_txns_large_txns_format|wiredTiger
+dbtest|wiredTiger
+decimal|wiredTiger
+disk_wiredtiger|wiredTiger
+external_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+failpoints|wiredTiger
+failpoints_auth|wiredTiger
+gle_auth --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
+gle_auth --shellWriteMode=commands|wiredTiger
+gle_auth_basics_passthrough --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
+gle_auth_basics_passthrough --shellWriteMode=commands|wiredTiger
+integration_tests_replset|wiredTiger
+integration_tests_sharded|wiredTiger
+integration_tests_standalone|wiredTiger
+integration_tests_standalone_audit|wiredTiger
+ jstestfuzz|wiredTiger
+ jstestfuzz_replication|wiredTiger
+ jstestfuzz_sharded|wiredTiger
+json_schema|wiredTiger
+knobs|wiredTiger
+ldapauthz|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+ logging_perf|wiredTiger
+logical_session_cache_replication_100ms_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_replication_10sec_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_replication_1sec_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_replication_default_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_sharding_100ms_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_sharding_10sec_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_sharding_1sec_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_sharding_default_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_standalone_100ms_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_standalone_10sec_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_standalone_1sec_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_standalone_default_refresh_jscore_passthrough|wiredTiger
+mongos_test|wiredTiger
+multi_shard_local_read_write_multi_stmt_txn_jscore_passthrough|wiredTiger
+multi_shard_multi_stmt_txn_jscore_passthrough|wiredTiger
+multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough|wiredTiger
+multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|wiredTiger
+multi_stmt_txn_jscore_passthrough_with_migration|wiredTiger
+multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2.1 4.2.3
+multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2.1 4.2.3
+no_passthrough|wiredTiger
+no_passthrough_with_mongod|wiredTiger
+parallel --jobs=1|wiredTiger
+parallel --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command --jobs=1|wiredTiger
+percona_no_passthrough_with_mongod|wiredTiger
+ratelimit|wiredTiger
+read_concern_majority_passthrough|wiredTiger
+read_concern_linearizable_passthrough|wiredTiger
+read_only|wiredTiger
+read_only_sharded|wiredTiger
+redaction|wiredTiger
+replica_sets|wiredTiger
+replica_sets_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+replica_sets_initsync_jscore_passthrough|wiredTiger
+replica_sets_initsync_static_jscore_passthrough|wiredTiger
+replica_sets_jscore_passthrough|wiredTiger
+replica_sets_kill_primary_jscore_passthrough|wiredTiger
+replica_sets_kill_secondaries_jscore_passthrough|wiredTiger
+replica_sets_large_txns_format|wiredTiger
+replica_sets_large_txns_format_jscore_passthrough|wiredTiger
+replica_sets_multi_stmt_txn_jscore_passthrough|wiredTiger
+replica_sets_multi_stmt_txn_kill_primary_jscore_passthrough|wiredTiger
+replica_sets_multi_stmt_txn_stepdown_jscore_passthrough|wiredTiger
+replica_sets_multi_stmt_txn_terminate_primary_jscore_passthrough|wiredTiger
+replica_sets_terminate_primary_jscore_passthrough|wiredTiger
+replica_sets_tde_cbc|wiredTiger
+replica_sets_tde_gcm|wiredTiger
+retryable_writes_jscore_passthrough|wiredTiger
+retryable_writes_jscore_stepdown_passthrough|wiredTiger
+serial_run|wiredTiger
+session_jscore_passthrough|wiredTiger
+sharded_causally_consistent_jscore_passthrough|wiredTiger
+sharded_causally_consistent_jscore_txns_passthrough|wiredTiger
+sharded_collections_jscore_passthrough|wiredTiger
+sharded_collections_causally_consistent_jscore_txns_passthrough|wiredTiger
+sharding|wiredTiger
+sharding --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
+sharding_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+sharding_auth_audit|wiredTiger
+sharding_continuous_config_stepdown|wiredTiger
+sharding_gle_auth_basics_passthrough --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
+sharding_gle_auth_basics_passthrough --shellWriteMode=commands|wiredTiger
+sharding_jscore_op_query_passthrough|wiredTiger
+sharding_jscore_passthrough|wiredTiger
+sharding_jscore_passthrough --shellWriteMode=compatibility --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
+sharding_last_stable_mongos_and_mixed_shards|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5
+sharding_rs_matching_disabled|wiredTiger
+sharding_rs_matching_match_busiest_node|wiredTiger
+sharding_tde_cbc|wiredTiger
+sharding_tde_gcm|wiredTiger
+slow1 --jobs=1|wiredTiger
+ssl|wiredTiger
+ssl_special|wiredTiger
+tool|wiredTiger
+ unittests|wiredTiger
+watchdog --jobs=1|wiredTiger|chmod +x jstests/watchdog/charybdefs_setup.sh && jstests/watchdog/charybdefs_setup.sh
+write_concern_majority_passthrough|wiredTiger
