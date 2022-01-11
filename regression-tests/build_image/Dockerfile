@@ -28,7 +28,8 @@ RUN find jstests -type f | xargs chmod 400 \
     && ( cp build/install/bin/wt /usr/bin/ || cp build/opt/third_party/wiredtiger/wt /usr/bin/ )\
     && rm -rf build \
     && rm -f resmoke.ini \
-    && cp -r /usr/bin/dbtest .
+    && cp -r /usr/bin/dbtest . \
+    && cp -r /usr/bin/mongo* .
 ENV PATH="${PATH}:/data/multiversion"
 ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
 ENV TZ=America/New_York
