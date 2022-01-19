@@ -198,12 +198,16 @@
         poll: 3
         interval: 10
       when: layout_type == "replicaset"
+
+    - name: Step down primary rs0
+      community.mongodb.mongodb_stepdown:
+        login_port: 27017
+        poll: 3
+        interval: 10
      
     - name: Update primary rs0
       command: "{{ item }}"
       with_items:
-        - /mongo-old-bindir/bin/mongo --quiet --eval 'rs.stepDown()'
-        - sleep 1
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/rs0-1 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-1 --port 27017 --replSet rs0 {{ mongo_opts }}
       when: layout_type == "replicaset"
@@ -245,11 +249,15 @@
         interval: 10
       when: layout_type == "sharded"
 
+    - name: Step down primary cfg               
+      community.mongodb.mongodb_stepdown:
+        login_port: 30017
+        poll: 3
+        interval: 10
+
     - name: Update primary cfg
       command: "{{ item }}"
       with_items:
-        - /mongo-old-bindir/bin/mongo mongodb://127.0.0.1:30017 --quiet --eval 'rs.stepDown()'
-        - sleep 1
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/cfg1-1 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/cfg1-1 --port 30017 --configsvr --replSet cfg {{ mongo_opts }}
       when: layout_type == "sharded"
@@ -292,11 +300,15 @@
         interval: 10
       when: layout_type == "sharded"
 
+    - name: Step down primary rs0               
+      community.mongodb.mongodb_stepdown:
+        login_port: 28017
+        poll: 3
+        interval: 10
+
     - name: Update primary rs0
       command: "{{ item }}"
       with_items:
-        - /mongo-old-bindir/bin/mongo mongodb://127.0.0.1:28017 --quiet --eval 'rs.stepDown()'
-        - sleep 1
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/rs0-1 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-1 --port 28017 --shardsvr --replSet rs0 {{ mongo_opts }}
       when: layout_type == "sharded"
@@ -339,11 +351,15 @@
         interval: 10
       when: layout_type == "sharded"
 
+    - name: Step down primary rs0               
+      community.mongodb.mongodb_stepdown:
+        login_port: 29017
+        poll: 3
+        interval: 10
+
     - name: Update primary rs1
       command: "{{ item }}"
       with_items:
-        - /mongo-old-bindir/bin/mongo mongodb://127.0.0.1:29017 --quiet --eval 'rs.stepDown()'
-        - sleep 1
         - /mongo-old-bindir/bin/mongod --dbpath /workdir/rs1-1 --shutdown
         - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs1-1 --port 29017 --shardsvr --replSet rs1 {{ mongo_opts }}
       when: layout_type == "sharded"

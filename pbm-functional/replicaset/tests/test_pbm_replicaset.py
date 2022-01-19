@@ -153,7 +153,7 @@ def test_prepare_data():
     load_data(primary_rs0,SIZE)
     count = check_count_data(primary_rs0)
     assert int(count) == SIZE
-
+'''
 def test_backup():
     pytest.backup_name = make_backup(primary_rs0,BACKUP_TYPE)
 
@@ -166,4 +166,4 @@ def test_restore():
     make_restore(secondary1_rs0,pytest.backup_name)
     count = check_count_data(primary_rs0)
     assert int(count) == SIZE
-
+'''
