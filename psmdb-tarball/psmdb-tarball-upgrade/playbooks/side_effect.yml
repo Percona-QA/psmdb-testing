@@ -204,6 +204,7 @@
         login_port: 27017
         poll: 3
         interval: 10
+      when: layout_type == "replicaset"
      
     - name: Update primary rs0
       command: "{{ item }}"
@@ -254,6 +255,7 @@
         login_port: 30017
         poll: 3
         interval: 10
+      when: layout_type == "sharded"
 
     - name: Update primary cfg
       command: "{{ item }}"
@@ -305,6 +307,7 @@
         login_port: 28017
         poll: 3
         interval: 10
+      when: layout_type == "sharded"
 
     - name: Update primary rs0
       command: "{{ item }}"
@@ -356,6 +359,7 @@
         login_port: 29017
         poll: 3
         interval: 10
+      when: layout_type == "sharded"
 
     - name: Update primary rs1
       command: "{{ item }}"
