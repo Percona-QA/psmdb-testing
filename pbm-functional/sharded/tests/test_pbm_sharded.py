@@ -43,6 +43,7 @@ BACKUP_TYPE = os.getenv("BACKUP_TYPE")
 
 def pytest_configure():
     pytest.backup_name = ''
+    pytest.pitr_timestamp = ''
 
 def find_backup(node,name):
     list = node.check_output('pbm list --mongodb-uri=mongodb://localhost:27019/ --out=json')
@@ -139,6 +140,30 @@ def make_restore(node,name):
         time.sleep(10)
     time.sleep(10)
 
+def make_pitr_restore(node,name,timestamp):
+    for i in range(TIMEOUT):
+        running = check_status(node)
+        if not running:
+            output = node.check_output('pbm restore --mongodb-uri=mongodb://localhost:27019/ --time=' + timestamp + ' --base-snapshot=' + name + ' --wait')
+            print(output)
+            break
+        else:
+            print("unable to start restore - another operation in work")
+            print(running)
+            time.sleep(1)
+    for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
+        restart_mongod(i)
+        time.sleep(5)
+    time.sleep(5)
+    for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
+        restart_pbm_agent(i)
+        time.sleep(5)
+    time.sleep(5)
+    for i in [secondary1_cfg, secondary2_cfg, primary_cfg]:
+        restart_mongos(i)
+        time.sleep(10)
+    time.sleep(10)
+
 def load_data(node,count):
     config = [{'database': 'test','collection': 'binary','count': 1,'shardConfig': {'shardCollection': 'test.binary', 'key': {'_id': 'hashed'}}, 'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}]
     config[0]["count"] = count
@@ -169,6 +194,12 @@ def test_setup_storage():
         assert store_out['storage']['s3']['bucket'] == 'pbm-testing'
     time.sleep(10)
 
+def test_setup_pitr():
+    if BACKUP_TYPE == "logical":
+       result = primary_cfg.check_output('pbm config --mongodb-uri=mongodb://localhost:27019/ --set pitr.enabled=true --out=json')
+       store_out = json.loads(result)
+       print(store_out)
+
 def test_agent_status():
     result = primary_cfg.check_output('pbm status --mongodb-uri=mongodb://localhost:27019/ --out=json')
     parsed_result = json.loads(result)
@@ -188,9 +219,25 @@ def test_drop_data():
     drop_database(primary_cfg)
     count = check_count_data(primary_cfg)
     assert int(count) == 0
+    time.sleep(60)
+    now = datetime.utcnow()
+    pytest.pitr_timestamp = now.strftime("%Y-%m-%dT%H:%M:%S")
+    print(pytest.pitr_timestamp)
+
+def test_disable_pitr():
+    if BACKUP_TYPE == "logical":
+       result = primary_cfg.check_output('pbm config --mongodb-uri=mongodb://localhost:27019/ --set pitr.enabled=false --out=json')
+       store_out = json.loads(result)
+       print(store_out)
+       time.sleep(60)
 
 def test_restore():
     make_restore(primary_cfg,pytest.backup_name)
     count = check_count_data(primary_cfg)
     assert int(count) == SIZE
 
+def test_pitr_restore():
+    if BACKUP_TYPE == "logical":
+        make_pitr_restore(primary_cfg,pytest.backup_name,pytest.pitr_timestamp)
+        count = check_count_data(primary_cfg)
+        assert int(count) == 0
