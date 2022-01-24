@@ -135,7 +135,7 @@
     - typing 
     - requests 
     - Cheetah3 
-    - regex 
+    - regex==2021.11.10
     - awscli
     - boto
     - boto3
