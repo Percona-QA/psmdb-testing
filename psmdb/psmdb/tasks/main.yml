@@ -102,3 +102,4 @@
 
 - name: Load some data
   command: /package-testing/scripts/mongo_insert.sh
+

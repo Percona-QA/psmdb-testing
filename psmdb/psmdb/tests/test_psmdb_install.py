@@ -19,7 +19,6 @@ BINARIES = ['mongo', 'mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
 
-
 def test_functional(host):
     cmd = "/package-testing/scripts/psmdb_test.sh" + ' ' + PSMDB_VER.split('.')[0] + '.' + PSMDB_VER.split('.')[1]
     with host.sudo():
