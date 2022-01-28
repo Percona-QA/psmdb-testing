@@ -68,7 +68,7 @@ def make_backup(node,type):
     for i in range(TIMEOUT):
         running = check_status(node)
         if not running:
-            if type:
+            if type == 'physical':
                 start = node.check_output('pbm backup --mongodb-uri=mongodb://localhost:27017/ --out=json --type=' + type )
             else:
                 start = node.check_output('pbm backup --mongodb-uri=mongodb://localhost:27017/ --out=json')
@@ -185,10 +185,11 @@ def test_prepare_data():
 def test_backup():
     pytest.backup_name = make_backup(primary_rs0,BACKUP_TYPE)
 
-def test_drop_data():
+def test_modify_data():
     drop_database(primary_rs0)
+    load_data(primary_rs0,10)
     count = check_count_data(primary_rs0)
-    assert int(count) == 0
+    assert int(count) == 10
     time.sleep(60)
     now = datetime.utcnow()
     pytest.pitr_timestamp = now.strftime("%Y-%m-%dT%H:%M:%S")
@@ -210,4 +211,4 @@ def test_pitr_restore():
     if BACKUP_TYPE == "logical":
         make_pitr_restore(secondary1_rs0,pytest.backup_name,pytest.pitr_timestamp)
         count = check_count_data(primary_rs0)
-        assert int(count) == 0
+        assert int(count) == 10
