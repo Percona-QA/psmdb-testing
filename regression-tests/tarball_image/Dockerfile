@@ -17,6 +17,8 @@ ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-t
 RUN find jstests -type f | xargs chmod 400 \
     && pip install -r etc/pip/dev-requirements.txt \
     && support-files/ldap-sasl/deploy_ldap_and_sasl.sh \
+    && mkdir /opt/lib \
+    && cp -r /usr/lib/private /opt/lib/ \
     && cp -r /usr/bin/mongo* .
 ENV PATH="${PATH}:/data/multiversion"
 ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"

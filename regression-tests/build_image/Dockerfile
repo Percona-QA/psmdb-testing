@@ -28,6 +28,8 @@ RUN find jstests -type f | xargs chmod 400 \
     && ( cp build/install/bin/wt /usr/bin/ || cp build/opt/third_party/wiredtiger/wt /usr/bin/ )\
     && rm -rf build \
     && rm -f resmoke.ini \
+    && mkdir /opt/lib \
+    && cp -r /usr/lib/private /opt/lib/ \
     && cp -r /usr/bin/dbtest . \
     && cp -r /usr/bin/mongo* .
 ENV PATH="${PATH}:/data/multiversion"
