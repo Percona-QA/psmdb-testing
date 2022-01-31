@@ -87,7 +87,7 @@ dbtest|wiredTiger
 decimal|wiredTiger
 disk_wiredtiger|wiredTiger
 ese|wiredTiger
-external_auth|wiredTiger
+external_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 external_auth_aws|wiredTiger
 failpoints|wiredTiger
 failpoints_auth|wiredTiger
@@ -229,7 +229,7 @@ ssl|wiredTiger
 ssl_special|wiredTiger
 tde_cbc|wiredTiger
 tde_gcm|wiredTiger
- unittests|wiredTiger
+unittests|wiredTiger
 unittests_auth|wiredTiger
 unittests_client|wiredTiger
 unittest_shell_hang_analyzer|wiredTiger
@@ -471,7 +471,7 @@ ssl|inMemory
 ssl_special|inMemory
  tde_cbc|inMemory
  tde_gcm|inMemory
- unittests|inMemory
+unittests|inMemory
 unittests_auth|inMemory
 unittests_client|inMemory
 unittest_shell_hang_analyzer|inMemory
