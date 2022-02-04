@@ -242,4 +242,4 @@ def test_pitr_restore():
     if BACKUP_TYPE == "logical":
         make_pitr_restore(primary_cfg,pytest.backup_name,pytest.pitr_timestamp)
         count = check_count_data(primary_cfg)
-        assert int(count) == 0
+        assert int(count) == 10
