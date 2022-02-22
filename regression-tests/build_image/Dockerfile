@@ -33,7 +33,8 @@ RUN find jstests -type f | xargs chmod 400 \
     && cp -r /usr/lib/private /opt/lib/ \
     && cp -r /usr/bin/dbtest . \
     && cp -r /usr/bin/mongo* . \
-    && sed "s|UNITTEST_ALIAS='unittests',|UNITTEST_ALIAS='install-unittests',|" -i SConstruct
+    && sed "s|UNITTEST_ALIAS='unittests',|UNITTEST_ALIAS='install-unittests',|" -i SConstruct \
+    && sed "s|INTEGRATION_TEST_ALIAS='integration_tests',|INTEGRATION_TEST_ALIAS='install-integration-tests',|" -i SConstruct
 ENV PATH="${PATH}:/data/multiversion"
 ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
 ENV TZ=America/New_York
