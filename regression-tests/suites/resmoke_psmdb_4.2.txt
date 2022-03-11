@@ -62,9 +62,9 @@ gle_auth --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=req
 gle_auth --shellWriteMode=commands|inMemory
 gle_auth_basics_passthrough --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
 gle_auth_basics_passthrough --shellWriteMode=commands|inMemory
- integration_tests_replset|wiredTiger
- integration_tests_sharded|wiredTiger
- integration_tests_standalone|wiredTiger
+integration_tests_replset|inMemory
+integration_tests_sharded|inMemory
+integration_tests_standalone|inMemory
  jstestfuzz|inMemory
  jstestfuzz_replication|inMemory
  jstestfuzz_sharded|inMemory
@@ -140,7 +140,7 @@ slow1 --jobs=1|inMemory
 ssl|inMemory
 ssl_special|inMemory
 tool|inMemory
- unittests|wiredTiger
+unittests|inMemory
 watchdog --jobs=1|inMemory|chmod +x jstests/watchdog/charybdefs_setup.sh && jstests/watchdog/charybdefs_setup.sh
 write_concern_majority_passthrough|inMemory
 aggregation|wiredTiger
@@ -302,6 +302,6 @@ slow1 --jobs=1|wiredTiger
 ssl|wiredTiger
 ssl_special|wiredTiger
 tool|wiredTiger
- unittests|wiredTiger
+unittests|wiredTiger
 watchdog --jobs=1|wiredTiger|chmod +x jstests/watchdog/charybdefs_setup.sh && jstests/watchdog/charybdefs_setup.sh
 write_concern_majority_passthrough|wiredTiger
