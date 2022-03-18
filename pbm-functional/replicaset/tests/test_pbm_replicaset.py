@@ -204,8 +204,14 @@ def test_disable_pitr():
 
 def test_restore():
     make_restore(secondary1_rs0,pytest.backup_name)
+    time.sleep(300)
     count = check_count_data(primary_rs0)
     assert int(count) == SIZE
+
+def test_mongod_status(host):
+    with host.sudo():
+        service = host.service("mongod")
+        assert service.is_running
 
 def test_pitr_restore():
     if BACKUP_TYPE == "logical":
