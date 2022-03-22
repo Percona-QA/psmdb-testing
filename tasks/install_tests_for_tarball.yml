@@ -56,12 +56,12 @@
 
 - name: Download mgodatagen test config
   get_url:
-    url: 'https://raw.githubusercontent.com/feliixx/mgodatagen/master/datagen/testdata/big.json'
+    url: 'https://raw.githubusercontent.com/feliixx/mgodatagen/v0.9.2/datagen/testdata/big.json'
     dest: /workdir/big.json
     mode: '0644'
 
 - name: Download mgodatagen test config for sharded cluster
   get_url:
-    url: 'https://raw.githubusercontent.com/feliixx/mgodatagen/master/datagen/testdata/sharded_id.json'
+    url: 'https://raw.githubusercontent.com/feliixx/mgodatagen/v0.9.2/datagen/testdata/sharded_id.json'
     dest: /workdir/sharded_id.json
     mode: '0644'
