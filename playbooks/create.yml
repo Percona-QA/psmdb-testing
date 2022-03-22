@@ -19,14 +19,6 @@
         from_port: 8
         to_port: -1
         cidr_ip: '0.0.0.0/0'
-#      - proto: -1
-#        from_port: 0
-#        to_port: 0
-#        cidr_ip: '10.0.0.0/8'
-      - proto: -1
-        from_port: 0
-        to_port: 0
-        group_name: "{{ security_group_name_prefix }}-{{ subnet_dict[item.vpc_subnet_id] }}"
     security_group_rules_egress:
       - proto: -1
         from_port: 0
