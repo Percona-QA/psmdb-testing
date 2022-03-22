@@ -82,6 +82,11 @@ def restart_mongos(node):
         result = node.check_output('systemctl restart mongos')
     print('restarting mongos: ' + result)
 
+def check_mongod_service(node):
+    with node.sudo():
+        service = node.service("mongod")
+        assert service.is_running
+
 def restart_pbm_agent(node):
     with node.sudo():
         result = node.check_output('systemctl restart pbm-agent')
@@ -139,7 +144,9 @@ def make_restore(node,name):
     for i in [secondary1_cfg, secondary2_cfg, primary_cfg]:
         restart_mongos(i)
         time.sleep(10)
-    time.sleep(10)
+    time.sleep(300)
+    for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
+        check_mongod_service(i)
 
 def make_pitr_restore(node,name,timestamp):
     for i in range(TIMEOUT):
@@ -238,11 +245,6 @@ def test_restore():
     time.sleep(300)
     count = check_count_data(primary_cfg)
     assert int(count) == SIZE
-
-def test_mongod_status(host):
-    with host.sudo():
-        service = host.service("mongod")
-        assert service.is_running
 
 def test_pitr_restore():
     if BACKUP_TYPE == "logical":
