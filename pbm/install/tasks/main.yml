@@ -44,6 +44,13 @@
   command: percona-release enable pbm {{ install_repo }}
   vars:
     install_repo: "{{ lookup('env', 'install_repo') }}"
+  when: lookup('env', 'install_repo') != "main"
+
+- name: setup pbm repo with percona-release
+  command: percona-release enable pbm                   
+  vars:
+    install_repo: "{{ lookup('env', 'install_repo') }}"
+  when: lookup('env', 'install_repo') == "main"
 
 - name: include tasks for PSMDB 4.0,4.2,4.4,5.0 install
   include_tasks: install_psmdb_full.yml
