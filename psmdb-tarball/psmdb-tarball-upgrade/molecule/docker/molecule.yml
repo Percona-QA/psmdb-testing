@@ -28,7 +28,14 @@ verifier:
     junitxml: report.xml
 scenario:
   name: docker
+  destroy_sequence:
+    - destroy
   test_sequence:
+    - create
     - prepare
     - converge
     - verify
+    - side_effect
+    - verify
+    - cleanup
+    - destroy

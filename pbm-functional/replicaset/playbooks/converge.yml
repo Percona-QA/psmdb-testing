@@ -37,21 +37,21 @@
 
     - name: get primary ip adrress
       set_fact: 
-        rs0_primary_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+        rs_primary_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
       when: inventory_hostname in groups['primary']
 
     - name: debug primary ip adress
       debug:
-        msg: "{{rs0_primary_ip}}"
+        msg: "{{rs_primary_ip}}"
       when: inventory_hostname in groups['primary']
 
     - name: get secondaries ip adresses
       set_fact: 
-        rs0_secondary_ips: "{% for host in groups['secondary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+        rs_secondary_ips: "{% for host in groups['secondary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
 
     - name: debug secondaries ip adresses
       debug:
-        msg: "{{rs0_secondary_ips}}"
+        msg: "{{rs_secondary_ips}}"
 
     - name: install GPG key for epel 8
       rpm_key:
@@ -139,7 +139,7 @@
       replace:
         path: /etc/mongod.conf
         regexp: '^#replication:'
-        replace: 'replication:\n  replSetName: "rs0"'
+        replace: 'replication:\n  replSetName: "rs"'
 
     - name: bind mongod to 0.0.0.0
       replace:
@@ -150,16 +150,16 @@
     - name: start mongod service
       service: name=mongod state=started
 
-    - name: Create a replicaset rs0
+    - name: Create a replicaset rs
       community.mongodb.mongodb_replicaset:
-        replica_set: rs0
-        login_host: "{{ rs0_primary_ip }}"
+        replica_set: rs
+        login_host: "{{ rs_primary_ip }}"
         members:
-        - host: "{{ rs0_primary_ip }}:27017"
+        - host: "{{ rs_primary_ip }}:27017"
           priority: 1
-        - host: "{{ rs0_secondary_ips.split(',')[0] }}:27017"
+        - host: "{{ rs_secondary_ips.split(',')[0] }}:27017"
           priority: 0.5
-        - host: "{{ rs0_secondary_ips.split(',')[1] }}:27017"
+        - host: "{{ rs_secondary_ips.split(',')[1] }}:27017"
           priority: 0.5
       when: inventory_hostname in groups['primary']
 

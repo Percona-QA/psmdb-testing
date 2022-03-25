@@ -10,14 +10,14 @@ from datetime import datetime
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('mongo')
 
-primary_rs0 = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_host('primary-rs0')
+primary_rs = testinfra.utils.ansible_runner.AnsibleRunner(
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('primary-rs')
 
-secondary1_rs0 = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_host('secondary1-rs0')
+secondary1_rs = testinfra.utils.ansible_runner.AnsibleRunner(
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('secondary1-rs')
 
-secondary2_rs0 = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_host('secondary2-rs0')
+secondary2_rs = testinfra.utils.ansible_runner.AnsibleRunner(
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('secondary2-rs')
 
 SIZE = int(os.getenv("SIZE"))
 TIMEOUT = int(os.getenv("TIMEOUT"))
@@ -110,15 +110,15 @@ def make_restore(node,name):
             print("unable to start restore - another operation in work")
             print(running)
             time.sleep(1)
-    for i in [secondary1_rs0, secondary2_rs0, primary_rs0]:
+    for i in [secondary1_rs, secondary2_rs, primary_rs]:
         restart_mongod(i)
         time.sleep(5)
     time.sleep(5)
-    for i in [secondary1_rs0, secondary2_rs0, primary_rs0]:
+    for i in [secondary1_rs, secondary2_rs, primary_rs]:
         restart_pbm_agent(i)
         time.sleep(5)
     time.sleep(300)
-    for i in [secondary1_rs0, secondary2_rs0, primary_rs0]:
+    for i in [secondary1_rs, secondary2_rs, primary_rs]:
         check_mongod_service(i)
 
 def make_pitr_restore(node,name,timestamp):
@@ -132,11 +132,11 @@ def make_pitr_restore(node,name,timestamp):
             print("unable to start restore - another operation in work")
             print(running)
             time.sleep(1)
-    for i in [secondary1_rs0, secondary2_rs0, primary_rs0]:
+    for i in [secondary1_rs, secondary2_rs, primary_rs]:
         restart_mongod(i)
         time.sleep(5)
     time.sleep(5)
-    for i in [secondary1_rs0, secondary2_rs0, primary_rs0]:
+    for i in [secondary1_rs, secondary2_rs, primary_rs]:
         restart_pbm_agent(i)
         time.sleep(5)
     time.sleep(5)
@@ -147,19 +147,19 @@ def load_data(node,count):
     config_json = json.dumps(config, indent=4)
     print(config_json)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
-    result = node.check_output('mgodatagen --uri=mongodb://127.0.0.1:27017/?replicaSet=rs0 -f /tmp/generated_config.json --batchsize 10')
+    result = node.check_output('mgodatagen --uri=mongodb://127.0.0.1:27017/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
 
 def check_count_data(node):
-    result = node.check_output("mongo mongodb://127.0.0.1:27017/test?replicaSet=rs0 --eval 'db.binary.count()' --quiet | tail -1")
+    result = node.check_output("mongo mongodb://127.0.0.1:27017/test?replicaSet=rs --eval 'db.binary.count()' --quiet | tail -1")
     print('count objects in collection: ' + result)
     return result
 
 def drop_database(node):
-    result = node.check_output("mongo mongodb://127.0.0.1:27017/test?replicaSet=rs0 --eval 'db.dropDatabase()' --quiet")
+    result = node.check_output("mongo mongodb://127.0.0.1:27017/test?replicaSet=rs --eval 'db.dropDatabase()' --quiet")
     print(result)
 
 def test_setup_storage():
-    result = primary_rs0.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
+    result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
     store_out = json.loads(result)
     if STORAGE == "minio":
         assert store_out['storage']['type'] == 's3'
@@ -173,7 +173,7 @@ def test_setup_storage():
 
 def test_setup_pitr():
     if BACKUP_TYPE == "logical":
-       result = primary_rs0.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --out=json')
+       result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --out=json')
        store_out = json.loads(result)
        print(store_out)
 
@@ -185,17 +185,17 @@ def test_agent_status(host):
             assert host['ok'] == True
 
 def test_prepare_data():
-    load_data(primary_rs0,SIZE)
-    count = check_count_data(primary_rs0)
+    load_data(primary_rs,SIZE)
+    count = check_count_data(primary_rs)
     assert int(count) == SIZE
 
 def test_backup():
-    pytest.backup_name = make_backup(primary_rs0,BACKUP_TYPE)
+    pytest.backup_name = make_backup(primary_rs,BACKUP_TYPE)
 
 def test_modify_data():
-    drop_database(primary_rs0)
-    load_data(primary_rs0,10)
-    count = check_count_data(primary_rs0)
+    drop_database(primary_rs)
+    load_data(primary_rs,10)
+    count = check_count_data(primary_rs)
     assert int(count) == 10
     time.sleep(60)
     now = datetime.utcnow()
@@ -204,18 +204,18 @@ def test_modify_data():
 
 def test_disable_pitr():
     if BACKUP_TYPE == "logical":
-       result = primary_rs0.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=false --out=json')
+       result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=false --out=json')
        store_out = json.loads(result)
        print(store_out)
        time.sleep(60)
 
 def test_restore():
-    make_restore(secondary1_rs0,pytest.backup_name)
-    count = check_count_data(primary_rs0)
+    make_restore(secondary1_rs,pytest.backup_name)
+    count = check_count_data(primary_rs)
     assert int(count) == SIZE
 
 def test_pitr_restore():
     if BACKUP_TYPE == "logical":
-        make_pitr_restore(secondary1_rs0,pytest.backup_name,pytest.pitr_timestamp)
-        count = check_count_data(primary_rs0)
+        make_pitr_restore(secondary1_rs,pytest.backup_name,pytest.pitr_timestamp)
+        count = check_count_data(primary_rs)
         assert int(count) == 10

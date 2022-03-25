@@ -4,7 +4,7 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: primary-rs0
+  - name: primary-rs
     groups: 
       - mongo
       - primary
@@ -17,7 +17,7 @@ platforms:
     pre_build_image: true
     networks: 
       - name: test
-  - name: secondary1-rs0
+  - name: secondary1-rs
     groups:
       - mongo
       - secondary
@@ -29,7 +29,7 @@ platforms:
     pre_build_image: true
     networks: 
        - name: test
-  - name: secondary2-rs0
+  - name: secondary2-rs
     groups:
       - mongo
       - secondary

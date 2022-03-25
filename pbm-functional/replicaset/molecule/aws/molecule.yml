@@ -4,7 +4,7 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: primary-rs0
+  - name: primary-rs
     groups:
       - mongo
       - primary
@@ -17,7 +17,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: secondary1-rs0                        
+  - name: secondary1-rs                        
     groups:
       - mongo
       - secondary
@@ -29,7 +29,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: secondary2-rs0
+  - name: secondary2-rs
     groups:
       - mongo
       - secondary
