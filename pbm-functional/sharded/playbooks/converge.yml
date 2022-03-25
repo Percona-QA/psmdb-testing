@@ -162,6 +162,7 @@
             s3:
                region: us-east-2
                bucket: pbm-testing
+               prefix: sharded
                credentials:
                  access-key-id: {{ access_key }}
                  secret-access-key: {{ access_secret }}
