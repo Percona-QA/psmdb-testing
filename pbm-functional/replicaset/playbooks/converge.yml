@@ -4,7 +4,7 @@
   gather_facts: false
   tasks:
     - set_fact:
-        branch: "{{ lookup('env', 'BRANCH') | default('pbm_2.0', true) }}"
+        branch: "{{ lookup('env', 'BRANCH') | default('main', true) }}"
 
     - name: Clone PBM repo
       git:
