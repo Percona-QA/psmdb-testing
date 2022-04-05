@@ -211,6 +211,8 @@ def test_1_setup_storage():
         assert store_out['storage']['s3']['region'] == 'us-east-2'
         assert store_out['storage']['s3']['bucket'] == 'pbm-testing' 
     time.sleep(10)
+    storage = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set storage.s3.storageClass=STANDARD_IA --out=json')
+    print(storage)
 
 def test_2_agents_status():
     check_agents_status(primary_rs,"27017")
