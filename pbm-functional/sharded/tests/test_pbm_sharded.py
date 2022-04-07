@@ -160,7 +160,7 @@ def make_restore(node,port,name):
     output = node.check_output('pbm config --mongodb-uri=mongodb://localhost:' + port + '/ --force-resync')
     print(output)
     for i in range(TIMEOUT):
-        logs = find_event_msg(node,"27017","resync","succeed")
+        logs = find_event_msg(node,port,"resync","succeed")
         if logs:
             print(logs)
             break
