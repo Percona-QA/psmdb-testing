@@ -263,10 +263,10 @@ def test_4_prepare_data():
     assert int(count) == SIZE
 
 def test_5_backup():
-    pytest.backup_name = make_backup(primary_cfg,"27019",BACKUP_TYPE)
     now = datetime.utcnow()
     pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
     print("pitr start time: " + pytest.pitr_start)
+    pytest.backup_name = make_backup(primary_cfg,"27019",BACKUP_TYPE)
 
 def test_6_modify_data():
     drop_database(primary_cfg,"27017")
