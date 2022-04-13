@@ -195,7 +195,7 @@ def make_pitr_replay(node,port,start,end):
     for i in range(TIMEOUT):
         running = check_status(node,port)
         if not running:
-            output = node.check_output('pbm oplog replay --mongodb-uri=mongodb://localhost:' + port + '/ --start=' + start + ' --end=' + end + ' --wait')
+            output = node.check_output('pbm oplog-replay --mongodb-uri=mongodb://localhost:' + port + '/ --start=' + start + ' --end=' + end + ' --wait')
             print(output)
             break
         else:
