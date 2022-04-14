@@ -64,6 +64,11 @@ def find_event_msg(node,port,event,msg):
              return log
              break
 
+def get_pbm_logs(node,port,number):
+    command = "pbm logs -s D --mongodb-uri=mongodb://localhost:" + port + "/ --tail=" + number
+    logs = node.check_output(command)
+    print(logs)
+
 def check_status(node,port):
     status = node.check_output('pbm status --mongodb-uri=mongodb://localhost:' + port + '/ --out=json')
     running = json.loads(status)['running']
@@ -267,6 +272,8 @@ def test_5_backup():
     pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
     print("pitr start time: " + pytest.pitr_start)
     pytest.backup_name = make_backup(primary_cfg,"27019",BACKUP_TYPE)
+    print("pbm logs:")
+    get_pbm_logs(primary_cfg,"27019",0)
 
 def test_6_modify_data():
     drop_database(primary_cfg,"27017")
@@ -308,3 +315,7 @@ def test_9_pitr_restore():
         make_pitr_replay(primary_cfg,"27019",pytest.pitr_start,pytest.pitr_end)
         count = check_count_data(primary_cfg,"27017")
         assert int(count) == 10
+
+def test_10_get_logs():
+    print("pbm logs:")
+    get_pbm_logs(primary_cfg,"27019",0)
