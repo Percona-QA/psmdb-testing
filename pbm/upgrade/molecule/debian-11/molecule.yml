@@ -21,6 +21,7 @@ provisioner:
     destroy: ../../../../playbooks/destroy.yml
     cleanup: ../../playbooks/cleanup.yml
     converge: ../../playbooks/playbook.yml
+    side_effect: ../../playbooks/side_effect.yml
     prepare: ../../../../playbooks/prepare.yml
 verifier:
   name: testinfra
