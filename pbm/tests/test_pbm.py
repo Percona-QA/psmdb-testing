@@ -123,15 +123,6 @@ def test_service(host):
         assert service.is_enabled
         assert service.is_running
 
-
-def test_pbm_process(host):
-    with host.sudo("root"):
-        process = host.process.get(comm="pbm-agent")
-        if PBM_VERSION < 1.7:
-            assert process.user == "pbm"
-        else:
-            assert process.user == "mongod"
-
 def test_pbm_binary(host):
     """Check pbm binary
     """
@@ -201,6 +192,14 @@ def test_restart_service(restart_pbm_agent, host):
     else:
         assert "active" in restart_pbm_agent.stdout, restart_pbm_agent.stdout
 
+
+def test_pbm_process(host):
+    with host.sudo("root"):
+        process = host.process.get(comm="pbm-agent")
+        if PBM_VERSION < 1.7:
+            assert process.user == "pbm"
+        else:
+            assert process.user == "mongod"
 
 def test_pbm_version(host):
     """Check that pbm version is not empty strings

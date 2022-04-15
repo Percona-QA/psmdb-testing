@@ -25,7 +25,7 @@ provisioner:
     prepare: ../../../../playbooks/prepare.yml
 verifier:
   name: testinfra
-  directory: ../tests/
+  directory: ../../../tests/
   options:
     verbose: true
     s: true
