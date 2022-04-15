@@ -124,6 +124,14 @@ def test_service(host):
         assert service.is_running
 
 
+def test_pbm_process(host):
+    with host.sudo("root"):
+        process = host.process.get(comm="pbm-agent")
+        if PBM_VERSION < 1.7:
+            assert process.user == "pbm"
+        else:
+            assert process.user == "mongod"
+
 def test_pbm_binary(host):
     """Check pbm binary
     """
