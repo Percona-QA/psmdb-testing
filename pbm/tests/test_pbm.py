@@ -160,8 +160,13 @@ def test_pbm_storage_default_config(host):
     """Check pbm agent binary
     """
     file = host.file("/etc/pbm-storage.conf")
-    assert file.user == "pbm"
-    assert file.group == "pbm"
+    if PBM_VERSION < 1.7:
+        assert file.user == "pbm"
+        assert file.group == "pbm"
+    else:
+        assert file.user == "mongod"
+        assert file.group == "mongod"
+
     try:
         assert file.mode == 0o644
     except AssertionError:
