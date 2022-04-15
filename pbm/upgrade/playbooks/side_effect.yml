@@ -25,6 +25,11 @@
         allow_downgrade: yes
       when: ansible_os_family == "RedHat"
 
+    - name: perform daemon-reload for systemd-based os
+      systemd:
+        daemon_reload: yes
+      when: ansible_service_mgr == "systemd"
+
     - name: Start pbm-agent service
       service:
         name: pbm-agent
