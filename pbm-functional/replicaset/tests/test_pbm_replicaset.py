@@ -134,17 +134,18 @@ def make_restore(node,port,name):
 def restart_all():
     for i in [secondary1_rs, secondary2_rs, primary_rs]:
         restart_mongod(i)
-        time.sleep(5)
-    time.sleep(5)
+        time.sleep(10)
+    time.sleep(10)
     for i in [secondary1_rs, secondary2_rs, primary_rs]:
         restart_pbm_agent(i)
-        time.sleep(5)
+        time.sleep(10)
+    time.sleep(10)
 
 def resync_storage(node,port):
     output = node.check_output('pbm config --mongodb-uri=mongodb://localhost:' + port + '/ --force-resync')
     print(output)
     for i in range(TIMEOUT):
-        logs = find_event_msg(node,"27017","resync","succeed")
+        logs = find_event_msg(node,port,"resync","succeed")
         if logs:
             print(logs)
             break
