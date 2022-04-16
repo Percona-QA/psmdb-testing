@@ -19,7 +19,7 @@ secondary1_rs = testinfra.utils.ansible_runner.AnsibleRunner(
 secondary2_rs = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('secondary2-rs')
 
-SIZE = int(os.getenv("SIZE"))
+SIZE = int(os.getenv("SIZE")) * 1024
 TIMEOUT = int(os.getenv("TIMEOUT"))
 STORAGE = os.getenv("STORAGE")
 BACKUP_TYPE = os.getenv("BACKUP_TYPE")
@@ -65,6 +65,8 @@ def check_pitr(node,port):
 def check_agents_status(node,port):
     result = node.check_output('pbm status --mongodb-uri=mongodb://localhost:' + port + '/ --out=json')
     parsed_result = json.loads(result)
+    print("pbm status:")
+    print(json.dumps(parsed_result['cluster'], indent=4))
     for replicaset in parsed_result['cluster']:
         for host in replicaset['nodes']:
             assert host['ok'] == True
@@ -81,13 +83,11 @@ def check_pbm_service(node):
 
 def restart_mongod(node):
     with node.sudo():
-        result = node.check_output('systemctl restart mongod')
-    print('restarting mongod: ' + result)
+        node.check_output('systemctl restart mongod')
 
 def restart_pbm_agent(node):
     with node.sudo():
-        result = node.check_output('systemctl restart pbm-agent')
-    print('restarting pbm-agent: ' + result)
+        node.check_output('systemctl restart pbm-agent')
 
 def make_backup(node,port,type):
     for i in range(TIMEOUT):
@@ -130,6 +130,8 @@ def make_restore(node,port,name):
             print("unable to start restore - another operation in work")
             print(running)
             time.sleep(1)
+
+def restart_all():
     for i in [secondary1_rs, secondary2_rs, primary_rs]:
         restart_mongod(i)
         time.sleep(5)
@@ -137,6 +139,8 @@ def make_restore(node,port,name):
     for i in [secondary1_rs, secondary2_rs, primary_rs]:
         restart_pbm_agent(i)
         time.sleep(5)
+
+def resync_storage(node,port):
     output = node.check_output('pbm config --mongodb-uri=mongodb://localhost:' + port + '/ --force-resync')
     print(output)
     for i in range(TIMEOUT):
@@ -146,9 +150,6 @@ def make_restore(node,port,name):
             break
         else:
             time.sleep(1)
-    time.sleep(300)
-    for i in [secondary1_rs, secondary2_rs, primary_rs]:
-        check_mongod_service(i)
 
 def make_pitr_restore(node,port,name,timestamp):
     for i in range(TIMEOUT):
@@ -161,14 +162,6 @@ def make_pitr_restore(node,port,name,timestamp):
             print("unable to start restore - another operation in work")
             print(running)
             time.sleep(1)
-    for i in [secondary1_rs, secondary2_rs, primary_rs]:
-        restart_mongod(i)
-        time.sleep(5)
-    time.sleep(5)
-    for i in [secondary1_rs, secondary2_rs, primary_rs]:
-        restart_pbm_agent(i)
-        time.sleep(5)
-    time.sleep(5)
 
 def make_pitr_replay(node,port,start,end):
     for i in range(TIMEOUT):
@@ -183,15 +176,15 @@ def make_pitr_replay(node,port,start,end):
             time.sleep(1)
 
 def load_data(node,port,count):
-    config = [{'database': 'test','collection': 'binary','count': 1,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}]
+    config = [{'database': 'test','collection': 'test','count': 1,'content': {'num': {'type': 'int','minInt': 1000, 'maxInt': 9999},'text': {'type': 'string','minLength': 20, 'maxLength': 20},'binary': {'type': 'binary','minLength': 1000, 'maxLength': 1000}},'indexes': [{'name':'idx_num','key': {'num': 1}},{'name':'idx_text','key': {'text': 1}}]}]
     config[0]["count"] = count
     config_json = json.dumps(config, indent=4)
     print(config_json)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
-    result = node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
+    node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
 
 def check_count_data(node,port):
-    result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.binary.count()' --quiet | tail -1")
+    result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.test.count()' --quiet | tail -1")
     print('count objects in collection: ' + result)
     return result
 
@@ -220,77 +213,27 @@ def test_1_setup_storage():
 def test_2_agents_status():
     check_agents_status(primary_rs,"27017")
 
-def test_3_setup_pitr():
-    result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --out=json')
-    store_out = json.loads(result)
-    print(store_out)
-    print("we need to create base logical snapshot for pitr")
-    make_backup(primary_rs,"27017","logical")
-    for i in range(TIMEOUT):
-        pitr = check_pitr(primary_rs,"27017")
-        if not pitr:
-            print("waiting for pitr to be enabled")
-            time.sleep(1)
-        else:
-            print("pitr enabled")
-            break
-    assert check_pitr(primary_rs,"27017") == True
-
-def test_4_prepare_data():
+def test_3_prepare_data():
     load_data(primary_rs,"27017",SIZE)
     count = check_count_data(primary_rs,"27017")
     assert int(count) == SIZE
 
-def test_5_backup():
-    now = datetime.utcnow()
-    pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
-    print("pitr start time: " + pytest.pitr_start)
-    pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
-    print("pbm logs:")
-    get_pbm_logs(primary_rs,"27017")
+def test_4_backup():
+    pytest.backup_name = make_backup(secondary1_rs,"27017",BACKUP_TYPE)
 
-def test_6_modify_data():
+def test_5_modify_data():
     drop_database(primary_rs,"27017")
     load_data(primary_rs,"27017",10)
     count = check_count_data(primary_rs,"27017")
     assert int(count) == 10
-    time.sleep(60)
-    now = datetime.utcnow()
-    pytest.pitr_end = now.strftime("%Y-%m-%dT%H:%M:%S")
-    print("pitr end time: " + pytest.pitr_end)
 
-def test_7_disable_pitr():
-    result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=false --out=json')
-    store_out = json.loads(result)
-    print(store_out)
-    time.sleep(60)
-    for i in range(TIMEOUT):
-        pitr = check_pitr(primary_rs,"27017")
-        if pitr:
-            time.sleep(1)
-            print("waiting for pitr to be disabled")
-        else:
-            print("pitr disabled")
-            break
-    assert check_pitr(primary_rs,"27017") == False
+def test_6_restore():
+    make_restore(primary_rs,"27017",pytest.backup_name)
 
-def test_8_restore():
-    make_restore(secondary1_rs,"27017",pytest.backup_name)
+def test_7_check_restore():
+    restart_all()
+    resync_storage(primary_rs,"27017")
     count = check_count_data(primary_rs,"27017")
     assert int(count) == SIZE
+    check_agents_status(primary_rs,"27017")
 
-def test_9_pitr_restore():
-    if BACKUP_TYPE == "logical":
-        print("performing pitr restore from backup " + pytest.backup_name + " to timestamp " + pytest.pitr_end)
-        make_pitr_restore(secondary1_rs,"27017",pytest.backup_name,pytest.pitr_end)
-        count = check_count_data(primary_rs,"27017")
-        assert int(count) == 10
-    if BACKUP_TYPE == "physical":
-        print("performing pitr replay from  " + pytest.pitr_start + " to " + pytest.pitr_end)
-        make_pitr_replay(primary_rs,"27017",pytest.pitr_start,pytest.pitr_end)
-        count = check_count_data(primary_rs,"27017")
-        assert int(count) == 10
-
-def test_10_get_logs():
-    print("pbm logs:")
-    get_pbm_logs(primary_rs,"27017")
