@@ -19,7 +19,8 @@ secondary1_rs = testinfra.utils.ansible_runner.AnsibleRunner(
 secondary2_rs = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('secondary2-rs')
 
-SIZE = int(os.getenv("SIZE")) * 1024
+SIZE = int(os.getenv("SIZE")) * 1000
+INDEXED = int(os.getenv("INDEXED")) 
 TIMEOUT = int(os.getenv("TIMEOUT"))
 STORAGE = os.getenv("STORAGE")
 BACKUP_TYPE = os.getenv("BACKUP_TYPE")
@@ -139,7 +140,7 @@ def restart_all():
     for i in [secondary1_rs, secondary2_rs, primary_rs]:
         restart_pbm_agent(i)
         time.sleep(10)
-    time.sleep(600)
+    time.sleep(10)
 
 def resync_storage(node,port):
     output = node.check_output('pbm config --mongodb-uri=mongodb://localhost:' + port + '/ --force-resync')
@@ -177,7 +178,14 @@ def make_pitr_replay(node,port,start,end):
             time.sleep(1)
 
 def load_data(node,port,count):
-    config = [{'database': 'test','collection': 'test','count': 1,'content': {'num': {'type': 'int','minInt': 1000, 'maxInt': 9999},'text': {'type': 'string','minLength': 20, 'maxLength': 20},'binary': {'type': 'binary','minLength': 1000, 'maxLength': 1000}},'indexes': [{'name':'idx_num','key': {'num': 1}},{'name':'idx_text','key': {'text': 1}}]}]
+    config = [
+        {'database': 'test','collection': 'test','count': 1,
+        'content': {
+        'indexed': {'type': 'binary','minLength': INDEXED, 'maxLength': INDEXED},
+        'nonindexed': {'type': 'binary','minLength': 1024 - INDEXED, 'maxLength': 1024 - INDEXED }},
+        'indexes': [
+        {'name':'idx_1','key': {'indexed': 1}}
+        ]}]
     config[0]["count"] = count
     config_json = json.dumps(config, indent=4)
     print(config_json)
@@ -187,6 +195,11 @@ def load_data(node,port,count):
 def check_count_data(node,port):
     result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.test.count()' --quiet | tail -1")
     print('count objects in collection: ' + result)
+    return result
+
+def check_dbstats(node,port):
+    result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.stats()' --quiet ")
+    print('db stats: ' + result)
     return result
 
 def drop_database(node,port):
@@ -218,6 +231,7 @@ def test_3_prepare_data():
     load_data(primary_rs,"27017",SIZE)
     count = check_count_data(primary_rs,"27017")
     assert int(count) == SIZE
+    check_dbstats(primary_rs,"27017")
 
 def test_4_backup():
     pytest.backup_name = make_backup(secondary1_rs,"27017",BACKUP_TYPE)
