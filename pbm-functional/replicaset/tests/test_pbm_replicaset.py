@@ -140,7 +140,7 @@ def restart_all():
     for i in [secondary1_rs, secondary2_rs, primary_rs]:
         restart_pbm_agent(i)
         time.sleep(10)
-    time.sleep(10)
+    time.sleep(300)
 
 def resync_storage(node,port):
     output = node.check_output('pbm config --mongodb-uri=mongodb://localhost:' + port + '/ --force-resync')
