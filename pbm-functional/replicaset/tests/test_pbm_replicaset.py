@@ -67,7 +67,7 @@ def check_agents_status(node,port):
     result = node.check_output('pbm status --mongodb-uri=mongodb://localhost:' + port + '/ --out=json')
     parsed_result = json.loads(result)
     print("pbm status:")
-    print(json.dumps(parsed_result['cluster'], indent=4))
+    print(json.dumps(parsed_result, indent=4))
     for replicaset in parsed_result['cluster']:
         for host in replicaset['nodes']:
             assert host['ok'] == True
@@ -136,11 +136,10 @@ def restart_all():
     for i in [secondary1_rs, secondary2_rs, primary_rs]:
         restart_mongod(i)
         time.sleep(10)
-    time.sleep(300)
     for i in [secondary1_rs, secondary2_rs, primary_rs]:
         restart_pbm_agent(i)
         time.sleep(10)
-    time.sleep(300)
+    time.sleep(600)
 
 def resync_storage(node,port):
     output = node.check_output('pbm config --mongodb-uri=mongodb://localhost:' + port + '/ --force-resync')

@@ -67,3 +67,10 @@
         state: present
         key: "{{ ssh_pubkey }}"
       when: ssh_user != "none" and ssh_pubkey != "none"
+
+    - name: Allow sudo without password
+      community.general.sudoers:
+        name: "{{ ssh_user }}"
+        state: present
+        user: "{{ ssh_user }}"
+        commands: ANY
