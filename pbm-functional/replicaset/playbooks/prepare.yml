@@ -74,3 +74,4 @@
         state: present
         user: "{{ ssh_user }}"
         commands: ANY
+      when: ssh_user != "none" and ssh_pubkey != "none"
