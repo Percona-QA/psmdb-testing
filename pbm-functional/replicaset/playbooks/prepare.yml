@@ -69,9 +69,9 @@
       when: ssh_user != "none" and ssh_pubkey != "none"
 
     - name: Allow sudo without password
-      community.general.sudoers:
-        name: "{{ ssh_user }}"
+      lineinfile:
+        dest: /etc/sudoers
         state: present
-        user: "{{ ssh_user }}"
-        commands: ANY
+        regexp: '^%wheel'
+        line: '%wheel ALL=(ALL) NOPASSWD: ALL'
       when: ssh_user != "none" and ssh_pubkey != "none"
