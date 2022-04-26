@@ -228,6 +228,7 @@ def test_2_agents_status():
 
 def test_3_prepare_data():
     load_data(primary_rs,"27017",SIZE)
+    time.sleep(60)
     count = check_count_data(primary_rs,"27017")
     assert int(count) == SIZE
     check_dbstats(primary_rs,"27017")

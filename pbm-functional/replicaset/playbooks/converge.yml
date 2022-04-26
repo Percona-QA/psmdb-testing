@@ -156,7 +156,7 @@
       replace:
         path: /etc/mongod.conf
         regexp: '^#replication:'
-        replace: 'replication:\n  replSetName: "rs"\n  oplogSizeMB: 1024'
+        replace: 'replication:\n  replSetName: "rs"'
 
     - name: bind mongod to 0.0.0.0
       replace:
