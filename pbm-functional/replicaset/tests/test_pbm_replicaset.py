@@ -219,8 +219,8 @@ def test_1_setup_storage():
         assert store_out['storage']['s3']['endpointUrl'] == 'http://minio:9000'
     if STORAGE == "aws":
         assert store_out['storage']['type'] == 's3'
-        assert store_out['storage']['s3']['region'] == 'us-east-2'
-        assert store_out['storage']['s3']['bucket'] == 'pbm-testing' 
+        assert store_out['storage']['s3']['region'] == 'us-west-2'
+        assert store_out['storage']['s3']['bucket'] == 'pbm-testing-west'
     time.sleep(10)
 
 def test_2_agents_status():

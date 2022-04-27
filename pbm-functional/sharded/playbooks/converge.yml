@@ -177,8 +177,8 @@
           storage:
             type: s3
             s3:
-               region: us-east-2
-               bucket: pbm-testing
+               region: us-west-2
+               bucket: pbm-testing-west
                prefix: sharded
                credentials:
                  access-key-id: {{ access_key }}
