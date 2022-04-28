@@ -19,8 +19,8 @@ secondary1_rs = testinfra.utils.ansible_runner.AnsibleRunner(
 secondary2_rs = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('secondary2-rs')
 
-SIZE = int(os.getenv("SIZE")) * 1000
-INDEXED = int(os.getenv("INDEXED")) 
+SIZE = int(os.getenv("SIZE"))
+INDEXED = int(os.getenv("INDEXED"))
 TIMEOUT = int(os.getenv("TIMEOUT"))
 STORAGE = os.getenv("STORAGE")
 BACKUP_TYPE = os.getenv("BACKUP_TYPE")
@@ -180,8 +180,8 @@ def load_data(node,port,count):
     config = [
         {'database': 'test','collection': 'test','count': 1,
         'content': {
-        'indexed': {'type': 'binary','minLength': INDEXED, 'maxLength': INDEXED},
-        'nonindexed': {'type': 'binary','minLength': 1024 - INDEXED, 'maxLength': 1024 - INDEXED }},
+        'indexed': {'type': 'binary','minLength': INDEXED * 1024, 'maxLength': INDEXED * 1024},
+        'nonindexed': {'type': 'binary','minLength': (1024 - INDEXED) * 1024, 'maxLength': (1024 - INDEXED) * 1024 }},
         'indexes': [
         {'name':'idx_1','key': {'indexed': 1}}
         ]}]
@@ -189,7 +189,7 @@ def load_data(node,port,count):
     config_json = json.dumps(config, indent=4)
     print(config_json)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
-    node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json')
+    node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
 
 def check_count_data(node,port):
     result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.test.count()' --quiet | tail -1")
