@@ -19,7 +19,7 @@ secondary1_rs = testinfra.utils.ansible_runner.AnsibleRunner(
 secondary2_rs = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('secondary2-rs')
 
-SIZE = int(os.getenv("SIZE"))
+SIZE = int(os.getenv("SIZE")) * 1000
 INDEXED = int(os.getenv("INDEXED"))
 TIMEOUT = int(os.getenv("TIMEOUT"))
 STORAGE = os.getenv("STORAGE")
@@ -180,16 +180,26 @@ def load_data(node,port,count):
     config = [
         {'database': 'test','collection': 'test','count': 1,
         'content': {
-        'indexed': {'type': 'binary','minLength': INDEXED * 1024, 'maxLength': INDEXED * 1024},
-        'nonindexed': {'type': 'binary','minLength': (1024 - INDEXED) * 1024, 'maxLength': (1024 - INDEXED) * 1024 }},
+            'idx': {'type': 'int', 'minInt': 0, 'maxInt': 2147483647 },
+            'num': {'type': 'array', 'minLength': 64, 'maxLength': 64, 'arrayContent': { 'type': 'long', 'minLong': 0, 'maxLong': 9223372036854775807 }},
+            'data1': {'type': 'binary', 'minLength': 64, 'maxLength': 64 },
+            'data2': {'type': 'binary', 'minLength': 64, 'maxLength': 64 },
+            'changed': {'type': 'int', 'minInt': -1, 'maxInt': -1},
+            'data0': {
+                'type': 'object', 'objectContent': {
+                    'str': {'type': 'string', 'minLength': 64, 'maxLength': 64 },
+                    'strs': {'type': 'array', 'minLength': 3, 'maxLength': 3, 'arrayContent': {'type': 'string', 'minLength': 64, 'maxLength': 64 }}
+                    }
+                }
+            },
         'indexes': [
-        {'name':'idx_1','key': {'indexed': 1}}
+            {'name':'idx_1','key': {'idx': 1}}
         ]}]
     config[0]["count"] = count
     config_json = json.dumps(config, indent=4)
     print(config_json)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
-    node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
+    node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json')
 
 def check_count_data(node,port):
     result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.test.count()' --quiet | tail -1")
