@@ -95,7 +95,7 @@ def make_backup(node,port,type):
         running = check_status(node,port)
         if not running:
             if type == 'physical':
-                start = node.check_output('pbm backup --mongodb-uri=mongodb://localhost:' + port + '/ --out=json --type=' + type )
+                start = node.check_output('pbm backup --compression=none --mongodb-uri=mongodb://localhost:' + port + '/ --out=json --type=' + type )
             else:
                 start = node.check_output('pbm backup --mongodb-uri=mongodb://localhost:' + port + '/ --out=json')
             name = json.loads(start)['name']
