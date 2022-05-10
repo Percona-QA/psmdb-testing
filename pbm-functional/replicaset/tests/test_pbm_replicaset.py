@@ -257,7 +257,7 @@ def test_6_restore():
 
 def test_7_check_restore():
     restart_all()
+    resync_storage(primary_rs,"27017"
     count = check_count_data(primary_rs,"27017")
     assert int(count) == SIZE
     check_agents_status(primary_rs,"27017")
-    resync_storage(primary_rs,"27017")
