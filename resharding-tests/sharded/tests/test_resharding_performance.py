@@ -134,7 +134,11 @@ def test_2_load_and_reshard():
     for i in [primary_rs0, primary_rs1]:
         collect_stats(i,"27018",TIMEOUT)
     time.sleep(300)
+    resharding_start = now.strftime("%Y-%m-%dT%H:%M:%S")
+    print("resharding start time: " + resharding_start)
     reshard_collection()
+    resharding_finish = now.strftime("%Y-%m-%dT%H:%M:%S")
+    print("resharding finish time: " + resharding_finish)
     check_sharded_status()
     check_distribution_info()
 
