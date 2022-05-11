@@ -393,24 +393,6 @@
         name: mongos
         state: started
 
-    - name: edit pbm-agent service config for deb
-      blockinfile:
-        path: /etc/default/pbm-agent
-        mode: '0644'
-        create: true
-        block: |
-          PBM_MONGODB_URI="mongodb://localhost:27019/"
-      when: ansible_os_family == "Debian"
-
-    - name: edit pbm-agent service config for rhel
-      blockinfile:
-        path: /etc/sysconfig/pbm-agent
-        mode: '0644'
-        create: true
-        block: |
-          PBM_MONGODB_URI="mongodb://localhost:27019/"
-      when: ansible_os_family == "RedHat"
-
 - name: Add shards
   hosts: cfg-primary
   become: true

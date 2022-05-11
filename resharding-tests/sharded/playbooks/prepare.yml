@@ -75,3 +75,6 @@
         regexp: '^%wheel'
         line: '%wheel ALL=(ALL) NOPASSWD: ALL'
       when: ssh_user != "none" and ssh_pubkey != "none"
+
+    - name: Disable selinux
+      command: setenforce 0
