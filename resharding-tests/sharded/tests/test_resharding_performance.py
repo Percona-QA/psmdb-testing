@@ -137,7 +137,6 @@ def test_2_load_and_reshard():
     reshard_collection()
     check_sharded_status()
     check_distribution_info()
-    time.sleep(int(TIMEOUT) - 300)
 
 def test_3_get_stats_configserver():
     print("primary configserver stats:")
