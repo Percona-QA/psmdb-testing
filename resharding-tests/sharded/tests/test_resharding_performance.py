@@ -84,17 +84,17 @@ def append_data(timeout):
     primary_cfg.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
     primary_cfg.run_test('timeout -s 9 ' + timeout + ' mgodatagen --uri=mongodb://127.0.0.1:27017/ -f /tmp/generated_config.json -n 1 -a -b 100 >/tmp/append.txt 2>&1 &')
 
-def collect_stats(node,port,timeout,output):
-    node.run_test('timeout -s 9 ' + timeout + ' mongostat --port ' + port + ' >/tmp/mongostat_' + output + '.txt 2>&1 &')
-    node.run_test('timeout -s 9 ' + timeout + ' top -b -n ' + timeout + ' > /tmp/top_' + output + '.txt 2>&1 &')
-    node.run_test('timeout -s 9 ' + timeout + ' iostat 1 ' + timeout + ' >/tmp/iostat_' + output + '.txt 2>&1 &')
+def collect_stats(node,port,timeout):
+    node.run_test('timeout -s 9 ' + timeout + ' mongostat --port ' + port + ' >/tmp/mongostat.txt 2>&1 &')
+    node.run_test('timeout -s 9 ' + timeout + ' top -b -n ' + timeout + ' > /tmp/top.txt 2>&1 &')
+    node.run_test('timeout -s 9 ' + timeout + ' iostat 1 ' + timeout + ' >/tmp/iostat.txt 2>&1 &')
 
-def get_stats(node,output):
-    mongostat = node.check_output('cat /tmp/mongostat_' + output + '.txt')
+def get_stats(node):
+    mongostat = node.check_output('cat /tmp/mongostat.txt')
     print(mongostat)
-    top = node.check_output('cat /tmp/top_' + output + '.txt')
+    top = node.check_output('cat /tmp/top.txt')
     print(top)
-    iostat = node.check_output('cat /tmp/iostat_' + output + '.txt')
+    iostat = node.check_output('cat /tmp/iostat.txt')
     print(iostat)
 
 def get_generator_result():
@@ -121,62 +121,33 @@ def reshard_collection():
     print('reshard collection binary:')
     print(result)
 
-def test_11_prepare_base_data():
+def test_1_prepare_base_data():
     load_data(SIZE)
     count = check_count_data()
     assert int(count) == SIZE
     check_sharded_status()
     check_distribution_info()
 
-def test_12_collect_stats_before_resharding():
+def test_2_load_and_reshard():
     append_data(TIMEOUT)
-    collect_stats(primary_cfg,"27019",TIMEOUT,"before")
+    collect_stats(primary_cfg,"27019",TIMEOUT)
     for i in [primary_rs0, primary_rs1]:
-        collect_stats(i,"27018",TIMEOUT,"before")
-    time.sleep(int(TIMEOUT))
-    print("append data:")
-    get_generator_result()
-    check_sharded_status()
-    check_distribution_info()
-
-def test_13_get_stats_configserver():
-    print("primary configserver stats:")
-    get_stats(primary_cfg,"before")
-
-def test_14_get_stats_primary_rs0():
-    print("primary rs0 stats:")
-    get_stats(primary_rs0,"before")
-
-def test_15_get_stats_primary_rs1():
-    print("primary rs1 stats:")
-    get_stats(primary_rs1,"before")
-
-def test_16_reshard_collection():
+        collect_stats(i,"27018",TIMEOUT)
+    time.sleep(300)
     reshard_collection()
     check_sharded_status()
     check_distribution_info()
+    time.sleep(int(TIMEOUT) - 300)
 
-def test_17_collect_stats_after_resharding():
-    append_data(TIMEOUT)
-    collect_stats(primary_cfg,"27019",TIMEOUT,"after")
-    for i in [primary_rs0, primary_rs1]:
-        collect_stats(i,"27018",TIMEOUT,"after")
-    time.sleep(int(TIMEOUT))
-    print("append data:")
-    get_generator_result()
-    check_sharded_status()
-    check_distribution_info()
-
-def test_18_get_stats_configserver():
+def test_3_get_stats_configserver():
     print("primary configserver stats:")
-    get_stats(primary_cfg,"after")
+    get_stats(primary_cfg)
 
-def test_19_get_stats_primary_rs0():
+def test_4_get_stats_primary_rs0():
     print("primary rs0 stats:")
-    get_stats(primary_rs0,"after")
+    get_stats(primary_rs0)
 
-def test_20_get_stats_primary_rs1():
+def test_5_get_stats_primary_rs1():
     print("primary rs1 stats:")
-    get_stats(primary_rs1,"after")
-
+    get_stats(primary_rs1)
 
