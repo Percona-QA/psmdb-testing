@@ -60,7 +60,7 @@ def load_data(count):
         'shardCollection': 'test.binary', 'key': {'num': 'hashed' }}, 'content': {
             'num': { 'type': 'long', 'minLong': 0, 'maxLong': 9223372036854775807 },
             'str': { 'type': 'string', 'minLength': 20, 'maxLength': 20 },
-            'binary': {'type': 'binary','minLength': 1000, 'maxLength': 1000}
+            'binary': {'type': 'binary','minLength': 1048552, 'maxLength': 1048552}
             },
         'indexes': [
             {'name':'idx_1','key': {'str': 'hashed'}}
@@ -70,7 +70,7 @@ def load_data(count):
     config_json = json.dumps(config, indent=4)
     print(config_json)
     primary_cfg.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
-    primary_cfg.run_test('mgodatagen --uri=mongodb://127.0.0.1:27017/ -f /tmp/generated_config.json')
+    primary_cfg.run_test('mgodatagen --uri=mongodb://127.0.0.1:27017/ -f /tmp/generated_config.json -b 10')
 
 def append_data(timeout):
     config = [{'database': 'test','collection': 'binary','count': 1, 'content': {
@@ -89,11 +89,15 @@ def collect_stats(node,port,timeout):
     node.run_test('timeout -s 9 ' + timeout + ' top -b -n ' + timeout + ' > /tmp/top.txt 2>&1 &')
     node.run_test('timeout -s 9 ' + timeout + ' iostat 1 ' + timeout + ' >/tmp/iostat.txt 2>&1 &')
 
-def get_stats(node):
+def get_mongostat(node):
     mongostat = node.check_output('cat /tmp/mongostat.txt')
     print(mongostat)
+
+def get_top(node):
     top = node.check_output('cat /tmp/top.txt')
     print(top)
+
+def get_iostat(node):
     iostat = node.check_output('cat /tmp/iostat.txt')
     print(iostat)
 
@@ -134,23 +138,49 @@ def test_2_load_and_reshard():
     for i in [primary_rs0, primary_rs1]:
         collect_stats(i,"27018",TIMEOUT)
     time.sleep(300)
+    now = datetime.utcnow()
     resharding_start = now.strftime("%Y-%m-%dT%H:%M:%S")
     print("resharding start time: " + resharding_start)
     reshard_collection()
+    now = datetime.utcnow()
     resharding_finish = now.strftime("%Y-%m-%dT%H:%M:%S")
     print("resharding finish time: " + resharding_finish)
+    time.sleep(300)
     check_sharded_status()
     check_distribution_info()
 
-def test_3_get_stats_configserver():
+def test_3_get_top_configserver():
     print("primary configserver stats:")
-    get_stats(primary_cfg)
+    get_top(primary_cfg)
 
-def test_4_get_stats_primary_rs0():
-    print("primary rs0 stats:")
-    get_stats(primary_rs0)
+def test_3_get_mongostat_configserver():
+    print("primary configserver stats:")
+    get_mongostat(primary_cfg)
 
-def test_5_get_stats_primary_rs1():
-    print("primary rs1 stats:")
-    get_stats(primary_rs1)
+def test_3_get_iostat_configserver():
+    print("primary configserver stats:")
+    get_iostat(primary_cfg)
 
+def test_4_get_top_primary_rs0():
+    print("primary configserver stats:")
+    get_top(primary_rs0)
+
+def test_4_get_mongostat_primary_rs0():
+    print("primary configserver stats:")
+    get_mongostat(primary_rs0)
+
+def test_4_get_iostat_primary_rs0():
+    print("primary configserver stats:")
+    get_iostat(primary_rs0)
+
+def test_5_get_top_primary_rs1():
+    print("primary configserver stats:")
+    get_top(primary_rs1)
+
+def test_5_get_mongostat_primary_rs1():
+    print("primary configserver stats:")
+    get_mongostat(primary_rs1)
+
+def test_5_get_iostat_primary_rs1():
+    print("primary configserver stats:")
+    get_iostat(primary_rs1)
