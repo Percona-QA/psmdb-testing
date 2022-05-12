@@ -137,7 +137,7 @@ def test_2_load_and_reshard():
     collect_stats(primary_cfg,"27019",TIMEOUT)
     for i in [primary_rs0, primary_rs1]:
         collect_stats(i,"27018",TIMEOUT)
-    time.sleep(300)
+    time.sleep(240)
     now = datetime.utcnow()
     resharding_start = now.strftime("%Y-%m-%dT%H:%M:%S")
     print("resharding start time: " + resharding_start)
@@ -145,7 +145,7 @@ def test_2_load_and_reshard():
     now = datetime.utcnow()
     resharding_finish = now.strftime("%Y-%m-%dT%H:%M:%S")
     print("resharding finish time: " + resharding_finish)
-    time.sleep(300)
+    time.sleep(240)
     check_sharded_status()
     check_distribution_info()
 
