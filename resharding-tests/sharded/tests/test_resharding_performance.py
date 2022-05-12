@@ -86,8 +86,8 @@ def append_data(timeout):
 
 def collect_stats(node,port,timeout):
     node.run_test('timeout -s 9 ' + timeout + ' mongostat --port ' + port + ' >/tmp/mongostat.txt 2>&1 &')
-    node.run_test('timeout -s 9 ' + timeout + ' top -b -n ' + timeout + ' > /tmp/top.txt 2>&1 &')
-    node.run_test('timeout -s 9 ' + timeout + ' iostat 1 ' + timeout + ' >/tmp/iostat.txt 2>&1 &')
+    node.run_test('timeout -s 9 ' + timeout + ' top -u mongod -b -n ' + timeout + ' > /tmp/top.txt 2>&1 &')
+    node.run_test('timeout -s 9 ' + timeout + ' iostat -z -t 1 ' + timeout + ' >/tmp/iostat.txt 2>&1 &')
 
 def get_mongostat(node):
     mongostat = node.check_output('cat /tmp/mongostat.txt')
