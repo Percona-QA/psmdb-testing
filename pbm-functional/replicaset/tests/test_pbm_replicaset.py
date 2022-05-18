@@ -244,7 +244,7 @@ def test_3_prepare_data():
     check_dbstats(primary_rs,"27017")
 
 def test_4_backup():
-    pytest.backup_name = make_backup(secondary1_rs,"27017",BACKUP_TYPE)
+    pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
 
 def test_5_modify_data():
     drop_database(primary_rs,"27017")
