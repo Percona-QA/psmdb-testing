@@ -52,13 +52,13 @@ def get_pbm_logs(node,port):
     print(logs)
 
 def check_status(node,port):
-    status = node.check_output('pbm status --mongodb-uri=mongodb://localhost:' + port + '/ --out=json')
+    status = node.check_output('pbm status --mongodb-uri=mongodb://localhost:' + port + '/ --out=json 2>/dev/null')
     running = json.loads(status)['running']
     if running:
         return running
 
 def check_pitr(node,port):
-    status = node.check_output('pbm status --mongodb-uri=mongodb://localhost:' + port + '/ --out=json')
+    status = node.check_output('pbm status --mongodb-uri=mongodb://localhost:' + port + '/ --out=json 2>/dev/null')
     running = json.loads(status)['pitr']['run']
     return bool(running)
 
@@ -220,12 +220,33 @@ def test_1_setup_storage():
 def test_2_agents_status():
     check_agents_status(primary_rs,"27017")
 
-def test_3_setup_pitr():
-    result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --out=json')
+def test_3_prepare_data():
+    load_data(primary_rs,"27017",SIZE)
+    count = check_count_data(primary_rs,"27017")
+    assert int(count) == SIZE
+
+def test_4_setup_pitr():
+    if BACKUP_TYPE == "physical":
+        result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --set pitr.oplogOnly=true --out=json')
+        for i in range(TIMEOUT):
+            pitr = check_pitr(primary_rs,"27017")
+            if not pitr:
+                print("waiting for pitr to be enabled")
+                time.sleep(1)
+            else:
+                print("pitr enabled")
+                break
+        assert check_pitr(primary_rs,"27017") == True
+    else:
+        result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --out=json')
     store_out = json.loads(result)
     print(store_out)
-    print("we need to create base logical snapshot for pitr")
-    make_backup(primary_rs,"27017","logical")
+
+def test_5_backup():
+    now = datetime.utcnow()
+    pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
+    print("pitr start time: " + pytest.pitr_start)
+    pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
     for i in range(TIMEOUT):
         pitr = check_pitr(primary_rs,"27017")
         if not pitr:
@@ -235,17 +256,6 @@ def test_3_setup_pitr():
             print("pitr enabled")
             break
     assert check_pitr(primary_rs,"27017") == True
-
-def test_4_prepare_data():
-    load_data(primary_rs,"27017",SIZE)
-    count = check_count_data(primary_rs,"27017")
-    assert int(count) == SIZE
-
-def test_5_backup():
-    now = datetime.utcnow()
-    pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
-    print("pitr start time: " + pytest.pitr_start)
-    pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
     print("pbm logs:")
     get_pbm_logs(primary_rs,"27017")
 
@@ -278,6 +288,8 @@ def test_8_restore():
     make_restore(secondary1_rs,"27017",pytest.backup_name)
     count = check_count_data(primary_rs,"27017")
     assert int(count) == SIZE
+    print("pbm logs:")
+    get_pbm_logs(primary_rs,"27017")
 
 def test_9_pitr_restore():
     if BACKUP_TYPE == "logical":
@@ -290,7 +302,5 @@ def test_9_pitr_restore():
         make_pitr_replay(primary_rs,"27017",pytest.pitr_start,pytest.pitr_end)
         count = check_count_data(primary_rs,"27017")
         assert int(count) == 10
-
-def test_10_get_logs():
     print("pbm logs:")
     get_pbm_logs(primary_rs,"27017")
