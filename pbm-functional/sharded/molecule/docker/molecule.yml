@@ -148,6 +148,7 @@ provisioner:
   playbooks:
     converge: ../../playbooks/converge.yml
     cleanup: ../../playbooks/cleanup.yml
+    side_effect: ../../playbooks/side-effect.yml
 verifier:
   name: testinfra
   directory: ../../tests/
