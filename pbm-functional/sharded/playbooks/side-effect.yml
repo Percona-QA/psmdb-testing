@@ -1,0 +1,187 @@
+- name: Side effect
+  hosts: mongo
+  become: true
+  become_method: sudo
+  tasks:
+    - name: stop mongod service
+      service: name=mongod state=stopped
+
+    - name: stop mongos on configserver nodes
+      service: name=mongos state=stopped
+      when: inventory_hostname in groups['cfg']
+
+    - name: stop pbm-agent service
+      service: name=pbm-agent state=stopped    
+
+    - name: erase data directory for mongod
+      shell: rm -rf /mnt/data/db/*
+
+- name: Setup rs2
+  hosts: rs0
+  become: true
+  become_method: sudo
+  tasks:
+    - name: get primary ip adrress
+      set_fact:
+        rs0_primary_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+      when: inventory_hostname in groups['rs0-primary']
+
+    - name: debug primary ip adress
+      debug:
+        msg: "{{rs0_primary_ip}}"
+      when: inventory_hostname in groups['rs0-primary']
+
+    - name: get secondaries ip adresses
+      set_fact:
+        rs0_secondary_ips: "{% for host in groups['rs0-secondary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+    - name: debug secondaries ip adresses
+      debug:
+        msg: "{{rs0_secondary_ips}}"
+
+    - name: add replica set name into mongod config
+      replace:
+        path: /etc/mongod.conf
+        regexp: '  replSetName: "rs0"'
+        replace: '  replSetName: "rs2"'
+
+    - name: start mongod service
+      service: name=mongod state=started
+
+    - name: Create a replicaset rs2
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs2
+        login_host: "{{ rs0_primary_ip }}"
+        login_port: 27018
+        members:
+        - host: "{{ rs0_primary_ip }}:27018"
+          priority: 1
+        - host: "{{ rs0_secondary_ips.split(',')[0] }}:27018"
+          priority: 0.5
+        - host: "{{ rs0_secondary_ips.split(',')[1] }}:27018"
+          priority: 0.5
+      when: inventory_hostname in groups['primary']
+
+- name: Setup rs1
+  hosts: rs1
+  become: true
+  become_method: sudo
+  tasks:
+    - name: get primary ip adrress
+      set_fact:
+        rs1_primary_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+      when: inventory_hostname in groups['rs1-primary']
+
+    - name: debug primary ip adress
+      debug:
+        msg: "{{rs1_primary_ip}}"
+      when: inventory_hostname in groups['rs1-primary']
+
+    - name: get secondaries ip adresses
+      set_fact:
+        rs1_secondary_ips: "{% for host in groups['rs1-secondary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+    - name: debug secondaries ip adresses
+      debug:
+        msg: "{{rs1_secondary_ips}}"
+
+    - name: start mongod service
+      service: name=mongod state=started
+
+    - name: Create a replicaset rs1
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs1
+        login_host: "{{ rs1_primary_ip }}"
+        login_port: 27018
+        members:
+        - host: "{{ rs1_primary_ip }}:27018"
+          priority: 1
+        - host: "{{ rs1_secondary_ips.split(',')[0] }}:27018"
+          priority: 0.5
+        - host: "{{ rs1_secondary_ips.split(',')[1] }}:27018"
+          priority: 0.5
+      when: inventory_hostname in groups['primary']
+
+- name: Setup cfg
+  hosts: cfg
+  become: true
+  become_method: sudo
+  tasks:
+    - name: get primary ip adrress
+      set_fact:
+        cfg_primary_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+      when: inventory_hostname in groups['cfg-primary']
+
+    - name: debug primary ip adress
+      debug:
+        msg: "{{cfg_primary_ip}}"
+      when: inventory_hostname in groups['cfg-primary']
+
+    - name: get secondaries ip adresses
+      set_fact:
+        cfg_secondary_ips: "{% for host in groups['cfg-secondary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+    - name: debug secondaries ip adresses
+      debug:
+        msg: "{{cfg_secondary_ips}}"
+
+    - name: start mongod service
+      service: name=mongod state=started
+
+    - name: Create a replicaset cfg
+      community.mongodb.mongodb_replicaset:
+        replica_set: cfg
+        login_host: "{{ cfg_primary_ip }}"
+        login_port: 27019
+        members:
+        - host: "{{ cfg_primary_ip }}:27019"
+          priority: 1
+        - host: "{{ cfg_secondary_ips.split(',')[0] }}:27019"
+          priority: 0.5
+        - host: "{{ cfg_secondary_ips.split(',')[1] }}:27019"
+          priority: 0.5
+      when: inventory_hostname in groups['primary']
+
+    - name: start mongos on configserver nodes
+      service:
+        name: mongos
+        state: started
+
+- name: Add shards
+  hosts: cfg-primary
+  become: true
+  become_method: sudo
+  tasks:
+    - name: get rs0 primary ip adrress
+      set_fact:
+        rs0_primary_ip: "{% for host in groups['rs0-primary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+    - name: debug rs0 primary ip adress
+      debug:
+        msg: "{{rs0_primary_ip}}"
+
+    - name: get rs1 primary ip adrress
+      set_fact:
+        rs1_primary_ip: "{% for host in groups['rs1-primary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+    - name: debug rs1 primary ip adress
+      debug:
+        msg: "{{rs1_primary_ip}}"
+
+    - name: Init sharded
+      command: "{{item}}"
+      with_items:
+        - sleep 60
+        - mongo --eval 'sh.addShard( "rs2/{{ rs0_primary_ip }}:27018" )'
+        - sleep 60
+        - mongo --eval 'sh.addShard( "rs1/{{ rs1_primary_ip }}:27018" )'
+
+- name: start pbm-agents
+  hosts: mongo
+  become: true
+  become_method: sudo
+  tasks:
+    - name: start pbm-agent
+      service:
+        name: pbm-agent
+        state: started
