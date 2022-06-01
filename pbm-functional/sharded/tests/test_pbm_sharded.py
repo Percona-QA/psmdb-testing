@@ -239,8 +239,8 @@ def test_1_setup_storage():
         assert store_out['storage']['s3']['endpointUrl'] == 'http://minio:9000'
     if STORAGE == "aws":
         assert store_out['storage']['type'] == 's3'
-        assert store_out['storage']['s3']['region'] == 'us-east-2'
-        assert store_out['storage']['s3']['bucket'] == 'pbm-testing' 
+        assert store_out['storage']['s3']['region'] == 'us-west-2'
+        assert store_out['storage']['s3']['bucket'] == 'pbm-testing-west'
     time.sleep(10)
 
 def test_2_agents_status():
@@ -263,6 +263,7 @@ def test_4_setup_pitr():
                 print("pitr enabled")
                 break
         assert check_pitr(primary_cfg,"27019") == True
+        time.sleep(10)
     else:
         result = primary_cfg.check_output('pbm config --mongodb-uri=mongodb://localhost:27019/ --set pitr.enabled=true --out=json')
     store_out = json.loads(result)
