@@ -16,7 +16,7 @@
     - name: erase data directory for mongod
       shell: rm -rf /mnt/data/db/*
 
-- name: Setup rs0
+- name: Setup rs0new
   hosts: rs0
   become: true
   become_method: sudo
@@ -39,12 +39,18 @@
       debug:
         msg: "{{rs0_secondary_ips}}"
 
+    - name: add replica set name into mongod config
+      replace:
+        path: /etc/mongod.conf
+        regexp: '  replSetName: "rs0"'
+        replace: '  replSetName: "rs0new"'
+
     - name: start mongod service
       service: name=mongod state=started
 
     - name: Create a replicaset rs0
       community.mongodb.mongodb_replicaset:
-        replica_set: rs0
+        replica_set: rs0new
         login_host: "{{ rs0_primary_ip }}"
         login_port: 27018
         members:
@@ -56,7 +62,7 @@
           priority: 0.5
       when: inventory_hostname in groups['primary']
 
-- name: Setup rs1
+- name: Setup rs1new
   hosts: rs1
   become: true
   become_method: sudo
@@ -79,12 +85,18 @@
       debug:
         msg: "{{rs1_secondary_ips}}"
 
+    - name: add replica set name into mongod config
+      replace:
+        path: /etc/mongod.conf
+        regexp: '  replSetName: "rs1"'
+        replace: '  replSetName: "rs1new"'
+
     - name: start mongod service
       service: name=mongod state=started
 
     - name: Create a replicaset rs1
       community.mongodb.mongodb_replicaset:
-        replica_set: rs1
+        replica_set: rs1new
         login_host: "{{ rs1_primary_ip }}"
         login_port: 27018
         members:
@@ -96,7 +108,7 @@
           priority: 0.5
       when: inventory_hostname in groups['primary']
 
-- name: Setup cfg
+- name: Setup cfgnew
   hosts: cfg
   become: true
   become_method: sudo
@@ -178,9 +190,9 @@
       command: "{{item}}"
       with_items:
         - sleep 60
-        - mongo --eval 'sh.addShard( "rs0/{{ rs0_primary_ip }}:27018" )'
+        - mongo --eval 'sh.addShard( "rs0new/{{ rs0_primary_ip }}:27018" )'
         - sleep 60
-        - mongo --eval 'sh.addShard( "rs1/{{ rs1_primary_ip }}:27018" )'
+        - mongo --eval 'sh.addShard( "rs1new/{{ rs1_primary_ip }}:27018" )'
 
 - name: start pbm-agents
   hosts: mongo

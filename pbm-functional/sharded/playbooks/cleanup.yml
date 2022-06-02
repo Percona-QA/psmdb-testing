@@ -1,9 +1,26 @@
 ---
-- name: cleanup
+- name: cleanup repo
   hosts: localhost
   connection: local
   gather_facts: false
   tasks:
     - name: remove pbm repo
-      command: rm -rf /tmp/percona-backup-mongodb
+      shell: rm -rf /tmp/percona-backup-mongodb
 
+- name: cleanup data
+  hosts: mongo
+  become: true
+  become_method: sudo
+  tasks:
+    - name: stop mongod service
+      service: name=mongod state=stopped
+
+    - name: stop mongos on configserver nodes
+      service: name=mongos state=stopped
+      when: inventory_hostname in groups['cfg']
+
+    - name: stop pbm-agent service
+      service: name=pbm-agent state=stopped
+
+    - name: erase data directory for mongod
+      shell: rm -rf /mnt/data/db/*
