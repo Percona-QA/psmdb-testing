@@ -567,3 +567,6 @@
       service:
         name: pbm-agent
         state: started
+
+    - name: Install PMM
+      include_tasks: ../../../tasks/install_pmm.yml
