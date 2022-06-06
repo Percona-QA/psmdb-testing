@@ -16,4 +16,4 @@
     with_items:
       - pmm-admin config --server-insecure-tls --server-url={{ pmm_host }} --force
       - pmm-admin add mongodb
-    when: pmm_host != "none" and inventory_hostname not in groups['cfg','rs0','rs1']
+    when: pmm_host != "none" 
