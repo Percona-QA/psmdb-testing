@@ -569,4 +569,4 @@
         state: started
 
     - name: Install PMM
-      include_tasks: ../../../tasks/install_pmm.yml
+      include_tasks: ../../../tasks/install_pmm_sharded.yml

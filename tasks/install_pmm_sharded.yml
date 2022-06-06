@@ -15,5 +15,12 @@
     command: "{{item}}"
     with_items:
       - pmm-admin config --server-insecure-tls --server-url={{ pmm_host }} --force
-      - pmm-admin add mongodb
-    when: pmm_host != "none" and inventory_hostname not in groups['cfg','rs0','rs1']
+      - pmm-admin add mongodb {{ ansible_hostname }} 127.0.0.1:27019
+    when: pmm_host != "none" and inventory_hostname in groups['cfg']
+
+  - name: Configure pmm
+    command: "{{item}}"
+    with_items:
+      - pmm-admin config --server-insecure-tls --server-url={{ pmm_host }} --force
+      - pmm-admin add mongodb {{ ansible_hostname }} 127.0.0.1:27018
+    when: pmm_host != "none" and inventory_hostname not in groups['cfg']
