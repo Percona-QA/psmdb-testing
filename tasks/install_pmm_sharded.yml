@@ -1,0 +1,26 @@
+  - name: Install pmm package Debian
+    apt:
+      name: pmm2-client
+    when: ansible_os_family == "Debian"
+
+  - name: Install pmm package RHEL
+    yum:
+      name: pmm2-client
+    when: ansible_os_family == "RedHat"
+
+  - set_fact:
+      pmm_host: "{{ lookup('env', 'PMM_HOST') | default('none', true) }}"
+
+  - name: Configure pmm
+    command: "{{item}}"
+    with_items:
+      - pmm-admin config --server-insecure-tls --server-url={{ pmm_host }} --force
+      - pmm-admin add mongodb {{ ansible_hostname }} 127.0.0.1:27019
+    when: pmm_host != "none" and inventory_hostname in groups['cfg']
+
+  - name: Configure pmm
+    command: "{{item}}"
+    with_items:
+      - pmm-admin config --server-insecure-tls --server-url={{ pmm_host }} --force
+      - pmm-admin add mongodb {{ ansible_hostname }} 127.0.0.1:27018
+    when: pmm_host != "none" and inventory_hostname not in groups['cfg']

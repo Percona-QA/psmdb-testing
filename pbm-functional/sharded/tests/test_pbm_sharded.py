@@ -221,6 +221,14 @@ def check_count_data(node,port):
     print('count objects in collection: ' + result)
     return result
 
+def stop_balancer():
+    result = primary_cfg.check_output("mongo  --eval 'sh.stopBalancer()' --quiet")
+    print(result)
+
+def start_balancer():
+    result = primary_cfg.check_output("mongo  --eval 'sh.startBalancer()' --quiet")
+    print(result)
+
 def drop_database(node,port):
     result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test --eval 'db.dropDatabase()' --quiet")
     print(result)
@@ -311,7 +319,9 @@ def test_7_disable_pitr():
     assert check_pitr(primary_cfg,"27019") == False
 
 def test_8_restore():
+    stop_balancer()
     make_restore(primary_cfg,"27019",pytest.backup_name)
+    start_balancer()
     count = check_count_data(primary_cfg,"27017")
     assert int(count) == SIZE
     print("pbm logs:")
@@ -319,11 +329,13 @@ def test_8_restore():
 
 def test_9_pitr_restore():
     if BACKUP_TYPE == "logical":
+        stop_balancer()
         print("performing pitr restore from backup " + pytest.backup_name + " to timestamp " + pytest.pitr_end)
         make_pitr_restore(primary_cfg,"27019",pytest.backup_name,pytest.pitr_end)
         count = check_count_data(primary_cfg,"27017")
         assert int(count) == 10
     if BACKUP_TYPE == "physical":
+        stop_balancer()
         print("performing pitr replay from  " + pytest.pitr_start + " to " + pytest.pitr_end)
         make_pitr_replay(primary_cfg,"27019",pytest.pitr_start,pytest.pitr_end)
         count = check_count_data(primary_cfg,"27017")

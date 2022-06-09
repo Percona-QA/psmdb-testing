@@ -333,3 +333,5 @@
         state: started
         enabled: yes
 
+    - name: Install PMM
+      include_tasks: ../../../tasks/install_pmm.yml
