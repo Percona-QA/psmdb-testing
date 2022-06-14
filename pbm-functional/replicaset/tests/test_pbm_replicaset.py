@@ -257,8 +257,6 @@ def test_5_backup():
             print("pitr enabled")
             break
     assert check_pitr(primary_rs,"27017") == True
-    print("pbm logs:")
-    get_pbm_logs(primary_rs,"27017")
 
 def test_6_modify_data():
     drop_database(primary_rs,"27017")
@@ -289,8 +287,6 @@ def test_8_restore():
     make_restore(secondary1_rs,"27017",pytest.backup_name)
     count = check_count_data(primary_rs,"27017")
     assert int(count) == SIZE
-    print("pbm logs:")
-    get_pbm_logs(primary_rs,"27017")
 
 def test_9_pitr_restore():
     if BACKUP_TYPE == "logical":
@@ -303,5 +299,3 @@ def test_9_pitr_restore():
         make_pitr_replay(primary_rs,"27017",pytest.pitr_start,pytest.pitr_end)
         count = check_count_data(primary_rs,"27017")
         assert int(count) == 10
-    print("pbm logs:")
-    get_pbm_logs(primary_rs,"27017")
