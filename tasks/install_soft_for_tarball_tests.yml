@@ -129,6 +129,7 @@
     name: "{{ packages }}"
   vars:
     packages:
+    - setuptools
     - pymongo==3.12 
     - subprocess32 
     - PyYAML 
