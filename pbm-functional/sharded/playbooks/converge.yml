@@ -1,7 +1,7 @@
 - name: Build pbm locally
   hosts: localhost
   connection: local
-  gather_facts: false
+  gather_facts: true
   tasks:
     - set_fact:
         branch: "{{ lookup('env', 'BRANCH') | default('main', true) }}"
@@ -17,6 +17,10 @@
       args:
         chdir: /tmp/percona-backup-mongodb
         creates: /tmp/percona-backup-mongodb/bin
+      environment:
+        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
+        GOROOT: /usr/local/go/
+        GOBINPATH: /usr/local/go/bin
 
 - name: Converge
   hosts: mongo
