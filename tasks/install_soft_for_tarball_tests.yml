@@ -126,6 +126,12 @@
 
 - name: Install necessary python package
   pip:
+    name: setuptools
+    state: latest
+  when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version > "20"
+
+- name: Install necessary python package
+  pip:
     name: "{{ packages }}"
   vars:
     packages:
