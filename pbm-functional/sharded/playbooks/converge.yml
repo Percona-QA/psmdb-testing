@@ -1,7 +1,7 @@
 - name: Build pbm locally
   hosts: localhost
   connection: local
-  gather_facts: true
+  gather_facts: yes
   tasks:
     - set_fact:
         branch: "{{ lookup('env', 'BRANCH') | default('main', true) }}"
