@@ -126,10 +126,14 @@
 
 - name: Install necessary python package
   pip:
+    name: setuptools
+    state: latest
+
+- name: Install necessary python package
+  pip:
     name: "{{ packages }}"
   vars:
     packages:
-    - setuptools
     - pymongo==3.12 
     - subprocess32 
     - PyYAML 
