@@ -84,7 +84,7 @@ concurrency_simultaneous_replication --jobs=1|wiredTiger
 concurrency_simultaneous_replication_wiredtiger_cursor_sweeps --jobs=1|wiredTiger
 concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|wiredTiger
 core|wiredTiger
-core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command,requires_timeseries|wiredTiger
+ core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command,requires_timeseries|wiredTiger
 core_auth|wiredTiger
 core_minimum_batch_size|wiredTiger
 core_tde_cbc|wiredTiger
@@ -167,7 +167,7 @@ no_passthrough_with_mongod|wiredTiger
  no_server|wiredTiger
 ocsp --jobs=1|wiredTiger
 parallel --jobs=1|wiredTiger
-parallel --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command --jobs=1|wiredTiger
+ parallel --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command --jobs=1|wiredTiger
 percona_no_passthrough_with_mongod|wiredTiger
 ratelimit|wiredTiger
 read_concern_linearizable_passthrough|wiredTiger
@@ -227,7 +227,7 @@ sharded_jscore_txns_sharded_collections|wiredTiger
 sharded_multi_stmt_txn_jscore_passthrough|wiredTiger
 sharded_retryable_writes_downgrade|wiredTiger
 sharding|wiredTiger
-sharding --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
+ sharding --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
 sharding_api_version_jscore_passthrough|wiredTiger
 sharding_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 sharding_auth_audit|wiredTiger
@@ -236,7 +236,7 @@ sharding_clustered_collections|wiredTiger
 sharding_continuous_config_stepdown|wiredTiger
 sharding_hello_failures|wiredTiger
 sharding_jscore_passthrough|wiredTiger
-sharding_jscore_passthrough --shellWriteMode=compatibility --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
+ sharding_jscore_passthrough --shellWriteMode=compatibility --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
 sharding_last_lts_mongos_and_mixed_shards|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=multiversion_exclude_tags.yml
 sharding_max_mirroring|wiredTiger
 sharding_opportunistic_secondary_targeting|wiredTiger
@@ -358,7 +358,7 @@ concurrency_simultaneous_replication --jobs=1|inMemory
 concurrency_simultaneous_replication_wiredtiger_cursor_sweeps --jobs=1|inMemory
 concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|inMemory
 core|inMemory
-core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command,requires_timeseries|inMemory
+ core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command,requires_timeseries|inMemory
 core_auth|inMemory
 core_minimum_batch_size|inMemory
  core_tde_cbc|inMemory
@@ -441,7 +441,7 @@ no_passthrough_with_mongod|inMemory
  no_server|inMemory
 ocsp --jobs=1|inMemory
 parallel --jobs=1|inMemory
-parallel --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command --jobs=1|inMemory
+ parallel --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command --jobs=1|inMemory
 percona_no_passthrough_with_mongod|inMemory
 ratelimit|inMemory
 read_concern_linearizable_passthrough|inMemory
@@ -501,7 +501,7 @@ sharded_jscore_txns_sharded_collections|inMemory
 sharded_multi_stmt_txn_jscore_passthrough|inMemory
 sharded_retryable_writes_downgrade|inMemory
 sharding|inMemory
-sharding --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
+ sharding --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
 sharding_api_version_jscore_passthrough|inMemory
 sharding_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 sharding_auth_audit|inMemory
@@ -510,7 +510,7 @@ sharding_clustered_collections|inMemory
 sharding_continuous_config_stepdown|inMemory
 sharding_hello_failures|inMemory
 sharding_jscore_passthrough|inMemory
-sharding_jscore_passthrough --shellWriteMode=compatibility --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
+ sharding_jscore_passthrough --shellWriteMode=compatibility --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
 sharding_last_lts_mongos_and_mixed_shards|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=multiversion_exclude_tags.yml
 sharding_max_mirroring|inMemory
 sharding_opportunistic_secondary_targeting|inMemory
