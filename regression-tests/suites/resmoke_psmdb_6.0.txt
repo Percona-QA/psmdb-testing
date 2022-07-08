@@ -237,7 +237,7 @@ sharding_continuous_config_stepdown|wiredTiger
 sharding_hello_failures|wiredTiger
 sharding_jscore_passthrough|wiredTiger
  sharding_jscore_passthrough --shellWriteMode=compatibility --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
-sharding_last_lts_mongos_and_mixed_shards|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 5.0 5.3 && python buildscripts/resmoke.py generate-multiversion-exclude-tags --output=multiversion_exclude_tags.yml
+sharding_last_lts_mongos_and_mixed_shards|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 5.0 5.3 && python buildscripts/resmoke.py generate-multiversion-exclude-tags && mkdir generated_resmoke_config && python buildscripts/resmoke.py generate-multiversion-exclude-tags --oldBinVersion last_lts
 sharding_max_mirroring|wiredTiger
 sharding_opportunistic_secondary_targeting|wiredTiger
 sharding_tde_cbc|wiredTiger
