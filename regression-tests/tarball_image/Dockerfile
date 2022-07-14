@@ -1,8 +1,9 @@
 ARG OS=ubuntu:18.04
+ARG branch=release-4.4.2-4
 FROM $OS
 ARG sources=https://downloads.percona.com/downloads/percona-server-mongodb-LATEST/percona-server-mongodb-4.4.9-10/source/tarball/percona-server-mongodb-4.4.9-10.tar.gz
 ARG tarball=https://downloads.percona.com/downloads/percona-server-mongodb-LATEST/percona-server-mongodb-4.4.9-10/binary/tarball/percona-server-mongodb-4.4.9-10-x86_64.glibc2.17.tar.gz
-ARG builder=https://raw.githubusercontent.com/percona/percona-server-mongodb/master/percona-packaging/scripts/psmdb_builder.sh
+ARG builder=https://raw.githubusercontent.com/percona/percona-server-mongodb/$branch/percona-packaging/scripts/psmdb_builder.sh
 RUN mkdir -p /opt/percona-server-mongodb/ && mkdir -p /work
 RUN if [ -f "/usr/bin/yum" ] ; then yum -y update && yum install -y wget redhat-lsb-core tzdata ; else apt-get update && apt-get -y upgrade && apt-get -y install wget lsb-release iproute2 net-tools tzdata ; fi
 WORKDIR work
