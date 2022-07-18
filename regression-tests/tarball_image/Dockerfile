@@ -1,6 +1,6 @@
 ARG OS=ubuntu:18.04
 FROM $OS
-ARG branch=release-4.4.2-4
+ARG branch=master
 ARG sources=https://downloads.percona.com/downloads/percona-server-mongodb-LATEST/percona-server-mongodb-4.4.9-10/source/tarball/percona-server-mongodb-4.4.9-10.tar.gz
 ARG tarball=https://downloads.percona.com/downloads/percona-server-mongodb-LATEST/percona-server-mongodb-4.4.9-10/binary/tarball/percona-server-mongodb-4.4.9-10-x86_64.glibc2.17.tar.gz
 ARG builder=https://raw.githubusercontent.com/percona/percona-server-mongodb/$branch/percona-packaging/scripts/psmdb_builder.sh
