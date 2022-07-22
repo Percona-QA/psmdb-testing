@@ -160,8 +160,8 @@ multi_shard_multi_stmt_txn_jscore_passthrough|wiredTiger
 multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough|wiredTiger
 multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|wiredTiger
 multi_stmt_txn_jscore_passthrough_with_migration|wiredTiger
-multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 4.9 5.0 5.3
-multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 4.9 5.0 5.3
+multiversion --excludeWithAnyTags=requires_fcv_51 --excludeWithAnyTags=requires_fcv_52 --excludeWithAnyTags=requires_fcv_53 --excludeWithAnyTags=requires_fcv_60|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 4.9 5.0 5.3
+multiversion_auth --excludeWithAnyTags=requires_fcv_51 --excludeWithAnyTags=requires_fcv_52 --excludeWithAnyTags=requires_fcv_53 --excludeWithAnyTags=requires_fcv_60|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 4.9 5.0 5.3
 no_passthrough|wiredTiger
 no_passthrough_with_mongod|wiredTiger
  no_server|wiredTiger
@@ -237,7 +237,7 @@ sharding_continuous_config_stepdown|wiredTiger
 sharding_hello_failures|wiredTiger
 sharding_jscore_passthrough|wiredTiger
  sharding_jscore_passthrough --shellWriteMode=compatibility --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
-sharding_last_lts_mongos_and_mixed_shards|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 5.0 5.3 && python buildscripts/resmoke.py generate-multiversion-exclude-tags && mkdir generated_resmoke_config && python buildscripts/resmoke.py generate-multiversion-exclude-tags --oldBinVersion last_lts
+sharding_last_lts_mongos_and_mixed_shards --excludeWithAnyTags=requires_fcv_51 --excludeWithAnyTags=requires_fcv_52 --excludeWithAnyTags=requires_fcv_53 --excludeWithAnyTags=requires_fcv_60|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 5.0 5.3 && python buildscripts/resmoke.py generate-multiversion-exclude-tags && mkdir generated_resmoke_config && python buildscripts/resmoke.py generate-multiversion-exclude-tags --oldBinVersion last_lts
 sharding_max_mirroring|wiredTiger
 sharding_opportunistic_secondary_targeting|wiredTiger
 sharding_tde_cbc|wiredTiger
@@ -511,7 +511,7 @@ sharding_continuous_config_stepdown|inMemory
 sharding_hello_failures|inMemory
 sharding_jscore_passthrough|inMemory
  sharding_jscore_passthrough --shellWriteMode=compatibility --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
-sharding_last_lts_mongos_and_mixed_shards|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 5.0 5.3 && python buildscripts/resmoke.py generate-multiversion-exclude-tags --output=multiversion_exclude_tags.yml --output=multiversion_exclude_tags.yml
+sharding_last_lts_mongos_and_mixed_shards --excludeWithAnyTags=requires_fcv_51 --excludeWithAnyTags=requires_fcv_52 --excludeWithAnyTags=requires_fcv_53 --excludeWithAnyTags=requires_fcv_60|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 5.0 5.3 && mkdir generated_resmoke_config && python buildscripts/resmoke.py generate-multiversion-exclude-tags --oldBinVersion last_lts
 sharding_max_mirroring|inMemory
 sharding_opportunistic_secondary_targeting|inMemory
  sharding_tde_cbc|inMemory
