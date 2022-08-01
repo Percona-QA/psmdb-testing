@@ -1,5 +1,8 @@
 ---
 # tasks file for PSMDB
+- set_fact:
+    toolkit: "{{ lookup('env', 'ENABLE_TOOLKIT') | default('false', true) }}"
+
 - name: remove the Percona apt main repository
   apt_repository: repo='deb http://repo.percona.com/apt {{ ansible_distribution_release }} main' state=absent update_cache=yes
   when: ansible_os_family == "Debian"
@@ -86,6 +89,20 @@
     - unzip main.zip
     - rm -f main.zip
     - mv psmdb-testing-main /package-testing
+
+- name: setup tools repo with percona-release
+  command: percona-release enable tools
+  when: toolkit != false
+
+- name: Install pt package Debian
+  apt:
+    name: percona-toolkit
+  when: ansible_os_family == "Debian" and toolkit != false
+
+- name: Install pt package RHEL
+  yum:
+    name: percona-toolkit
+  when: ansible_os_family == "RedHat" and toolkit != false
 
 - name: install latest bats from github
   command: "{{ item }}"
