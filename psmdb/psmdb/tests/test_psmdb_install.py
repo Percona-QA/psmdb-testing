@@ -1,6 +1,6 @@
 import os
 import pytest
-
+import json
 import testinfra.utils.ansible_runner
 
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -18,6 +18,17 @@ BINARIES = ['mongo', 'mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge
             'mongofiles', 'mongoimport', 'mongorestore', 'mongotop', 'mongostat']
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
+toolkit = os.environ.get("ENABLE_TOOLKIT")
+
+def test_version(host):
+    if toolkit != "true" :
+        pytest.skip("skipping pt tests")
+    cmd = "pt-mongodb-summary -f json 2>/dev/null"
+    result = host.run(cmd)
+    version = json.loads(result.stdout)['HostInfo']['Version']
+    print("mongod version is: " + version)
+    assert result.rc == 0
+    assert PSMDB_VER in version
 
 def test_functional(host):
     cmd = "/package-testing/scripts/psmdb_test.sh" + ' ' + PSMDB_VER.split('.')[0] + '.' + PSMDB_VER.split('.')[1]
