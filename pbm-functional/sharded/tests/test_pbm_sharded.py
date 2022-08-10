@@ -318,7 +318,7 @@ def test_7_disable_pitr():
             break
     assert check_pitr(primary_cfg,"27019") == False
 
-def test_8_restore():
+def test_80_restore():
     stop_balancer()
     make_restore(primary_cfg,"27019",pytest.backup_name)
     start_balancer()
@@ -326,6 +326,9 @@ def test_8_restore():
     assert int(count) == SIZE
     print("pbm logs:")
     get_pbm_logs(primary_cfg,"27019")
+
+def test_81_sleep_for_debug():
+    time.sleep(TIMEOUT)
 
 def test_9_pitr_restore():
     if BACKUP_TYPE == "logical":
