@@ -7,11 +7,11 @@ if [ -f "${BACKUP_CONFIGFILE}" ]; then
   echo "restore defaults"
   stop_service
   clean_datadir
-  cp ${BACKUP_CONFIGFILE} ${CONFIGFILE}
+  /usr/bin/cp ${BACKUP_CONFIGFILE} ${CONFIGFILE}
   start_service
 fi
 
-cp ${CONFIGFILE} ${BACKUP_CONFIGFILE}
+/usr/bin/cp ${CONFIGFILE} ${BACKUP_CONFIGFILE}
 
 mongo admin < /package-testing/scripts/psmdb_ldap/roles.js
 

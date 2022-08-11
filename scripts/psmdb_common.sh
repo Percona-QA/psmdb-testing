@@ -85,7 +85,7 @@ function test_hotbackup {
   fi
   stop_service
   clean_datadir
-  cp -r ${BACKUPDIR}/* ${DATADIR}/
+  /usr/bin/cp -r ${BACKUPDIR}/* ${DATADIR}/
   chown -R mongod:mongod ${DATADIR}
   start_service
   MD5_AFTER=$(mongo localhost:27017/test --quiet --eval "db.runCommand({ dbHash: 1 }).md5" | tail -n1)

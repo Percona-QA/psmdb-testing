@@ -7,7 +7,7 @@ if [ -f "${BACKUP_CONFIGFILE}" ]; then
   echo "restore defaults"
   stop_service
   clean_datadir
-  cp ${BACKUP_CONFIGFILE} ${CONFIGFILE}
+  /usr/bin/cp ${BACKUP_CONFIGFILE} ${CONFIGFILE}
   start_service
 fi
 
