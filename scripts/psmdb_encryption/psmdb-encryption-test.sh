@@ -23,11 +23,11 @@ if [ -f "${BACKUP_CONFIGFILE}" ]; then
   echo "restore defaults"
   stop_service
   clean_datadir
-  /usr/bin/cp ${BACKUP_CONFIGFILE} ${CONFIGFILE}
+  cp ${BACKUP_CONFIGFILE} ${CONFIGFILE}
   start_service
 fi
 
-/usr/bin/cp ${CONFIGFILE} ${BACKUP_CONFIGFILE}
+cp ${CONFIGFILE} ${BACKUP_CONFIGFILE}
 rm -f ~/.mongorc.js
 
 if [ "$1" == "keyfile" ]; then
@@ -67,7 +67,7 @@ if [ "$1" == "keyfile" ]; then
   done
 fi
 
-/usr/bin/cp ${BACKUP_CONFIGFILE} ${CONFIGFILE}
+cp ${BACKUP_CONFIGFILE} ${CONFIGFILE}
 if [ "$1" == "vault" ]; then
   chmod 600 ${TOKEN_FILE}
   chown mongod:mongod ${TOKEN_FILE}
