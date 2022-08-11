@@ -11,7 +11,7 @@ if [ -f "${BACKUP_CONFIGFILE}" ]; then
 fi
 
 
-/usr/bin/percona-server-mongodb-enable-auth.sh -q > /tmp/psmdb_auth.txt 2>&1
+/usr/bin/percona-server-mongodb-enable-auth.sh -u dba -q > /tmp/psmdb_auth.txt 2>&1
 
 echo "db.getSiblingDB('admin').auth('dba', '$(grep 'Password:' /tmp/psmdb_auth.txt | awk -F ':' '{print $2}')');" >> ~/.mongorc.js
 
