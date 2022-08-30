@@ -22,7 +22,7 @@
   include_tasks: ../../../tasks/install_percona_release.yml
 
 - name: Setup pdmdb repo
-  command: percona-release setup {{ version }}
+  command: percona-release setup {{ version.split('.')[0] }}.{{ version.split('.')[1] }} 
   vars:
     version: "{{ lookup('env', 'PDMDB_VERSION') }}"
 
