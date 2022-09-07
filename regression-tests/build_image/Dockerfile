@@ -23,6 +23,7 @@ ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-t
 RUN find jstests -type f | xargs chmod 400 \
     && pip install -r etc/pip/dev-requirements.txt \
     && pip uninstall -y pymongo && pip install pymongo==3.12 \
+    && pip install --upgrade cryptography==36.0.2 \
     && support-files/ldap-sasl/deploy_ldap_and_sasl.sh \
     && ( buildscripts/scons.py CC=/usr/bin/gcc-8 CXX=/usr/bin/g++-8 CPPPATH=/usr/local/include LIBPATH="/usr/local/lib /usr/local/lib64" -j4 build/install/bin/wt || buildscripts/scons.py CC=/usr/bin/gcc-8 CXX=/usr/bin/g++-8 CPPPATH=/usr/local/include LIBPATH="/usr/local/lib /usr/local/lib64" -j4 wt ) \
     && ( cp build/install/bin/wt /usr/bin/ || cp build/opt/third_party/wiredtiger/wt /usr/bin/ )\
