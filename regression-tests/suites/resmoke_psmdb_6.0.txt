@@ -160,8 +160,8 @@ multi_shard_multi_stmt_txn_jscore_passthrough|wiredTiger
 multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough|wiredTiger
 multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|wiredTiger
 multi_stmt_txn_jscore_passthrough_with_migration|wiredTiger
-multiversion --excludeWithAnyTags=requires_fcv_51 --excludeWithAnyTags=requires_fcv_52 --excludeWithAnyTags=requires_fcv_53 --excludeWithAnyTags=requires_fcv_60|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 5.0 5.3
-multiversion_auth --excludeWithAnyTags=requires_fcv_51 --excludeWithAnyTags=requires_fcv_52 --excludeWithAnyTags=requires_fcv_53 --excludeWithAnyTags=requires_fcv_60|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 5.0 5.3
+multiversion --excludeWithAnyTags=requires_fcv_51 --excludeWithAnyTags=requires_fcv_52 --excludeWithAnyTags=requires_fcv_53 --excludeWithAnyTags=requires_fcv_60|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 4.0 4.2 4.4 5.0 5.3
+multiversion_auth --excludeWithAnyTags=requires_fcv_51 --excludeWithAnyTags=requires_fcv_52 --excludeWithAnyTags=requires_fcv_53 --excludeWithAnyTags=requires_fcv_60|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 4.0 4.2 4.4 5.0 5.3
 no_passthrough|wiredTiger
 no_passthrough_with_mongod|wiredTiger
  no_server|wiredTiger
@@ -175,9 +175,9 @@ read_concern_majority_passthrough|wiredTiger
 read_only|wiredTiger
 read_only_sharded|wiredTiger
 redaction|wiredTiger
-replica_sets|wiredTiger
+replica_sets --excludeWithAnyTags=featureFlagShardMerge|wiredTiger
 replica_sets_api_version_jscore_passthrough|wiredTiger
-replica_sets_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+replica_sets_auth --excludeWithAnyTags=featureFlagShardMerge|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 replica_sets_batched_deletes_passthrough|wiredTiger
 replica_sets_fcbis_jscore_passthrough|wiredTiger
 replica_sets_initsync_jscore_passthrough|wiredTiger
@@ -186,17 +186,17 @@ replica_sets_jscore_passthrough|wiredTiger
 replica_sets_kill_secondaries_jscore_passthrough|wiredTiger
 replica_sets_large_txns_format|wiredTiger
 replica_sets_large_txns_format_jscore_passthrough|wiredTiger
-replica_sets_max_mirroring|wiredTiger
+replica_sets_max_mirroring --excludeWithAnyTags=featureFlagShardMerge|wiredTiger
 replica_sets_multi_stmt_txn_jscore_passthrough|wiredTiger
 replica_sets_multi_stmt_txn_kill_primary_jscore_passthrough|wiredTiger
 replica_sets_multi_stmt_txn_stepdown_jscore_passthrough|wiredTiger
 replica_sets_multi_stmt_txn_terminate_primary_jscore_passthrough|wiredTiger
 replica_sets_reconfig_jscore_passthrough|wiredTiger
 replica_sets_reconfig_jscore_stepdown_passthrough|wiredTiger
-replica_sets_tde_cbc|wiredTiger
-replica_sets_tde_gcm|wiredTiger
+replica_sets_tde_cbc --excludeWithAnyTags=featureFlagShardMerge|wiredTiger
+replica_sets_tde_gcm --excludeWithAnyTags=featureFlagShardMerge|wiredTiger
 replica_sets_terminate_primary_jscore_passthrough|wiredTiger
-replica_sets_update_v1_oplog|wiredTiger
+replica_sets_update_v1_oplog --excludeWithAnyTags=featureFlagShardMerge|wiredTiger
 replica_sets_update_v1_oplog_jscore_passthrough|wiredTiger
 resharding_fuzzer|wiredTiger
 resharding_fuzzer_idempotency|wiredTiger
