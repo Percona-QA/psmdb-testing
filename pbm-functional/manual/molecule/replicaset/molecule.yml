@@ -60,7 +60,7 @@ verifier:
     s: true
     junitxml: report.xml
 scenario:
-  name: aws
+  name: replicaset
   test_sequence:
     - create
 #    - prepare

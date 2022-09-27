@@ -150,7 +150,7 @@ verifier:
     s: true
     junitxml: report.xml
 scenario:
-  name: aws
+  name: sharded
   test_sequence:
     - create
 #    - prepare
