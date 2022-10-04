@@ -16,6 +16,7 @@ cp ${CONFIGFILE} ${BACKUP_CONFIGFILE}
 mongo admin < /package-testing/scripts/psmdb_kerberos/roles.js
 
 cat /package-testing/scripts/psmdb_kerberos/mongo_kerberos.conf >> /etc/mongod.conf
+sed -r 's/^  bindIp.+$/  bindIp: 0.0.0.0/' -i /etc/mongod.conf
 
 stop_service
 start_service
