@@ -5,7 +5,7 @@ SERVICE=0
 SYSVCONFIG=0
 CHKCONFIG=0
 
-MONGO_VERSION=$(mongo --version | grep shell | grep -o "[0-9]\.[0-9]")
+#MONGO_VERSION=$(mongo --version | grep shell | grep -o "[0-9]\.[0-9]")
 
 if [ ! -z "$(which systemctl 2>/dev/null)" ]; then
   SYSTEMCTL=1
