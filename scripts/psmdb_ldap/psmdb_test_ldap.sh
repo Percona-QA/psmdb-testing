@@ -3,7 +3,7 @@
 source /package-testing/scripts/psmdb_common.sh
 set -e
 
-if [ -f "${BACKUP_CONFIGFILE}" ]; then 
+if [ -f "${BACKUP_CONFIGFILE}" ]; then
   echo "restore defaults"
   stop_service
   clean_datadir
@@ -20,16 +20,18 @@ cat /package-testing/scripts/psmdb_ldap/mongo_ldap.conf >> /etc/mongod.conf
 stop_service
 start_service
 
-RWROLE=`mongo -u "cn=exttestrw,ou=people,dc=percona,dc=com" -p "exttestrw9a5S" --authenticationDatabase '$external' --authenticationMechanism 'PLAIN' --quiet --eval "db.runCommand({connectionStatus : 1})" | jq '.authInfo.authenticatedUserRoles[] | .role'`
-if [[ $RWROLE == *"clusterAdmin"* ]]; then  
-   echo "LDAP Full permissions OK" 
+RWROLE=`mongo -u "cn=exttestrw,ou=people,dc=percona,dc=com" -p "exttestrw9a5S" --authenticationDatabase '$external' --authenticationMechanism 'PLAIN' --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c "clusterAdmin"`
+if [[ $RWROLE ]]; then
+   echo "LDAP Full permissions OK"
 else
    echo "LDAP Full permissions not OK"
    exit 1
 fi
-ROROLE=`mongo -u "cn=exttestro,ou=people,dc=percona,dc=com" -p "exttestro9a5S" --authenticationDatabase '$external' --authenticationMechanism 'PLAIN' --quiet --eval "db.runCommand({connectionStatus : 1})" | jq '.authInfo.authenticatedUserRoles[] | .role'`
-if [[ $ROROLE != *"clusterAdmin"* ]] && [[ $ROROLE == *"read"* ]]; then  
-   echo "LDAP read-only permissions OK" 
+
+RWROLE=`mongo -u "cn=exttestro,ou=people,dc=percona,dc=com" -p "exttestro9a5S" --authenticationDatabase '$external' --authenticationMechanism 'PLAIN' --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c "clusterAdmin"` || true
+ROROLE=`mongo -u "cn=exttestro,ou=people,dc=percona,dc=com" -p "exttestro9a5S" --authenticationDatabase '$external' --authenticationMechanism 'PLAIN' --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c "read"`
+if [[ $RWROLE == 0 ]] && [[ $ROROLE ]]; then
+   echo "LDAP read-only permissions OK"
 else
    echo	"LDAP read-only permissions not OK"
    exit	1
