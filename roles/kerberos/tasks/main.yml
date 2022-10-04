@@ -52,6 +52,9 @@
 - name: Create mongodb principal
   shell: kadmin.local -q "addprinc -pw {{ mongod_pass }} {{ mongod_user }}/{{ ansible_hostname }}"
 
+- name: Extract mongodb keys into keytab
+  shell: kadmin.local -q "ktadd {{ mongod_user }}/{{ ansible_hostname }}@{{ realm_name|upper() }}"
+
 - name: Copy /etc/krb5.keytab
   copy:
     src: /etc/krb5.keytab
