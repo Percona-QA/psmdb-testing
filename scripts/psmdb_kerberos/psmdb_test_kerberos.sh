@@ -35,7 +35,7 @@ fi
 
 kadmin.local -q "addprinc -pw exttestrw exttestrw"
 kinit exttestrw <<<'exttestrw'
-RWROLE=`mongo --host=$HOSTNAME --authenticationMechanism=GSSAPI --authenticationDatabase='$external' --username exttestro@PERCONATEST.COM --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c userAdminAnyDatabase`
+RWROLE=`mongo --host=$HOSTNAME --authenticationMechanism=GSSAPI --authenticationDatabase='$external' --username exttestrw@PERCONATEST.COM --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c userAdminAnyDatabase`
 if [[ $RWROLE ]]; then
    echo "Kerberos RW permissions OK"
 else
