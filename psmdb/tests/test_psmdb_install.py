@@ -14,7 +14,7 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
 #                           'percona-server-mongodb-server-debuginfo', 'percona-server-mongodb-shell-debuginfo',
 #                           'percona-server-mongodb-tools-debuginfo', 'percona-server-mongodb-debugsource']
 
-BINARIES = ['mongo', 'mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
+BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
             'mongofiles', 'mongoimport', 'mongorestore', 'mongotop', 'mongostat']
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
