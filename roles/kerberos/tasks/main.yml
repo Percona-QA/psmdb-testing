@@ -1,7 +1,7 @@
 ---
 
 - name: Disable selinux for Debian
-  command: setenforce 0  
+  shell: setenforce 0  
   when: ansible_distribution == "Debian"
 
 - name: Make sure we have the entry for hostname in /etc/hosts
