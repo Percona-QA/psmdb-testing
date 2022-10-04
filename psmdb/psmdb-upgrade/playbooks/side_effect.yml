@@ -126,7 +126,7 @@
         update_cache: yes
       vars:
         packages:
-        - percona-mongodb_mongosh
+        - percona-mongodb-mongosh
       when: ansible_os_family == "Debian" and psmdb_mongosh >= "6"
 
     - name: update psmdb rpm packages
