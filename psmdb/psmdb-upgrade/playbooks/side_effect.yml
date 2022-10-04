@@ -13,6 +13,8 @@
 
     - set_fact: from_maj_version={{ from_version.split('.')[0] }}.{{ from_version.split('.')[1] }}
 
+    - set_fact: psmdb_mongosh={{ to_version.split('.')[0] }}
+
     - name: check maj version
       debug: msg={{to_maj_version}}_{{from_maj_version}} 
 
@@ -46,6 +48,7 @@
       vars:
         packages:
         - percona-server-mongodb
+        - percona-mongodb-mongosh
         - percona-server-mongodb-server
         - percona-server-mongodb-mongos
         - percona-server-mongodb-shell
@@ -61,6 +64,7 @@
       vars:
         packages:
         - percona-server-mongodb
+        - percona-mongodb-mongosh
         - percona-server-mongodb-server
         - percona-server-mongodb-mongos
         - percona-server-mongodb-shell
@@ -80,6 +84,7 @@
       vars:
         packages:
         - percona-server-mongodb
+        - percona-mongodb-mongosh
         - percona-server-mongodb-server
         - percona-server-mongodb-mongos
         - percona-server-mongodb-shell
@@ -102,29 +107,27 @@
         - percona-server-mongodb={{ to_version }}*
         - percona-server-mongodb-server={{ to_version }}*
         - percona-server-mongodb-mongos={{ to_version }}*
-        - percona-server-mongodb-shell={{ to_version }}*
         - percona-server-mongodb-tools={{ to_version }}*
 #        - percona-server-mongodb-dbg={{ to_version }}*
       when: ansible_os_family == "Debian"
 
-    - name: update psmdb rpm packages
-      yum:
+    - name: update mongo shell deb packages
+      apt:
         name: "{{ packages }}"
         update_cache: yes
-        state: latest
       vars:
         packages:
-        - percona-server-mongodb-{{ to_version }}
-        - percona-server-mongodb-server-{{ to_version }}
-        - percona-server-mongodb-mongos-{{ to_version }}
-        - percona-server-mongodb-shell-{{ to_version }}
-        - percona-server-mongodb-tools-{{ to_version }}
-#        - percona-server-mongodb-debugsource-{{ to_version }}
-#        - percona-server-mongodb-shell-debuginfo-{{ to_version }}
-#        - percona-server-mongodb-tools-debuginfo-{{ to_version }}
-#        - percona-server-mongodb-mongos-debuginfo-{{ to_version }}
-#        - percona-server-mongodb-server-debuginfo-{{ to_version }}
-      when: ansible_os_family == "RedHat"  and ansible_distribution_major_version == "8"
+        - percona-server-mongodb-shell={{ to_version }}*
+      when: ansible_os_family == "Debian" and psmdb_mongosh < "6"
+
+    - name: update mongosh deb packages
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+      vars:
+        packages:
+        - percona-mongodb_mongosh
+      when: ansible_os_family == "Debian" and psmdb_mongosh >= "6"
 
     - name: update psmdb rpm packages
       yum:
@@ -136,10 +139,64 @@
         - percona-server-mongodb-{{ to_version }}
         - percona-server-mongodb-server-{{ to_version }}
         - percona-server-mongodb-mongos-{{ to_version }}
-        - percona-server-mongodb-shell-{{ to_version }}
+        - percona-server-mongodb-tools-{{ to_version }}
+#        - percona-server-mongodb-debugsource-{{ to_version }}
+#        - percona-server-mongodb-tools-debuginfo-{{ to_version }}
+#        - percona-server-mongodb-mongos-debuginfo-{{ to_version }}
+#        - percona-server-mongodb-server-debuginfo-{{ to_version }}
+      when: ansible_os_family == "RedHat"  and ansible_distribution_major_version >= "8"
+
+    - name: update psmdb rpm packages
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb-{{ to_version }}
+        - percona-server-mongodb-server-{{ to_version }}
+        - percona-server-mongodb-mongos-{{ to_version }}
         - percona-server-mongodb-tools-{{ to_version }}
 #        - percona-server-mongodb-debuginfo-{{ to_version }}
       when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7"
+
+    - name: update mongo shell rpm packages
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb-shell-{{ to_version }}
+#        - percona-server-mongodb-shell-debuginfo-{{ to_version }}
+      when: ansible_os_family == "RedHat"  and ansible_distribution_major_version >= "8" and psmdb_mongosh < "6"
+
+    - name: update mongo shell rpm packages
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb-shell-{{ to_version }}
+      when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7" and psmdb_mongosh < "6"
+
+    - name: update mongosh rpm packages
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-mongodb-mongosh
+      when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6"
+
+    - name: copy mongosh binary to mongo path for test scripts
+      copy:
+        src: /usr/bin/mongosh
+        dest: /usr/bin/mongo
+        remote_src: yes
+      when: psmdb_mongosh >= "6"
 
     - name: perform daemon-reload for systemd-based os
       systemd:
