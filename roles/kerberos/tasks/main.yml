@@ -8,7 +8,7 @@
   vars:
     packages:
     - build-essential
-    - python-selinux
+    - python3-selinux
   when: ansible_distribution == "Debian"
 
 - name: Disable SELinux for Debian
