@@ -1,5 +1,21 @@
 ---
 
+
+- name: Install necessary tools for Debain
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+    - build-essential
+    - python-selinux
+  when: ansible_distribution == "Debian"
+
+- name: Disable SELinux for Debian
+  selinux:
+    state: disabled
+  when: ansible_distribution == "Debian"
+
 - name: Make sure we have the entry for hostname in /etc/hosts
   lineinfile:
     state: present
