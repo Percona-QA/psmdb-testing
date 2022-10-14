@@ -5,25 +5,25 @@
   become_method: sudo
   gather_facts: true
   tasks:
-    - name: Create swap space
-      command: dd if=/dev/zero of=/swapfile bs=1M count=4096
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+#    - name: Create swap space
+#      command: dd if=/dev/zero of=/swapfile bs=1M count=4096
+#      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
 
-    - name: set permissions on swap file
-      file:
-        path: /swapfile
-        mode: '0600'
-        owner: root
-        group: root
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+#    - name: set permissions on swap file
+#      file:
+#        path: /swapfile
+#        mode: '0600'
+#        owner: root
+#        group: root
+#      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
 
-    - name: format the file for swap
-      command: mkswap /swapfile
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+#    - name: format the file for swap
+#      command: mkswap /swapfile
+#      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
 
-    - name: enable swap
-      command: swapon /swapfile
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+#    - name: enable swap
+#      command: swapon /swapfile
+#      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
 
     - name: install GPG key for epel 8
       rpm_key:

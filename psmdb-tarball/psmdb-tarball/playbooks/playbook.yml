@@ -5,26 +5,26 @@
   gather_facts: false
   tasks:
     - set_fact:
-        new_tarball: "{{ lookup('env', 'NEW_TARBALL') | default('https://downloads.percona.com/downloads/percona-server-mongodb-4.2/percona-server-mongodb-4.2.15-16/binary/tarball/percona-server-mongodb-4.2.15-16-x86_64.glibc2.17-minimal.tar.gz', true) }}"
+        tarball: "{{ lookup('env', 'TARBALL') | default('https://downloads.percona.com/downloads/percona-server-mongodb-4.2/percona-server-mongodb-4.2.15-16/binary/tarball/percona-server-mongodb-4.2.15-16-x86_64.glibc2.17-minimal.tar.gz', true) }}"
 
     - name: get mongodb new version
       set_fact:
-        mongodb_new_ver: "{{ new_tarball | regex_search('mongodb-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+        mongodb_ver: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
 
     - name: Download new tarball
       get_url:
-        url: '{{ new_tarball }}'
-        dest: /tmp/percona-server-mongodb-new-{{mongodb_new_ver[0]}}.tar.gz
+        url: '{{ tarball }}'
+        dest: /tmp/percona-server-mongodb-new-{{mongodb_ver[0]}}.tar.gz
         mode: '0644'
-      when: new_tarball.startswith('http')
+      when: tarball.startswith('http')
 
     - name: Download new tarball
       aws_s3:
-        bucket: "{{ new_tarball | urlsplit('hostname') }}"
-        object: "{{ new_tarball | urlsplit('path') }}"
-        dest: /tmp/percona-server-mongodb-new-{{mongodb_new_ver[0]}}.tar.gz
+        bucket: "{{ tarball | urlsplit('hostname') }}"
+        object: "{{ tarball | urlsplit('path') }}"
+        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.tar.gz
         mode: get
-      when: new_tarball.startswith('s3')
+      when: tarball.startswith('s3')
   
 - name: Converge
   hosts: all

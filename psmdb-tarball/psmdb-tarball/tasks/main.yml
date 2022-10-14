@@ -1,103 +1,20 @@
 ---
-# tasks file for PSMDB
 - set_fact:
-    new_tarball: "{{ lookup('env', 'NEW_TARBALL') | default('https://downloads.percona.com/downloads/percona-server-mongodb-4.2/percona-server-mongodb-4.2.15-16/binary/tarball/percona-server-mongodb-4.2.15-16-x86_64.glibc2.17-minimal.tar.gz', true) }}"
+    tarball: "{{ lookup('env', 'TARBALL') | default('https://downloads.percona.com/downloads/percona-server-mongodb-4.2/percona-server-mongodb-4.2.15-16/binary/tarball/percona-server-mongodb-4.2.15-16-x86_64.glibc2.17-minimal.tar.gz', true) }}"
 
-- name: get mongodb new version
+- name: Get mongodb version
   set_fact:
-    mongodb_new_ver: "{{ new_tarball | regex_search('mongodb-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+    mongodb_ver: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
 
-- set_fact:
-    layout_type: "{{ lookup('env', 'LAYOUT_TYPE') | default('single', true) }}"
-
-- set_fact:
-    storage: "{{ lookup('env', 'STORAGE') | default('wiredTiger', true) }}"    
-
-- set_fact:
-    encryption: "{{ lookup('env', 'ENCRYPTION') | default('NONE', true) }}"
-
-- set_fact:
-    cipher: "{{ lookup('env', 'CIPHER') | default('AES256-CBC', true) }}"
-
-- set_fact:
-    encryption: "NONE"
-  when: storage == "inMemory"
-
-- set_fact:
-    keyfile: "/package-testing/scripts/psmdb_encryption/mongodb-keyfile"
-
-- set_fact:
-    vault_token: "/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"
-
-- set_fact:
-    vault_cert: "/package-testing/scripts/psmdb_encryption/test.cer"
-
-- set_fact:
-    vault_secret: "secret_v2/data/psmdb-test/package-test"
-
-- set_fact:
-    mongo_opts: " --wiredTigerCacheSizeGB 0.25 --enableEncryption --encryptionKeyFile {{ keyfile }} --encryptionCipherMode {{  cipher }}"
-  when: encryption == "KEYFILE"
-
-- set_fact:
-    mongo_opts: " --wiredTigerCacheSizeGB 0.25 --enableEncryption --vaultServerName 127.0.0.1 --vaultPort 8200 --vaultTokenFile {{ vault_token }} --vaultSecret {{ vault_secret }} --vaultServerCAFile {{ vault_cert }} --encryptionCipherMode {{  cipher }}"
-  when: encryption == "VAULT"
-
-- set_fact:
-    mongo_opts: " --storageEngine {{ storage }} --wiredTigerCacheSizeGB 0.25"
-  when: encryption == "NONE" and storage == "wiredTiger"
-
-- set_fact:
-    mongo_opts: " --storageEngine {{ storage }} --inMemorySizeGB 0.25"
-  when: encryption == "NONE" and storage == "inMemory"
-
-- name: check if packages installed
-  stat:
-    path: /pkgs_installed
-  register: pkgs_installed
-   
-- name: Install neccesary software for different OS
-  include_tasks: ../../../tasks/install_soft_for_tarball_tests.yml
-  when: not pkgs_installed.stat.exists
-
-- name: Check that testing directory exists
-  stat:
-    path: /package-testing
-  register: testing_dir
-
-- name: Download tests
-  include_tasks: ../../../tasks/install_tests_for_tarball.yml
-  when: not testing_dir.stat.exists
-
-- name: check if python2 installed
-  stat:
-    path: /python2_installed
-  register: python2_installed
-
-- name: Install neccesary software for different OS
-  include_tasks: ../../../tasks/install_soft_for_ycsb_tests.yml
-  when: not python2_installed.stat.exists
-
-- name: Check that the vault_token exists
-  stat:
-    path: "{{ vault_token }}"
-  register: vault_exists
-
-- name: Install and configure vault
-  include_tasks: ../../../tasks/install_and_configure_vault.yml
-  when: encryption == "VAULT" and not vault_exists.stat.exists
-
-- name: Check that bin directory exists
-  stat:
-    path: /mongo-new-bindir
-  register: mongo_dir
+- name: Get git repo branch
+  set_fact:
+    repo_branch: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+)', '\\1') }}"
 
 - name: Copy tarball
   copy:
-    src: /tmp/percona-server-mongodb-new-{{mongodb_new_ver[0]}}.tar.gz
+    src: /tmp/percona-server-mongodb-new-{{mongodb_ver[0]}}.tar.gz
     dest: /tmp/percona-server-mongodb-new.tar.gz
     mode: '0644'
-  when: not mongo_dir.stat.exists
 
 - name: Unpack new tarball
   unarchive: 
@@ -106,159 +23,49 @@
     remote_src: yes
     extra_opts:
     - --transform
-    - 's,^/*[^/]*,/mongo-new-bindir,S'
-  when: not mongo_dir.stat.exists
+    - 's,^/*[^/]*,/usr,S'
 
-- name: Ensure keyfile has correct permissions
+- name: Clone PSMDB repo
+  git:
+    repo: 'https://github.com/percona/percona-server-mongodb.git'
+    dest: /percona-server-mongodb               
+    version: "v{{ repo_branch[0] }}"
+
+- name: Create mongod symlink inside the workdir for 4.2 support
   file:
-    path: "{{ keyfile }}"
-    mode: '0400'
-  when: encryption == "KEYFILE"
+    src: /usr/bin/mongod
+    dest: /percona-server-mongodb/mongod
+    state: link
 
-- name: Ensure vault_cert has correct permissions
+- name: Create mongo cli symlink inside the workdir for 4.2 support
   file:
-    path: "{{ vault_token }}"                                            
-    mode: '0400'
-  when: encryption == "VAULT"
+    src: /usr/bin/mongo                       
+    dest: /percona-server-mongodb/mongo
+    state: link
 
-- name: Ensure vault_token has correct permissions
-  file:
-    path: "{{ vault_cert }}"                                            
-    mode: '0400'
-  when: encryption == "VAULT"
+#- name: Install software deps
+#  command: ./psmdb_builder.sh --builddir=/tmp --install_deps=1
+#  args:
+#    chdir: /percona-server-mongodb/percona-packaging/scripts
 
-- name: Create data directories
-  file:
-    path: "{{ item }}"
-    state: directory
-    mode: 0775
-  loop:
-    - /workdir/single
-    - /workdir/rs0-1
-    - /workdir/rs0-2
-    - /workdir/rs0-3
-    - /workdir/rs1-1
-    - /workdir/rs1-2
-    - /workdir/rs1-3
-    - /workdir/cfg1-1
-    - /workdir/cfg1-2
-    - /workdir/cfg1-3
+- name: Install system packages
+  become: true
+  package:
+     name:
+       - python-setuptools
+       - python3
+       - python3-devel
+       - python3-pip
+     state: present
 
-- name: Start single mongo
-  command: /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/single --port 27017 {{ mongo_opts }}
-  when: layout_type == "single"
+- name: Upgrade pip
+  command: pip3 install --upgrade pip
 
-- name: Start replicaset
-  command: "{{ item }}"
-  with_items:    
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-1 --port 27017 --replSet rs0 {{ mongo_opts }}   
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-2 --port 27018 --replSet rs0 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-3 --port 27019 --replSet rs0 {{ mongo_opts }}
-  when: layout_type == "replicaset" 
+- name: Install pip deps
+  command: pip3 install -r etc/pip/dev-requirements.txt
+  args:
+    chdir: /percona-server-mongodb
 
-- name: Create a replicaset rs0
-  community.mongodb.mongodb_replicaset:
-    replica_set: rs0
-    members:
-    - host: "localhost:27017"
-      priority: 1
-    - host: "localhost:27018"
-      priority: 0.5
-    - host: "localhost:27019"
-      priority: 0.5
-  when: layout_type == "replicaset"
+- name: Hotfix for cryptography module
+  command: pip3 install --upgrade cryptography==36.0.2
 
-- name: Ensure replicaset is stable
-  community.mongodb.mongodb_status:
-    replica_set: rs0
-    poll: 3
-    interval: 10
-  when: layout_type == "replicaset"
-
-- name: Start sharded
-  command: "{{ item }}"
-  with_items:
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-1 --port 28017 --shardsvr --replSet rs0 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-2 --port 28018 --shardsvr --replSet rs0 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs0-3 --port 28019 --shardsvr --replSet rs0 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs1-1 --port 29017 --shardsvr --replSet rs1 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs1-2 --port 29018 --shardsvr --replSet rs1 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/rs1-3 --port 29019 --shardsvr --replSet rs1 {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/cfg1-1 --port 30017 --configsvr --replSet cfg {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/cfg1-2 --port 30018 --configsvr --replSet cfg {{ mongo_opts }}
-    - /mongo-new-bindir/bin/mongod --fork --syslog --dbpath /workdir/cfg1-3 --port 30019 --configsvr --replSet cfg {{ mongo_opts }}
-  when: layout_type == "sharded"
-
-- name: Create a replicaset rs0
-  community.mongodb.mongodb_replicaset:
-    login_port: 28017
-    replica_set: rs0
-    members:
-    - host: "localhost:28017"
-      priority: 1
-    - host: "localhost:28018"
-      priority: 0.5
-    - host: "localhost:28019"
-      priority: 0.5
-  when: layout_type == "sharded"
-
-- name: Ensure replicaset is stable                                                              
-  community.mongodb.mongodb_status:
-    replica_set: rs0
-    login_port: 28017
-    poll: 3
-    interval: 10
-  when: layout_type == "sharded"
-
-- name: Create a replicaset rs1
-  community.mongodb.mongodb_replicaset:
-    login_port: 29017
-    replica_set: rs1
-    members:
-    - host: "localhost:29017"
-      priority: 1
-    - host: "localhost:29018"
-      priority: 0.5
-    - host: "localhost:29019"
-      priority: 0.5
-  when: layout_type == "sharded"
-
-- name: Ensure replicaset is stable
-  community.mongodb.mongodb_status:
-    replica_set: rs1
-    login_port: 29017
-    poll: 3
-    interval: 10
-  when: layout_type == "sharded"
-
-- name: Create a replicaset cfg
-  community.mongodb.mongodb_replicaset:
-    login_port: 30017
-    replica_set: cfg
-    members:
-    - host: "localhost:30017"
-      priority: 1
-    - host: "localhost:30018"
-      priority: 0.5
-    - host: "localhost:30019"
-      priority: 0.5
-  when: layout_type == "sharded"
-
-- name: Ensure replicaset is stable
-  community.mongodb.mongodb_status:
-    replica_set: cfg
-    login_port: 30017
-    poll: 3
-    interval: 10
-  when: layout_type == "sharded"
-
-- name: Start mongos
-  command: /mongo-new-bindir/bin/mongos --fork --syslog --configdb cfg/localhost:30017,localhost:30018,localhost:30019 --port 27017 --bind_ip 0.0.0.0
-  when: layout_type == "sharded"
-
-- name: Init sharded
-  command: "{{item}}"
-  with_items:
-    - /mongo-new-bindir/bin/mongo --eval 'sh.addShard( "rs0/localhost:28017,localhost:28018,localhost:28019" )'
-    - /mongo-new-bindir/bin/mongo --eval 'sh.addShard( "rs1/localhost:29017,localhost:29018,localhost:29019" )'
-  when: layout_type == "sharded"
