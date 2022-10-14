@@ -192,10 +192,10 @@
       when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6"
 
     - name: copy mongosh binary to mongo path for test scripts
-      copy:
+      file:
         src: /usr/bin/mongosh
         dest: /usr/bin/mongo
-        remote_src: yes
+        state: link
       when: psmdb_mongosh >= "6"
 
     - name: perform daemon-reload for systemd-based os
