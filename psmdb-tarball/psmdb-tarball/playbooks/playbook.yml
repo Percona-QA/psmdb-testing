@@ -7,25 +7,47 @@
     - set_fact:
         tarball: "{{ lookup('env', 'TARBALL') | default('https://downloads.percona.com/downloads/percona-server-mongodb-5.0/percona-server-mongodb-5.0.13-11/binary/tarball/percona-server-mongodb-5.0.13-11-x86_64.glibc2.17-minimal.tar.gz', true) }}"
 
+    - name: Get tarball link for glibc 2.35
+      set_fact:
+        tarball_2_35: "{{ tarball | regex_replace('glibc[0-9]+\\.[0-9]+', 'glibc2.35') }}"      
+
+    - name: Debug tarball for glibc 2.35
+      debug:
+        msg: "{{ tarball_2_35 }}"
+
     - name: get mongodb new version
       set_fact:
         mongodb_ver: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
 
-    - name: Download new tarball
+    - name: Download tarball from url
       get_url:
         url: '{{ tarball }}'
-        dest: /tmp/percona-server-mongodb-new-{{mongodb_ver[0]}}.tar.gz
+        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.tar.gz
         mode: '0644'
-      when: tarball.startswith('http')
+      when: tarball.startswith('http') 
 
-    - name: Download new tarball
+    - name: Download tarball from s3
       aws_s3:
         bucket: "{{ tarball | urlsplit('hostname') }}"
         object: "{{ tarball | urlsplit('path') }}"
         dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.tar.gz
         mode: get
-      when: tarball.startswith('s3')
-  
+      when: tarball.startswith('s3') 
+
+    - name: Download tarball for glibc 2.35 from url
+      get_url:
+        url: '{{ tarball_2_35 }}'
+        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.glibc2.35.tar.gz
+        mode: '0644'
+      when: tarball.startswith('http')
+
+    - name: Download tarball fro glibc 2.35 from s3
+      aws_s3:
+        bucket: "{{ tarball_2_35 | urlsplit('hostname') }}"
+        object: "{{ tarball_2_25 | urlsplit('path') }}"
+        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.glibc2.35.tar.gz
+        mode: get
+      when: tarball.startswith('s3')  
 - name: Converge
   hosts: all
   become: true
