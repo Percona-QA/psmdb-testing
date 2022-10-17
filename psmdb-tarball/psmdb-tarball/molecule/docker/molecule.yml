@@ -25,9 +25,7 @@ provisioner:
     cleanup: ../../playbooks/cleanup.yml
 verifier:
   name: testinfra
-  directory: ../../../tests/
-  additional_files_or_dirs:
-    - ../psmdb-tarball/tests/
+  directory: ../../tests/
   options:
     verbose: true
 #    s: true
