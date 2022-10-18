@@ -54,3 +54,5 @@
   become_method: sudo
   roles:
     - role: psmdb-tarball
+    - role: '../../../roles/openldap'
+    - role: '../../../roles/kerberos'

@@ -73,22 +73,41 @@
 - name: Extract mongodb keys into keytab
   shell: kadmin.local -q "ktadd {{ mongod_user }}/{{ ansible_hostname }}@{{ realm_name|upper() }}"
 
+- name: Get all users
+  getent:
+    database: passwd
+    split: ':'
+
+- debug:
+    var: getent_passwd
+
 - name: Copy /etc/krb5.keytab
   copy:
     src: /etc/krb5.keytab
     dest: /etc/mongodb.keytab
     remote_src: yes
     owner: mongod
+  when: ( "mongod" in getent_passwd.keys() )
+
+- name: Copy /etc/krb5.keytab
+  copy:
+    src: /etc/krb5.keytab
+    dest: /etc/mongodb.keytab
+    remote_src: yes
+    owner: root
+  when: not ( "mongod" in getent_passwd.keys() )
 
 - name: Add KRB5_KTNAME for PSMDB deb
   lineinfile:
     path: /etc/default/mongod
     line: KRB5_KTNAME=/etc/mongodb.keytab
+    create: yes
   when: ansible_os_family == "Debian"
 
 - name: Add KRB5_KTNAME for PSMDB rpm
   lineinfile:
     path: /etc/sysconfig/mongod
     line: KRB5_KTNAME=/etc/mongodb.keytab
+    create: yes
   when: ansible_os_family == "RedHat"
  

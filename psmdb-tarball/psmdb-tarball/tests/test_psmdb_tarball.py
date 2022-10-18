@@ -7,7 +7,7 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
 
-SUITES = ['core','backup_tde_gcm','backup_tde_cbc']
+SUITES = ['core']
 
 @pytest.mark.parametrize("suite", SUITES)
 def test_functional(host, suite):
