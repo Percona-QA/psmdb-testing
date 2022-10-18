@@ -11,13 +11,6 @@
         roles: [ 'root' ]
     });
 
-    var ext = conn.getDB("$external");
-
-    ext.createUser({
-        user: 'exttestrw@PERCONATEST.COM',
-        roles: [ {role: "userAdminAnyDatabase", db: "admin"} ]
-    });
-
     var dbPath = MongoRunner.dataPath
 
     MongoRunner.stopMongod(conn);

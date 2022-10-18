@@ -39,6 +39,12 @@
     dest: /percona-server-mongodb               
     version: "v{{ repo_branch[0] }}"
 
+- name: Clone psmdb-testing repo
+  git: 
+    repo: 'https://github.com/Percona-QA/psmdb-testing.git'
+    dest: /psmdb-testing
+    version: "main"
+
 - name: Create mongod symlink inside the workdir for 4.2 support
   file:
     src: /usr/bin/mongod
@@ -51,7 +57,7 @@
     dest: /percona-server-mongodb/mongo
     state: link
 
-- name: Install python3 packages
+- name: Install necessary packages
   yum:
     name: "{{ packages }}"
     state: latest
@@ -72,7 +78,33 @@
     - python3
     - python3-devel
     - python3-pip
+    - bzip2-devel 
+    - libffi-devel
+    - xz-devel 
   when: ansible_os_family == "RedHat"
+
+- name: Clone python repo
+  git:
+    repo: 'https://github.com/python/cpython.git'
+    dest: /cpython
+    version: "3.7"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
+- name: Configure python
+  shell: "./configure --enable-optimizations"
+  args:
+    chdir: /cpython
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
+- name: Install python
+  shell: "make install"
+  args:
+    chdir: /cpython 
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
+- name: Ensure pip
+  shell: "/usr/local/bin/easy_install-3.7 --upgrade pip"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
 
 - name: Install Python utilities
   pip:
