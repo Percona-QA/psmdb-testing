@@ -145,5 +145,5 @@
     - libsasl2-modules
     - libsasl2-modules-gssapi-mit
     - libsasl2-modules-ldap
-  when: ansible_distribution == "Debian"
+  when: ansible_os_family == "Debian"
 

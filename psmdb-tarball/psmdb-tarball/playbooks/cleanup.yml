@@ -4,26 +4,3 @@
   become: true
   become_method: sudo
   tasks:
-    - name: kill all mongo instances
-      command: "{{ item }}"
-      with_items:
-        - killall -9 mongos --wait
-        - killall -9 mongod --wait
-      ignore_errors: true
-
-    - name: remove files and directories
-      file:
-        path: "{{ item }}"
-        state: absent
-      with_items:
-        - /workdir/single
-        - /workdir/rs0-1
-        - /workdir/rs0-2
-        - /workdir/rs0-3
-        - /workdir/rs1-1
-        - /workdir/rs1-2
-        - /workdir/rs1-3
-        - /workdir/cfg1-1
-        - /workdir/cfg1-2
-        - /workdir/cfg1-3
- 

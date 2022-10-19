@@ -5,7 +5,7 @@
   become_method: sudo
   gather_facts: true
   tasks:
-  - name: Install necessary packages
+  - name: Install necessary rpm packages
     yum:
       name: "{{ packages }}"
       state: latest
@@ -31,7 +31,7 @@
       - xz-devel
     when: ansible_os_family == "RedHat"
 
-  - name: Install necessary deb packages for debian 11
+  - name: Install necessary deb packages 
     apt:
       name: "{{ packages }}"
       update_cache: yes
@@ -52,7 +52,7 @@
       - python3-dev
       - python3-markdown
       - python3-virtualenv
-    when: ansible_distribution == "Debian"
+    when: ansible_os_family == "Debian"
 
 #  - name: Clone python repo
 #    git:
