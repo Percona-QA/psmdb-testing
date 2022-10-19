@@ -11,9 +11,11 @@
         pwd: 'password',
         roles: [ 'root' ]
     });
+    db.logout();
 
     var ext = conn.getDB("$external");
 
+    //create user
     ext.createUser({
         user: 'exttestrw@PERCONATEST.COM',
         roles: [ {role: "userAdminAnyDatabase", db: "admin"} ]
@@ -23,13 +25,13 @@
 
     MongoRunner.stopMongod(conn);
 
-
+    // start mongod with GSSAPI authentication enabled
     var conn = MongoRunner.runMongod({
         auth: '',
         setParameter: {authenticationMechanisms: 'GSSAPI'},
-        env: 'KRB5_KTNAME=/etc/mongodb.keytab',
+        env: {KRB5_KTNAME: '/etc/mongodb.keytab'},
         dbpath: dbPath,
-        noCleanData: true
+        noCleanData: true,
     });
 
     assert(conn, "Cannot start mongod instance");
@@ -38,21 +40,31 @@
         runProgram('bash', '-c', cmd);
     }
 
+
+    //add principal
     _runCmd("kadmin.local -q 'addprinc -pw exttestrw exttestrw'");
     _runCmd("kinit exttestrw <<<'exttestrw'");
 
-    var db = conn.getDB('$external');
-    const username = 'exttestrw@PERCONATEST.COM';
+    //check connection
+    var clientConnect = function(conn) {
+        const exitCode = runMongoProgram("mongo",
+                                     "--host",
+                                     getHostName(),
+                                     "--port",
+                                     conn.port,
+                                     "--authenticationDatabase",
+                                     '$external',
+                                     "--authenticationMechanism",
+                                     "GSSAPI",
+                                     "--username",
+                                     'exttestrw@PERCONATEST.COM',
+                                     "--verbose",
+                                     "--eval",
+                                     "db.runCommand({connectionStatus: 1});");
+        return exitCode;
+    };
 
-    print('authenticating ' + username);
-    assert(db.auth({
-        user: username,
-        mechanism: 'GSSAPI'
-    }));
-
-    checkConnectionStatus(username, db.runCommand({connectionStatus: 1}));
-
-    db.logout();
+    assert.eq(clientConnect(conn), 0);
 
     MongoRunner.stopMongod(conn);
 })();

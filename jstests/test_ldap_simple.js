@@ -42,7 +42,9 @@
         mechanism: 'PLAIN'
     }));
 
-    checkConnectionStatus(username, db.runCommand({connectionStatus: 1}));
+    assert(db.runCommand({
+        connectionStatus: 1
+    }));
 
     db.logout();
 
