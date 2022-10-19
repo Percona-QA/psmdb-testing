@@ -26,10 +26,31 @@
       - python3
       - python3-devel
       - python3-pip
-      - bzip2-devel
       - libffi-devel
       - xz-devel
-    when: ansible_os_family == "RedHat"
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
+  - name: install necessary rpm packages for RHEL8
+    yum:
+      name: "{{ packages }}"
+      state: latest
+    vars:
+      packages:
+      - iproute
+      - bzip2-devel
+      - bzip2-libs
+      - gcc
+      - git
+      - make
+      - openssl-devel
+      - curl
+      - python3-pip
+      - python3-devel
+      - python3-ldap
+      - psmisc
+      - libffi-devel
+      - xz-devel
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
 
   - name: Install necessary deb packages 
     apt:
@@ -66,26 +87,26 @@
     get_url:
       url: https://github.com/python/cpython/archive/refs/tags/v3.7.15.tar.gz
       dest: /cpython.tar.gz
-    when: (ansible_os_family == "RedHat" and ansible_distribution_major_version == "7")
+    when: (ansible_os_family == "RedHat" and ansible_distribution_major_version <= "8")
 
   - name: Extract python sources
     unarchive:
       src: /cpython.tar.gz
       dest: /
       remote_src: yes
-    when: (ansible_os_family == "RedHat" and ansible_distribution_major_version == "7") 
+    when: (ansible_os_family == "RedHat" and ansible_distribution_major_version <= "8") 
    
   - name: Configure python
     shell: "./configure --enable-optimizations"
     args:
       chdir: /cpython-3.7.15
-    when: (ansible_os_family == "RedHat" and ansible_distribution_major_version == "7") 
+    when: (ansible_os_family == "RedHat" and ansible_distribution_major_version <= "8") 
 
   - name: Install python
     shell: "make install"
     args:
       chdir: /cpython-3.7.15
-    when: (ansible_os_family == "RedHat" and ansible_distribution_major_version == "7") 
+    when: (ansible_os_family == "RedHat" and ansible_distribution_major_version <= "8") 
 
   - name: Add deadsnakes repo for ubuntu 18.04
     apt_repository:
@@ -109,7 +130,7 @@
       dest: /bin/python3
       state: link
       force: yes
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "8"
 
   - name: Ensure python Ubuntu 18.04
     shell: update-alternatives --install /usr/bin/python python /usr/bin/python3.7 1
@@ -161,7 +182,7 @@
       dest: /usr/local/bin/pip3
       state: link
       force: yes
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "8"
 
   - name: Ensure pip
     file:
@@ -169,5 +190,5 @@
       dest: /bin/pip3
       state: link
       force: yes
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "8"
 
