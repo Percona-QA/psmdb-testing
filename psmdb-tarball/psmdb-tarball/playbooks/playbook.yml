@@ -52,6 +52,7 @@
   hosts: all
   become: true
   become_method: sudo
+  gather_facts: yes
   roles:
     - role: psmdb-tarball
     - role: '../../../roles/openldap'

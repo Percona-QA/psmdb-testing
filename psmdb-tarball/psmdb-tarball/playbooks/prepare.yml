@@ -65,26 +65,30 @@
     get_url:
       url: https://github.com/python/cpython/archive/refs/tags/v3.7.15.tar.gz
       dest: /cpython.tar.gz
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+    when: (ansible_os_family == "RedHat" and ansible_distribution_major_version == "7") or
+          (ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18" )
 
   - name: Extract python sources
     unarchive:
       src: /cpython.tar.gz
       dest: /
       remote_src: yes
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+    when: (ansible_os_family == "RedHat" and ansible_distribution_major_version == "7") or
+          (ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18" )
    
   - name: Configure python
     shell: "./configure --enable-optimizations"
     args:
       chdir: /cpython-3.7.15
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+    when: (ansible_os_family == "RedHat" and ansible_distribution_major_version == "7") or
+          (ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18" )
 
   - name: Install python
     shell: "make install"
     args:
       chdir: /cpython-3.7.15
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+    when: (ansible_os_family == "RedHat" and ansible_distribution_major_version == "7") or
+          (ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18" )
 
   - name: Ensure python
     file:
@@ -94,6 +98,14 @@
       force: yes
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
 
+  - name: Ensure python
+    file:
+      src: /usr/local/bin/python3.7
+      dest: /usr/bin/python3
+      state: link
+      force: yes
+    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
+
   - name: Ensure pip
     file:
       src: /usr/local/bin/pip3.7
@@ -101,6 +113,22 @@
       state: link
       force: yes
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
+  - name: Ensure pip
+    file:
+      src: /usr/local/bin/pip3.7
+      dest: /usr/bin/pip3
+      state: link
+      force: yes
+    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
+
+  - name: Fix facts discovery for Ubuntu 18
+    file:
+      src: /usr/share/pyshared/lsb_release.py
+      dest: /usr/local/lib/python3.7/site-packages/lsb_release.py
+      state: link
+      force: yes
+    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
 
   - name: Ensure pip
     file:
