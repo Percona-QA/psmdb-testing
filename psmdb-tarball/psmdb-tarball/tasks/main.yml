@@ -38,6 +38,7 @@
     repo: 'https://github.com/percona/percona-server-mongodb.git'
     dest: /percona-server-mongodb               
     version: "v{{ repo_branch[0] }}"
+    single_branch: yes
 
 - name: Clone psmdb-testing repo
   git: 
@@ -123,26 +124,26 @@
 - name: Fix files permissions
   shell: "find /percona-server-mongodb/jstests -type f | xargs chmod 400"
 
-  - name: Install necessary rpm packages for tarball
-    yum:
-      name: "{{ packages }}"
-      state: latest
-    vars:
-      packages:
-      - cyrus-sasl-lib
-      - cyrus-sasl-plain
-      - cyrus-sasl-gssapi
-    when: ansible_os_family == "RedHat"
+- name: Install necessary rpm packages for tarball
+  yum:
+    name: "{{ packages }}"
+    state: latest
+  vars:
+    packages:
+    - cyrus-sasl-lib
+    - cyrus-sasl-plain
+    - cyrus-sasl-gssapi
+  when: ansible_os_family == "RedHat"
 
-  - name: Install necessary deb packages for tarball
-    apt:
-      name: "{{ packages }}"
-      update_cache: yes
-    vars:
-      packages:
-      - libcurl4
-      - libsasl2-modules
-      - libsasl2-modules-gssapi-mit
-      - libsasl2-modules-ldap
-    when: ansible_distribution == "Debian"
+- name: Install necessary deb packages for tarball
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+    - libcurl4
+    - libsasl2-modules
+    - libsasl2-modules-gssapi-mit
+    - libsasl2-modules-ldap
+  when: ansible_distribution == "Debian"
 

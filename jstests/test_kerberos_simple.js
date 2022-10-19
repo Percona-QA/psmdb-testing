@@ -21,16 +21,14 @@
         roles: [ {role: "userAdminAnyDatabase", db: "admin"} ]
     });
 
-    var dbPath = MongoRunner.dataPath
-
     MongoRunner.stopMongod(conn);
 
     // start mongod with GSSAPI authentication enabled
-    var conn = MongoRunner.runMongod({
+    conn = MongoRunner.runMongod({
+        restart: conn,
         auth: '',
         setParameter: {authenticationMechanisms: 'GSSAPI'},
         env: {KRB5_KTNAME: '/etc/mongodb.keytab'},
-        dbpath: dbPath,
         noCleanData: true,
     });
 
@@ -40,7 +38,6 @@
         runProgram('bash', '-c', cmd);
     }
 
-
     //add principal
     _runCmd("kadmin.local -q 'addprinc -pw exttestrw exttestrw'");
     _runCmd("kinit exttestrw <<<'exttestrw'");
@@ -48,19 +45,19 @@
     //check connection
     var clientConnect = function(conn) {
         const exitCode = runMongoProgram("mongo",
-                                     "--host",
-                                     getHostName(),
-                                     "--port",
-                                     conn.port,
-                                     "--authenticationDatabase",
-                                     '$external',
-                                     "--authenticationMechanism",
-                                     "GSSAPI",
-                                     "--username",
-                                     'exttestrw@PERCONATEST.COM',
-                                     "--verbose",
-                                     "--eval",
-                                     "db.runCommand({connectionStatus: 1});");
+                                         "--host",
+                                         getHostName(),
+                                         "--port",
+                                         conn.port,
+                                         "--authenticationDatabase",
+                                         '$external',
+                                         "--authenticationMechanism",
+                                         "GSSAPI",
+                                         "--username",
+                                         'exttestrw@PERCONATEST.COM',
+                                         "--verbose",
+                                         "--eval",
+                                         "db.runCommand({connectionStatus: 1});");
         return exitCode;
     };
 

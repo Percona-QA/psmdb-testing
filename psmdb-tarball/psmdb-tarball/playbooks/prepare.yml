@@ -54,23 +54,36 @@
       - python3-virtualenv
     when: ansible_distribution == "Debian"
 
-  - name: Clone python repo
-    git:
-      repo: 'https://github.com/python/cpython.git'
-      dest: /cpython
-      version: "3.7"
+#  - name: Clone python repo
+#    git:
+#      repo: 'https://github.com/python/cpython.git'
+#      dest: /cpython
+#      version: "3.7"
+#    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
+  - name: Download python
+    get_url:
+      url: https://github.com/python/cpython/archive/refs/tags/v3.7.15.tar.gz
+      dest: /cpython.tar.gz
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
+  - name: Extract python sources
+    unarchive:
+      src: /cpython.tar.gz
+      dest: /
+      remote_src: yes
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
    
   - name: Configure python
     shell: "./configure --enable-optimizations"
     args:
-      chdir: /cpython
+      chdir: /cpython-3.7.15
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
 
   - name: Install python
     shell: "make install"
     args:
-      chdir: /cpython
+      chdir: /cpython-3.7.15
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
 
   - name: Ensure python
