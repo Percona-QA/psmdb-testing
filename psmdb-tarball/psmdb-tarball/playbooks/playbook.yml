@@ -15,9 +15,46 @@
       debug:
         msg: "{{ tarball_2_35 }}"
 
-    - name: get mongodb new version
+    - name: Get mongodb version
       set_fact:
         mongodb_ver: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+
+    - name: Get mongodb major version
+      set_fact: 
+        maj_version={{ mongodb_ver[0].split('.')[0] }}
+
+    - name: Debug mongodb major version
+      debug:
+        msg: "{{ maj_version }}"    
+
+    - name: Get git repo branch
+      set_fact:
+        repo_branch: "v{{ mongodb_ver[0].split('.')[0] }}.{{ mongodb_ver[0].split('.')[1] }}"
+
+    - name: Debug repo branch
+      debug:
+        msg: "{{ repo_branch }}"
+
+    - name: Clone PSMDB repo
+      git:
+        repo: 'https://github.com/percona/percona-server-mongodb.git'
+        dest: /tmp/percona-server-mongodb
+        version: "{{ repo_branch }}"
+        single_branch: yes
+      when: maj_version >= "6"
+
+    - name: Build jstestshell locally for PSMDB6.+
+      shell: > 
+        docker run --rm -v /tmp/percona-server-mongodb:/usr/src/psmdb -w /usr/src/psmdb centos:7 bash -c "
+        mkdir -p /tmp/test && bash -x percona-packaging/scripts/psmdb_builder.sh --builddir=/tmp/test --install_deps=1 && 
+        source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python38/enable && 
+        pip install --upgrade pip && pip install -r etc/pip/dev-requirements.txt && 
+        buildscripts/scons.py CC=/opt/rh/devtoolset-8/root/usr/bin/gcc CXX=/opt/rh/devtoolset-8/root/usr/bin/g++ MONGO_VERSION={{ mongodb_ver[0] }} 
+        --disable-warnings-as-errors --release --ssl --opt=on --use-sasl-client --wiredtiger --audit --inmemory --hotbackup install-jstestshell 
+        && chmod -R 777 ."
+      args: 
+        creates: /tmp/percona-server-mongodb/build/install/bin/mongo
+      when: maj_version >= "6"      
 
     - name: Download tarball from url
       get_url:
@@ -48,6 +85,7 @@
         dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.glibc2.35.tar.gz
         mode: get
       when: tarball.startswith('s3')  
+
 - name: Converge
   hosts: all
   become: true

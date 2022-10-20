@@ -57,6 +57,13 @@
     path: /usr/bin/mongo
   register: mongo
 
+- name: Create mongo cli symlink inside the workdir for 4.2 support
+  file:
+    src: /usr/bin/mongo
+    dest: /percona-server-mongodb/mongo
+    state: link
+  when: mongo.stat.exists
+
 - name: Install percona release package
   include_tasks: ../../../tasks/install_percona_release.yml
 
@@ -82,11 +89,13 @@
     state: link
   when: not mongo.stat.exists
 
-- name: Create mongo cli symlink inside the workdir for 4.2 support
-  file:
-    src: /usr/bin/mongo                       
+- name: Copy jstestshell for 6+
+  copy:
+    src: /tmp/percona-server-mongodb/build/install/bin/mongo
     dest: /percona-server-mongodb/mongo
-    state: link
+    mode: '0755'
+  when: not mongo.stat.exists
+
 
 - name: Upgrade pip
   pip:

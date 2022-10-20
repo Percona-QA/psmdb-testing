@@ -28,6 +28,7 @@
       - python3-pip
       - libffi-devel
       - xz-devel
+      - unzip
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
 
   - name: install necessary rpm packages for RHEL8
@@ -50,6 +51,7 @@
       - psmisc
       - libffi-devel
       - xz-devel
+      - unzip
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
 
   - name: Install necessary deb packages 
@@ -74,6 +76,7 @@
       - python3-dev
       - python3-markdown
       - python3-virtualenv
+      - unzip
     when: ansible_os_family == "Debian"
 
 #  - name: Clone python repo
