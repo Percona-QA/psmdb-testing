@@ -6,7 +6,7 @@ ARG psm_release=10
 ARG mongo_tools_tag=100.4.1
 ARG jemalloc_tag=psmdb-3.2.11-3.1
 ARG repo=https://github.com/percona/percona-server-mongodb.git
-ARG special_targets="dbtest"
+ARG special_targets="dbtest jstestshell"
 RUN mkdir -p /opt/percona-server-mongodb/ && mkdir -p /work
 RUN if [ -f "/usr/bin/yum" ] ; then yum -y update && yum install -y wget redhat-lsb-core tzdata ; else apt-get update && apt-get -y upgrade && apt-get -y install wget lsb-release iproute2 net-tools tzdata ; fi
 WORKDIR work

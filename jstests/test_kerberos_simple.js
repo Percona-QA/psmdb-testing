@@ -44,7 +44,7 @@
 
     //check connection
     var clientConnect = function(conn) {
-        const exitCode = runMongoProgram("mongo",
+        const exitCode = runMongoProgram("/usr/bin/mongo",
                                          "--host",
                                          getHostName(),
                                          "--port",

@@ -35,22 +35,28 @@
 
     assert(conn, "Cannot start mongod instance");
 
-    var ext = conn.getDB('$external');
     const username = 'cn=exttestrw,ou=people,dc=percona,dc=com';
     const password = 'exttestrw9a5S'
 
-    print('authenticating ' + username);
-    assert(ext.auth({
-        user: username,
-        pwd: password,
-        mechanism: 'PLAIN'
-    }));
+    var clientConnect = function(conn) {
+        const exitCode = runMongoProgram("/usr/bin/mongo",
+                                         "--port",
+                                         conn.port,
+                                         "--authenticationDatabase",
+                                         '$external',
+                                         "--authenticationMechanism",
+                                         "PLAIN",
+                                         "--username",
+                                         username,
+                                         "--password",
+                                         password,
+                                         "--verbose",
+                                         "--eval",
+                                         "db.runCommand({connectionStatus: 1});");
+        return exitCode;
+    };
 
-    assert(ext.runCommand({
-        connectionStatus: 1
-    }));
-
-    ext.logout();
+    assert.eq(clientConnect(conn), 0);
 
     MongoRunner.stopMongod(conn);
 })();

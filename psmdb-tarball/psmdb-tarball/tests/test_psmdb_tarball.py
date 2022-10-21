@@ -15,7 +15,6 @@ def test_jstests(host, jstest):
     cmd = "cd /percona-server-mongodb && python3 buildscripts/resmoke.py run /psmdb-testing/jstests/"  + jstest 
     with host.sudo():
         result = host.run(cmd)
-        print(result.stdout)
         print(result.stderr)
     assert result.rc == 0, result.stdout
 
@@ -24,7 +23,6 @@ def test_suites(host, suite):
     cmd = "cd /percona-server-mongodb && python3 buildscripts/resmoke.py run --suite" + ' '  + suite 
     with host.sudo():
         result = host.run(cmd)
-        print(result.stdout)
         print(result.stderr)
     assert result.rc == 0, result.stdout
 
