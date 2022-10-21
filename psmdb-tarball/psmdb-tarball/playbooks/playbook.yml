@@ -57,10 +57,10 @@
         mode: '0644'
       when: tarball.startswith('http')
 
-    - name: Download tarball fro glibc 2.35 from s3
+    - name: Download tarball for glibc 2.35 from s3
       aws_s3:
         bucket: "{{ tarball_2_35 | urlsplit('hostname') }}"
-        object: "{{ tarball_2_25 | urlsplit('path') }}"
+        object: "{{ tarball_2_35 | urlsplit('path') }}"
         dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.glibc2.35.tar.gz
         mode: get
       when: tarball.startswith('s3')  
