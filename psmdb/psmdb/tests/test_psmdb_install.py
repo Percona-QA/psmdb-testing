@@ -39,8 +39,8 @@ def test_functional(host):
     assert result.rc == 0, result.stdout
 
 def test_enable_auth(host):
-    if int(PSMDB_VER.split('.')[0]) >= 6 :
-        pytest.skip("skipping enable_auth tests")
+#    if int(PSMDB_VER.split('.')[0]) >= 6 :
+#        pytest.skip("skipping enable_auth tests")
     cmd = "/package-testing/scripts/psmdb_set_auth.sh"
     with host.sudo():
         result = host.run(cmd)
