@@ -29,6 +29,7 @@
       - libffi-devel
       - xz-devel
       - unzip
+      - epel-release
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
 
   - name: install necessary rpm packages for RHEL8
@@ -53,6 +54,10 @@
       - xz-devel
       - unzip
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+  - name: Update apt cache
+    shell: apt update --allow-releaseinfo-change
+    when: ansible_os_family == "Debian"
 
   - name: Install necessary deb packages 
     apt:
