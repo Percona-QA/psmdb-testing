@@ -130,6 +130,13 @@
 - name: start mongod service
   service: name=mongod state=started
 
+- name: copy mongosh binary to mongo path for test scripts
+  file:
+    src: /usr/bin/mongosh
+    dest: /usr/bin/mongo
+    state: link
+  when: psmdb_mongosh >= "6"
+
 - name: initiate mongod replica set
   command: mongo --eval 'rs.initiate()'
 
