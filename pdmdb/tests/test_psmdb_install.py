@@ -7,14 +7,14 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
 DEB_PACKAGES = ['percona-server-mongodb', 'percona-server-mongodb-server', 'percona-server-mongodb-mongos',
-                'percona-server-mongodb-shell', 'percona-server-mongodb-tools', 'percona-server-mongodb-dbg']
+                'percona-server-mongodb-tools', 'percona-server-mongodb-dbg']
 RPM_PACKAGES = ['percona-server-mongodb', 'percona-server-mongodb-server', 'percona-server-mongodb-mongos',
-                'percona-server-mongodb-shell', 'percona-server-mongodb-tools', 'percona-server-mongodb-debuginfo']
+                'percona-server-mongodb-tools', 'percona-server-mongodb-debuginfo']
 RPM_NEW_CENTOS_PACKAGES = ['percona-server-mongodb', 'percona-server-mongodb-mongos-debuginfo',
-                           'percona-server-mongodb-server-debuginfo', 'percona-server-mongodb-shell-debuginfo',
+                           'percona-server-mongodb-server-debuginfo',
                            'percona-server-mongodb-tools-debuginfo', 'percona-server-mongodb-debugsource']
 
-BINARIES = ['mongo', 'mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
+BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
             'mongofiles', 'mongoimport', 'mongorestore', 'mongotop', 'mongostat']
 
 PSMDB_VER = os.environ.get("PDMDB_VERSION").lstrip("pdmdb-")
