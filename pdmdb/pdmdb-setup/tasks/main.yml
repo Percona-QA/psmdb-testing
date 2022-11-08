@@ -27,7 +27,7 @@
     version: "{{ lookup('env', 'PDMDB_VERSION') }}"
 
 - set_fact:
-    psmdb_mongosh: "{{ lookup('env', 'PDMDB_VERSION').split('.')[0] }}"
+    psmdb_mongosh: "{{ lookup('env', 'PDMDB_VERSION').split('-')[1].split('.')[0] }}"
 
 - name: install psmdb deb packages
   apt:

@@ -4,8 +4,8 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: ${MOLECULE_OS:-ubuntu2204}
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+  - name: ${MOLECULE_OS:-centos8}
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos8-ansible:latest}"
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
