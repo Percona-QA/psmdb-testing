@@ -34,6 +34,9 @@
         psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
 
     - set_fact:
+        psmdb_mongosh: "{{ psmdb_to_test.split('-')[1].split('.')[0] }}"
+
+    - set_fact:
         storage: "{{ lookup('env', 'STORAGE') }}"
 
     - name: prerequisite for debian 11
@@ -107,7 +110,6 @@
         - percona-server-mongodb
         - percona-server-mongodb-server
         - percona-server-mongodb-mongos
-        - percona-server-mongodb-shell
         - percona-server-mongodb-tools
       when: ansible_os_family == "Debian"
 
@@ -121,7 +123,6 @@
         - percona-server-mongodb
         - percona-server-mongodb-server
         - percona-server-mongodb-mongos
-        - percona-server-mongodb-shell
         - percona-server-mongodb-tools
       when: ansible_os_family == "RedHat" and psmdb_version == "latest"
 
@@ -135,9 +136,51 @@
         - percona-server-mongodb-{{ psmdb_version }}
         - percona-server-mongodb-server-{{ psmdb_version }}
         - percona-server-mongodb-mongos-{{ psmdb_version }}
-        - percona-server-mongodb-shell-{{ psmdb_version }}
         - percona-server-mongodb-tools-{{ psmdb_version }}
       when: ansible_os_family == "RedHat" and psmdb_version != "latest"
+
+    - name: install mongo shell deb package
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+      vars:
+        packages:
+        - percona-server-mongodb-shell
+      when: ansible_os_family == "Debian" and psmdb_mongosh < "6"
+
+    - name: install mongosh deb package
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+      vars:
+        packages:
+        - percona-mongodb-mongosh
+      when: ansible_os_family == "Debian" and psmdb_mongosh >= "6"
+
+    - name: install mongo shell rpm package
+      yum:
+        name: "{{ packages }}"
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb-shell
+      when: ansible_os_family == "RedHat" and psmdb_mongosh < "6"
+
+    - name: install mongosh rpm package
+      yum:
+        name: "{{ packages }}"
+        state: latest
+      vars:
+        packages:
+        - percona-mongodb-mongosh                                           
+      when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6"
+
+    - name: copy mongosh binary to mongo path for test scripts
+      file:
+        src: /usr/bin/mongosh
+        dest: /usr/bin/mongo
+        state: link
+      when: psmdb_mongosh >= "6"
 
     - name: stop mongod service
       service: name=mongod state=stopped
