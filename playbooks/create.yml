@@ -92,7 +92,7 @@
       ec2:
         key_name: "{{ keypair_name }}"
         image: "{{ item.image }}"
-        instance_type: "{{ item.instance_type }}"
+        instance_type: t3.large
         vpc_subnet_id: "{{ item.vpc_subnet_id }}"
         group: "{{ security_group_name_prefix }}-{{ subnet_dict[item.vpc_subnet_id] }}"
         instance_tags: "{{
@@ -117,6 +117,11 @@
             volume_type: gp2
             volume_size: 30
             delete_on_termination: true
+          - device_name: /dev/sdb                                                                                                                                                                                                                                                                                            
+            volume_type: io2                                                                                                                                                                                                                                                                                            
+            volume_size: 2000
+            iops: 16000
+            delete_on_termination: true 
       register: server
       loop: "{{ molecule_yml.platforms }}"
       loop_control:

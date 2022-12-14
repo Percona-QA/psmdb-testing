@@ -20,6 +20,12 @@
     - name: Create File System
       filesystem:
         fstype: xfs
+        dev: "/dev/nvme1n1"
+      when: instance_type == "t2.micro" 
+
+    - name: Create File System
+      filesystem:
+        fstype: xfs
         dev: "/dev/nvme0n1"
       when: instance_type == "i3.large" or instance_type == "i3.xlarge"
 
@@ -28,6 +34,15 @@
         fstype: xfs
         dev: "/dev/nvme1n1"
       when: instance_type == "i3en.large" or instance_type == "i3en.xlarge"
+
+    - name: Create and mount disks
+      mount:
+        path: "/mnt/data"
+        src: "/dev/nvme1n1"
+        fstype: xfs
+        opts: defaults,noatime,nodiscard
+        state: mounted
+      when: instance_type == "t2.micro"
 
     - name: Create and mount disks
       mount:
