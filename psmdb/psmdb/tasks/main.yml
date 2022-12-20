@@ -133,8 +133,23 @@
     state: link
   when: psmdb_mongosh >= "6"
   
-- name: start mongod service
-  service: name=mongod state=started
+- name: Attempt to start mongod service
+  block:
+    - name: start mongod service 
+      service: name=mongod state=started
+
+  rescue:
+    - name: Read the logs if failed
+      shell: |
+        cat /var/log/mongodb/mongod.log
+      register: logs_content
+
+    - name: Print the logs content to a console
+      debug:
+        msg: "{{ logs_content.stdout }}"
+    
+    - name: Fail
+      command: /bin/false
 
 - name: download package-testing repo with wget
   command: "{{ item }}"
