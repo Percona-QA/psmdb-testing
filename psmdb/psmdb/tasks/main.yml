@@ -139,15 +139,6 @@
       service: name=mongod state=started
 
   rescue:
-    - name: Check the service status
-      shell: |
-        systemctl status mongod.service
-      register: status_content
-
-    - name: Print status
-      debug:
-        msg: "{{ status_content }}"
-
     - name: Check the journal content
       shell: |
         journalctl -n 100 --no-pager
