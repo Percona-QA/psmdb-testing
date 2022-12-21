@@ -39,8 +39,6 @@ def test_functional(host):
     assert result.rc == 0, result.stdout
 
 def test_enable_auth(host):
-#    if int(PSMDB_VER.split('.')[0]) >= 6 :
-#        pytest.skip("skipping enable_auth tests")
     cmd = "/package-testing/scripts/psmdb_set_auth.sh"
     with host.sudo():
         result = host.run(cmd)
@@ -87,13 +85,16 @@ def test_vault_encryption(host):
         print(result.stderr)
     assert result.rc == 0, result.stdout
 
-#def test_ldap_native(host):
-#    cmd = "/package-testing/scripts/psmdb_ldap/psmdb_test_ldap.sh"
-#    with host.sudo():
-#        result = host.run(cmd)
-#        print(result.stdout)
-#        print(result.stderr)
-#    assert result.rc == 0, result.stdout
+def test_ldap_native(host):
+    print(host.system_info.arch)
+    if host.system_info.arch in ["arm64","aarch64"]:
+        pytest.skip("skipping test on ARM arch")
+    cmd = "/package-testing/scripts/psmdb_ldap/psmdb_test_ldap.sh"
+    with host.sudo():
+        result = host.run(cmd)
+        print(result.stdout)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout
 
 def test_kerberos(host):
     cmd = "/package-testing/scripts/psmdb_kerberos/psmdb_test_kerberos.sh"
