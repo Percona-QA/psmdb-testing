@@ -4,8 +4,8 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: ${MOLECULE_OS:-centos7}
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+  - name: ${MOLECULE_OS:-ubi8}
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubi8-ansible:latest}"
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
@@ -15,7 +15,7 @@ provisioner:
   name: ansible
   log: true
   playbooks:
-    prepare: ../../../../playbooks/prepare.yml
+#    prepare: ../../../../playbooks/prepare.yml
     converge: ../../playbooks/playbook.yml
 verifier:
   name: testinfra
@@ -29,6 +29,6 @@ verifier:
 scenario:
   name: docker
   test_sequence:
-    - prepare
+#    - prepare
     - converge
     - verify

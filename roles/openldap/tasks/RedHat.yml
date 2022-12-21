@@ -12,15 +12,21 @@
     - jq
   when: ansible_distribution_major_version <= "7"
 
-- name: install symas repo
-  shell: |
-    curl https://repo.symas.com/configs/SOFL/rhel8/sofl.repo --output /etc/yum.repos.d/sofl.repo
-  when: ansible_distribution_major_version == "8"  
+#- name: install symas repo
+#  shell: |
+#    curl https://repo.symas.com/configs/SOFL/rhel8/sofl.repo --output /etc/yum.repos.d/sofl.repo
+#  when: ansible_distribution_major_version == "8"  
 
-- name: Import symas gpg key
+#- name: Import symas gpg key
+#  rpm_key:
+#    state: present
+#    key: https://repo.symas.com/repo/gpg/RPM-GPG-KEY-symas-com-signing-key
+#  when: ansible_distribution_major_version == "8"
+
+- name: Import CentOS gpg key
   rpm_key:
     state: present
-    key: https://repo.symas.com/repo/gpg/RPM-GPG-KEY-symas-com-signing-key
+    key: http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official
   when: ansible_distribution_major_version == "8"
 
 #- name: Import ltb gpg key
@@ -45,13 +51,22 @@
     update_cache: yes
   vars:
     packages:
-#    - openldap-ltb
-    - symas-openldap-clients
-    - symas-openldap-servers
     - openldap-devel
     - gcc
     - python3-devel
     - jq
+  when: ansible_distribution_major_version == "8"
+
+- name: Install required packages
+  yum:
+    name: "{{packages}}"
+    state: present
+  vars:
+    packages:
+    - http://mirror.centos.org/centos/8-stream/BaseOS/{{ ansible_architecture }}/os/Packages/openldap-2.4.46-18.el8.{{ ansible_architecture }}.rpm
+    - http://mirror.centos.org/centos/8-stream/BaseOS/{{ ansible_architecture }}/os/Packages/openldap-devel-2.4.46-18.el8.{{ ansible_architecture }}.rpm
+    - http://mirror.centos.org/centos/8-stream/BaseOS/{{ ansible_architecture }}/os/Packages/openldap-clients-2.4.46-18.el8.{{ ansible_architecture }}.rpm
+    - http://mirror.centos.org/centos/8-stream/PowerTools/{{ ansible_architecture }}/os/Packages/openldap-servers-2.4.46-18.el8.{{ ansible_architecture }}.rpm
   when: ansible_distribution_major_version == "8"
 
 - name: Install ldap python package

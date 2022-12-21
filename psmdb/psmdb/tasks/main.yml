@@ -61,7 +61,7 @@
     - percona-server-mongodb-server-{{ lookup('env', 'PSMDB_VERSION') }}
     - percona-server-mongodb-mongos-{{ lookup('env', 'PSMDB_VERSION') }}
     - percona-server-mongodb-tools-{{ lookup('env', 'PSMDB_VERSION') }}
-#    - percona-server-mongodb-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
+    - percona-server-mongodb-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
   when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "7"
 
 - name: install psmdb rpm packages
@@ -74,10 +74,10 @@
       - percona-server-mongodb-server-{{ lookup('env', 'PSMDB_VERSION') }}
       - percona-server-mongodb-mongos-{{ lookup('env', 'PSMDB_VERSION') }}
       - percona-server-mongodb-tools-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-debugsource-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-tools-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-mongos-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-server-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
+#      - percona-server-mongodb-debugsource-{{ lookup('env', 'PSMDB_VERSION') }}
+#      - percona-server-mongodb-tools-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
+#      - percona-server-mongodb-mongos-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
+#      - percona-server-mongodb-server-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
   when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8"
 
 - name: install mongo shell deb package

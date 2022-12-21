@@ -6,5 +6,5 @@
   roles:
     - role: psmdb
     - role: '../../../roles/openldap'
-      when: not ( ansible_architecture == "aarch64" or ansible_architecture == "arm64" )
+#      when: not ( ansible_architecture == "aarch64" or ansible_architecture == "arm64" )
     - role: '../../../roles/kerberos'
