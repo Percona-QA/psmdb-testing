@@ -87,13 +87,13 @@ def test_vault_encryption(host):
         print(result.stderr)
     assert result.rc == 0, result.stdout
 
-def test_ldap_native(host):
-    cmd = "/package-testing/scripts/psmdb_ldap/psmdb_test_ldap.sh"
-    with host.sudo():
-        result = host.run(cmd)
-        print(result.stdout)
-        print(result.stderr)
-    assert result.rc == 0, result.stdout
+#def test_ldap_native(host):
+#    cmd = "/package-testing/scripts/psmdb_ldap/psmdb_test_ldap.sh"
+#    with host.sudo():
+#        result = host.run(cmd)
+#        print(result.stdout)
+#        print(result.stderr)
+#    assert result.rc == 0, result.stdout
 
 def test_kerberos(host):
     cmd = "/package-testing/scripts/psmdb_kerberos/psmdb_test_kerberos.sh"

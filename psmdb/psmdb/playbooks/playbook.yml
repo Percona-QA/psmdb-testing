@@ -5,5 +5,5 @@
   become_method: sudo
   roles:
     - role: psmdb
-    - role: '../../../roles/openldap'
+#    - role: '../../../roles/openldap'
     - role: '../../../roles/kerberos'
