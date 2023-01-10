@@ -147,6 +147,17 @@ def test_pbm_agent_binary(host):
         pytest.xfail("Possible xfail")
 
 
+def test_pbm_agent_entrypoint(host):
+    """Check pbm agent binary
+    """
+    file = host.file("/usr/bin/pbm-agent-entrypoint")
+    assert file.user == "root"
+    assert file.group == "root"
+    try:
+        assert file.mode == 0o755
+    except AssertionError:
+        pytest.xfail("Possible xfail")
+
 def test_pbm_storage_default_config(host):
     """Check pbm agent binary
     """
