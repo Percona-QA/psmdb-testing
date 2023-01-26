@@ -25,11 +25,11 @@
     update_cache: yes
   vars:
     packages:
-    - openldap-devel
+    - python3-ldap
     - gcc
     - python3-devel
     - jq
-  when: ansible_distribution_major_version == "8"
+  when: ansible_distribution_major_version >= "8"
 
 - name: Install required packages
   yum:
@@ -43,7 +43,28 @@
     - http://mirror.centos.org/centos/8-stream/PowerTools/{{ ansible_architecture }}/os/Packages/openldap-servers-2.4.46-18.el8.{{ ansible_architecture }}.rpm
   when: ansible_distribution_major_version == "8"
 
-- name: Install ldap python package
-  pip:
-    name: python-ldap
-  when: ansible_distribution_major_version == "8"
+- name: Import epel gpg key
+  rpm_key:
+    state: present
+    key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9
+  when: ansible_distribution_major_version == "9"
+
+- name: Install epel repo
+  yum:
+    name: "{{packages}}"
+    state: present
+  vars:
+    packages:
+    - https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    - https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-9.noarch.rpm
+  when: ansible_distribution_major_version == "9"
+
+- name: Install required packages
+  yum:
+    state: present
+    name:
+    - openldap
+    - openldap-devel
+    - openldap-servers
+    - openldap-clients
+  when: ansible_distribution_major_version == "9"
