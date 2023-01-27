@@ -8,11 +8,14 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
 
 DEB_PACKAGES = ['percona-server-mongodb', 'percona-server-mongodb-server', 'percona-server-mongodb-mongos',
                 'percona-server-mongodb-tools', 'percona-server-mongodb-dbg']
-RPM_PACKAGES = ['percona-server-mongodb', 'percona-server-mongodb-server', 'percona-server-mongodb-mongos',
+RPM_PACKAGES_7 = ['percona-server-mongodb', 'percona-server-mongodb-server', 'percona-server-mongodb-mongos',
                 'percona-server-mongodb-tools', 'percona-server-mongodb-debuginfo']
-RPM_NEW_CENTOS_PACKAGES = ['percona-server-mongodb', 'percona-server-mongodb-mongos-debuginfo',
+RPM_PACKAGES_8 = ['percona-server-mongodb', 'percona-server-mongodb-mongos-debuginfo',
                            'percona-server-mongodb-server-debuginfo',
                            'percona-server-mongodb-tools-debuginfo', 'percona-server-mongodb-debugsource']
+
+RPM_PACKAGES_9 = ['percona-server-mongodb', 'percona-server-mongodb-server', 'percona-server-mongodb-mongos',
+                'percona-server-mongodb-tools']
 
 BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
             'mongofiles', 'mongoimport', 'mongorestore', 'mongotop', 'mongostat']
@@ -36,29 +39,39 @@ def test_deb_packages(host, package):
 
 
 # TODO add check that minor version is correct
-@pytest.mark.parametrize("package", RPM_PACKAGES)
-def test_rpm_packages(host, package):
+@pytest.mark.parametrize("package", RPM_PACKAGES_7)
+def test_rpm7_packages(host, package):
     os = host.system_info.distribution
     if os in ["debian", "ubuntu"]:
         pytest.skip("This test only for RHEL based platforms")
-    if float(host.system_info.release) >= 8.0:
+    if float(host.system_info.release) != 7.0:
         pytest.skip("Only for centos7 tests")
     pkg = host.package(package)
     assert pkg.is_installed
     assert PSMDB_VER in pkg.version
 
 
-@pytest.mark.parametrize("package", RPM_NEW_CENTOS_PACKAGES)
+@pytest.mark.parametrize("package", RPM_PACKAGES_8)
 def test_rpm8_packages(host, package):
     os = host.system_info.distribution
     if os in ["debian", "ubuntu"]:
         pytest.skip("This test only for RHEL based platforms")
-    if float(host.system_info.release) < 8.0:
-        pytest.skip("Only for centos7 tests")
+    if float(host.system_info.release) != 8.0:
+        pytest.skip("Only for centos8 tests")
     pkg = host.package(package)
     assert pkg.is_installed
     assert PSMDB_VER in pkg.version
 
+@pytest.mark.parametrize("package", RPM_PACKAGES_9)
+def test_rpm9_packages(host, package):
+    os = host.system_info.distribution
+    if os in ["debian", "ubuntu"]:
+        pytest.skip("This test only for RHEL based platforms")
+    if float(host.system_info.release) < 9.0:
+        pytest.skip("Only for centos9 tests")
+    pkg = host.package(package)
+    assert pkg.is_installed
+    assert PSMDB_VER in pkg.version
 
 @pytest.mark.parametrize("binary", BINARIES)
 def test_binary_version(host, binary):

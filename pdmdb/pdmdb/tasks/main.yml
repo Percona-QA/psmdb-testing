@@ -74,6 +74,18 @@
       - percona-server-mongodb-server-debuginfo
   when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
 
+- name: install psmdb rpm packages
+  yum:
+    name: "{{ packages }}"
+    state: latest
+  vars:
+    packages:
+      - percona-server-mongodb
+      - percona-server-mongodb-server
+      - percona-server-mongodb-mongos
+      - percona-server-mongodb-tools
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "9"
+
 - name: install mongo shell deb package
   apt:
     name: "{{ packages }}"
