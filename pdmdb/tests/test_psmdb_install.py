@@ -40,7 +40,7 @@ def test_deb_packages(host, package):
 
 # TODO add check that minor version is correct
 @pytest.mark.parametrize("package", RPM_PACKAGES_7)
-def test_rpm_packages(host, package):
+def test_rpm7_packages(host, package):
     os = host.system_info.distribution
     if os in ["debian", "ubuntu"]:
         pytest.skip("This test only for RHEL based platforms")
@@ -63,7 +63,7 @@ def test_rpm8_packages(host, package):
     assert PSMDB_VER in pkg.version
 
 @pytest.mark.parametrize("package", RPM_PACKAGES_9)
-def test_rpm8_packages(host, package):
+def test_rpm9_packages(host, package):
     os = host.system_info.distribution
     if os in ["debian", "ubuntu"]:
         pytest.skip("This test only for RHEL based platforms")
