@@ -89,7 +89,17 @@
     packages:
     - percona-mongodb-mongosh
     - percona-server-mongodb-shell
-  when: ansible_os_family == "RedHat" and not mongo.stat.exists
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "8" and not mongo.stat.exists
+
+- name: Install mongosh rpm packages
+  yum:
+    name: "{{ packages }}"
+    state: latest
+  vars:
+    packages:
+    - https://repo.percona.com/psmdb-60/yum/testing/8Server/RPMS/x86_64/percona-server-mongodb-shell-6.0.0-1.el8.x86_64.rpm
+    - percona-mongodb-mongosh
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "9" and not mongo.stat.exists
 
 - name: Copy mongo binary to workdir
   copy:
