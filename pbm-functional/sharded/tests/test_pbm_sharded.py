@@ -41,6 +41,11 @@ SIZE = int(os.getenv("SIZE"))
 TIMEOUT = int(os.getenv("TIMEOUT"))
 STORAGE = os.getenv("STORAGE")
 BACKUP_TYPE = os.getenv("BACKUP_TYPE")
+EXISTING_BACKUP = os.getenv("EXISTING_BACKUP",default = "no")
+CHECK_PITR = os.getenv("CHECK_PITR",default = "yes")
+numDownloadWorkers = os.getenv("RESTORE_NUMDOWNLOADWORKERS",default = '0')
+maxDownloadBufferMb = os.getenv("RESTORE_NUMDOWNLOADBUFFERMB",default = '0')
+downloadChunkMb = os.getenv("RESTORE_DOWNLOADCHUNKMB",default = '0')
 
 def pytest_configure():
     pytest.backup_name = ''
@@ -99,13 +104,15 @@ def check_pbm_service(node):
 
 def restart_mongod(node):
     with node.sudo():
+        hostname = node.check_output('hostname -s')
         result = node.check_output('systemctl restart mongod')
-    print('restarting mongod: ' + result)
+    print('restarting mongod on ' + hostname)
 
 def restart_mongos(node):
     with node.sudo():
+        hostname = node.check_output('hostname -s')
         result = node.check_output('systemctl restart mongos')
-    print('restarting mongos: ' + result)
+    print('restarting mongos on ' + hostname)
 
 def restart_pbm_agent(node):
     with node.sudo():
@@ -162,6 +169,14 @@ def make_restore(node,port,name):
     for i in [secondary1_cfg, secondary2_cfg, primary_cfg]:
         restart_mongos(i)
         time.sleep(5)
+    output = node.check_output('pbm config --mongodb-uri=mongodb://localhost:' + port + '/ --force-resync')
+    print(output)
+    for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
+        with i.sudo():
+            hostname = i.check_output('hostname -s')
+            logs = i.check_output('journalctl -u pbm-agent -b -o cat --no-pager | grep restore | grep download || true')
+            print("logs from " + hostname)
+            print(logs)
     output = node.check_output('pbm config --mongodb-uri=mongodb://localhost:' + port + '/ --force-resync')
     print(output)
     for i in range(TIMEOUT):
@@ -249,17 +264,27 @@ def test_1_setup_storage():
         assert store_out['storage']['type'] == 's3'
         assert store_out['storage']['s3']['region'] == 'us-west-2'
         assert store_out['storage']['s3']['bucket'] == 'pbm-testing-west'
+    d = {'numDownloadWorkers': numDownloadWorkers,'maxDownloadBufferMb': maxDownloadBufferMb,'downloadChunkMb': downloadChunkMb }
+    for k, v in d.items():
+        if int(v):
+            result = primary_cfg.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set restore.' + k + '=' + v + ' --out=json')
+            store_out = json.loads(result)
+            print(store_out)
     time.sleep(10)
 
 def test_2_agents_status():
     check_agents_status(primary_cfg,"27019")
 
 def test_3_prepare_data():
+    if EXISTING_BACKUP != "no":
+        pytest.skip("Skipping loading data")
     load_data(primary_cfg,"27017",SIZE)
     count = check_count_data(primary_cfg,"27017")
     assert int(count) == SIZE
 
 def test_4_setup_pitr():
+    if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
+        pytest.skip("Skipping pitr test")
     if BACKUP_TYPE == "physical":
         result = primary_cfg.check_output('pbm config --mongodb-uri=mongodb://localhost:27019/ --set pitr.enabled=true --set pitr.oplogOnly=true --out=json')
         for i in range(TIMEOUT):
@@ -278,23 +303,26 @@ def test_4_setup_pitr():
     print(store_out)
 
 def test_5_backup():
+    if EXISTING_BACKUP != "no":
+        pytest.skip("Skipping backup test")
     now = datetime.utcnow()
     pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
     print("pitr start time: " + pytest.pitr_start)
     pytest.backup_name = make_backup(primary_cfg,"27019",BACKUP_TYPE)
-    for i in range(TIMEOUT):
-        pitr = check_pitr(primary_cfg,"27019")
-        if not pitr:
-            print("waiting for pitr to be enabled")
-            time.sleep(1)
-        else:
-            print("pitr enabled")
-            break
-    assert check_pitr(primary_cfg,"27019") == True
-    print("pbm logs:")
-    get_pbm_logs(primary_cfg,"27019")
+    if CHECK_PITR != "no":
+        for i in range(TIMEOUT):
+            pitr = check_pitr(primary_cfg,"27019")
+            if not pitr:
+                print("waiting for pitr to be enabled")
+                time.sleep(1)
+            else:
+                print("pitr enabled")
+                break
+        assert check_pitr(primary_cfg,"27019") == True
 
 def test_6_modify_data():
+    if EXISTING_BACKUP != "no":
+        pytest.skip("Skipping backup test")
     drop_database(primary_cfg,"27017")
     load_data(primary_cfg,"27017",10)
     count = check_count_data(primary_cfg,"27017")
@@ -305,6 +333,8 @@ def test_6_modify_data():
     print("pitr end time: " + pytest.pitr_end)
 
 def test_7_disable_pitr():
+    if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
+        pytest.skip("Skipping pitr test")
     result = primary_cfg.check_output('pbm config --mongodb-uri=mongodb://localhost:27019/ --set pitr.enabled=false --out=json')
     store_out = json.loads(result)
     print(store_out)
@@ -319,15 +349,17 @@ def test_7_disable_pitr():
     assert check_pitr(primary_cfg,"27019") == False
 
 def test_8_restore():
+    if EXISTING_BACKUP != "no":
+        pytest.backup_name = EXISTING_BACKUP
     stop_balancer()
     make_restore(primary_cfg,"27019",pytest.backup_name)
     start_balancer()
     count = check_count_data(primary_cfg,"27017")
     assert int(count) == SIZE
-    print("pbm logs:")
-    get_pbm_logs(primary_cfg,"27019")
 
 def test_9_pitr_restore():
+    if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
+        pytest.skip("Skipping pitr test")
     if BACKUP_TYPE == "logical":
         stop_balancer()
         print("performing pitr restore from backup " + pytest.backup_name + " to timestamp " + pytest.pitr_end)
@@ -340,6 +372,4 @@ def test_9_pitr_restore():
         make_pitr_replay(primary_cfg,"27019",pytest.pitr_start,pytest.pitr_end)
         count = check_count_data(primary_cfg,"27017")
         assert int(count) == 10
-    print("pbm logs:")
-    get_pbm_logs(primary_cfg,"27019")
 
