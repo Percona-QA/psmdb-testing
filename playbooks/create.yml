@@ -54,6 +54,8 @@
         vpc_id: "{{ subnet_dict[item.vpc_subnet_id] }}"
         region: "{{ item.region|default(default_region) }}"
       with_items: "{{ molecule_yml.platforms }}"
+      register: sg_status
+      failed_when: sg_status is failed and 'already exists' not in sg_status.error.message
 
 #    - name: Delete remote keypair
 #      ec2_key:
