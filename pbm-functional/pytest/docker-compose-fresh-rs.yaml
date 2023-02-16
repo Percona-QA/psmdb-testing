@@ -1,0 +1,45 @@
+version: "3"
+services:
+  newrs101:
+    image: replica_member/local
+    ports:
+      - "27027:27017"
+    networks:
+      - test
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    environment:
+      PBM_MONGODB_URI: mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017
+    container_name: newrs101
+    hostname: newrs101
+
+  newrs102:
+    image: replica_member/local
+    networks:
+      - test
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    environment:
+      PBM_MONGODB_URI: mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017
+    container_name: newrs102
+    hostname: newrs102
+
+  newrs103:
+    image: replica_member/local
+    networks:
+      - test
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    environment:
+      PBM_MONGODB_URI: mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017
+    container_name: newrs103
+    hostname: newrs103
+
+networks:
+  test:
+    external: true
+    name: test
+
