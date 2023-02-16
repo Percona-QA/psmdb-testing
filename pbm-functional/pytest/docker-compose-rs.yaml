@@ -7,8 +7,6 @@ services:
     networks:
       - test
     volumes:
-      - ./conf/pbm:/etc/pbm:ro
-      - ./conf/datagen:/etc/datagen:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
     environment:
@@ -21,7 +19,6 @@ services:
     networks:
       - test
     volumes:
-      - ./conf/pbm:/etc/pbm:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
     environment:
@@ -34,7 +31,6 @@ services:
     networks:
       - test
     volumes:
-      - ./conf/pbm:/etc/pbm:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
     environment:
