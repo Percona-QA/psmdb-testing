@@ -1,4 +1,4 @@
-# PMM functional tests #
+# PBM functional tests #
 
 ## Setup ##
 ```docker-compose build```
