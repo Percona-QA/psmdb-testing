@@ -42,9 +42,8 @@ services:
       dockerfile: ./Dockerfile
       context: .
       args:
-        - REPO=${REPO:-testing}
-        - PBM_VERSION=${PBM_VERSION:-latest}
-        - PSMDB_VERSION=${PSMDB_VERSION:-latest}
+        - PBM_BRANCH=${PBM_BRANCH:-main}
+        - PSMDB=${PSMDB:-percona/percona-server-mongodb:latest}
     command: /bin/bash
 
 networks:

@@ -127,10 +127,5 @@ def make_resync(node):
 def restart_pbm_agents(nodes):
     for node in nodes:
         n = testinfra.get_host("docker://" + node)
-        n.check_output('systemctl restart pbm-agent')
+        n.check_output('supervisorctl restart pbm-agent')
 
-def configure_pbm_agents(rsname,nodes):
-    for node in nodes:
-        n = testinfra.get_host("docker://" + node)
-        n.check_output('echo PBM_MONGODB_URI="mongodb://pbm:pbmpass@localhost:27017/?authSource=admin&replicaSet=' + rsname + ' ">>/etc/sysconfig/pbm-agent')
-        n.check_output('systemctl restart pbm-agent')

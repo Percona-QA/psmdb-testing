@@ -9,14 +9,15 @@ pytest_plugins = ["docker_compose"]
 
 @pytest.fixture(scope="function")
 def start_cluster(function_scoped_container_getter):
+    time.sleep(5)
     rsname="rs"
     nodes=["rs101","rs102","rs103"]
-    mongohelper.prepare_rs(rsname,nodes,'none')
-    pbmhelper.configure_pbm_agents(rsname,nodes)
+    mongohelper.prepare_rs(rsname,nodes)
+    pbmhelper.restart_pbm_agents(nodes)
     pbmhelper.setup_pbm(nodes[0])
     newnodes=["newrs101","newrs102","newrs103"]
-    mongohelper.prepare_rs(rsname,newnodes,'none')
-    pbmhelper.configure_pbm_agents(rsname,newnodes)
+    mongohelper.prepare_rs(rsname,newnodes)
+    pbmhelper.restart_pbm_agents(newnodes)
     pbmhelper.setup_pbm(newnodes[0])
 
 def test_logical(start_cluster):

@@ -1,22 +1,31 @@
 import testinfra
 import time
 
-def prepare_rs(rsname,nodes,sharding):
-    for node in nodes:
-        n = testinfra.get_host("docker://" + node)
-        if sharding == "shardsrv":
-            n.check_output('sed -E "s/^#replication:/sharding:\\n  clusterRole: shardsvr\\nreplication:\\n  replSetName: ' + rsname + '/" -i /etc/mongod.conf')
-        elif sharding == "configsvr":
-            n.check_output('sed -E "s/^#replication:/sharding:\\n  clusterRole: configsvr\\nreplication:\\n  replSetName: ' + rsname + '/" -i /etc/mongod.conf')
+def check_primary(node):
+    primary = testinfra.get_host("docker://" + node)
+    result=primary.check_output("mongo --quiet --eval 'db.isMaster().ismaster'")
+    if result.lower() == 'true':
+        return True
+    else:
+        return False
+
+def wait_for_primary(node):
+    timeout = time.time() + 600
+    while True:
+        if check_primary(node):
+            break
         else:
-            n.check_output('sed -E "s/^#replication:/replication:\\n  replSetName: ' + rsname + '/" -i /etc/mongod.conf')
-        n.check_output('sed -E "s/^  bindIp: 127.0.0.1/  bindIp: 0.0.0.0/" -i /etc/mongod.conf')
-        n.check_output('systemctl restart mongod')
-    time.sleep(5)
+            print("waiting for " + node + " to become primary")
+        if time.time() > timeout:
+            assert False
+        time.sleep(0.5)
+
+
+def prepare_rs(rsname,nodes):
     primary = testinfra.get_host("docker://" + nodes[0])
     print("\nsetup " + rsname)
-    init_rs = ( '\'config = {"_id":"' + 
-        rsname + 
+    init_rs = ( '\'config = {"_id":"' +
+        rsname +
         '","members":[{"_id":0,"host":"' +
         nodes[0] +
         ':27017","priority":2},{"_id":1,"host":"' +
@@ -27,7 +36,7 @@ def prepare_rs(rsname,nodes,sharding):
     print(init_rs)
     logs = primary.check_output("mongo --quiet --eval " + init_rs)
     print(logs)
-    time.sleep(60)
+    wait_for_primary(nodes[0])
     print("\nsetup authorization")
     print("\nadding root user")
     init_root_user = '\'db.getSiblingDB("admin").createUser({ user: "root", pwd: "root", roles: [ "root", "userAdminAnyDatabase", "clusterAdmin" ] });\''
@@ -45,9 +54,9 @@ def prepare_rs(rsname,nodes,sharding):
         '{"db":"admin","role":"restore" },' +
         '{"db":"admin","role":"pbmAnyAction" }]});\'' )
     logs = primary.check_output("mongo -u root -p root --quiet --eval " + init_pbm_user)
-    print(logs)    
+    print(logs)
 
 def restart_mongod(nodes):
     for node in nodes:
         n = testinfra.get_host("docker://" + node)
-        n.check_output('systemctl restart mongod')
+        n.check_output('supervisorctl restart mongod')

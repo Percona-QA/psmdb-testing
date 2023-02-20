@@ -2,15 +2,11 @@ version: "3"
 services:
   newrs101:
     image: replica_member/local
-    ports:
-      - "27027:27017"
     networks:
       - test
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-    privileged: true
     environment:
-      PBM_MONGODB_URI: mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017
+      PBM_MONGODB_URI: "mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017"
+      MONGODB_EXTRA_ARGS: " --replSet rs --keyFile /etc/keyfile"
     container_name: newrs101
     hostname: newrs101
 
@@ -18,11 +14,9 @@ services:
     image: replica_member/local
     networks:
       - test
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-    privileged: true
     environment:
-      PBM_MONGODB_URI: mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017
+      PBM_MONGODB_URI: "mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017"
+      MONGODB_EXTRA_ARGS: " --replSet rs --keyFile /etc/keyfile"
     container_name: newrs102
     hostname: newrs102
 
@@ -30,11 +24,9 @@ services:
     image: replica_member/local
     networks:
       - test
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-    privileged: true
     environment:
-      PBM_MONGODB_URI: mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017
+      PBM_MONGODB_URI: "mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017"
+      MONGODB_EXTRA_ARGS: " --replSet rs --keyFile /etc/keyfile"
     container_name: newrs103
     hostname: newrs103
 
