@@ -1,5 +1,6 @@
 import testinfra
 import time
+import concurrent.futures
 
 def check_primary(node):
     primary = testinfra.get_host("docker://" + node)
@@ -20,7 +21,6 @@ def wait_for_primary(node):
             assert False
         time.sleep(0.5)
 
-
 def prepare_rs(rsname,nodes):
     primary = testinfra.get_host("docker://" + nodes[0])
     print("\nsetup " + rsname)
@@ -36,7 +36,10 @@ def prepare_rs(rsname,nodes):
     print(init_rs)
     logs = primary.check_output("mongo --quiet --eval " + init_rs)
     print(logs)
-    wait_for_primary(nodes[0])
+
+def setup_authorization(node):
+    primary = testinfra.get_host("docker://" + node)
+    wait_for_primary(node)
     print("\nsetup authorization")
     print("\nadding root user")
     init_root_user = '\'db.getSiblingDB("admin").createUser({ user: "root", pwd: "root", roles: [ "root", "userAdminAnyDatabase", "clusterAdmin" ] });\''
@@ -56,7 +59,22 @@ def prepare_rs(rsname,nodes):
     logs = primary.check_output("mongo -u root -p root --quiet --eval " + init_pbm_user)
     print(logs)
 
+def prepare_rs_parallel(replicasets):
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        for rs in replicasets:
+            rsname = list(rs.keys())[0]
+            nodes = rs[rsname]
+            executor.submit(prepare_rs,rsname,nodes)
+
+def setup_authorization_parallel(replicasets):
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        for rs in replicasets:
+            rsname = list(rs.keys())[0]
+            primary = rs[rsname][0]
+            executor.submit(setup_authorization,primary)
+
 def restart_mongod(nodes):
     for node in nodes:
         n = testinfra.get_host("docker://" + node)
         n.check_output('supervisorctl restart mongod')
+        time.sleep(1)
