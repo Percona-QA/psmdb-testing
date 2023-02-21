@@ -160,15 +160,15 @@ def make_restore(node,port,name):
             print("unable to start restore - another operation in work")
             print(running)
             time.sleep(1)
-#    for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
-#        restart_mongod(i)
-#        time.sleep(5)
-#    for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
-#        restart_pbm_agent(i)
-#        time.sleep(5)
-#    for i in [secondary1_cfg, secondary2_cfg, primary_cfg]:
-#        restart_mongos(i)
-#        time.sleep(5)
+    for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
+        restart_mongod(i)
+        time.sleep(5)
+    for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
+        restart_pbm_agent(i)
+        time.sleep(5)
+    for i in [secondary1_cfg, secondary2_cfg, primary_cfg]:
+        restart_mongos(i)
+        time.sleep(5)
 #    output = node.check_output('pbm config --mongodb-uri=mongodb://localhost:' + port + '/ --force-resync')
 #    print(output)
 #   for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
@@ -187,8 +187,8 @@ def make_restore(node,port,name):
 #        else:
 #            time.sleep(1)
 #    time.sleep(300)
-#    for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
-#        check_mongod_service(i)
+    for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
+        check_mongod_service(i)
 
 def make_pitr_restore(node,port,name,timestamp):
     for i in range(TIMEOUT):
@@ -201,15 +201,15 @@ def make_pitr_restore(node,port,name,timestamp):
             print("unable to start restore - another operation in work")
             print(running)
             time.sleep(1)
- #   for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
- #       restart_mongod(i)
- #       time.sleep(5)
- #   for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
- #       restart_pbm_agent(i)
- #       time.sleep(5)
- #   for i in [secondary1_cfg, secondary2_cfg, primary_cfg]:
- #       restart_mongos(i)
- #       time.sleep(5)
+    for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
+        restart_mongod(i)
+        time.sleep(5)
+    for i in [secondary1_cfg, secondary2_cfg, primary_cfg, secondary1_rs0, secondary2_rs0, primary_rs0, secondary1_rs1, secondary2_rs1, primary_rs1]:
+        restart_pbm_agent(i)
+        time.sleep(5)
+    for i in [secondary1_cfg, secondary2_cfg, primary_cfg]:
+        restart_mongos(i)
+        time.sleep(5)
 
 def make_pitr_replay(node,port,start,end):
     for i in range(TIMEOUT):
