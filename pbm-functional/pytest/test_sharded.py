@@ -28,10 +28,10 @@ def start_cluster(function_scoped_container_getter):
     pbmhelper.setup_pbm(nodes[0])
 
 def test_logical(start_cluster):
+    backup=pbmhelper.make_backup(nodes[0],"logical")
     mongos = testinfra.get_host("docker://mongos")
     result = mongos.check_output("mongo -u root -p root --eval 'sh.stopBalancer()' --quiet")
     print(result)
-    backup=pbmhelper.make_backup(nodes[0],"logical")
     pbmhelper.make_restore(nodes[0],backup)
     result = mongos.check_output("mongo -u root -p root --eval 'sh.startBalancer()' --quiet")
     print(result)
