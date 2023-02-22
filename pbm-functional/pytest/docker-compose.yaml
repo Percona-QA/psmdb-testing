@@ -43,6 +43,7 @@ services:
       context: .
       args:
         - PBM_BRANCH=${PBM_BRANCH:-main}
+        - GO_VER=${GO_VER:-latest}
         - PSMDB=${PSMDB:-percona/percona-server-mongodb:latest}
     command: /bin/bash
 
