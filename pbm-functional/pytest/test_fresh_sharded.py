@@ -44,16 +44,23 @@ def start_cluster(function_scoped_container_getter):
 def test_logical(start_cluster):
     pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
     backup=pbmhelper.make_backup(nodes[0],"logical")
+    for node in nodes:
+        docker.from_env().containers.get(node).stop()
+
     pbmhelper.make_resync(newnodes[0])
     pymongo.MongoClient(newconnection).admin.command("balancerStop")
     pbmhelper.make_restore(newnodes[0],backup)
     pymongo.MongoClient(newconnection).admin.command("balancerStart")
+
     assert pymongo.MongoClient(newconnection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(newconnection)["test"].command("collstats", "test").get("sharded", False)
 
 def test_physical(start_cluster):
     pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
     backup=pbmhelper.make_backup(nodes[0],"physical")
+    for node in nodes:
+        docker.from_env().containers.get(node).stop()
+
     pbmhelper.make_resync(newnodes[0])
     pymongo.MongoClient(newconnection).admin.command("balancerStop")
     docker.from_env().containers.get("newmongos").stop()
@@ -64,6 +71,7 @@ def test_physical(start_cluster):
     docker.from_env().containers.get("newmongos").start()
     time.sleep(5)
     pymongo.MongoClient(newconnection).admin.command("balancerStart")
+
     assert pymongo.MongoClient(newconnection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(newconnection)["test"].command("collstats", "test").get("sharded", False)
 
@@ -71,6 +79,9 @@ def test_incremental(start_cluster):
     pbmhelper.make_backup(nodes[0],"incremental --base")
     pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
     backup=pbmhelper.make_backup(nodes[0],"incremental")
+    for node in nodes:
+        docker.from_env().containers.get(node).stop()
+
     pbmhelper.make_resync(newnodes[0])
     pymongo.MongoClient(newconnection).admin.command("balancerStop")
     docker.from_env().containers.get("newmongos").stop()
@@ -81,5 +92,6 @@ def test_incremental(start_cluster):
     docker.from_env().containers.get("newmongos").start()
     time.sleep(5)
     pymongo.MongoClient(newconnection).admin.command("balancerStart")
+
     assert pymongo.MongoClient(newconnection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(newconnection)["test"].command("collstats", "test").get("sharded", False)

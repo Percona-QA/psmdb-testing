@@ -30,6 +30,10 @@ def test_logical(start_cluster):
     pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
     #perform backup on old cluster
     backup=pbmhelper.make_backup(nodes[0],"logical")
+    #stop old cluster
+    for node in nodes:
+        docker.from_env().containers.get(node).stop()
+
     #resync storage on new cluster
     pbmhelper.make_resync(newnodes[0])
     #perform restore on new cluster
@@ -42,6 +46,9 @@ def test_logical(start_cluster):
 def test_physical(start_cluster):
     pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
     backup=pbmhelper.make_backup(nodes[0],"physical")
+    for node in nodes:
+        docker.from_env().containers.get(node).stop()
+
     pbmhelper.make_resync(newnodes[0])
     pbmhelper.make_restore(newnodes[0],backup)
     mongohelper.restart_mongod(newnodes)
@@ -55,6 +62,9 @@ def test_incremental(start_cluster):
     pbmhelper.make_backup(nodes[0],"incremental --base")
     pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
     backup=pbmhelper.make_backup(nodes[0],"incremental")
+    for node in nodes:
+        docker.from_env().containers.get(node).stop()
+
     pbmhelper.make_resync(newnodes[0])
     pbmhelper.make_restore(newnodes[0],backup)
     mongohelper.restart_mongod(newnodes)
