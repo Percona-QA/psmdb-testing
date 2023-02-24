@@ -9,6 +9,8 @@ services:
       MONGODB_EXTRA_ARGS: " --port 27017 --replSet rs1 --shardsvr --keyFile /etc/keyfile"
     container_name: rs101
     hostname: rs101
+    volumes:
+      - fs:/backups
 
   rs102:
     image: replica_member/local
@@ -19,6 +21,8 @@ services:
       MONGODB_EXTRA_ARGS: " --port 27017 --replSet rs1 --shardsvr --keyFile /etc/keyfile"
     container_name: rs102
     hostname: rs102
+    volumes:
+      - fs:/backups
 
   rs103:
     image: replica_member/local
@@ -29,6 +33,8 @@ services:
       MONGODB_EXTRA_ARGS: " --port 27017 --replSet rs1 --shardsvr --keyFile /etc/keyfile"
     container_name: rs103
     hostname: rs103
+    volumes:
+      - fs:/backups
 
   rs201:
     image: replica_member/local
@@ -39,6 +45,8 @@ services:
       MONGODB_EXTRA_ARGS: " --port 27017 --replSet rs2 --shardsvr --keyFile /etc/keyfile"
     container_name: rs201
     hostname: rs201
+    volumes:
+      - fs:/backups
 
   rs202:
     image: replica_member/local
@@ -49,6 +57,8 @@ services:
       MONGODB_EXTRA_ARGS: " --port 27017 --replSet rs2 --shardsvr --keyFile /etc/keyfile"
     container_name: rs202
     hostname: rs202
+    volumes:
+      - fs:/backups
 
   rs203:
     image: replica_member/local
@@ -59,6 +69,8 @@ services:
       MONGODB_EXTRA_ARGS: " --port 27017 --replSet rs2 --shardsvr --keyFile /etc/keyfile"
     container_name: rs203
     hostname: rs203
+    volumes:
+      - fs:/backups
 
   rscfg01:
     image: replica_member/local
@@ -69,6 +81,8 @@ services:
       MONGODB_EXTRA_ARGS: " --port 27017 --replSet rscfg --configsvr --keyFile /etc/keyfile"
     container_name: rscfg01
     hostname: rscfg01
+    volumes:
+      - fs:/backups
 
   rscfg02:
     image: replica_member/local
@@ -79,6 +93,8 @@ services:
       MONGODB_EXTRA_ARGS: " --port 27017 --replSet rscfg --configsvr --keyFile /etc/keyfile"
     container_name: rscfg02
     hostname: rscfg02
+    volumes:
+      - fs:/backups
 
   rscfg03:
     image: replica_member/local
@@ -89,6 +105,8 @@ services:
       MONGODB_EXTRA_ARGS: " --port 27017 --replSet rscfg --configsvr --keyFile /etc/keyfile"
     container_name: rscfg03
     hostname: rscfg03
+    volumes:
+      - fs:/backups
 
   mongos:
     image: replica_member/local
@@ -103,3 +121,7 @@ networks:
     external: true
     name: test
 
+volumes:
+  fs:
+    external: true
+    name: fs

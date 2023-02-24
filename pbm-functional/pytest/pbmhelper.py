@@ -56,16 +56,10 @@ def check_agents_status(node):
         for host in replicaset['nodes']:
             assert host['ok'] == True
 
-def check_mongod_service(node):
-    n = testinfra.get_host("docker://" + node)
-    service = n.service("mongod")
-    assert service.is_running
-
 def check_pbm_service(node):
     n = testinfra.get_host("docker://" + node)
     service = n.service("pbm-agent")
     assert service.is_running
-
 
 def make_backup(node,type):
     n = testinfra.get_host("docker://" + node)
@@ -128,4 +122,26 @@ def restart_pbm_agents(nodes):
     for node in nodes:
         n = testinfra.get_host("docker://" + node)
         n.check_output('supervisorctl restart pbm-agent')
+
+def enable_pitr(node):
+    n = testinfra.get_host("docker://" + node)
+    n.check_output("pbm config --set pitr.enabled=true --set pitr.compression=none")
+    timeout = time.time() + 600
+    while True:
+        if check_pitr(node):
+            break
+        if time.time() > timeout:
+            assert False
+        time.sleep(0.5)
+
+def disable_pitr(node):
+    n = testinfra.get_host("docker://" + node)
+    n.check_output("pbm config --set pitr.enabled=false")
+    timeout = time.time() + 600
+    while True:
+        if not check_pitr(node):
+            break
+        if time.time() > timeout:
+            assert False
+        time.sleep(0.5)
 
