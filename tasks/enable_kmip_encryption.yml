@@ -27,16 +27,16 @@
     - directory
   when: ansible_os_family == "Debian"
 
-- name: Ensure token has correct permissions
+- name: Ensure cert file has correct permissions
   file:
-    path: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
+    path: /pykmip_workdir/mongod.pem
     owner: mongod
     group: mongod
     mode: '0400'
 
-- name: Ensure cert file has correct permissions
+- name: Ensure CA cert has correct permissions
   file:
-    path: /package-testing/scripts/psmdb_encryption/test.cer
+    path: /pykmip_workdir/ca.crt
     owner: mongod
     group: mongod
     mode: '0400'
@@ -66,13 +66,11 @@
 
       security:
         enableEncryption: true
-        vault:
-          serverName: 127.0.0.1
-          port: 8200
-          tokenFile: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
-          secret: secret_v2/data/psmdb-test/package-test
-          serverCAFile: /package-testing/scripts/psmdb_encryption/test.cer
         encryptionCipherMode: {{ lookup('env', 'CIPHER') }}
+        kmip:
+         serverName: 127.0.0.1
+         clientCertificateFile: /pykmip_workdir/mongod.pem
+         serverCAFile: /pykmip_workdir/ca.crt
   when: ansible_os_family == "RedHat"
 
 - name: Update mongo configuration
@@ -100,13 +98,11 @@
 
       security:
         enableEncryption: true
-        vault:
-          serverName: 127.0.0.1
-          port: 8200
-          tokenFile: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
-          secret: secret_v2/data/psmdb-test/package-test
-          serverCAFile: /package-testing/scripts/psmdb_encryption/test.cer
         encryptionCipherMode: {{ lookup('env', 'CIPHER') }}
+        kmip:
+         serverName: 127.0.0.1
+         clientCertificateFile: /pykmip_workdir/mongod.pem
+         serverCAFile: /pykmip_workdir/ca.crt
   when: ansible_os_family == "Debian"
 
 - name: Start mongod

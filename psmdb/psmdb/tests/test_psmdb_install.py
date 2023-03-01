@@ -85,6 +85,14 @@ def test_vault_encryption(host):
         print(result.stderr)
     assert result.rc == 0, result.stdout
 
+def test_kmip_encryption(host):
+    cmd = "/package-testing/scripts/psmdb_encryption/psmdb-encryption-test.sh kmip"
+    with host.sudo():
+        result = host.run(cmd)
+        print(result.stdout)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout
+
 def test_ldap_native(host):
 #    print(host.system_info.arch)
 #    if host.system_info.arch in ["arm64","aarch64"]:

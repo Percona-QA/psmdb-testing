@@ -116,14 +116,15 @@
     state: latest
   vars:
     packages:
-    - percona-mongodb-mongosh                                           
+    - percona-mongodb-mongosh
   when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6"
 
 - name: copy mongosh binary to mongo path for test scripts
-  file:
+  copy:
     src: /usr/bin/mongosh
     dest: /usr/bin/mongo
-    state: link
+    remote_src: true
+    mode: '0755'
   when: psmdb_mongosh >= "6"
 
 - name: start mongod service
@@ -134,10 +135,10 @@
   with_items:
     - rm -rf /package-testing
     - rm -f master.zip
-    - wget --no-check-certificate -O main.zip https://github.com/Percona-QA/psmdb-testing/archive/refs/heads/main.zip
+    - wget --no-check-certificate -O main.zip https://github.com/Percona-QA/psmdb-testing/archive/refs/heads/PSMDB_KMIP.zip
     - unzip main.zip
     - rm -f main.zip
-    - mv psmdb-testing-main /package-testing
+    - mv psmdb-testing-PSMDB_KMIP /package-testing
 
 - name: install latest bats from github
   command: "{{ item }}"
@@ -151,7 +152,7 @@
 
 - name: Install and configure vault
   include_tasks: ../../../tasks/install_and_configure_vault.yml
-  when: 
+  when:
     lookup('env', 'ENCRYPTION') == "VAULT"
 
 - name: Enable Vault encryption
@@ -159,10 +160,15 @@
   when:
     lookup('env', 'ENCRYPTION') == "VAULT"
 
-- name: Enable keyfile encryption    
+- name: Enable keyfile encryption
   include_tasks: ../../../tasks/enable_keyfile_encryption.yml
   when:
     lookup('env', 'ENCRYPTION') == "KEYFILE"
-   
+
+- name: Enable KMIP encryption
+  include_tasks: ../../../tasks/enable_kmip_encryption.yml
+  when:
+    lookup('env', 'ENCRYPTION') == "KMIP"
+
 - name: Load some data
   command: /package-testing/scripts/mongo_insert.sh
