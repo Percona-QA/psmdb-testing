@@ -1,8 +1,8 @@
-- name: Stop mongod 
-  service: 
+- name: Stop mongod
+  service:
     name: mongod
     state: stopped
-    
+
 - name: Cleanup mongo directory
   file:
     state: "{{ item }}"
@@ -60,40 +60,9 @@
 
       security:
         enableEncryption: true
-        encryptionCipherMode: AES256-CBC
+        encryptionCipherMode: {{ lookup('env', 'CIPHER') }}
         encryptionKeyFile: /package-testing/scripts/psmdb_encryption/mongodb-keyfile
-  when:
-     lookup('env', 'CIPHER') != "AES256-GCM" and ansible_os_family == "RedHat"
-
-- name: Update mongo configuration
-  copy:
-    dest: "/etc/mongod.conf"
-    content: |
-      storage:
-        dbPath: /var/lib/mongo
-        journal:
-          enabled: true
-        engine: wiredTiger
-
-      systemLog:
-        destination: file
-        logAppend: true
-        path: /var/log/mongo/mongod.log
-
-      processManagement:
-        fork: true
-        pidFilePath: /var/run/mongod.pid
-
-      net:
-        port: 27017
-        bindIp: 127.0.0.1
-
-      security:
-        enableEncryption: true
-        encryptionCipherMode: AES256-GCM
-        encryptionKeyFile: /package-testing/scripts/psmdb_encryption/mongodb-keyfile
-  when:
-     lookup('env', 'CIPHER') == "AES256-GCM" and ansible_os_family == "RedHat"
+  when: ansible_os_family == "RedHat"
 
 - name: Update mongo configuration
   copy:
@@ -120,42 +89,11 @@
 
       security:
         enableEncryption: true
-        encryptionCipherMode: AES256-CBC
+        encryptionCipherMode: {{ lookup('env', 'CIPHER') }}
         encryptionKeyFile: /package-testing/scripts/psmdb_encryption/mongodb-keyfile
-  when:
-     lookup('env', 'CIPHER') != "AES256-GCM" and ansible_os_family == "Debian"
+  when: ansible_os_family == "Debian"
 
-- name: Update mongo configuration
-  copy:
-    dest: "/etc/mongod.conf"
-    content: |
-      storage:
-        dbPath: /var/lib/mongodb
-        journal:
-          enabled: true
-        engine: wiredTiger
-
-      systemLog:
-        destination: file
-        logAppend: true
-        path: /var/log/mongodb/mongod.log
-
-      processManagement:
-        fork: true
-        pidFilePath: /var/run/mongod.pid
-
-      net:
-        port: 27017
-        bindIp: 127.0.0.1
-
-      security:
-        enableEncryption: true
-        encryptionCipherMode: AES256-GCM
-        encryptionKeyFile: /package-testing/scripts/psmdb_encryption/mongodb-keyfile
-  when:
-     lookup('env', 'CIPHER') == "AES256-GCM" and ansible_os_family == "Debian"
-
-- name: Start mongod 
-  service: 
+- name: Start mongod
+  service:
     name: mongod
     state: started
