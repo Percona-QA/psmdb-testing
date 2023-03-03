@@ -43,9 +43,9 @@ def start_cluster(function_scoped_container_getter):
 def test_logical(start_cluster):
     pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
     backup=pbmhelper.make_backup(nodes[0],"logical")
-    docker.from_env().containers.get("mongos").stop()
+    docker.from_env().containers.get("mongos").kill()
     for node in nodes:
-        docker.from_env().containers.get(node).stop()
+        docker.from_env().containers.get(node).kill()
 
     pbmhelper.make_resync(newnodes[0])
     pymongo.MongoClient(newconnection).admin.command("balancerStop")
@@ -55,7 +55,9 @@ def test_logical(start_cluster):
 
     assert pymongo.MongoClient(newconnection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(newconnection)["test"].command("collstats", "test").get("sharded", False)
-
+    docker.from_env().containers.get("newmongos").kill()
+    for node in newnodes:
+        docker.from_env().containers.get(node).kill()
 '''
 def test_physical(start_cluster):
     pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)

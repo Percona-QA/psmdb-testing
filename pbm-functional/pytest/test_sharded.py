@@ -47,6 +47,9 @@ def test_logical(start_cluster):
     pymongo.MongoClient(connection).admin.command("balancerStart")
     assert pymongo.MongoClient(connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(connection)["test"].command("collstats", "test").get("sharded", False)
+    docker.from_env().containers.get("mongos").kill()
+    for node in nodes:
+        docker.from_env().containers.get(node).kill()
 
 def test_physical(start_cluster):
     pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
@@ -63,6 +66,9 @@ def test_physical(start_cluster):
     pymongo.MongoClient(connection).admin.command("balancerStart")
     assert pymongo.MongoClient(connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(connection)["test"].command("collstats", "test").get("sharded", False)
+    docker.from_env().containers.get("mongos").kill()
+    for node in nodes:
+        docker.from_env().containers.get(node).kill()
 
 def test_incremental(start_cluster):
     pbmhelper.make_backup(nodes[0],"incremental --base")
@@ -80,6 +86,9 @@ def test_incremental(start_cluster):
     pymongo.MongoClient(connection).admin.command("balancerStart")
     assert pymongo.MongoClient(connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(connection)["test"].command("collstats", "test").get("sharded", False)
+    docker.from_env().containers.get("mongos").kill()
+    for node in nodes:
+        docker.from_env().containers.get(node).kill()
 
 def test_PBM_773(start_cluster):
     os.chmod("/backups",0o777)
@@ -147,3 +156,6 @@ def test_PBM_773(start_cluster):
     results = pymongo.MongoClient(connection)["test"]["test"].find({})
     for result in results:
         print(result)
+    docker.from_env().containers.get("mongos").kill()
+    for node in nodes:
+        docker.from_env().containers.get(node).kill()
