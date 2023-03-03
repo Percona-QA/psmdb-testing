@@ -132,7 +132,7 @@ def enable_pitr(node):
             break
         if time.time() > timeout:
             assert False
-        time.sleep(0.5)
+        time.sleep(5)
 
 def disable_pitr(node):
     n = testinfra.get_host("docker://" + node)
@@ -143,5 +143,5 @@ def disable_pitr(node):
             break
         if time.time() > timeout:
             assert False
-        time.sleep(0.5)
+        time.sleep(5)
 

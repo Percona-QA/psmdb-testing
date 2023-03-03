@@ -117,7 +117,7 @@ def test_PBM_773(start_cluster):
     time.sleep(10)
 
     pbmhelper.disable_pitr(nodes[0])
-    client.admin.command("balancerStop")
+    pymongo.MongoClient(connection).admin.command("balancerStop")
     docker.from_env().containers.get("mongos").stop()
     pbmhelper.make_restore(nodes[0],backup)
     docker.from_env().containers.get("mongos").start()
@@ -146,7 +146,7 @@ def test_PBM_773(start_cluster):
     with open(file, "ab") as f:
         for doc in docs:
             f.write(bson.encode(doc))
-    client.admin.command("balancerStop")
+    pymongo.MongoClient(connection).admin.command("balancerStop")
     docker.from_env().containers.get("mongos").stop()
     pbmhelper.make_restore(nodes[0],backup)
     docker.from_env().containers.get("mongos").start()
