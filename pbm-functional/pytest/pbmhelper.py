@@ -94,16 +94,15 @@ def make_backup(node,type):
 
 def make_restore(node,name):
     n = testinfra.get_host("docker://" + node)
-    for i in range(TIMEOUT):
-        running = check_status(node)
-        if not running:
+    timeout = time.time() + 600
+    while True:
+        if not check_status(node):
             output = n.check_output('pbm restore ' + name + ' --wait')
             print(output)
             break
-        else:
-            print("unable to start restore - another operation in work")
-            print(running)
-            time.sleep(1)
+        if time.time() > timeout:
+            assert False
+        time.sleep(0.5)
 
 def make_resync(node):
     n = testinfra.get_host("docker://" + node)

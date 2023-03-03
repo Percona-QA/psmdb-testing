@@ -10,7 +10,7 @@ services:
       - test
     environment:
       PBM_MONGODB_URI: "mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017"
-      MONGODB_EXTRA_ARGS: " --port 27017 --replSet rs1 --shardsvr --keyFile /etc/keyfile"
+      MONGODB_EXTRA_ARGS: " --port 27017 --replSet newrs1 --shardsvr --keyFile /etc/keyfile"
     container_name: newrs101
     hostname: newrs101
 
@@ -24,7 +24,7 @@ services:
       - test
     environment:
       PBM_MONGODB_URI: "mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017"
-      MONGODB_EXTRA_ARGS: " --port 27017 --replSet rs1 --shardsvr --keyFile /etc/keyfile"
+      MONGODB_EXTRA_ARGS: " --port 27017 --replSet newrs1 --shardsvr --keyFile /etc/keyfile"
     container_name: newrs102
     hostname: newrs102
 
@@ -38,7 +38,7 @@ services:
       - test
     environment:
       PBM_MONGODB_URI: "mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017"
-      MONGODB_EXTRA_ARGS: " --port 27017 --replSet rs1 --shardsvr --keyFile /etc/keyfile"
+      MONGODB_EXTRA_ARGS: " --port 27017 --replSet newrs1 --shardsvr --keyFile /etc/keyfile"
     container_name: newrs103
     hostname: newrs103
 
@@ -52,7 +52,7 @@ services:
       - test
     environment:
       PBM_MONGODB_URI: "mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017"
-      MONGODB_EXTRA_ARGS: " --port 27017 --replSet rs2 --shardsvr --keyFile /etc/keyfile"
+      MONGODB_EXTRA_ARGS: " --port 27017 --replSet newrs2 --shardsvr --keyFile /etc/keyfile"
     container_name: newrs201
     hostname: newrs201
 
@@ -66,7 +66,7 @@ services:
       - test
     environment:
       PBM_MONGODB_URI: "mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017"
-      MONGODB_EXTRA_ARGS: " --port 27017 --replSet rs2 --shardsvr --keyFile /etc/keyfile"
+      MONGODB_EXTRA_ARGS: " --port 27017 --replSet newrs2 --shardsvr --keyFile /etc/keyfile"
     container_name: newrs202
     hostname: newrs202
 
@@ -80,7 +80,7 @@ services:
       - test
     environment:
       PBM_MONGODB_URI: "mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017"
-      MONGODB_EXTRA_ARGS: " --port 27017 --replSet rs2 --shardsvr --keyFile /etc/keyfile"
+      MONGODB_EXTRA_ARGS: " --port 27017 --replSet newrs2 --shardsvr --keyFile /etc/keyfile"
     container_name: newrs203
     hostname: newrs203
 
@@ -90,7 +90,7 @@ services:
       - test
     environment:
       PBM_MONGODB_URI: "mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017"
-      MONGODB_EXTRA_ARGS: " --port 27017 --replSet rscfg --configsvr --keyFile /etc/keyfile"
+      MONGODB_EXTRA_ARGS: " --port 27017 --replSet newrscfg --configsvr --keyFile /etc/keyfile"
     container_name: newrscfg01
     hostname: newrscfg01
 
@@ -100,7 +100,7 @@ services:
       - test
     environment:
       PBM_MONGODB_URI: "mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017"
-      MONGODB_EXTRA_ARGS: " --port 27017 --replSet rscfg --configsvr --keyFile /etc/keyfile"
+      MONGODB_EXTRA_ARGS: " --port 27017 --replSet newrscfg --configsvr --keyFile /etc/keyfile"
     container_name: newrscfg02
     hostname: newrscfg02
 
@@ -110,7 +110,7 @@ services:
       - test
     environment:
       PBM_MONGODB_URI: "mongodb://${PBM_USER:-pbm}:${PBM_PASS:-pbmpass}@127.0.0.1:27017"
-      MONGODB_EXTRA_ARGS: " --port 27017 --replSet rscfg --configsvr --keyFile /etc/keyfile"
+      MONGODB_EXTRA_ARGS: " --port 27017 --replSet newrscfg --configsvr --keyFile /etc/keyfile"
     container_name: newrscfg03
     hostname: newrscfg03
 
@@ -122,7 +122,7 @@ services:
       - newrscfg03
     networks:
       - test
-    command: "mongos --keyFile=/etc/keyfile --configdb rscfg/newrscfg01:27017,newrscfg02:27017,newrscfg03:27017 --port 27017 --bind_ip 0.0.0.0"
+    command: "mongos --keyFile=/etc/keyfile --configdb newrscfg/newrscfg01:27017,newrscfg02:27017,newrscfg03:27017 --port 27017 --bind_ip 0.0.0.0"
     container_name: newmongos
     hostname: newmongos
 

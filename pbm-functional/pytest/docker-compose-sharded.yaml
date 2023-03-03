@@ -2,6 +2,10 @@ version: "3"
 services:
   rs101:
     image: replica_member/local
+    depends_on:
+      - rscfg01
+      - rscfg02
+      - rscfg03
     networks:
       - test
     environment:
@@ -14,6 +18,10 @@ services:
 
   rs102:
     image: replica_member/local
+    depends_on:
+      - rscfg01
+      - rscfg02
+      - rscfg03
     networks:
       - test
     environment:
@@ -26,6 +34,10 @@ services:
 
   rs103:
     image: replica_member/local
+    depends_on:
+      - rscfg01
+      - rscfg02
+      - rscfg03
     networks:
       - test
     environment:
@@ -38,6 +50,10 @@ services:
 
   rs201:
     image: replica_member/local
+    depends_on:
+      - rscfg01
+      - rscfg02
+      - rscfg03
     networks:
       - test
     environment:
@@ -50,6 +66,10 @@ services:
 
   rs202:
     image: replica_member/local
+    depends_on:
+      - rscfg01
+      - rscfg02
+      - rscfg03
     networks:
       - test
     environment:
@@ -62,6 +82,10 @@ services:
 
   rs203:
     image: replica_member/local
+    depends_on:
+      - rscfg01
+      - rscfg02
+      - rscfg03
     networks:
       - test
     environment:
@@ -110,6 +134,10 @@ services:
 
   mongos:
     image: replica_member/local
+    depends_on:
+      - rscfg01
+      - rscfg02
+      - rscfg03
     networks:
       - test
     command: "mongos --keyFile=/etc/keyfile --configdb rscfg/rscfg01:27017,rscfg02:27017,rscfg03:27017 --port 27017 --bind_ip 0.0.0.0"

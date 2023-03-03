@@ -6,11 +6,13 @@ import time
 import mongohelper
 import pbmhelper
 import os
+import docker
+
 from datetime import datetime
 
 pytest_plugins = ["docker_compose"]
 
-nodes = ["rscfg01", "rscfg02", "rscfg03", "rs101", "rs102", "rs103", "rs201", "rs202", "rs203"]
+nodes = ["rs101", "rs102", "rs103", "rs201", "rs202", "rs203", "rscfg01", "rscfg02", "rscfg03"]
 configsvr = { "rscfg": [ "rscfg01", "rscfg02", "rscfg03" ]}
 sh01 = { "rs1": [ "rs101", "rs102", "rs103" ]}
 sh02 = { "rs2": [ "rs201", "rs202", "rs203" ]}
@@ -30,7 +32,6 @@ def start_cluster(function_scoped_container_getter):
     pbmhelper.restart_pbm_agents(nodes)
     pbmhelper.setup_pbm(nodes[0])
     client.admin.command("enableSharding", "test")
-    client["test"]["test"].create_index("shard_key")
     client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
 
 def test_logical(start_cluster):
@@ -74,60 +75,41 @@ def test_incremental(start_cluster):
     assert pymongo.MongoClient(connection)["test"].command("collstats", "test").get("sharded", False)
 
 def test_PBM_773(start_cluster):
-    #update permissions for backup folder
     os.chmod("/backups",0o777)
-
-    #update pbm config to use local fs as a storage
     n = testinfra.get_host("docker://" + nodes[0])
     n.check_output("pbm config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none")
     time.sleep(10)
-
-    #perform initial backup
     pbmhelper.make_backup(nodes[0],"logical")
-
-    #enable pitr
     pbmhelper.enable_pitr(nodes[0])
 
-    #insert base data
     client = pymongo.MongoClient(connection)
     db = client.test
     collection = db.test
     collection.insert_many(documents)
     time.sleep(10)
 
-    #insert data with txn
     with client.start_session() as session:
         with session.start_transaction():
             collection.insert_one({"c": 3}, session=session)
             collection.insert_one({"d": 4}, session=session)
             session.commit_transaction()
     time.sleep(10)
-
-    #record pitr time
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr
     print("\npitr time is:")
     print(pitr)
     time.sleep(10)
 
-    #disable pitr
     pbmhelper.disable_pitr(nodes[0])
-
-    #perform pitr restore, documents from transaction should be present after the restore
     pbmhelper.make_restore(nodes[0],backup)
     results = pymongo.MongoClient(connection)["test"]["test"].find({})
     for result in results:
         print(result)
     assert pymongo.MongoClient(connection)["test"]["test"].count_documents({}) == len(documents) + 2
 
-
-    #scan backup folder for oplog for rs1
     folder="/backups/pbmPitr/rs1/" + datetime.utcnow().strftime("%Y%m%d") + "/"
     for entry in os.scandir(folder):
         file = entry.path
-        print(file)
-
-    #lookup for oplog entry with commitTransaction
     with open(file, "rb") as f:
         data= f.read()
         docs = bson.decode_all(data)
@@ -136,24 +118,15 @@ def test_PBM_773(start_cluster):
         for doc in docs:
             if "commitTransaction" in doc["o"]:
                 if doc["o"]["commitTransaction"] == 1:
-                    print("\noplog entry with commitTransaction")
-                    print(doc)
                     index = docs.index(doc)
-                    print("\nindex")
-                    print(index)
 
-    #delete commitTransaction oplog entry and all next entries and re-write rs1 oplog file
     del docs[index:]
-    print("\nnew oplog entry for rs1")
-    print(docs)
     with open(file, "wb") as f:
         f.truncate()
-
     with open(file, "ab") as f:
         for doc in docs:
             f.write(bson.encode(doc))
 
-    #perform pitr restore, documents from transaction should not be present after the restore
     pbmhelper.make_restore(nodes[0],backup)
     assert pymongo.MongoClient(connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(connection)["test"].command("collstats", "test").get("sharded", False)
