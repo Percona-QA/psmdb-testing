@@ -28,7 +28,6 @@ def start_cluster(function_scoped_container_getter):
         mongohelper.prepare_rs_parallel([cluster])
     for cluster in [sh01, sh02, newsh01, newsh02]:
         mongohelper.setup_authorization_parallel([cluster])
-    time.sleep(5)
     mongohelper.setup_authorization("mongos")
     mongohelper.setup_authorization("newmongos")
     pymongo.MongoClient(connection).admin.command("addShard", "rs2/rs201:27017,rs202:27017,rs203:27017")

@@ -36,6 +36,7 @@ def prepare_rs(rsname,nodes):
     print(init_rs)
     logs = primary.check_output("mongo --quiet --eval " + init_rs)
     print(logs)
+    time.sleep(5)
 
 def setup_authorization(node):
     primary = testinfra.get_host("docker://" + node)
@@ -58,6 +59,7 @@ def setup_authorization(node):
         '{"db":"admin","role":"pbmAnyAction" }]});\'' )
     logs = primary.check_output("mongo -u root -p root --quiet --eval " + init_pbm_user)
     print(logs)
+    time.sleep(5)
 
 def prepare_rs_parallel(replicasets):
     with concurrent.futures.ProcessPoolExecutor() as executor:

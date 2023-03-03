@@ -24,7 +24,7 @@ on:
 jobs:
   test_sharded:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       PSMDB: ${{ github.event.inputs.psmdb || 'percona/percona-server-mongodb:4.4' }}
       PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'main' }}

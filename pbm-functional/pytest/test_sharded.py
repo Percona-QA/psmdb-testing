@@ -26,7 +26,6 @@ def start_cluster(function_scoped_container_getter):
         mongohelper.prepare_rs_parallel([cluster])
     for cluster in [sh01, sh02]:
         mongohelper.setup_authorization_parallel([cluster])
-    time.sleep(5)
     mongohelper.setup_authorization("mongos")
     client = pymongo.MongoClient(connection)
     client.admin.command("addShard", "rs2/rs201:27017,rs202:27017,rs203:27017")
@@ -59,7 +58,6 @@ def test_physical(start_cluster):
     pbmhelper.make_restore(nodes[0],backup)
     mongohelper.restart_mongod(nodes)
     pbmhelper.restart_pbm_agents(nodes)
-    time.sleep(5)
     pbmhelper.make_resync(nodes[0])
     docker.from_env().containers.get("mongos").start()
     pymongo.MongoClient(connection).admin.command("balancerStart")
@@ -77,7 +75,6 @@ def test_incremental(start_cluster):
     pbmhelper.make_restore(nodes[0],backup)
     mongohelper.restart_mongod(nodes)
     pbmhelper.restart_pbm_agents(nodes)
-    time.sleep(5)
     pbmhelper.make_resync(nodes[0])
     docker.from_env().containers.get("mongos").start()
     pymongo.MongoClient(connection).admin.command("balancerStart")
