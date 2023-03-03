@@ -77,6 +77,7 @@ def setup_authorization_parallel(replicasets):
 
 def restart_mongod(nodes):
     for node in nodes:
+        print("restarting mongodb on node " + node)
         n = testinfra.get_host("docker://" + node)
         n.check_output('supervisorctl restart mongod')
         time.sleep(1)

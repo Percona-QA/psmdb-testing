@@ -119,6 +119,7 @@ def make_resync(node):
 
 def restart_pbm_agents(nodes):
     for node in nodes:
+        print("restarting pbm-agent on node " + node)
         n = testinfra.get_host("docker://" + node)
         n.check_output('supervisorctl restart pbm-agent')
         time.sleep(1)
