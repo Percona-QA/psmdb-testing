@@ -121,6 +121,7 @@ def restart_pbm_agents(nodes):
     for node in nodes:
         n = testinfra.get_host("docker://" + node)
         n.check_output('supervisorctl restart pbm-agent')
+        time.sleep(1)
 
 def enable_pitr(node):
     n = testinfra.get_host("docker://" + node)
