@@ -22,8 +22,10 @@ documents=[{"a": 1}, {"b": 2}]
 @pytest.fixture(scope="function")
 def start_cluster(function_scoped_container_getter):
     time.sleep(5)
-    mongohelper.prepare_rs_parallel([configsvr, sh01, sh02])
-    mongohelper.setup_authorization_parallel([sh01, sh02])
+    for cluster in [configsvr, sh01, sh02]:
+        mongohelper.prepare_rs_parallel([cluster])
+    for cluster in [sh01, sh02]:
+        mongohelper.setup_authorization_parallel([cluster])
     time.sleep(5)
     mongohelper.setup_authorization("mongos")
     client = pymongo.MongoClient(connection)
