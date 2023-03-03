@@ -17,7 +17,7 @@ configsvr = { "rscfg": [ "rscfg01", "rscfg02", "rscfg03" ]}
 sh01 = { "rs1": [ "rs101", "rs102", "rs103" ]}
 sh02 = { "rs2": [ "rs201", "rs202", "rs203" ]}
 connection="mongodb://root:root@mongos:27017/"
-documents=[{"a": 1}, {"b": 2}]
+documents=[{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
 
 @pytest.fixture(scope="function")
 def start_cluster(function_scoped_container_getter):
@@ -31,7 +31,7 @@ def start_cluster(function_scoped_container_getter):
     client.admin.command("addShard", "rs2/rs201:27017,rs202:27017,rs203:27017")
     client.admin.command("addShard", "rs1/rs101:27017,rs102:27017,rs103:27017")
     pbmhelper.restart_pbm_agents(nodes)
-    pbmhelper.setup_pbm(nodes[0])
+    pbmhelper.setup_pbm("rscfg01")
     client.admin.command("enableSharding", "test")
     client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
 
@@ -113,8 +113,10 @@ def test_PBM_773(start_cluster):
 
     with client.start_session() as session:
         with session.start_transaction():
-            collection.insert_one({"c": 3}, session=session)
-            collection.insert_one({"d": 4}, session=session)
+            collection.insert_one({"e": 5}, session=session)
+            collection.insert_one({"f": 6}, session=session)
+            collection.insert_one({"g": 7}, session=session)
+            collection.insert_one({"h": 8}, session=session)
             session.commit_transaction()
     time.sleep(10)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
@@ -134,7 +136,7 @@ def test_PBM_773(start_cluster):
     results = pymongo.MongoClient(connection)["test"]["test"].find({})
     for result in results:
         print(result)
-    assert pymongo.MongoClient(connection)["test"]["test"].count_documents({}) == len(documents) + 2
+    assert pymongo.MongoClient(connection)["test"]["test"].count_documents({}) == len(documents) + 4
 
     folder="/backups/pbmPitr/rs1/" + datetime.utcnow().strftime("%Y%m%d") + "/"
     for entry in os.scandir(folder):
@@ -147,7 +149,11 @@ def test_PBM_773(start_cluster):
         for doc in docs:
             if "commitTransaction" in doc["o"]:
                 if doc["o"]["commitTransaction"] == 1:
+                    print("\noplog entry with commitTransaction")
+                    print(doc)
                     index = docs.index(doc)
+                    print("\nindex")
+                    print(index)
 
     del docs[index:]
     with open(file, "wb") as f:
