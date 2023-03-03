@@ -19,7 +19,7 @@ RUN chown mongod /etc/keyfile && chmod 400 /etc/keyfile && \
         ln -s /usr/bin/mongosh /usr/bin/mongo ; \
     fi && \
     yum clean all && \
-    rm -rf /var/cache/dnf /var/cache/yum /data/db && mkdir -p /data/db
+    rm -rf /var/cache/dnf /var/cache/yum && mkdir -p /data/db
 
 ENTRYPOINT []
 CMD ["/usr/bin/supervisord","-c","/etc/supervisord.conf","-n"]
