@@ -50,9 +50,11 @@ def test_logical(start_cluster):
 
     pbmhelper.make_resync("newrscfg01")
     pymongo.MongoClient(newconnection).admin.command("balancerStop")
+    docker.from_env().containers.get("newmongos").stop()
     pbmhelper.make_restore("newrscfg01",backup)
+    docker.from_env().containers.get("newmongos").start()
+    time.sleep(5)
     pymongo.MongoClient(newconnection).admin.command("balancerStart")
-
     assert pymongo.MongoClient(newconnection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(newconnection)["test"].command("collstats", "test").get("sharded", False)
     docker.from_env().containers.get("newmongos").kill()
@@ -65,18 +67,18 @@ def test_physical(start_cluster):
     docker.from_env().containers.get("mongos").kill()
     for node in nodes:
         docker.from_env().containers.get(node).kill()
-
     pbmhelper.make_resync("newrscfg01")
     pymongo.MongoClient(newconnection).admin.command("balancerStop")
     docker.from_env().containers.get("newmongos").stop()
     pbmhelper.make_restore("newrscfg01",backup)
-    mongohelper.restart_mongod(newnodes)
-    pbmhelper.restart_pbm_agents(newnodes)
+    for node in newnodes:
+        docker.from_env().containers.get(node).restart()
+    for cluster in [newconfigsvr, newsh01, newsh02]:
+        mongohelper.wait_for_primary_parallel([cluster],"mongodb://root:root@127.0.0.1:27017/")
     pbmhelper.make_resync("newrscfg01")
     docker.from_env().containers.get("newmongos").start()
     time.sleep(5)
     pymongo.MongoClient(newconnection).admin.command("balancerStart")
-
     assert pymongo.MongoClient(newconnection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(newconnection)["test"].command("collstats", "test").get("sharded", False)
     docker.from_env().containers.get("newmongos").kill()
@@ -90,18 +92,18 @@ def test_incremental(start_cluster):
     docker.from_env().containers.get("mongos").kill()
     for node in nodes:
         docker.from_env().containers.get(node).kill()
-
     pbmhelper.make_resync("newrscfg01")
     pymongo.MongoClient(newconnection).admin.command("balancerStop")
     docker.from_env().containers.get("newmongos").stop()
     pbmhelper.make_restore("newrscfg01",backup)
-    mongohelper.restart_mongod(newnodes)
-    pbmhelper.restart_pbm_agents(newnodes)
+    for node in newnodes:
+        docker.from_env().containers.get(node).restart()
+    for cluster in [newconfigsvr, newsh01, newsh02]:
+        mongohelper.wait_for_primary_parallel([cluster],"mongodb://root:root@127.0.0.1:27017/")
     pbmhelper.make_resync("newrscfg01")
     docker.from_env().containers.get("newmongos").start()
     time.sleep(5)
     pymongo.MongoClient(newconnection).admin.command("balancerStart")
-
     assert pymongo.MongoClient(newconnection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(newconnection)["test"].command("collstats", "test").get("sharded", False)
     docker.from_env().containers.get("newmongos").kill()
