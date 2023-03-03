@@ -43,14 +43,14 @@ def start_cluster(function_scoped_container_getter):
 
 def test_logical(start_cluster):
     pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
-    backup=pbmhelper.make_backup(nodes[0],"logical")
+    backup=pbmhelper.make_backup("rscfg01","logical")
     docker.from_env().containers.get("mongos").kill()
     for node in nodes:
         docker.from_env().containers.get(node).kill()
 
-    pbmhelper.make_resync(newnodes[0])
+    pbmhelper.make_resync("newrscfg01")
     pymongo.MongoClient(newconnection).admin.command("balancerStop")
-    pbmhelper.make_restore(newnodes[0],backup)
+    pbmhelper.make_restore("newrscfg01",backup)
     pymongo.MongoClient(newconnection).admin.command("balancerStart")
 
     assert pymongo.MongoClient(newconnection)["test"]["test"].count_documents({}) == len(documents)
@@ -61,18 +61,18 @@ def test_logical(start_cluster):
 
 def test_physical(start_cluster):
     pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
-    backup=pbmhelper.make_backup(nodes[0],"physical")
+    backup=pbmhelper.make_backup("rscfg01","physical")
     docker.from_env().containers.get("mongos").kill()
     for node in nodes:
         docker.from_env().containers.get(node).kill()
 
-    pbmhelper.make_resync(newnodes[0])
+    pbmhelper.make_resync("newrscfg01")
     pymongo.MongoClient(newconnection).admin.command("balancerStop")
     docker.from_env().containers.get("newmongos").stop()
-    pbmhelper.make_restore(newnodes[0],backup)
+    pbmhelper.make_restore("newrscfg01",backup)
     mongohelper.restart_mongod(newnodes)
     pbmhelper.restart_pbm_agents(newnodes)
-    pbmhelper.make_resync(newnodes[0])
+    pbmhelper.make_resync("newrscfg01")
     docker.from_env().containers.get("newmongos").start()
     time.sleep(5)
     pymongo.MongoClient(newconnection).admin.command("balancerStart")
@@ -84,20 +84,20 @@ def test_physical(start_cluster):
         docker.from_env().containers.get(node).kill()
 
 def test_incremental(start_cluster):
-    pbmhelper.make_backup(nodes[0],"incremental --base")
+    pbmhelper.make_backup("rscfg01","incremental --base")
     pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
-    backup=pbmhelper.make_backup(nodes[0],"incremental")
+    backup=pbmhelper.make_backup("rscfg01","incremental")
     docker.from_env().containers.get("mongos").kill()
     for node in nodes:
         docker.from_env().containers.get(node).kill()
 
-    pbmhelper.make_resync(newnodes[0])
+    pbmhelper.make_resync("newrscfg01")
     pymongo.MongoClient(newconnection).admin.command("balancerStop")
     docker.from_env().containers.get("newmongos").stop()
-    pbmhelper.make_restore(newnodes[0],backup)
+    pbmhelper.make_restore("newrscfg01",backup)
     mongohelper.restart_mongod(newnodes)
     pbmhelper.restart_pbm_agents(newnodes)
-    pbmhelper.make_resync(newnodes[0])
+    pbmhelper.make_resync("newrscfg01")
     docker.from_env().containers.get("newmongos").start()
     time.sleep(5)
     pymongo.MongoClient(newconnection).admin.command("balancerStart")

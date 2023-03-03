@@ -81,3 +81,10 @@ def restart_mongod(nodes):
         n = testinfra.get_host("docker://" + node)
         n.check_output('supervisorctl restart mongod')
         time.sleep(1)
+
+def wait_for_primary_parallel(replicasets):
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        for rs in replicasets:
+            rsname = list(rs.keys())[0]
+            primary = rs[rsname][0]
+            executor.submit(wait_for_primary,primary)
