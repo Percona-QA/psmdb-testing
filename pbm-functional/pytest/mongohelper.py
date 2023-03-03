@@ -19,7 +19,7 @@ def wait_for_primary(node):
             print("waiting for " + node + " to become primary")
         if time.time() > timeout:
             assert False
-        time.sleep(0.5)
+        time.sleep(5)
 
 def prepare_rs(rsname,nodes):
     primary = testinfra.get_host("docker://" + nodes[0])
