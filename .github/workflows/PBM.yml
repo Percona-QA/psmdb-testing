@@ -35,7 +35,7 @@ jobs:
       run: |
         docker-compose build
         docker-compose up -d
-        docker-compose run test pytest --docker-compose=docker-compose-sharded.yaml -s --junitxml=test-sharded.xml --disable-warnings test_sharded.py
+        docker-compose run test pytest -s --junitxml=test-sharded.xml --disable-warnings test_sharded.py
       working-directory: ./pbm-functional/pytest
     - name: Publish Test Report
       uses: mikepenz/action-junit-report@v3
@@ -56,7 +56,7 @@ jobs:
       run: |
         docker-compose build
         docker-compose up -d
-        docker-compose run test pytest --docker-compose=docker-compose-sharded.yaml,docker-compose-fresh-sharded.yaml -s --junitxml=test-fresh-sharded.xml --disable-warnings test_fresh_sharded.py
+        docker-compose run test pytest -s --junitxml=test-fresh-sharded.xml --disable-warnings test_fresh_sharded.py
       working-directory: ./pbm-functional/pytest
     - name: Publish Test Report
       uses: mikepenz/action-junit-report@v3
@@ -77,7 +77,7 @@ jobs:
       run: |
         docker-compose build
         docker-compose up -d
-        docker-compose run test pytest --docker-compose=docker-compose-sharded.yaml,docker-compose-remap-sharded.yaml -s --junitxml=test-remap-sharded.xml --disable-warnings test_remap_sharded.py
+        docker-compose run test pytest -s --junitxml=test-remap-sharded.xml --disable-warnings test_remap_sharded.py
       working-directory: ./pbm-functional/pytest
     - name: Publish Test Report
       uses: mikepenz/action-junit-report@v3

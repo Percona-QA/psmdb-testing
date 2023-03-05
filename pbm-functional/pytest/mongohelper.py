@@ -1,5 +1,7 @@
 import testinfra
 import time
+import docker
+import pymongo
 import concurrent.futures
 
 def check_primary(node,connection):
@@ -21,18 +23,26 @@ def wait_for_primary(node,connection):
             assert False
         time.sleep(5)
 
-def prepare_rs(rsname,nodes):
-    primary = testinfra.get_host("docker://" + nodes[0])
+def prepare_rs(replicaset):
+    rsname = list(replicaset.keys())[0]
+    primary = replicaset[rsname][0]
+    primary = testinfra.get_host("docker://" + primary)
     print("\nsetup " + rsname)
     init_rs = ( '\'config = {"_id":"' +
         rsname +
-        '","members":[{"_id":0,"host":"' +
-        nodes[0] +
-        ':27017","priority":2},{"_id":1,"host":"' +
-        nodes[1] +
-        ':27017","priority":1},{"_id":2,"host":"' +
-        nodes[2] +
-        ':27017","priority":1}]};\nrs.initiate(config);\'' )
+        '","members":['
+        )
+    for id, node in enumerate(replicaset[rsname]):
+        if id == 0:
+            priority = 2
+        else:
+            priority = 1
+        init_rs = ( init_rs +
+            '{"_id":' + str(id) +
+            ',"host":"' + node +
+            ':27017","priority":' + str(priority) +
+            '},')
+    init_rs = init_rs[:-1] + ']};\nrs.initiate(config);\''
     print(init_rs)
     logs = primary.check_output("mongo --quiet --eval " + init_rs)
     print(logs)
@@ -64,9 +74,7 @@ def setup_authorization(node):
 def prepare_rs_parallel(replicasets):
     with concurrent.futures.ProcessPoolExecutor() as executor:
         for rs in replicasets:
-            rsname = list(rs.keys())[0]
-            nodes = rs[rsname]
-            executor.submit(prepare_rs,rsname,nodes)
+            executor.submit(prepare_rs,rs)
 
 def setup_authorization_parallel(replicasets):
     with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -82,9 +90,92 @@ def restart_mongod(nodes):
         n.check_output('supervisorctl restart mongod')
         time.sleep(1)
 
-def wait_for_primary_parallel(replicasets,connection):
+def wait_for_primary_parallel(cluster,connection):
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        for rs in replicasets:
+        for rs in cluster:
             rsname = list(rs.keys())[0]
             primary = rs[rsname][0]
             executor.submit(wait_for_primary,primary,connection)
+
+def create_sharded(mongos,cluster):
+    shards=[]
+    rsauth=[]
+    for rs in cluster:
+        rsname = list(rs.keys())[0]
+        conn = rsname + "/"
+        if "cfg" in rsname:
+            svr = " --configsvr"
+        else:
+            svr = " --shardsvr"
+        for node in rs[rsname]:
+            docker.from_env().containers.run(
+                image='replica_member/local',
+                name=node,
+                hostname=node,
+                detach=True,
+                network='test',
+                environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017","MONGODB_EXTRA_ARGS= --port 27017 --replSet " + rsname + svr + " --keyFile /etc/keyfile"],
+                volumes=["fs:/backups"]
+                )
+            conn = conn + node + ':27017,'
+        conn = conn[:-1]
+        print("\nSetup rs: " + conn)
+        if "cfg" in rsname:
+            configdb = conn
+        else:
+            shards.append(conn)
+            rsauth.append(rs)
+    time.sleep(5)
+    prepare_rs_parallel(cluster)
+    setup_authorization_parallel(rsauth)
+    docker.from_env().containers.run(
+        image='replica_member/local',
+        name=mongos,
+        hostname=mongos,
+        command='mongos --keyFile=/etc/keyfile --configdb ' + configdb + ' --port 27017 --bind_ip 0.0.0.0',
+        detach=True,
+        network='test'
+        )
+    time.sleep(5)
+    setup_authorization(mongos)
+    connection = "mongodb://root:root@" + mongos + ":27017"
+    client = pymongo.MongoClient(connection)
+    for shard in shards:
+        result=client.admin.command("addShard", shard)
+        print("adding shard: " + shard + "\n" + str(result))
+
+    return connection
+
+def destroy_sharded(mongos,cluster):
+    print("\nCleanup")
+    nodes=[mongos]
+    for rs in cluster:
+        rsname = list(rs.keys())[0]
+        for node in rs[rsname]:
+            nodes.append(node)
+    for node in nodes:
+        if docker.from_env().containers.list(all=True, filters={'name': node}):
+            print("Destroying container: " + node )
+            docker.from_env().containers.get(node).remove(force=True)
+
+def create_replicaset(rs):
+    rsname=list(rs.keys())[0]
+    for node in rs[rsname]:
+        docker.from_env().containers.run(
+            image='replica_member/local',
+            name=node,
+            hostname=node,
+            detach=True,
+            network='test',
+            environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017","MONGODB_EXTRA_ARGS= --port 27017 --replSet " + rsname + " --keyFile /etc/keyfile"],
+            volumes=["fs:/backups"]
+            )
+    time.sleep(5)
+    prepare_rs(rs)
+    setup_authorization_parallel([rs])
+
+def destroy_replicaset(replicaset):
+    rsname = list(replicaset.keys())[0]
+    for node in rseplicaset[rsname]:
+         if docker.from_env().containers.list(all=True, filters={'name': node}):
+             docker.from_env().containers.get(node).remove(force=True)

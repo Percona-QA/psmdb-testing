@@ -2,6 +2,7 @@ import testinfra
 import time
 import json
 import os
+import concurrent.futures
 
 TIMEOUT = int(os.getenv("TIMEOUT",default = 300))
 
@@ -117,12 +118,16 @@ def make_resync(node):
             time.sleep(1)
     time.sleep(5)
 
+def restart_pbm_agent(node):
+    print("restarting pbm-agent on node " + node)
+    n = testinfra.get_host("docker://" + node)
+    n.check_output('supervisorctl restart pbm-agent')
+    time.sleep(1)
+
 def restart_pbm_agents(nodes):
-    for node in nodes:
-        print("restarting pbm-agent on node " + node)
-        n = testinfra.get_host("docker://" + node)
-        n.check_output('supervisorctl restart pbm-agent')
-        time.sleep(1)
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        for node in nodes:
+            executor.submit(restart_pbm_agent,node)
 
 def enable_pitr(node):
     n = testinfra.get_host("docker://" + node)

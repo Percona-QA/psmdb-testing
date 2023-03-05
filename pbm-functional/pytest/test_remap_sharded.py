@@ -1,104 +1,135 @@
 import pytest
 import pymongo
+import bson
 import testinfra
 import time
 import mongohelper
 import pbmhelper
+import os
 import docker
 
-pytest_plugins = ["docker_compose"]
+from datetime import datetime
 
-nodes = ["rs101", "rs102", "rs103", "rs201", "rs202", "rs203", "rscfg01", "rscfg02", "rscfg03"]
-configsvr = { "rscfg": [ "rscfg01", "rscfg02", "rscfg03" ]}
-sh01 = { "rs1": [ "rs101", "rs102", "rs103" ]}
-sh02 = { "rs2": [ "rs201", "rs202", "rs203" ]}
-newnodes = ["newrs101", "newrs102", "newrs103", "newrs201", "newrs202", "newrs203", "newrscfg01", "newrscfg02", "newrscfg03"]
-newconfigsvr = { "newrscfg": [ "newrscfg01", "newrscfg02", "newrscfg03" ]}
-newsh01 = { "newrs1": [ "newrs101", "newrs102", "newrs103" ]}
-newsh02 = { "newrs2": [ "newrs201", "newrs202", "newrs203" ]}
-connection="mongodb://root:root@mongos:27017/"
-newconnection="mongodb://root:root@newmongos:27017/"
-documents=[{"a": 1}, {"b": 2}]
+srcconnection="mongodb://root:root@srcmongos:27017/"
+dstconnection="mongodb://root:root@dstmongos:27017/"
+documents=[{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
+
+@pytest.fixture(scope="package")
+def docker_client():
+    return docker.from_env()
+
+@pytest.fixture(scope="package")
+def srccluster():
+    return [{ "srcrscfg": [ "srcrscfg01", "srcrscfg02", "srcrscfg03" ]},{ "srcrs1": [ "srcrs101", "srcrs102", "srcrs103" ]},{ "srcrs2": [ "srcrs201", "srcrs202", "srcrs203" ]}]
+
+@pytest.fixture(scope="package")
+def dstcluster():
+    return [{ "dstrscfg": [ "dstrscfg01", "dstrscfg02", "dstrscfg03" ]},{ "dstrs1": [ "dstrs101", "dstrs102", "dstrs103" ]},{ "dstrs2": [ "dstrs201", "dstrs202", "dstrs203" ]}]
+
+@pytest.fixture(scope="package")
+def srcmongos():
+    return "srcmongos"
+
+@pytest.fixture(scope="package")
+def dstmongos():
+    return "dstmongos"
+
+@pytest.fixture(scope="package")
+def srcnodes(srccluster):
+    n=[]
+    for rs in srccluster:
+        rsname = list(rs.keys())[0]
+        for node in rs[rsname]:
+            n.append(node)
+    return n
+
+@pytest.fixture(scope="package")
+def dstnodes(dstcluster):
+    n=[]
+    for rs in dstcluster:
+        rsname = list(rs.keys())[0]
+        for node in rs[rsname]:
+            n.append(node)
+    return n
 
 @pytest.fixture(scope="function")
-def start_cluster(function_scoped_container_getter):
+def start_cluster(srcmongos,srccluster,srcnodes,dstmongos,dstcluster,dstnodes):
+    mongohelper.destroy_sharded(srcmongos,srccluster)
+    mongohelper.destroy_sharded(dstmongos,dstcluster)
+    connection=mongohelper.create_sharded(srcmongos,srccluster)
+    newconnection=mongohelper.create_sharded(dstmongos,dstcluster)
+    pbmhelper.restart_pbm_agents(srcnodes + dstnodes)
+    pbmhelper.setup_pbm("srcrscfg01")
+    pbmhelper.setup_pbm("dstrscfg01")
+    client=pymongo.MongoClient(srcconnection)
+    client.admin.command("enableSharding", "test")
+    client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
+
+    yield True
+
+    mongohelper.destroy_sharded(srcmongos,srccluster)
+    mongohelper.destroy_sharded(dstmongos,dstcluster)
+
+
+@pytest.mark.timeout(600,func_only=True)
+def test_logical(start_cluster,docker_client,srccluster,dstcluster,srcnodes,dstnodes,srcmongos,dstmongos):
+    pymongo.MongoClient(srcconnection)["test"]["test"].insert_many(documents)
+    backup=pbmhelper.make_backup("srcrscfg01","logical")
+    backup = backup + ' --replset-remapping="dstrs1=srcrs1,dstrs2=srcrs2,dstrscfg=srcrscfg"'
+    mongohelper.destroy_sharded(srcmongos,srccluster)
+    pbmhelper.make_resync("dstrscfg01")
+    pymongo.MongoClient(dstconnection).admin.command("balancerStop")
+    docker_client.containers.get(dstmongos).stop()
+    pbmhelper.make_restore("dstrscfg01",backup)
+    docker_client.containers.get(dstmongos).start()
     time.sleep(5)
-    for cluster in [configsvr, sh01, sh02, newconfigsvr, newsh01, newsh02]:
-        mongohelper.prepare_rs_parallel([cluster])
-    for cluster in [sh01, sh02, newsh01, newsh02]:
-        mongohelper.setup_authorization_parallel([cluster])
-    mongohelper.setup_authorization("mongos")
-    mongohelper.setup_authorization("newmongos")
-    pymongo.MongoClient(connection).admin.command("addShard", "rs2/rs201:27017,rs202:27017,rs203:27017")
-    pymongo.MongoClient(connection).admin.command("addShard", "rs1/rs101:27017,rs102:27017,rs103:27017")
-    pymongo.MongoClient(newconnection).admin.command("addShard", "newrs2/newrs201:27017,newrs202:27017,newrs203:27017")
-    pymongo.MongoClient(newconnection).admin.command("addShard", "newrs1/newrs101:27017,newrs102:27017,newrs103:27017")
-    pbmhelper.restart_pbm_agents(nodes)
-    pbmhelper.restart_pbm_agents(newnodes)
-    pbmhelper.setup_pbm(nodes[0])
-    pbmhelper.setup_pbm(newnodes[0])
-    pymongo.MongoClient(connection).admin.command("enableSharding", "test")
-    pymongo.MongoClient(connection).admin.command("shardCollection", "test.test", key={"_id": "hashed"})
-
-def test_logical(start_cluster):
-    pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
-    backup=pbmhelper.make_backup("rscfg01","logical")
-    docker.from_env().containers.get("mongos").kill()
-    for node in nodes:
-        docker.from_env().containers.get(node).kill()
-
-    pbmhelper.make_resync("newrscfg01")
-    pymongo.MongoClient(newconnection).admin.command("balancerStop")
-    backup = backup + ' --replset-remapping="newrs1=rs1,newrs2=rs2,newrscfg=rscfg"'
-    pbmhelper.make_restore("newrscfg01",backup)
-    pymongo.MongoClient(newconnection).admin.command("balancerStart")
-
-    assert pymongo.MongoClient(newconnection)["test"]["test"].count_documents({}) == len(documents)
-    assert pymongo.MongoClient(newconnection)["test"].command("collstats", "test").get("sharded", False)
-    docker.from_env().containers.get("newmongos").kill()
-    for node in newnodes:
-        docker.from_env().containers.get(node).kill()
+    pymongo.MongoClient(dstconnection).admin.command("balancerStart")
+    assert pymongo.MongoClient(dstconnection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(dstconnection)["test"].command("collstats", "test").get("sharded", False)
+    print("\nFinished successfully\n")
 '''
-def test_physical(start_cluster):
-    pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
-    backup=pbmhelper.make_backup(nodes[0],"physical")
-    docker.from_env().containers.get("mongos").stop()
-    for node in nodes:
-        docker.from_env().containers.get(node).stop()
-
-    pbmhelper.make_resync(newnodes[0])
-    pymongo.MongoClient(newconnection).admin.command("balancerStop")
-    docker.from_env().containers.get("newmongos").stop()
-    pbmhelper.make_restore(newnodes[0],backup)
-    mongohelper.restart_mongod(newnodes)
-    pbmhelper.restart_pbm_agents(newnodes)
-    pbmhelper.make_resync(newnodes[0])
-    docker.from_env().containers.get("newmongos").start()
+@pytest.mark.timeout(600,func_only=True)
+def test_physical(start_cluster,docker_client,srccluster,dstcluster,srcnodes,dstnodes,srcmongos,dstmongos):
+    pymongo.MongoClient(srcconnection)["test"]["test"].insert_many(documents)
+    backup=pbmhelper.make_backup("srcrscfg01","physical")
+    backup = backup + ' --replset-remapping="dstrs1=srcrs1,dstrs2=srcrs2,dstrscfg=srcrscfg"'
+    mongohelper.destroy_sharded(srcmongos,srccluster)
+    pbmhelper.make_resync("dstrscfg01")
+    pymongo.MongoClient(dstconnection).admin.command("balancerStop")
+    docker_client.containers.get(dstmongos).stop()
+    pbmhelper.make_restore("dstrscfg01",backup)
+    for node in dstnodes:
+        docker_client.containers.get(node).restart()
     time.sleep(5)
-    pymongo.MongoClient(newconnection).admin.command("balancerStart")
-
-    assert pymongo.MongoClient(newconnection)["test"]["test"].count_documents({}) == len(documents)
-    assert pymongo.MongoClient(newconnection)["test"].command("collstats", "test").get("sharded", False)
-
-def test_incremental(start_cluster):
-    pbmhelper.make_backup(nodes[0],"incremental --base")
-    pymongo.MongoClient(connection)["test"]["test"].insert_many(documents)
-    backup=pbmhelper.make_backup(nodes[0],"incremental")
-    docker.from_env().containers.get("mongos").stop()
-    for node in nodes:
-        docker.from_env().containers.get(node).stop()
-
-    pbmhelper.make_resync(newnodes[0])
-    pymongo.MongoClient(newconnection).admin.command("balancerStop")
-    docker.from_env().containers.get("newmongos").stop()
-    pbmhelper.make_restore(newnodes[0],backup)
-    mongohelper.restart_mongod(newnodes)
-    pbmhelper.restart_pbm_agents(newnodes)
-    pbmhelper.make_resync(newnodes[0])
-    docker.from_env().containers.get("newmongos").start()
+    mongohelper.wait_for_primary_parallel(dstcluster,"mongodb://root:root@127.0.0.1:27017/")
+    pbmhelper.make_resync("dstrscfg01")
+    docker_client.containers.get(dstmongos).start()
     time.sleep(5)
-    pymongo.MongoClient(newconnection).admin.command("balancerStart")
+    pymongo.MongoClient(dstconnection).admin.command("balancerStart")
+    assert pymongo.MongoClient(dstconnection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(dstconnection)["test"].command("collstats", "test").get("sharded", False)
+    print("\nFinished successfully\n")
 
-    assert pymongo.MongoClient(newconnection)["test"]["test"].count_documents({}) == len(documents)
-    assert pymongo.MongoClient(newconnection)["test"].command("collstats", "test").get("sharded", False)
+@pytest.mark.timeout(600,func_only=True)
+def test_incremental(start_cluster,docker_client,srccluster,dstcluster,srcnodes,dstnodes,srcmongos,dstmongos):
+    pbmhelper.make_backup("srcrscfg01","incremental --base")
+    pymongo.MongoClient(srcconnection)["test"]["test"].insert_many(documents)
+    backup=pbmhelper.make_backup("srcrscfg01","incremental")
+    backup = backup + ' --replset-remapping="dstrs1=srcrs1,dstrs2=srcrs2,dstrscfg=srcrscfg"'
+    mongohelper.destroy_sharded(srcmongos,srccluster)
+    pbmhelper.make_resync("dstrscfg01")
+    pymongo.MongoClient(dstconnection).admin.command("balancerStop")
+    docker_client.containers.get(dstmongos).stop()
+    pbmhelper.make_restore("dstrscfg01",backup)
+    for node in dstnodes:
+        docker_client.containers.get(node).restart()
+    time.sleep(5)
+    mongohelper.wait_for_primary_parallel(dstcluster,"mongodb://root:root@127.0.0.1:27017/")
+    pbmhelper.make_resync("dstrscfg01")
+    docker_client.containers.get(dstmongos).start()
+    time.sleep(5)
+    pymongo.MongoClient(dstconnection).admin.command("balancerStart")
+    assert pymongo.MongoClient(dstconnection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(dstconnection)["test"].command("collstats", "test").get("sharded", False)
+    print("\nFinished successfully\n")
 '''
