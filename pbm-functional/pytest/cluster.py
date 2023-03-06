@@ -37,14 +37,17 @@ class Cluster:
                     return False
 
                 if not set(member.keys()) <= {'host', 'priority', 'arbiterOnly', 'hidden'} and not set(member.keys()) == {'host'}:
+                    print(1)
                     return False
 
-                if (not isinstance(member['host'], str) or ('priority' in member and isinstance(member['priority'], int)) or
-                    ('arbiterOnly' in member and isinstance(member['arbiterOnly'], bool)) or
-                        ('hidden' in member and isinstance(member['hidden'], bool))):
+                if (not isinstance(member['host'], str) or ('priority' in member and not isinstance(member['priority'], int)) or
+                    ('arbiterOnly' in member and not isinstance(member['arbiterOnly'], bool)) or
+                        ('hidden' in member and not isinstance(member['hidden'], bool))):
+                    print(2)
                     return False
 
                 if id == 0 and set(member.keys()) <= {'priority', 'arbiterOnly', 'hidden'}:
+                    print(3)
                     return False
 
                 if member['host'] not in nodes:
@@ -53,6 +56,7 @@ class Cluster:
                     return False
                 if 'arbiterOnly' in member and member['arbiterOnly']:
                     if arbiter:
+                        print(4)
                         return False
                     arbiter = True
 
@@ -126,6 +130,8 @@ class Cluster:
                 if "arbiterOnly" in host:
                     if not host['arbiterOnly']:
                         hosts.append(host['host'])
+                else:
+                    hosts.append(host['host'])
         else:
             for shard in self.config['shards']:
                 for host in shard['members']:
@@ -184,7 +190,7 @@ class Cluster:
                     detach=True,
                     network='test',
                     environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017",
-                                 "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --configsvr --keyFile /etc/keyfile"],
+                                 "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile"],
                     volumes=["fs:/backups"]
                 )
                 if "arbiterOnly" in host:
@@ -524,8 +530,9 @@ class Cluster:
         nodes = []
         for replicaset in parsed_result['cluster']:
             for host in replicaset['nodes']:
-                nodes.append(host)
-                assert host['ok'] == True
+                if host['role'] != "A":
+                    nodes.append(host)
+                    assert host['ok'] == True
         assert len(nodes) == len(self.pbm_hosts)
 
     def __check_pbm_service(self, node):
