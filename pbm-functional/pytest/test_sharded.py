@@ -65,6 +65,7 @@ def test_physical(start_cluster,cluster):
     cluster.make_restore(backup,restart_cluster=True, make_resync=True, check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
+    print("\nFinished successfully\n")
 
 @pytest.mark.timeout(300,func_only=True)
 def test_incremental(start_cluster,cluster):
