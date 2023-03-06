@@ -183,6 +183,7 @@ class Cluster:
                 if "arbiterOnly" in host:
                     if host['arbiterOnly']:
                         delete_pbm(host['host'])
+            time.sleep(5)
             self.__setup_replicaset(self.config)
             self.__setup_authorization(self.config['members'][0]['host'])
         else:
@@ -224,6 +225,7 @@ class Cluster:
                 conn = conn + host['host'] + ':27017,'
             conn = conn[:-1]
             configdb = conn
+            time.sleep(5)
             self.__setup_replicasets(self.config['shards'] + [self.config['configserver']])
             self.__setup_authorizations(self.config['shards'])
             print("Creating container " + self.config['mongos'])
