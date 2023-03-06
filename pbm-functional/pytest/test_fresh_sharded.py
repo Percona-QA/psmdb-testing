@@ -44,7 +44,7 @@ def newcluster(newconfig):
     return Cluster(newconfig)
 
 @pytest.fixture(scope="function")
-def start_cluster(cluster):
+def start_cluster(cluster,newcluster):
     cluster.destroy()
     newcluster.destroy()
     cluster.create()
@@ -76,7 +76,7 @@ def test_logical(start_cluster,cluster,newcluster):
     print("\nFinished successfully\n")
 
 @pytest.mark.timeout(300,func_only=True)
-def test_physical(start_cluster,cluster):
+def test_physical(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("physical")
@@ -88,7 +88,7 @@ def test_physical(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
 
 @pytest.mark.timeout(300,func_only=True)
-def test_incremental(start_cluster,cluster):
+def test_incremental(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     cluster.make_backup("incremental --base")
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)

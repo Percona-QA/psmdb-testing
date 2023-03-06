@@ -44,7 +44,7 @@ def newcluster(newconfig):
     return Cluster(newconfig)
 
 @pytest.fixture(scope="function")
-def start_cluster(cluster):
+def start_cluster(cluster,newcluster):
     cluster.destroy()
     newcluster.destroy()
     cluster.create()
