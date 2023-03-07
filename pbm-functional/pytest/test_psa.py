@@ -24,7 +24,7 @@ def cluster(config):
     return Cluster(config)
 
 @pytest.fixture(scope="function")
-def start_cluster(cluster):
+def start_cluster(cluster,request):
     try:
         cluster.create()
         cluster.setup_pbm()
