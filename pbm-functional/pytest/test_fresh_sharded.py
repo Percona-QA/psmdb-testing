@@ -46,8 +46,6 @@ def newcluster(newconfig):
 @pytest.fixture(scope="function")
 def start_cluster(cluster,newcluster,request):
     try:
-        cluster.destroy()
-        newcluster.destroy()
         cluster.create()
         cluster.setup_pbm()
         newcluster.create()

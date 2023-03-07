@@ -25,13 +25,14 @@ def cluster(config):
 
 @pytest.fixture(scope="function")
 def start_cluster(cluster):
-    cluster.destroy()
-    cluster.create()
-    cluster.setup_pbm()
-
-    yield True
-
-    cluster.destroy()
+    try:
+        cluster.create()
+        cluster.setup_pbm()
+        yield True
+    finally:
+        if request.config.getoption("--verbose"):
+            cluster.get_logs()
+        cluster.destroy()
 
 @pytest.mark.timeout(300,func_only=True)
 def test_logical(start_cluster,cluster):
