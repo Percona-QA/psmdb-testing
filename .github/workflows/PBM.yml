@@ -22,9 +22,9 @@ on:
       - main
 
 jobs:
-  test_sharded:
+  test_logical:
     runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    timeout-minutes: 30
     env:
       PSMDB: ${{ github.event.inputs.psmdb || 'percona/percona-server-mongodb:4.4' }}
       PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'main' }}
@@ -35,7 +35,7 @@ jobs:
       run: |
         docker-compose build
         docker-compose up -d
-        docker-compose run test pytest -s --junitxml=test-sharded.xml --disable-warnings test_sharded.py
+        docker-compose run test pytest -s --junitxml=test-logical.xml -k logical
       working-directory: ./pbm-functional/pytest
     - name: Publish Test Report
       uses: mikepenz/action-junit-report@v3
@@ -43,7 +43,7 @@ jobs:
       with:
         report_paths: '**/test-sharded.xml'
 
-  test_fresh_sharded:
+  test_physical:
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     env:
@@ -56,7 +56,7 @@ jobs:
       run: |
         docker-compose build
         docker-compose up -d
-        docker-compose run test pytest -s --junitxml=test-fresh-sharded.xml --disable-warnings test_fresh_sharded.py
+        docker-compose run test pytest -s --junitxml=test-physical.xml -k physical
       working-directory: ./pbm-functional/pytest
     - name: Publish Test Report
       uses: mikepenz/action-junit-report@v3
@@ -64,7 +64,7 @@ jobs:
       with:
         report_paths: '**/test-fresh-sharded.xml'
 
-  test_remap_sharded:
+  test_incremental:
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     env:
@@ -77,7 +77,7 @@ jobs:
       run: |
         docker-compose build
         docker-compose up -d
-        docker-compose run test pytest -s --junitxml=test-remap-sharded.xml --disable-warnings test_remap_sharded.py
+        docker-compose run test pytest -s --junitxml=test-incremental.xml --k incremental
       working-directory: ./pbm-functional/pytest
     - name: Publish Test Report
       uses: mikepenz/action-junit-report@v3

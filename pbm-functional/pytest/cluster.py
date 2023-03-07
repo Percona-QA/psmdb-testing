@@ -292,7 +292,7 @@ class Cluster:
             self.__setup_replicasets(
                 self.config['shards'] + [self.config['configserver']])
             self.__setup_authorizations(self.config['shards'])
-            print("Creating container " + self.config['mongos'])
+            print("\nCreating container " + self.config['mongos'])
             docker.from_env().containers.run(
                 image='replica_member/local',
                 name=self.config['mongos'],
@@ -302,7 +302,7 @@ class Cluster:
                 detach=True,
                 network='test'
             )
-            time.sleep(5)
+            time.sleep(1)
             Cluster.setup_authorization(self.config['mongos'])
             connection = self.connection
             client = pymongo.MongoClient(connection)
@@ -329,8 +329,9 @@ class Cluster:
     # pbm --force-resync
     def make_resync(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        output = n.check_output('pbm config --force-resync')
-        print(output)
+        result = n.check_output('pbm config --force-resync --out json')
+        parsed_result = json.loads(result)
+        print(parsed_result)
         timeout = time.time() + 30
         while True:
             logs = self.__find_event_msg("resync", "succeed")
@@ -347,8 +348,7 @@ class Cluster:
         n = testinfra.get_host("docker://" + self.pbm_cli)
         timeout = time.time() + 30
         while True:
-            running = self.check_status()
-            if not running:
+            if not self.get_status()['running']:
                 if type:
                     start = n.check_output(
                         'pbm backup --out=json --type=' + type)
@@ -378,7 +378,7 @@ class Cluster:
                             assert False, snapshot['error']
                             break
             if time.time() > timeout:
-                assert False
+                assert False, "Backup timeout exceeded"
             time.sleep(1)
 
     # restores backup from name, accept extra-args:
@@ -397,7 +397,7 @@ class Cluster:
         n = testinfra.get_host("docker://" + self.pbm_cli)
         timeout = time.time() + 600
         while True:
-            if not self.check_status():
+            if not self.get_status()['running']:
                 print("Restore started: " + name)
                 output = n.check_output('pbm restore ' + name + ' --wait')
                 print(output)
@@ -435,31 +435,25 @@ class Cluster:
 
     # restarts all containers with mongod sequentially
     def restart(self):
-        #        with concurrent.futures.ProcessPoolExecutor() as executor:
-        #            print("\nRestarting cluster")
-        #            print(self.mongod_hosts)
-        #            for host in self.mongod_hosts:
-        #                print("Restarting " + host)
-        #                container = docker.from_env().containers.get(host)
-        #                executor.submit(container.restart)
         for host in self.mongod_hosts:
             print("Restarting " + host)
             docker.from_env().containers.get(host).restart()
-        time.sleep(5)
+        time.sleep(1)
         self.wait_for_primaries()
 
     # stops mongos container
     def stop_mongos(self):
         if self.layout == "sharded":
             print("Stopping " + self.config['mongos'])
-            docker.from_env().containers.get(self.config['mongos']).stop()
+            docker.from_env().containers.get(self.config['mongos']).kill()
 
     # starts mongos container
     def start_mongos(self):
         if self.layout == "sharded":
             print("Starting " + self.config['mongos'])
             docker.from_env().containers.get(self.config['mongos']).start()
-            time.sleep(5)
+            time.sleep(1)
+            Cluster.wait_for_primary(self.config['mongos'],"mongodb://root:root@127.0.0.1:27017")
 
     # stops mongod's on arbiter hosts
     def stop_arbiters(self):
@@ -478,27 +472,31 @@ class Cluster:
     # enables PITR
     def enable_pitr(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        n.check_output(
-            "pbm config --set pitr.enabled=true --set pitr.compression=none")
+        result = n.check_output(
+            "pbm config --set pitr.enabled=true --set pitr.compression=none --out json")
+        print("Enabling PITR:")
+        print(result)
         timeout = time.time() + 600
         while True:
             if self.check_pitr():
                 break
             if time.time() > timeout:
                 assert False
-            time.sleep(5)
+            time.sleep(1)
 
     # disables PITR
     def disable_pitr(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        n.check_output("pbm config --set pitr.enabled=false")
+        result = n.check_output("pbm config --set pitr.enabled=false --out json")
+        print("Disabling PITR:")
+        print(result)
         timeout = time.time() + 600
         while True:
             if not self.check_pitr():
                 break
             if time.time() > timeout:
                 assert False
-            time.sleep(5)
+            time.sleep(1)
 
     # executes any pbm command e.g. cluster.exec_pbm_cli("status"), doesn't raise any errors, output from
     # https://testinfra.readthedocs.io/en/latest/modules.html#testinfra.host.Host.run
@@ -527,7 +525,6 @@ class Cluster:
         with concurrent.futures.ProcessPoolExecutor() as executor:
             for rs in replicasets:
                 executor.submit(Cluster.setup_replicaset, rs)
-        time.sleep(5)
 
     @staticmethod
     def setup_authorization(node):
@@ -559,33 +556,26 @@ class Cluster:
             for rs in replicasets:
                 executor.submit(Cluster.setup_authorization,
                                 rs['members'][0]['host'])
-        time.sleep(5)
-
-    @staticmethod
-    def check_primary(node, connection):
-        primary = testinfra.get_host("docker://" + node)
-        result = primary.check_output(
-            "mongo " + connection + " --quiet --eval 'db.isMaster().ismaster'")
-        print("Checking ismaster() on host: " + node)
-        print(result)
-        if result.lower() == 'true':
-            return True
-        else:
-            return False
+        time.sleep(1)
 
     @staticmethod
     def wait_for_primary(node, connection):
+        n = testinfra.get_host("docker://" + node)
         timeout = time.time() + 600
+        print("Checking ismaster() on host: " + node)
         while True:
-            if Cluster.check_primary(node, connection):
+            result = n.run(
+                "mongo " + connection + " --quiet --eval 'db.hello().isWritablePrimary'")
+            if 'true' in result.stdout.lower():
+                print("Host " + node + " became primary")
+                return True
                 break
             else:
-                print("Waiting for " + node + " to become primary")
+                print("Waiting for " + node + " to became primary")
             if time.time() > timeout:
                 assert False
-            time.sleep(5)
+            time.sleep(3)
         print("\n")
-        return True
 
     def wait_for_primaries(self):
         print(self.primary_hosts)
@@ -593,43 +583,20 @@ class Cluster:
             for primary in self.primary_hosts:
                 executor.submit(Cluster.wait_for_primary, primary,
                                 "mongodb://root:root@127.0.0.1:27017")
-        time.sleep(5)
 
     def __delete_pbm(self, node):
         n = testinfra.get_host("docker://" + node)
         n.check_output("supervisorctl stop pbm-agent")
         n.check_output("rm -rf /etc/supervisord.d/pbm-agent.ini")
 
-    def __find_event_msg(self, event, msg):
+    def __find_event_msg(self, event ,msg):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        command = "pbm logs --tail=0 --out=json --event=" + event
+        command = "pbm logs --tail=0 --out=json --event=" + event 
         logs = n.check_output(command)
         for log in json.loads(logs):
             if log['msg'] == msg:
                 return log
                 break
-
-    def find_backup(self, name):
-        n = testinfra.get_host("docker://" + self.pbm_cli)
-        list = n.check_output('pbm status --out=json')
-        parsed_list = json.loads(list)
-        if parsed_list['backups']['snapshot']:
-            for snapshot in parsed_list['backups']['snapshot']:
-                if snapshot['name'] == name:
-                    return snapshot
-                    break
-
-    def get_pbm_logs(self):
-        n = testinfra.get_host("docker://" + self.pbm_cli)
-        logs = n.check_output("pbm logs -s D --tail=0")
-        print(logs)
-
-    def check_status(self):
-        n = testinfra.get_host("docker://" + self.pbm_cli)
-        status = n.check_output('pbm status --out=json')
-        running = json.loads(status)['running']
-        if running:
-            return running
 
     def get_status(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
@@ -656,11 +623,6 @@ class Cluster:
                     assert host['ok'] == True
         assert len(nodes) == len(self.pbm_hosts)
 
-    def __check_pbm_service(self, node):
-        n = testinfra.get_host("docker://" + node)
-        service = n.service("pbm-agent")
-        assert service.is_running
-
     @staticmethod
     def restart_pbm_agent(node):
         print("Restarting pbm-agent on node " + node)
@@ -671,5 +633,8 @@ class Cluster:
         for container in self.all_hosts:
             header = "Logs from {name}:".format(name=container)
             print(header, '\n', "=" * len(header))
-            print(docker.from_env().containers.get(container).logs(
-                tail=100).decode("utf-8", errors="replace"))
+            try:
+                print(docker.from_env().containers.get(container).logs(
+                    tail=100).decode("utf-8", errors="replace"))
+            except docker.errors.NotFound:
+                print()
