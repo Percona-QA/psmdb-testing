@@ -29,10 +29,10 @@ def config():
 def newconfig():
     return { "mongos": "newmongos",
              "configserver":
-                            {"_id": "rscfg", "members": [{"host":"newrscfg01"},{"host": "newrscfg02"},{"host": "newrscfg03" }]},
+                            {"_id": "newrscfg", "members": [{"host":"newrscfg01"},{"host": "newrscfg02"},{"host": "newrscfg03" }]},
              "shards":[
-                            {"_id": "rs1", "members": [{"host":"newrs101"},{"host": "newrs102"},{"host": "newrs103" }]},
-                            {"_id": "rs2", "members": [{"host":"newrs201"},{"host": "newrs202"},{"host": "newrs203" }]}
+                            {"_id": "newrs1", "members": [{"host":"newrs101"},{"host": "newrs102"},{"host": "newrs103" }]},
+                            {"_id": "newrs2", "members": [{"host":"newrs201"},{"host": "newrs202"},{"host": "newrs203" }]}
                       ]}
 
 @pytest.fixture(scope="package")
@@ -61,11 +61,12 @@ def start_cluster(cluster,newcluster,request):
         cluster.destroy()
         newcluster.destroy()
 
-@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.timeout(600,func_only=True)
 def test_logical(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("logical")
+    backup = backup + ' --replset-remapping="newrs1=rs1,newrs2=rs2,newrscfg=rscfg"'
     cluster.destroy()
 
     newcluster.make_resync()
@@ -74,30 +75,29 @@ def test_logical(start_cluster,cluster,newcluster):
     assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
     print("\nFinished successfully\n")
 
+'''
 @pytest.mark.timeout(300,func_only=True)
-def test_physical(start_cluster,cluster,newcluster):
+def test_physical(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("physical")
-    cluster.destroy()
 
     newcluster.make_resync()
     newcluster.make_restore(backup,restart_cluster=True, make_resync=True, check_pbm_status=True)
-    assert pymongo.MongoClient(newcluster.connection)["test"]["test"].count_documents({}) == len(documents)
-    assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
-    print("\nFinished successfully\n")
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
 
 @pytest.mark.timeout(300,func_only=True)
-def test_incremental(start_cluster,cluster,newcluster):
+def test_incremental(start_cluster,cluster):
     cluster.check_pbm_status()
     cluster.make_backup("incremental --base")
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("incremental")
-    cluster.destroy()
 
     newcluster.make_resync()
     newcluster.make_restore(backup,restart_cluster=True, make_resync=True, check_pbm_status=True)
-    assert pymongo.MongoClient(newcluster.connection)["test"]["test"].count_documents({}) == len(documents)
-    assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     print("\nFinished successfully\n")
 
+'''

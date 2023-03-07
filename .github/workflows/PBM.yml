@@ -1,0 +1,86 @@
+name: PBM
+
+on:
+  workflow_dispatch:
+    inputs:
+      psmdb:
+        description: "psmdb docker image"
+        required: false
+      pbm_branch:
+        description: "pbm branch"
+        required: false
+      go_ver:
+        description: "golang version"
+        required: false
+
+#  push:
+#    branches:
+#      - main
+
+#  pull_request:
+#    branches:
+#      - main
+
+jobs:
+  test_logical:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    env:
+      PSMDB: ${{ github.event.inputs.psmdb || 'percona/percona-server-mongodb:4.4' }}
+      PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'main' }}
+      GO_VER: ${{ github.event.inputs.go_ver || 'latest' }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Test logical backup/restore
+      run: |
+        docker-compose build
+        docker-compose up -d
+        docker-compose run test pytest -s --junitxml=test-logical.xml -k logical
+      working-directory: ./pbm-functional/pytest
+    - name: Publish Test Report
+      uses: mikepenz/action-junit-report@v3
+      if: success() || failure() 
+      with:
+        report_paths: '**/test-logical.xml'
+
+  test_physical:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    env:
+      PSMDB: ${{ github.event.inputs.psmdb || 'percona/percona-server-mongodb:4.4' }}
+      PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'main' }}
+      GO_VER: ${{ github.event.inputs.go_ver || 'latest' }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Test physical backup/restore  
+      run: |
+        docker-compose build
+        docker-compose up -d
+        docker-compose run test pytest -s --junitxml=test-physical.xml -k physical
+      working-directory: ./pbm-functional/pytest
+    - name: Publish Test Report
+      uses: mikepenz/action-junit-report@v3
+      if: success() || failure() 
+      with:
+        report_paths: '**/test-physical.xml'
+
+  test_incremental:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    env:
+      PSMDB: ${{ github.event.inputs.psmdb || 'percona/percona-server-mongodb:4.4' }}
+      PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'main' }}
+      GO_VER: ${{ github.event.inputs.go_ver || 'latest' }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Test incremental backup/restore 
+      run: |
+        docker-compose build
+        docker-compose up -d
+        docker-compose run test pytest -s --junitxml=test-incremental.xml -k incremental
+      working-directory: ./pbm-functional/pytest
+    - name: Publish Test Report
+      uses: mikepenz/action-junit-report@v3
+      if: success() || failure() 
+      with:
+        report_paths: '**/test-incremental.xml'
