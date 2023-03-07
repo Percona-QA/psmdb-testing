@@ -5,6 +5,7 @@ import testinfra
 import time
 import os
 import docker
+import threading
 
 from datetime import datetime
 from cluster import Cluster
@@ -30,18 +31,19 @@ def cluster(config):
     return Cluster(config)
 
 @pytest.fixture(scope="function")
-def start_cluster(cluster):
-    cluster.destroy()
-    cluster.create()
-    cluster.setup_pbm()
+def start_cluster(cluster,request):
+    try:
+        cluster.create()
+        cluster.setup_pbm()
+        client=pymongo.MongoClient(cluster.connection)
+        client.admin.command("enableSharding", "test")
+        client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
+        yield True
 
-    client=pymongo.MongoClient(cluster.connection)
-    client.admin.command("enableSharding", "test")
-    client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
-
-    yield True
-
-    cluster.destroy()
+    finally:
+        if request.config.getoption("--verbose"):
+            cluster.get_logs()
+        cluster.destroy()
 
 @pytest.mark.timeout(300,func_only=True)
 def test_logical(start_cluster,cluster):
@@ -72,7 +74,7 @@ def test_incremental(start_cluster,cluster):
     cluster.check_pbm_status()
     cluster.make_backup("incremental --base")
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
-    backup=cluster.make_backup("incremental")
+    backup = cluster.make_backup("incremental")
     result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
     assert int(result.deleted_count) == len(documents)
     cluster.make_restore(backup,restart_cluster=True, make_resync=True, check_pbm_status=True)

@@ -44,23 +44,24 @@ def newcluster(newconfig):
     return Cluster(newconfig)
 
 @pytest.fixture(scope="function")
-def start_cluster(cluster,newcluster):
-    cluster.destroy()
-    newcluster.destroy()
-    cluster.create()
-    cluster.setup_pbm()
-    newcluster.create()
-    newcluster.setup_pbm()
+def start_cluster(cluster,newcluster,request):
+    try:
+        cluster.destroy()
+        newcluster.destroy()
+        cluster.create()
+        cluster.setup_pbm()
+        newcluster.create()
+        newcluster.setup_pbm()
+        client=pymongo.MongoClient(cluster.connection)
+        client.admin.command("enableSharding", "test")
+        client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
+        yield True
 
-
-    client=pymongo.MongoClient(cluster.connection)
-    client.admin.command("enableSharding", "test")
-    client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
-
-    yield True
-
-    cluster.destroy()
-    newcluster.destroy()
+    finally:
+        if request.config.getoption("--verbose"):
+            newcluster.get_logs()
+        cluster.destroy()
+        newcluster.destroy()
 
 @pytest.mark.timeout(300,func_only=True)
 def test_logical(start_cluster,cluster,newcluster):
