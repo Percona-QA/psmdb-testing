@@ -31,7 +31,7 @@ jobs:
       GO_VER: ${{ github.event.inputs.go_ver || 'latest' }}
     steps:
     - uses: actions/checkout@v2
-    - name: Test on single sharded cluster
+    - name: Test logical backup/restore
       run: |
         docker-compose build
         docker-compose up -d
@@ -52,7 +52,7 @@ jobs:
       GO_VER: ${{ github.event.inputs.go_ver || 'latest' }}
     steps:
     - uses: actions/checkout@v2
-    - name: Test backup/restore with fresh cluster 
+    - name: Test physical backup/restore  
       run: |
         docker-compose build
         docker-compose up -d
@@ -73,7 +73,7 @@ jobs:
       GO_VER: ${{ github.event.inputs.go_ver || 'latest' }}
     steps:
     - uses: actions/checkout@v2
-    - name: Test backup/restore with remapping
+    - name: Test incremental backup/restore 
       run: |
         docker-compose build
         docker-compose up -d
