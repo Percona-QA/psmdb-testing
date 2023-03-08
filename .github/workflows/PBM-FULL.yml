@@ -32,7 +32,7 @@ jobs:
       GO_VER: ${{ github.event.inputs.go_ver || 'latest' }}
     steps:
     - uses: actions/checkout@v2
-    - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }}
+    - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }} PBM branch ${{ env.PBM_BRANCH }}
       run: |
         PSMDB=percona/percona-server-mongodb:${{ matrix.psmdb }} docker-compose build
         docker-compose up -d
