@@ -1,11 +1,8 @@
-name: PBM
+name: PBM-FULL
 
 on:
   workflow_dispatch:
     inputs:
-      psmdb:
-        description: "psmdb docker image"
-        required: false
       pbm_branch:
         description: "pbm branch"
         required: false
@@ -22,22 +19,22 @@ on:
 #      - main
 
 jobs:
-  test_logical:
+  test:
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
+        psmdb: ["4.2", "4.4", "5.0", "6.0"]
         test: [logical, physical, incremental]
     env:
-      PSMDB: ${{ github.event.inputs.psmdb || 'percona/percona-server-mongodb:4.4' }}
       PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'main' }}
       GO_VER: ${{ github.event.inputs.go_ver || 'latest' }}
     steps:
     - uses: actions/checkout@v2
-    - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ env.PSMDB }} PBM branch ${{ env.PBM_BRANCH }}
+    - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }} PBM branch ${{ env.PBM_BRANCH }}
       run: |
-        docker-compose build
+        PSMDB=percona/percona-server-mongodb:${{ matrix.psmdb }} docker-compose build
         docker-compose up -d
         docker-compose run test pytest -s --junitxml=junit.xml -k ${{ matrix.test }}
       working-directory: ./pbm-functional/pytest
