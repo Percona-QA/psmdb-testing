@@ -14,7 +14,9 @@ COPY --from=0 /percona-backup-mongodb/bin/ /usr/bin/
 COPY conf/supervisord.d/ /etc/supervisord.d/
 COPY conf/pbm/minio.yaml /etc/pbm.conf
 COPY keyfile /etc/keyfile
+COPY mongodb-keyfile /etc/mongodb-keyfile
 RUN chown mongod /etc/keyfile && chmod 400 /etc/keyfile && \
+    chown mongod /etc/mongodb-keyfile && chmod 400 /etc/mongodb-keyfile && \
     if [ -f "/usr/bin/mongosh" ] ; then \
         ln -s /usr/bin/mongosh /usr/bin/mongo ; \
     fi && \

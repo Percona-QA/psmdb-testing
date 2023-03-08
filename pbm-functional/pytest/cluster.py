@@ -18,12 +18,23 @@ import concurrent.futures
 
 
 class Cluster:
-    def __init__(self, config):
+    def __init__(self, config, **kwargs):
         self.config = config
+        self.mongod_extra_args = kwargs.get('mongod_extra_args',"")
 
     @property
     def config(self):
         return self._config
+
+    @property
+    def mongod_extra_args(self):
+        return self._mongod_extra_args
+
+    @mongod_extra_args.setter
+    def mongod_extra_args(self,value):
+        if not isinstance(value, str):
+            raise TypeError("mongod_extra_args should be str")
+        self._mongod_extra_args = value
 
     # config validator
     @config.setter
@@ -238,7 +249,7 @@ class Cluster:
                     detach=True,
                     network='test',
                     environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017",
-                                 "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile"],
+                                 "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + self.mongod_extra_args],
                     volumes=["fs:/backups"]
                 )
                 if "arbiterOnly" in host:
@@ -260,7 +271,7 @@ class Cluster:
                         detach=True,
                         network='test',
                         environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017",
-                                     "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile"],
+                                     "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + self.mongod_extra_args],
                         volumes=["fs:/backups"]
                     )
                     if 'arbiterOnly' in host:
@@ -279,7 +290,7 @@ class Cluster:
                     detach=True,
                     network='test',
                     environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017", "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
-                                 self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile"],
+                                 self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + self.mongod_extra_args],
                     volumes=["fs:/backups"]
                 )
                 if "arbiterOnly" in host:
@@ -634,7 +645,6 @@ class Cluster:
             header = "Logs from {name}:".format(name=container)
             print(header, '\n', "=" * len(header))
             try:
-                print(docker.from_env().containers.get(container).logs(
-                    tail=100).decode("utf-8", errors="replace"))
+                print(docker.from_env().containers.get(container).logs().decode("utf-8", errors="replace"))
             except docker.errors.NotFound:
                 print()

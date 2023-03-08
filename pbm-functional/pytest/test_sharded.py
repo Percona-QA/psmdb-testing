@@ -83,7 +83,7 @@ def test_incremental(start_cluster,cluster):
     print("\nFinished successfully\n")
 
 @pytest.mark.timeout(300,func_only=True)
-def test_PBM_773(start_cluster,cluster):
+def test_PBM_773_logical(start_cluster,cluster):
     os.chmod("/backups",0o777)
     result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none")
     assert result.rc == 0
