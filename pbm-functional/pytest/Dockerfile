@@ -8,8 +8,22 @@ RUN apt update && apt -y install gcc libgssapi-krb5-2 libkrb5-dev libsasl2-modul
     cd percona-backup-mongodb && make build
 
 FROM $PSMDB
+ARG PBM_VERSION=latest
+
+ARG AWS_ACCESS_KEY_ID=none
+ARG AWS_SECRET_ACCESS_KEY=none
+ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+ENV AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+
 USER root
-RUN yum install -y epel-release && yum install -y supervisor
+RUN yum install -y epel-release && yum install -y supervisor && \
+    percona-release enable pbm && \
+    if [ $PBM_VERSION == "latest" ]; then \
+        yum -y install percona-backup-mongodb ; \
+    else \
+        yum -y install percona-backup-mongodb-${PBM_VERSION}.el8 ; \
+    fi && \
+    mkdir -p /pbm-old && mkdir -p /pbm-new && mv /usr/bin/pbm* /pbm-old/    
 COPY --from=0 /percona-backup-mongodb/bin/ /usr/bin/
 COPY conf/supervisord.d/ /etc/supervisord.d/
 COPY conf/pbm/minio.yaml /etc/pbm.conf
@@ -20,6 +34,7 @@ RUN chown mongod /etc/keyfile && chmod 400 /etc/keyfile && \
     if [ -f "/usr/bin/mongosh" ] ; then \
         ln -s /usr/bin/mongosh /usr/bin/mongo ; \
     fi && \
+    cp -rpf /usr/bin/pbm* /pbm-new/ && \
     yum clean all && \
     rm -rf /var/cache/dnf /var/cache/yum && mkdir -p /data/db
 
