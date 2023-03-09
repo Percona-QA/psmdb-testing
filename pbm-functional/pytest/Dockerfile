@@ -4,8 +4,10 @@ FROM golang:$GO_VER
 ARG PBM_BRANCH=main
 WORKDIR /
 RUN apt update && apt -y install gcc libgssapi-krb5-2 libkrb5-dev libsasl2-modules-gssapi-mit && \
-    git clone -b $PBM_BRANCH --single-branch https://github.com/percona/percona-backup-mongodb.git && \
-    cd percona-backup-mongodb && make build
+    git clone https://github.com/percona/percona-backup-mongodb.git && cd percona-backup-mongodb && \
+    git checkout $PBM_BRANCH && \
+    sed -E "s|(.+)https://%s.blob.core.windows.net/%s(.+)|\1http://azurite:10000/%s/%s\2|" -i pbm/storage/azure/azure.go && \
+    make build
 
 FROM $PSMDB
 ARG PBM_VERSION=latest
