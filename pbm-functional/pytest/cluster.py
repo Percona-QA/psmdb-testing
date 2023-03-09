@@ -20,7 +20,7 @@ import concurrent.futures
 class Cluster:
     def __init__(self, config, **kwargs):
         self.config = config
-        self.mongod_extra_args = kwargs.get('mongod_extra_args',"")
+        self.mongod_extra_args = kwargs.get('mongod_extra_args', "")
 
     @property
     def config(self):
@@ -31,93 +31,70 @@ class Cluster:
         return self._mongod_extra_args
 
     @mongod_extra_args.setter
-    def mongod_extra_args(self,value):
-        if not isinstance(value, str):
-            raise TypeError("mongod_extra_args should be str")
+    def mongod_extra_args(self, value):
+        assert isinstance(value, str)
         self._mongod_extra_args = value
 
     # config validator
     @config.setter
     def config(self, value):
-        if not isinstance(value, dict):
-            raise TypeError("Config must be a dict")
+        assert isinstance(value, dict)
 
         def validate_rs(rs):
-            if not isinstance(rs['_id'], str) or not isinstance(rs['members'], list):
-                return False
-
-            if len(rs['members']) == 1 or len(rs['members']) % 2 != 1:
-                return False
-
+            assert isinstance(rs['_id'], str) and isinstance(
+                rs['members'], list)
+            assert len(rs['members']) % 2 == 1
             arbiter = False
-            nodes = []
+            hosts = []
             for id, member in enumerate(rs['members']):
-                if not isinstance(member, dict):
-                    return False
-
-                if not set(member.keys()) <= {'host', 'priority', 'arbiterOnly', 'hidden'} and not set(member.keys()) == {'host'}:
-                    print(1)
-                    return False
-
-                if (not isinstance(member['host'], str) or ('priority' in member and not isinstance(member['priority'], int)) or
-                    ('arbiterOnly' in member and not isinstance(member['arbiterOnly'], bool)) or
-                        ('hidden' in member and not isinstance(member['hidden'], bool))):
-                    print(2)
-                    return False
-
-                if id == 0 and set(member.keys()) <= {'priority', 'arbiterOnly', 'hidden'}:
-                    print(3)
-                    return False
-
-                if member['host'] not in nodes:
-                    nodes.append(member['host'])
+                assert isinstance(member, dict)
+                assert set(member.keys()) <= {
+                    'host', 'priority', 'arbiterOnly', 'hidden'}
+                assert 'host' in member and isinstance(member['host'], str)
+                if 'priority' in member:
+                    assert isinstance(member['priority'], int)
+                if 'arbiterOnly' in member:
+                    assert isinstance(member['arbiterOnly'], bool)
+                if 'hidden' in member:
+                    assert isinstance(member['hidden'], bool)
+                if id == 0:
+                    assert set(member.keys()) == {'host'}
+                if member['host'] not in hosts:
+                    hosts.append(member['host'])
                 else:
-                    return False
+                    assert False
                 if 'arbiterOnly' in member and member['arbiterOnly']:
                     if arbiter:
-                        print(4)
-                        return False
+                        assert False
                     arbiter = True
-
             return True
-
         if set(value.keys()) == {'_id', 'members'}:
-            if not validate_rs(value):
-                raise TypeError("Invalid replicaset config")
+            assert validate_rs(value)
         elif set(value.keys()) == {'mongos', 'configserver', 'shards'}:
-            if not isinstance(value['configserver'], dict) or not isinstance(value['shards'], list) or not isinstance(value['mongos'], str):
-                raise TypeError("Invalid replicaset config")
-            nodes = []
+            assert isinstance(value['configserver'], dict) and isinstance(
+                value['shards'], list) and isinstance(value['mongos'], str)
+            hosts = []
             ids = []
-            if not validate_rs(value['configserver']):
-                raise TypeError(
-                    "Invalid configserver defifnition in sharded config")
-            else:
-                ids.append(value['configserver']['_id'])
-                for member in value['configserver']['members']:
-                    if member['host'] not in nodes:
-                        nodes.append(member['host'])
-                    else:
-                        raise TypeError(
-                            "Duplicated node name in sharded config")
-            for shard in value['shards']:
-                if not validate_rs(shard):
-                    raise TypeError(
-                        "Invalid shard definition in sharded config")
+            assert validate_rs(value['configserver'])
+            ids.append(value['configserver']['_id'])
+            for member in value['configserver']['members']:
+                if member['host'] not in hosts:
+                    hosts.append(member['host'])
                 else:
-                    if shard['_id'] not in ids:
-                        ids.append(shard['_id'])
+                    assert False
+            for shard in value['shards']:
+                assert validate_rs(shard)
+                if shard['_id'] not in ids:
+                    ids.append(shard['_id'])
+                else:
+                    assert False
+                for member in shard['members']:
+                    if member['host'] not in hosts:
+                        hosts.append(member['host'])
                     else:
-                        raise TypeError(
-                            "Duplicated replicaset id in sharded config")
-                    for member in shard['members']:
-                        if member['host'] not in nodes:
-                            nodes.append(member['host'])
-                        else:
-                            raise TypeError(
-                                "Duplicated node name in sharded config")
+                        assert False
         else:
-            raise TypeError("Invalid config")
+            assert False
         self._config = value
 
     # returns replicaset or sharded
@@ -324,17 +301,10 @@ class Cluster:
 
     # setups pbm from default config-file, minio as storage
     def setup_pbm(self):
-        node = self.pbm_cli
-        n = testinfra.get_host("docker://" + node)
+        host = self.pbm_cli
+        n = testinfra.get_host("docker://" + host)
         result = n.check_output('pbm config --file=/etc/pbm.conf --out=json')
         print(json.loads(result))
-        time.sleep(5)
-
-    # restarts pbm-agents on all hosts
-    def restart_pbm_agents(self):
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            for host in self.pbm_hosts:
-                executor.submit(Cluster.restart_pbm_agent, host)
         time.sleep(5)
 
     # pbm --force-resync
@@ -436,13 +406,25 @@ class Cluster:
     def destroy(self):
         print("\nDestroying cluster:")
         print(self.all_hosts)
+        # the last resort to catch possible failures if timeout exceeded
+        for host in self.mongod_hosts:
+            try:
+                container = docker.from_env().containers.get(host)
+                result = container.exec_run(
+                    'cat /var/lib/mongo/pbm.restore.log', stderr=False)
+                if result.exit_code == 0:
+                    print(
+                        "\n!!!!Possible failure on {}, file pbm.restore.log was found:".format(host))
+                    print(result.output.decode('utf-8'))
+            except docker.errors.APIError:
+                pass
         for host in self.all_hosts:
             try:
                 container = docker.from_env().containers.get(host)
                 container.remove(force=True)
                 print("Container {} was removed".format(host))
             except docker.errors.NotFound:
-                print("Container {} was not found".format(host))
+                pass
 
     # restarts all containers with mongod sequentially
     def restart(self):
@@ -464,7 +446,8 @@ class Cluster:
             print("Starting " + self.config['mongos'])
             docker.from_env().containers.get(self.config['mongos']).start()
             time.sleep(1)
-            Cluster.wait_for_primary(self.config['mongos'],"mongodb://root:root@127.0.0.1:27017")
+            Cluster.wait_for_primary(
+                self.config['mongos'], "mongodb://root:root@127.0.0.1:27017")
 
     # stops mongod's on arbiter hosts
     def stop_arbiters(self):
@@ -498,7 +481,8 @@ class Cluster:
     # disables PITR
     def disable_pitr(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output("pbm config --set pitr.enabled=false --out json")
+        result = n.check_output(
+            "pbm config --set pitr.enabled=false --out json")
         print("Disabling PITR:")
         print(result)
         timeout = time.time() + 600
@@ -538,10 +522,10 @@ class Cluster:
                 executor.submit(Cluster.setup_replicaset, rs)
 
     @staticmethod
-    def setup_authorization(node):
-        primary = testinfra.get_host("docker://" + node)
-        Cluster.wait_for_primary(node, "mongodb://127.0.0.1:27017")
-        print("\nSetup authorization on " + node)
+    def setup_authorization(host):
+        primary = testinfra.get_host("docker://" + host)
+        Cluster.wait_for_primary(host, "mongodb://127.0.0.1:27017")
+        print("\nSetup authorization on " + host)
         print("\nAdding root user")
         init_root_user = '\'db.getSiblingDB("admin").createUser({ user: "root", pwd: "root", roles: [ "root", "userAdminAnyDatabase", "clusterAdmin" ] });\''
         logs = primary.check_output("mongo --quiet --eval " + init_root_user)
@@ -570,19 +554,21 @@ class Cluster:
         time.sleep(1)
 
     @staticmethod
-    def wait_for_primary(node, connection):
-        n = testinfra.get_host("docker://" + node)
-        timeout = time.time() + 600
-        print("Checking ismaster() on host: " + node)
+    def wait_for_primary(host, connection):
+        n = testinfra.get_host("docker://" + host)
+        timeout = time.time() + 60
+        print("Checking ismaster() on host: " + host)
         while True:
             result = n.run(
                 "mongo " + connection + " --quiet --eval 'db.hello().isWritablePrimary'")
             if 'true' in result.stdout.lower():
-                print("Host " + node + " became primary")
+                print("Host " + host + " became primary")
                 return True
                 break
+            elif 'mongoservererror' in result.stderr.lower():
+                assert False, result.stderr
             else:
-                print("Waiting for " + node + " to became primary")
+                print("Waiting for " + host + " to became primary")
             if time.time() > timeout:
                 assert False
             time.sleep(3)
@@ -595,14 +581,14 @@ class Cluster:
                 executor.submit(Cluster.wait_for_primary, primary,
                                 "mongodb://root:root@127.0.0.1:27017")
 
-    def __delete_pbm(self, node):
-        n = testinfra.get_host("docker://" + node)
+    def __delete_pbm(self, host):
+        n = testinfra.get_host("docker://" + host)
         n.check_output("supervisorctl stop pbm-agent")
         n.check_output("rm -rf /etc/supervisord.d/pbm-agent.ini")
 
-    def __find_event_msg(self, event ,msg):
+    def __find_event_msg(self, event, msg):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        command = "pbm logs --tail=0 --out=json --event=" + event 
+        command = "pbm logs --tail=0 --out=json --event=" + event
         logs = n.check_output(command)
         for log in json.loads(logs):
             if log['msg'] == msg:
@@ -612,6 +598,11 @@ class Cluster:
     def get_status(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
         status = n.check_output('pbm status --out=json')
+        return json.loads(status)
+
+    def get_version(self):
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        status = n.check_output('pbm version --out=json')
         return json.loads(status)
 
     def check_pitr(self):
@@ -626,25 +617,75 @@ class Cluster:
         print("\nPBM status:")
         parsed_result = json.loads(result)
         print(json.dumps(parsed_result, indent=4))
-        nodes = []
+        hosts = []
         for replicaset in parsed_result['cluster']:
             for host in replicaset['nodes']:
                 if host['role'] != "A":
-                    nodes.append(host)
+                    hosts.append(host)
                     assert host['ok'] == True
-        assert len(nodes) == len(self.pbm_hosts)
+        assert len(hosts) == len(self.pbm_hosts)
 
     @staticmethod
-    def restart_pbm_agent(node):
-        print("Restarting pbm-agent on node " + node)
-        n = testinfra.get_host("docker://" + node)
+    def restart_pbm_agent(host):
+        print("Restarting pbm-agent on host " + host)
+        n = testinfra.get_host("docker://" + host)
         n.check_output('supervisorctl restart pbm-agent')
+        assert n.supervisor('pbm-agent').is_running
+
+    def restart_pbm_agents(self):
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            for host in self.pbm_hosts:
+                executor.submit(Cluster.restart_pbm_agent, host)
+        time.sleep(5)
+
+    @staticmethod
+    def downgrade_single(host):
+        n = testinfra.get_host("docker://" + host)
+        n.check_output('supervisorctl stop pbm-agent')
+        n.check_output('cp -rf /pbm-old/* /usr/bin/')
+        n.check_output('supervisorctl start pbm-agent')
+        assert n.supervisor('pbm-agent').is_running
+
+    def downgrade(self):
+        print("\nDowngrading PBM")
+        ver = self.get_version()
+        print("Current PBM version:")
+        print(ver)
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            for host in self.pbm_hosts:
+                executor.submit(Cluster.downgrade_single, host)
+        time.sleep(5)
+        ver = self.get_version()
+        print("New PBM version:")
+        print(ver)
+
+    @staticmethod
+    def upgrade_single(host):
+        n = testinfra.get_host("docker://" + host)
+        n.check_output('supervisorctl stop pbm-agent')
+        n.check_output('cp -rf /pbm-new/* /usr/bin/')
+        n.check_output('supervisorctl start pbm-agent')
+        assert n.supervisor('pbm-agent').is_running
+
+    def upgrade(self):
+        print("\nUpgrading PBM")
+        ver = self.get_version()
+        print("Current PBM version:")
+        print(ver)
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            for host in self.pbm_hosts:
+                executor.submit(Cluster.upgrade_single, host)
+        time.sleep(5)
+        ver = self.get_version()
+        print("New PBM version:")
+        print(ver)
 
     def get_logs(self):
         for container in self.all_hosts:
             header = "Logs from {name}:".format(name=container)
             print(header, '\n', "=" * len(header))
             try:
-                print(docker.from_env().containers.get(container).logs().decode("utf-8", errors="replace"))
+                print(docker.from_env().containers.get(
+                    container).logs().decode("utf-8", errors="replace"))
             except docker.errors.NotFound:
                 print()

@@ -33,6 +33,7 @@ def cluster(config):
 @pytest.fixture(scope="function")
 def start_cluster(cluster,request):
     try:
+        cluster.destroy()
         cluster.create()
         cluster.setup_pbm()
         client=pymongo.MongoClient(cluster.connection)
