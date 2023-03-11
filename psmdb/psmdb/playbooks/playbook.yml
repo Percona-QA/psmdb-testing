@@ -6,5 +6,6 @@
   roles:
     - role: psmdb
     - role: '../../../roles/kmip'
+    - role: '../../../roles/vault'
     - role: '../../../roles/openldap'
     - role: '../../../roles/kerberos'

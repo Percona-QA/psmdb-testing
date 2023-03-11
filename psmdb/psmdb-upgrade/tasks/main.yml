@@ -151,7 +151,8 @@
     - rm -rf bats-master
 
 - name: Install and configure vault
-  include_tasks: ../../../tasks/install_and_configure_vault.yml
+  include_role:
+   name: ../../../roles/vault
   when:
     lookup('env', 'ENCRYPTION') == "VAULT"
 
