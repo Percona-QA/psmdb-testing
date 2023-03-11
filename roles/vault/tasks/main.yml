@@ -1,0 +1,129 @@
+- include_tasks: "{{ansible_os_family}}.yml"
+
+- name: Create workdir
+  file:
+    path: /vault_workdir
+    state: directory
+    mode: '0755'
+
+- name: Copy ssl cnf template
+  template:
+    src: ssl.conf
+    dest: /tmp
+
+- name: Generate certificates for vault
+  shell: openssl req -config /tmp/ssl.conf -x509 -days 3650 -batch -nodes -newkey rsa:2048 -keyout /opt/vault/tls/tls.key -out /opt/vault/tls/tls.crt
+
+- name: Start vault service
+  service:
+    name: vault
+    state: restarted
+    enabled: yes
+
+- name: Check if vault is initialized
+  environment:
+   SSL_CERT_FILE: /opt/vault/tls/tls.crt
+  uri:
+   url: "https://127.0.0.1:8200/v1/sys/health"
+   status_code: 200,429,472,473,501,503
+  register: vault_health_response
+
+- block:
+  - name: Initialize vault
+    environment:
+     SSL_CERT_FILE: /opt/vault/tls/tls.crt
+    uri:
+     url: "https://127.0.0.1:8200/v1/sys/init"
+     body:
+      secret_shares: 1
+      secret_threshold: 1
+     body_format: json
+     method: PUT
+    register: init_vault_response
+
+  - name: Save vault root token and keys
+    set_fact:
+     vault_root_token: "{{ init_vault_response.json.root_token }}"
+     vault_keys: "{{ init_vault_response.json.keys_base64 }}"
+
+  - name: Write root token to file
+    copy:
+     content: "{{ vault_root_token }}"
+     dest: "/vault_workdir/root_token"
+
+  - name: Write vault key to file
+    copy:
+     content: "{{ vault_keys }}"
+     dest: "/vault_workdir/vault_keys"
+  when: vault_health_response.status == 501
+
+- name: Read root token from file
+  shell: cat /vault_workdir/root_token
+  register: vault_root_token
+
+- name: Read vault key from file
+  shell: cat /vault_workdir/vault_keys
+  register: vault_keys
+
+- name: Check if vault is sealed
+  environment:
+   SSL_CERT_FILE: /opt/vault/tls/tls.crt
+  uri:
+   url: "https://127.0.0.1:8200/v1/sys/health"
+   status_code: 200,429,472,473,501,503
+  register: vault_health_response
+
+- name: Unseal vault
+  environment:
+   SSL_CERT_FILE: /opt/vault/tls/tls.crt
+  uri:
+   url: "https://127.0.0.1:8200/v1/sys/unseal"
+   body:
+    key: "{{ item }}"
+   body_format: json
+   method: PUT
+  register: unseal_vault_response
+  with_items:
+   - "{{ vault_keys.stdout }}"
+  when:
+   - vault_health_response.status == 503
+   - vault_health_response.status != 501
+
+- name: Check if KV Secrets Engine is enabled
+  environment:
+   SSL_CERT_FILE: /opt/vault/tls/tls.crt
+  uri:
+   url: "https://127.0.0.1:8200/v1/sys/mounts/secret_v2/tune"
+   status_code: 200,400
+   headers:
+    X-Vault-Token: "{{ vault_root_token.stdout }}"
+  register: vault_health_response
+
+- name: Enable KV Secrets Engine
+  environment:
+   SSL_CERT_FILE: /opt/vault/tls/tls.crt
+  uri:
+   url: "https://127.0.0.1:8200/v1/sys/mounts/secret_v2"
+   method: POST
+   body:
+     type: "kv-v2"
+     options:
+      version: 2
+   body_format: json
+   status_code: 204
+   headers:
+    X-Vault-Token: "{{ vault_root_token.stdout }}"
+  when:
+   - vault_health_response.status == 400
+
+- name: Copy certificate file for tests
+  copy:
+    remote_src: yes
+    src: "/opt/vault/tls/tls.crt"
+    dest: "/package-testing/scripts/psmdb_encryption/test.cer"
+
+- name: Copy root token file for tests
+  copy:
+    remote_src: yes
+    src: "/vault_workdir/root_token"
+    dest: "/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"

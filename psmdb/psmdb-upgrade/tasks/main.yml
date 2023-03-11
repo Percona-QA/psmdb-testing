@@ -150,12 +150,8 @@
     - bats-master/install.sh /usr/local
     - rm -rf bats-master
 
-- name: Install and configure vault
-  include_tasks: ../../../tasks/install_and_configure_vault.yml
-  when:
-    lookup('env', 'ENCRYPTION') == "VAULT"
-
 - name: Enable Vault encryption
+  include_role: ../../../roles/vault
   include_tasks: ../../../tasks/enable_vault_encryption.yml
   when:
     lookup('env', 'ENCRYPTION') == "VAULT"

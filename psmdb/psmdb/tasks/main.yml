@@ -206,9 +206,6 @@
     - bats-master/install.sh /usr/local
     - rm -rf bats-master
 
-- name: Install and configure vault
-  include_tasks: ../../../tasks/install_and_configure_vault.yml
-
 - name: Load some data
   command: /package-testing/scripts/mongo_insert.sh
 
