@@ -177,10 +177,10 @@
   with_items:
     - rm -rf /package-testing
     - rm -f master.zip
-    - wget --no-check-certificate -O main.zip https://github.com/Percona-QA/psmdb-testing/archive/refs/heads/PSMDB_KMIP.zip
+    - wget --no-check-certificate -O main.zip https://github.com/Percona-QA/psmdb-testing/archive/refs/heads/main.zip
     - unzip main.zip
     - rm -f main.zip
-    - mv psmdb-testing-PSMDB_KMIP /package-testing
+    - mv psmdb-testing-main /package-testing
 
 - name: setup tools repo with percona-release
   command: percona-release enable tools
