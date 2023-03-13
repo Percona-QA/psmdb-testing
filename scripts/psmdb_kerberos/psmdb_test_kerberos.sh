@@ -26,7 +26,7 @@ HOSTNAME=`hostname`
 kadmin.local -q "addprinc -pw exttestro exttestro"
 kinit exttestro <<<'exttestro'
 ROROLE=`mongo --host=$HOSTNAME --authenticationMechanism=GSSAPI --authenticationDatabase='$external' --username exttestro@PERCONATEST.COM --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c read`
-if [[ $ROROLE ]]; then
+if [[ $ROROLE -eq 1 ]]; then
    echo "Kerberos RO permissions OK"
 else
    echo "Kerberos RO permissions not OK"
@@ -36,7 +36,7 @@ fi
 kadmin.local -q "addprinc -pw exttestrw exttestrw"
 kinit exttestrw <<<'exttestrw'
 RWROLE=`mongo --host=$HOSTNAME --authenticationMechanism=GSSAPI --authenticationDatabase='$external' --username exttestrw@PERCONATEST.COM --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c userAdminAnyDatabase`
-if [[ $RWROLE ]]; then
+if [[ $RWROLE -eq 1 ]]; then
    echo "Kerberos RW permissions OK"
 else
    echo "Kerberos RW permissions not OK"

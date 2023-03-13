@@ -94,6 +94,7 @@
       ec2:
         key_name: "{{ keypair_name }}"
         image: "{{ item.image }}"
+        instance_profile_name: "jenkins-psmdb-slave"
         instance_type: "{{ item.instance_type }}"
         vpc_subnet_id: "{{ item.vpc_subnet_id }}"
         group: "{{ security_group_name_prefix }}-{{ subnet_dict[item.vpc_subnet_id] }}"
