@@ -112,6 +112,14 @@ def test_kerberos(host):
         print(result.stderr)
     assert result.rc == 0, result.stdout
 
+def test_aws_auth(host):
+    cmd = "/package-testing/scripts/psmdb_aws/psmdb_test_aws_auth.sh"
+    with host.sudo():
+        result = host.run(cmd)
+        print(result.stdout)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout
+
 def test_load_data(host):
     cmd = "/package-testing/scripts/mongo_insert.sh"
     with host.sudo():

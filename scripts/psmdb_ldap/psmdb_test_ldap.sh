@@ -21,16 +21,16 @@ stop_service
 start_service
 
 RWROLE=`mongo -u "cn=exttestrw,ou=people,dc=percona,dc=com" -p "exttestrw9a5S" --authenticationDatabase '$external' --authenticationMechanism 'PLAIN' --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c "clusterAdmin"`
-if [[ $RWROLE ]]; then
+if [[ $RWROLE -eq 1 ]]; then
    echo "LDAP Full permissions OK"
 else
    echo "LDAP Full permissions not OK"
    exit 1
 fi
 
-RWROLE=`mongo -u "cn=exttestro,ou=people,dc=percona,dc=com" -p "exttestro9a5S" --authenticationDatabase '$external' --authenticationMechanism 'PLAIN' --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c "clusterAdmin"` || true
+RWROLE=`mongo -u "cn=exttestro,ou=people,dc=percona,dc=com" -p "exttestro9a5S" --authenticationDatabase '$external' --authenticationMechanism 'PLAIN' --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c "clusterAdmin"`
 ROROLE=`mongo -u "cn=exttestro,ou=people,dc=percona,dc=com" -p "exttestro9a5S" --authenticationDatabase '$external' --authenticationMechanism 'PLAIN' --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c "read"`
-if [[ $RWROLE == 0 ]] && [[ $ROROLE ]]; then
+if [[ $RWROLE -eq 0 ]] && [[ $ROROLE -eq 2 ]]; then
    echo "LDAP read-only permissions OK"
 else
    echo	"LDAP read-only permissions not OK"
