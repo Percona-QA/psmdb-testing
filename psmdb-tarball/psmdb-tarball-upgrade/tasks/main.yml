@@ -92,7 +92,8 @@
   register: vault_exists
 
 - name: Install and configure vault
-  include_tasks: ../../../tasks/install_and_configure_vault.yml
+  include_role:
+   name: ../../../roles/vault
   when: encryption == "VAULT" and not vault_exists.stat.exists
 
 - name: Check that bin directory exists
