@@ -28,7 +28,7 @@ else
    exit 1
 fi
 
-RWROLE=`mongo -u "cn=exttestro,ou=people,dc=percona,dc=com" -p "exttestro9a5S" --authenticationDatabase '$external' --authenticationMechanism 'PLAIN' --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c "clusterAdmin"`
+RWROLE=`mongo -u "cn=exttestro,ou=people,dc=percona,dc=com" -p "exttestro9a5S" --authenticationDatabase '$external' --authenticationMechanism 'PLAIN' --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c "clusterAdmin"` || true
 ROROLE=`mongo -u "cn=exttestro,ou=people,dc=percona,dc=com" -p "exttestro9a5S" --authenticationDatabase '$external' --authenticationMechanism 'PLAIN' --quiet --eval "db.runCommand({connectionStatus : 1})" | grep -c "read"`
 if [[ $RWROLE -eq 0 ]] && [[ $ROROLE -eq 2 ]]; then
    echo "LDAP read-only permissions OK"
