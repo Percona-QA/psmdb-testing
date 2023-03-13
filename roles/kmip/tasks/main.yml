@@ -1,0 +1,48 @@
+- include_tasks: "{{ansible_os_family}}.yml"
+
+- name: Create workdir
+  file:
+    path: /pykmip_workdir
+    state: directory
+    mode: '0755'
+
+- name: Download easy-rsa
+  git:
+    repo: 'https://github.com/OpenVPN/easy-rsa.git'
+    dest: /pykmip_workdir/easy-rsa
+
+- name: Download PyKMIP
+  git:
+    repo: 'https://github.com/OpenKMIP/PyKMIP.git'
+    dest: /pykmip_workdir/PyKMIP
+
+- name: Generate certs
+  shell: |
+    cd /pykmip_workdir/easy-rsa
+    [ -d pki ] || easyrsa3/easyrsa init-pki
+    easyrsa3/easyrsa --req-cn=Percona --batch build-ca nopass
+    easyrsa3/easyrsa --batch build-server-full 127.0.0.1 nopass
+    easyrsa3/easyrsa --batch build-client-full mongod nopass
+    cat pki/issued/mongod.crt pki/private/mongod.key > /pykmip_workdir/mongod.pem
+    cp pki/issued/127.0.0.1.crt pki/private/127.0.0.1.key pki/ca.crt /pykmip_workdir/
+
+- name: Build PyKMIP
+  shell: |
+    cd /pykmip_workdir/PyKMIP
+    python setup.py install
+
+- name: Copy cnf template
+  template:
+    src: pykmip_server.conf
+    dest: /pykmip_workdir
+
+- name: Copy systemctl template
+  template:
+    src: pykmip.service
+    dest: /etc/systemd/system/
+
+- name: Start pykmip service
+  systemd:
+    state: started
+    daemon_reload: true
+    name: pykmip

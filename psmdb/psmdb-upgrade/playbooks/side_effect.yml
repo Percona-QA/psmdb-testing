@@ -16,18 +16,18 @@
     - set_fact: psmdb_mongosh={{ to_version.split('.')[0] }}
 
     - name: check maj version
-      debug: msg={{to_maj_version}}_{{from_maj_version}} 
+      debug: msg={{to_maj_version}}_{{from_maj_version}}
 
     - name: set compatibilty version for downgrade
       shell: |
         mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{to_maj_version}}" })'
       register: set_version
       when: from_maj_version > to_maj_version
-    
+
     - name: stop mongod service
       service:
         name: mongod
-        state: stopped  
+        state: stopped
 
     - name: install necessary deb packages for downgrade
       apt:
@@ -192,10 +192,11 @@
       when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6"
 
     - name: copy mongosh binary to mongo path for test scripts
-      file:
+      copy:
         src: /usr/bin/mongosh
         dest: /usr/bin/mongo
-        state: link
+        remote_src: true
+        mode: '0755'
       when: psmdb_mongosh >= "6"
 
     - name: perform daemon-reload for systemd-based os
