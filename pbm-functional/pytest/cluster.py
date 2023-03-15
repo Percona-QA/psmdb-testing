@@ -21,6 +21,7 @@ class Cluster:
     def __init__(self, config, **kwargs):
         self.config = config
         self.mongod_extra_args = kwargs.get('mongod_extra_args', "")
+        self.mongod_datadir = kwargs.get('mongod_datadir', "/var/lib/mongo")
 
     @property
     def config(self):
@@ -34,6 +35,15 @@ class Cluster:
     def mongod_extra_args(self, value):
         assert isinstance(value, str)
         self._mongod_extra_args = value
+
+    @property
+    def mongod_datadir(self):
+        return self._mongod_datadir
+
+    @mongod_datadir.setter
+    def mongod_datadir(self, value):
+        assert isinstance(value, str)
+        self._mongod_datadir = value
 
     # config validator
     @config.setter
@@ -225,7 +235,7 @@ class Cluster:
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017",
+                    environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017", "DATADIR=" + self.mongod_datadir,
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + self.mongod_extra_args],
                     volumes=["fs:/backups"]
                 )
@@ -247,7 +257,7 @@ class Cluster:
                         hostname=host['host'],
                         detach=True,
                         network='test',
-                        environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017",
+                        environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017", "DATADIR=" + self.mongod_datadir,
                                      "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + self.mongod_extra_args],
                         volumes=["fs:/backups"]
                     )
@@ -266,7 +276,8 @@ class Cluster:
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017", "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
+                    environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017", "DATADIR=" + self.mongod_datadir,
+                                 "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
                                  self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + self.mongod_extra_args],
                     volumes=["fs:/backups"]
                 )

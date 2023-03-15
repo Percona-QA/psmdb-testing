@@ -43,6 +43,7 @@ def start_cluster(cluster, request):
         azure_key = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
         result = cluster.exec_pbm_cli("config --set storage.type=azure --set storage.azure.account=" + azure_account +
                                       " --set storage.azure.container=test-container --set storage.azure.credentials.key=" + azure_key)
+        assert result.rc == 0
         client = pymongo.MongoClient(cluster.connection)
         client.admin.command("enableSharding", "test")
         client.admin.command(
