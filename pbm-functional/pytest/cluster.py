@@ -650,21 +650,26 @@ class Cluster:
         time.sleep(5)
 
     @staticmethod
-    def downgrade_single(host):
+    def downgrade_single(host,**kwargs):
+        tarball=kwargs.get('tarball',"")
         n = testinfra.get_host("docker://" + host)
         n.check_output('supervisorctl stop pbm-agent')
-        n.check_output('cp -rf /pbm-old/* /usr/bin/')
+        if tarball:
+            n.check_output('curl -Lf -o /tmp/pbm.tar.gz ' + tarball)
+            n.check_output("tar -xf /tmp/pbm.tar.gz --transform 's,^/*[^/]*,,S' -C /usr/bin")
+        else:
+            n.check_output('cp -rf /pbm-old/* /usr/bin/')
         n.check_output('supervisorctl start pbm-agent')
         assert n.supervisor('pbm-agent').is_running
 
-    def downgrade(self):
+    def downgrade(self,**kwargs):
         print("\nDowngrading PBM")
         ver = self.get_version()
         print("Current PBM version:")
         print(ver)
         with concurrent.futures.ProcessPoolExecutor() as executor:
             for host in self.pbm_hosts:
-                executor.submit(Cluster.downgrade_single, host)
+                executor.submit(Cluster.downgrade_single, host, **kwargs)
         time.sleep(5)
         ver = self.get_version()
         print("New PBM version:")
