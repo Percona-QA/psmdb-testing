@@ -6,3 +6,4 @@ docker-image-tests/pxc/.DS_Store
 **/__pycache__
 **/report.xml
 **/*report.xml
+pbm-functional/pytest/example_cluster.py
