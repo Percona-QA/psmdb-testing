@@ -235,7 +235,7 @@ class Cluster:
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017", "DATADIR=" + self.mongod_datadir,
+                    environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin", "DATADIR=" + self.mongod_datadir,
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + self.mongod_extra_args],
                     volumes=["fs:/backups"]
                 )
@@ -257,7 +257,7 @@ class Cluster:
                         hostname=host['host'],
                         detach=True,
                         network='test',
-                        environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017", "DATADIR=" + self.mongod_datadir,
+                        environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin", "DATADIR=" + self.mongod_datadir,
                                      "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + self.mongod_extra_args],
                         volumes=["fs:/backups"]
                     )
@@ -276,7 +276,7 @@ class Cluster:
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017", "DATADIR=" + self.mongod_datadir,
+                    environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin", "DATADIR=" + self.mongod_datadir,
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
                                  self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + self.mongod_extra_args],
                     volumes=["fs:/backups"]
