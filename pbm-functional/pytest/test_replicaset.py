@@ -36,6 +36,23 @@ def start_cluster(cluster,request):
         cluster.destroy()
 
 @pytest.mark.timeout(300,func_only=True)
+def test_logical(start_cluster,cluster):
+    cluster.check_pbm_status()
+    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
+    pymongo.MongoClient(cluster.connection)["test"]["test1"].insert_many(documents)
+    backup_partial=cluster.make_backup("logical --ns=test.test")
+    backup_full=cluster.make_backup("logical")
+    pymongo.MongoClient(cluster.connection).drop_database('test')
+    cluster.make_restore(backup_partial,check_pbm_status=True)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test1"].count_documents({}) == 0
+    pymongo.MongoClient(cluster.connection).drop_database('test')
+    cluster.make_restore(backup_full,check_pbm_status=True)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test1"].count_documents({}) == len(documents)
+    print("\nFinished successfully\n")
+
+@pytest.mark.timeout(300,func_only=True)
 def test_physical(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
