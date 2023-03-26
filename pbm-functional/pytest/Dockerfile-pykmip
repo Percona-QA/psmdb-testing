@@ -1,0 +1,32 @@
+FROM alpine
+USER root
+RUN apk add --no-cache python3 py-pip bash git openssl && cd ~ && \
+    git clone https://github.com/OpenVPN/easy-rsa.git && \
+    cd easy-rsa/easyrsa3/ && \
+    ./easyrsa init-pki && \
+    ./easyrsa --req-cn=Percona --batch build-ca nopass && \
+    ./easyrsa --batch build-server-full pykmip nopass && \
+    ./easyrsa --batch build-client-full mongod nopass && \
+    cat pki/issued/mongod.crt pki/private/mongod.key > /etc/mongod.pem && \
+    pip install --no-cache-dir pykmip && cd ~ && \
+    git clone https://github.com/OpenKMIP/PyKMIP && \
+    cd PyKMIP && \
+    python setup.py install && \
+    mkdir -p /etc/pykmip && \
+    echo -e '\
+    [server]\n\
+    database_path=/etc/pykmip/pykmip.database\n\
+    hostname=pykmip\n\
+    port=5696\n\
+    certificate_path=/root/easy-rsa/easyrsa3/pki/issued/pykmip.crt\n\
+    key_path=/root/easy-rsa/easyrsa3/pki/private/pykmip.key\n\
+    ca_path=/root/easy-rsa/easyrsa3/pki/ca.crt\n\
+    auth_suite=TLS1.2\n\
+    policy_path=/root/PyKMIP/examples/\n\
+    enable_tls_client_auth=True\n\
+    tls_cipher_suites= TLS_RSA_WITH_AES_128_CBC_SHA256 TLS_RSA_WITH_AES_256_CBC_SHA256 TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384\n\
+    logging_level=DEBUG\n\
+    ' > /etc/pykmip/server.conf
+
+EXPOSE 5696
+CMD /root/PyKMIP/bin/run_server.py
