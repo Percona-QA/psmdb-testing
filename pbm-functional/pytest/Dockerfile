@@ -1,5 +1,28 @@
 ARG PSMDB=percona/percona-server-mongodb
 ARG GO_VER=latest
+
+FROM alpine as x509
+USER root
+ENV EASYRSA_DN=org
+ENV EASYRSA_REQ_COUNTRY=US
+ENV EASYRSA_REQ_PROVINCE=California
+ENV EASYRSA_REQ_CITY=SanFrancisco
+ENV EASYRSA_REQ_ORG=Percona
+ENV EASYRSA_REQ_EMAIL=pbm@percona.com
+RUN apk add --no-cache bash git openssl && cd ~ && \
+    git clone https://github.com/OpenVPN/easy-rsa.git && \
+    cd easy-rsa/easyrsa3/ && \
+    ./easyrsa init-pki && \
+    ./easyrsa --req-cn=Percona --batch build-ca nopass && \
+    ./easyrsa --req-ou=server --subject-alt-name=DNS:*,IP:127.0.0.1 --batch build-server-full psmdb nopass && \
+    ./easyrsa --req-ou=client --batch build-client-full pbm nopass && \
+    mkdir -p /etc/x509 && \
+    cp pki/ca.crt /etc/x509/ca.crt && \
+    cat pki/issued/psmdb.crt pki/private/psmdb.key > /etc/x509/psmdb.pem && \
+    cat pki/issued/pbm.crt pki/private/pbm.key > /etc/x509/pbm.pem 
+
+FROM pykmip/local as pykmip
+
 FROM golang:$GO_VER as builder
 ARG PBM_BRANCH=main
 WORKDIR /
@@ -15,16 +38,15 @@ RUN mkdir -p /pbm-old && mkdir -p /pbm-new && \
     sed -E "s|(.+)https://%s.blob.core.windows.net/%s(.+)|\1http://azurite:10000/%s/%s\2|" -i pbm/storage/azure/azure.go && \
     make build && cp -rpf bin/* /pbm-old/ && rm -rf bin 
 
-FROM pykmip/local as pykmip
-
 FROM $PSMDB
 USER root
 RUN yum install -y epel-release && yum install -y supervisor && \
-    mkdir -p /pbm-old && mkdir -p /pbm-new && mkdir /etc/pykmip && mkdir /etc/vault
+    mkdir -p /pbm-old && mkdir -p /pbm-new && mkdir /etc/pykmip && mkdir /etc/vault && mkdir /etc/x509 
 COPY --from=builder /pbm-new/ /pbm-new/
 COPY --from=builder /pbm-old/ /pbm-old/
 COPY --from=pykmip /etc/mongod.pem /etc/pykmip/mongod.pem
 COPY --from=pykmip /root/easy-rsa/easyrsa3/pki/ca.crt /etc/pykmip/ca.crt
+COPY --from=x509 /etc/x509/ /etc/x509/
 COPY conf/supervisord.d/ /etc/supervisord.d/
 COPY conf/pbm/minio.yaml /etc/pbm.conf
 COPY keyfile /etc/keyfile
@@ -34,6 +56,7 @@ RUN echo -e 'vaulttoken' > /etc/vault/token && \
     chown mongod /etc/mongodb-keyfile && chmod 400 /etc/mongodb-keyfile && \
     chown -R mongod /etc/pykmip && chmod 400 /etc/pykmip/mongod.pem && \
     chown -R mongod /etc/vault && chmod 400 /etc/vault/token && \
+    chown -R mongod /etc/x509 && chmod 400 /etc/x509/* && \
     if [ -f "/usr/bin/mongosh" ] ; then \
         ln -s /usr/bin/mongosh /usr/bin/mongo ; \
     fi && \

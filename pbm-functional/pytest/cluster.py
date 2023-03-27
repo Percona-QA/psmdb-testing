@@ -22,6 +22,7 @@ class Cluster:
         self.config = config
         self.mongod_extra_args = kwargs.get('mongod_extra_args', "")
         self.mongod_datadir = kwargs.get('mongod_datadir', "/var/lib/mongo")
+        self.pbm_mongodb_uri = kwargs.get('pbm_mongodb_uri', "mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin")
 
     @property
     def config(self):
@@ -44,6 +45,15 @@ class Cluster:
     def mongod_datadir(self, value):
         assert isinstance(value, str)
         self._mongod_datadir = value
+
+    @property
+    def pbm_mongodb_uri(self):
+        return self._pbm_mongodb_uri
+
+    @pbm_mongodb_uri.setter
+    def pbm_mongodb_uri(self, value):
+        assert isinstance(value, str)
+        self._pbm_mongodb_uri = value
 
     # config validator
     @config.setter
@@ -235,7 +245,7 @@ class Cluster:
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin", "DATADIR=" + self.mongod_datadir,
+                    environment=["PBM_MONGODB_URI=" + self.pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + self.mongod_extra_args],
                     volumes=["fs:/backups"]
                 )
@@ -244,7 +254,7 @@ class Cluster:
                         self.__delete_pbm(host['host'])
             time.sleep(5)
             Cluster.setup_replicaset(self.config)
-            Cluster.setup_authorization(self.config['members'][0]['host'])
+            Cluster.setup_authorization(self.config['members'][0]['host'],self.pbm_mongodb_uri)
         else:
             shards = []
             for shard in self.config['shards']:
@@ -257,7 +267,7 @@ class Cluster:
                         hostname=host['host'],
                         detach=True,
                         network='test',
-                        environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin", "DATADIR=" + self.mongod_datadir,
+                        environment=["PBM_MONGODB_URI=" + self.pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
                                      "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + self.mongod_extra_args],
                         volumes=["fs:/backups"]
                     )
@@ -276,7 +286,7 @@ class Cluster:
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["PBM_MONGODB_URI=mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin", "DATADIR=" + self.mongod_datadir,
+                    environment=["PBM_MONGODB_URI=" + self.pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
                                  self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + self.mongod_extra_args],
                     volumes=["fs:/backups"]
@@ -302,7 +312,7 @@ class Cluster:
                 network='test'
             )
             time.sleep(1)
-            Cluster.setup_authorization(self.config['mongos'])
+            Cluster.setup_authorization(self.config['mongos'],self.pbm_mongodb_uri)
             connection = self.connection
             client = pymongo.MongoClient(connection)
             for shard in shards:
@@ -533,7 +543,7 @@ class Cluster:
                 executor.submit(Cluster.setup_replicaset, rs)
 
     @staticmethod
-    def setup_authorization(host):
+    def setup_authorization(host,uri):
         primary = testinfra.get_host("docker://" + host)
         Cluster.wait_for_primary(host, "mongodb://127.0.0.1:27017")
         print("\nSetup authorization on " + host)
@@ -553,15 +563,25 @@ class Cluster:
                          '{"db":"admin","role":"clusterMonitor" },' +
                          '{"db":"admin","role":"restore" },' +
                          '{"db":"admin","role":"pbmAnyAction" }]});\'')
+        x509_pbm_user = ('\'db.getSiblingDB("$external").runCommand({createUser:"emailAddress=pbm@percona.com,CN=pbm,OU=client,O=Percona,L=SanFrancisco,ST=California,C=US","roles":[' +
+                         '{"db":"admin","role":"readWrite","collection":""},' +
+                         '{"db":"admin","role":"backup" },' +
+                         '{"db":"admin","role":"clusterMonitor" },' +
+                         '{"db":"admin","role":"restore" },' +
+                         '{"db":"admin","role":"pbmAnyAction" }]});\'')
         logs = primary.check_output(
             "mongo -u root -p root --quiet --eval " + init_pbm_user)
         print(logs)
+        if "authMechanism=MONGODB-X509" in uri:
+            logs = primary.check_output(
+                "mongo -u root -p root --quiet --eval " + x509_pbm_user)
+            print(logs)
 
     def __setup_authorizations(self, replicasets):
         with concurrent.futures.ProcessPoolExecutor() as executor:
             for rs in replicasets:
                 executor.submit(Cluster.setup_authorization,
-                                rs['members'][0]['host'])
+                                rs['members'][0]['host'], self.pbm_mongodb_uri)
         time.sleep(1)
 
     @staticmethod
