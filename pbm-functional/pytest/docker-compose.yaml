@@ -47,19 +47,39 @@ services:
     entrypoint: >
       /bin/sh -c " sleep 5; /usr/bin/mc config host add myminio http://minio:9000 minio1234 minio1234; /usr/bin/mc mb myminio/bcp; exit 0; "
 
+  pykmip:
+    image: pykmip/local
+    build:
+      dockerfile: ./Dockerfile-pykmip
+      context: .
+    container_name: pykmip
+    hostname: pykmip
+    networks:
+      - test
+
+  vault:
+    image: hashicorp/vault
+    container_name: vault
+    hostname: vault
+    ports:
+      - "8200:8200"
+    environment:
+      - "VAULT_DEV_ROOT_TOKEN_ID=vaulttoken"
+    networks:
+      - test
+
   build_member:
     image: replica_member/local
     build:
       dockerfile: ./Dockerfile
       context: .
       args:
-        - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-none}
-        - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-none}
         - PBM_BRANCH=${PBM_BRANCH:-main}
         - GO_VER=${GO_VER:-latest}
         - PSMDB=${PSMDB:-percona/percona-server-mongodb:latest}
-        - PBM_VERSION=${PBM_VERSION:-latest}
     command: /bin/bash
+    depends_on:
+      - pykmip
 
 networks:
   test:
