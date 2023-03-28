@@ -40,7 +40,7 @@ RUN mkdir -p /pbm-old && mkdir -p /pbm-new && \
 
 FROM $PSMDB
 USER root
-RUN yum install -y epel-release && yum install -y supervisor && \
+RUN yum install -y epel-release && yum install -y cyrus-sasl-gssapi && yum install -y supervisor && \
     mkdir -p /pbm-old && mkdir -p /pbm-new && mkdir /etc/pykmip && mkdir /etc/vault && mkdir /etc/x509 
 COPY --from=builder /pbm-new/ /pbm-new/
 COPY --from=builder /pbm-old/ /pbm-old/
@@ -49,14 +49,16 @@ COPY --from=pykmip /root/easy-rsa/easyrsa3/pki/ca.crt /etc/pykmip/ca.crt
 COPY --from=x509 /etc/x509/ /etc/x509/
 COPY conf/supervisord.d/ /etc/supervisord.d/
 COPY conf/pbm/minio.yaml /etc/pbm.conf
+COPY conf/krb5.conf /etc/krb5.conf
 COPY keyfile /etc/keyfile
 COPY mongodb-keyfile /etc/mongodb-keyfile
 RUN echo -e 'vaulttoken' > /etc/vault/token && \
-    chown mongod /etc/keyfile && chmod 400 /etc/keyfile && \
-    chown mongod /etc/mongodb-keyfile && chmod 400 /etc/mongodb-keyfile && \
-    chown -R mongod /etc/pykmip && chmod 400 /etc/pykmip/mongod.pem && \
-    chown -R mongod /etc/vault && chmod 400 /etc/vault/token && \
-    chown -R mongod /etc/x509 && chmod 400 /etc/x509/* && \
+    chown -R mongodb /var/lib/mongo && \
+    chown mongodb /etc/keyfile && chmod 400 /etc/keyfile && \
+    chown mongodb /etc/mongodb-keyfile && chmod 400 /etc/mongodb-keyfile && \
+    chown -R mongodb /etc/pykmip && chmod 400 /etc/pykmip/mongod.pem && \
+    chown -R mongodb /etc/vault && chmod 400 /etc/vault/token && \
+    chown -R mongodb /etc/x509 && chmod 400 /etc/x509/* && \
     if [ -f "/usr/bin/mongosh" ] ; then \
         ln -s /usr/bin/mongosh /usr/bin/mongo ; \
     fi && \

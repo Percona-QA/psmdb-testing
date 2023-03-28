@@ -68,6 +68,20 @@ services:
     networks:
       - test
 
+  kerberos:
+    image: kerberos/local
+    build:
+      dockerfile: ./Dockerfile-kerberos
+      context: .
+    container_name: kerberos
+    hostname: kerberos
+    environment:
+      - "KRB5_TRACE=/dev/stderr"
+    networks:
+      - test
+    volumes:
+      - keytabs:/keytabs
+
   build_member:
     image: replica_member/local
     build:
@@ -90,3 +104,5 @@ volumes:
     name: backups
   fs: 
     name: fs
+  keytabs:
+    name: keytabs

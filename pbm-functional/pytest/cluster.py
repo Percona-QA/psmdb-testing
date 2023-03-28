@@ -239,15 +239,18 @@ class Cluster:
         if self.layout == "replicaset":
             for host in self.config['members']:
                 print("Creating container " + host['host'])
+                pbm_mongodb_uri = copy.deepcopy(self.pbm_mongodb_uri)
+                if "authMechanism=GSSAPI" in pbm_mongodb_uri:
+                    pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
                 docker.from_env().containers.run(
                     image='replica_member/local',
                     name=host['host'],
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["PBM_MONGODB_URI=" + self.pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
+                    environment=["PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + self.mongod_extra_args],
-                    volumes=["fs:/backups"]
+                    volumes=["fs:/backups","keytabs:/keytabs"]
                 )
                 if "arbiterOnly" in host:
                     if host['arbiterOnly']:
@@ -261,15 +264,18 @@ class Cluster:
                 conn = shard['_id'] + "/"
                 for host in shard['members']:
                     print("Creating container " + host['host'])
+                    pbm_mongodb_uri = copy.deepcopy(self.pbm_mongodb_uri)
+                    if "authMechanism=GSSAPI" in pbm_mongodb_uri:
+                        pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
                     docker.from_env().containers.run(
                         image='replica_member/local',
                         name=host['host'],
                         hostname=host['host'],
                         detach=True,
                         network='test',
-                        environment=["PBM_MONGODB_URI=" + self.pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
-                                     "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + self.mongod_extra_args],
-                        volumes=["fs:/backups"]
+                        environment=["PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                                     "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + self.mongod_extra_args, "KRB5_TRACE=/dev/stderr"],
+                        volumes=["fs:/backups","keytabs:/keytabs"]
                     )
                     if 'arbiterOnly' in host:
                         if host['arbiterOnly']:
@@ -280,16 +286,19 @@ class Cluster:
             conn = self.config['configserver']['_id'] + "/"
             for host in self.config['configserver']['members']:
                 print("Creating container " + host['host'])
+                pbm_mongodb_uri = copy.deepcopy(self.pbm_mongodb_uri)
+                if "authMechanism=GSSAPI" in pbm_mongodb_uri:
+                    pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
                 docker.from_env().containers.run(
                     image='replica_member/local',
                     name=host['host'],
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["PBM_MONGODB_URI=" + self.pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
+                    environment=["PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
                                  self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + self.mongod_extra_args],
-                    volumes=["fs:/backups"]
+                    volumes=["fs:/backups","keytabs:/keytabs"]
                 )
                 if "arbiterOnly" in host:
                     if host['arbiterOnly']:
@@ -569,12 +578,22 @@ class Cluster:
                          '{"db":"admin","role":"clusterMonitor" },' +
                          '{"db":"admin","role":"restore" },' +
                          '{"db":"admin","role":"pbmAnyAction" }]});\'')
+        krb_pbm_user = ('\'db.getSiblingDB("$external").runCommand({createUser:"pbm@PERCONATEST.COM","roles":[' +
+                         '{"db":"admin","role":"readWrite","collection":""},' +
+                         '{"db":"admin","role":"backup" },' +
+                         '{"db":"admin","role":"clusterMonitor" },' +
+                         '{"db":"admin","role":"restore" },' +
+                         '{"db":"admin","role":"pbmAnyAction" }]});\'')
         logs = primary.check_output(
             "mongo -u root -p root --quiet --eval " + init_pbm_user)
         print(logs)
         if "authMechanism=MONGODB-X509" in uri:
             logs = primary.check_output(
                 "mongo -u root -p root --quiet --eval " + x509_pbm_user)
+            print(logs)
+        if "authMechanism=GSSAPI" in uri:
+            logs = primary.check_output(
+                "mongo -u root -p root --quiet --eval " + krb_pbm_user)
             print(logs)
 
     def __setup_authorizations(self, replicasets):
