@@ -1,0 +1,11 @@
+FROM alpine
+RUN apk add --no-cache bash krb5 krb5-server krb5-pkinit
+EXPOSE 88/udp
+COPY conf/krb5.conf /etc/krb5.conf
+RUN adduser -u 1001 -S mongodb && chown -R mongodb /var/lib/krb5kdc && \
+    mkdir -p /keytabs && chown -R mongodb /keytabs
+USER 1001   
+RUN kdb5_util -P password create -s && \
+    kadmin.local -q "addprinc -pw password root/admin"
+VOLUME ["/keytabs"]
+CMD ["/usr/sbin/krb5kdc","-n"]
