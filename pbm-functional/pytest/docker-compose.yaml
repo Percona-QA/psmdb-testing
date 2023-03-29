@@ -82,6 +82,21 @@ services:
     volumes:
       - keytabs:/keytabs
 
+  ldap:
+    image: bitnami/openldap
+    container_name: ldap
+    hostname: ldap
+    environment:
+      - "LDAP_ADMIN_USERNAME=admin"
+      - "LDAP_ADMIN_PASSWORD=password"
+      - "LDAP_USERS=pbm"
+      - "LDAP_PASSWORDS=pbmpass"
+    ports:
+      - "1389:1389"
+      - "1636:1636"
+    networks:
+      - test
+
   build_member:
     image: replica_member/local
     build:

@@ -1,0 +1,41 @@
+name: PBM-CUSTOM
+
+on:
+  workflow_dispatch:
+    inputs:
+      psmdb:
+        description: "psmdb docker image"
+        required: false
+      pbm_branch:
+        description: "pbm branch"
+        required: false
+      go_ver:
+        description: "golang version"
+        required: false
+      test:
+        description: "any tests with pytest parameters"
+        required: false
+
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    env:
+      PSMDB: ${{ github.event.inputs.psmdb || 'percona/percona-server-mongodb' }}
+      PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'main' }}
+      GO_VER: ${{ github.event.inputs.go_ver || 'latest' }}
+      TEST: ${{ github.event.inputs.test || '-k logical --verbose test_sharded.py' }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Test ${{ env.TEST }} on PSMDB ${{ env.PSMDB }} PBM branch ${{ env.PBM_BRANCH }}
+      run: |
+        docker-compose build
+        docker-compose up -d
+        docker-compose run test pytest -s --junitxml=junit.xml ${{ env.TEST }}
+      working-directory: ./pbm-functional/pytest
+    - name: Publish Test Report
+      uses: mikepenz/action-junit-report@v3
+      if: success() || failure() 
+      with:
+        report_paths: '**/junit.xml'
+
