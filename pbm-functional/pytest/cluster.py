@@ -584,6 +584,12 @@ class Cluster:
                          '{"db":"admin","role":"clusterMonitor" },' +
                          '{"db":"admin","role":"restore" },' +
                          '{"db":"admin","role":"pbmAnyAction" }]});\'')
+        ldap_mongo_grp = ('\'db.getSiblingDB("admin").runCommand({createRole:"cn=readers,ou=users,dc=example,dc=org",privileges: [],"roles":[' +
+                         '{"db":"admin","role":"readWrite","collection":""},' +
+                         '{"db":"admin","role":"backup" },' +
+                         '{"db":"admin","role":"clusterMonitor" },' +
+                         '{"db":"admin","role":"restore" },' +
+                         '{"db":"admin","role":"pbmAnyAction" }]});\'')
         logs = primary.check_output(
             "mongo -u root -p root --quiet --eval " + init_pbm_user)
         print(logs)
@@ -594,6 +600,10 @@ class Cluster:
         if "authMechanism=GSSAPI" in uri:
             logs = primary.check_output(
                 "mongo -u root -p root --quiet --eval " + krb_pbm_user)
+            print(logs)
+        if "authMechanism=PLAIN" in uri:
+            logs = primary.check_output(
+                "mongo -u root -p root --quiet --eval " + ldap_mongo_grp)
             print(logs)
 
     def __setup_authorizations(self, replicasets):
