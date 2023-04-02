@@ -14,9 +14,11 @@ on:
 #    branches:
 #      - main
 
-#  pull_request:
-#    branches:
-#      - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'pbm-functional/pytest/**'
 
 jobs:
   test:
@@ -32,10 +34,13 @@ jobs:
       GO_VER: ${{ github.event.inputs.go_ver || 'latest' }}
     steps:
     - uses: actions/checkout@v2
-    - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }} PBM branch ${{ env.PBM_BRANCH }}
+    - name: Setup environment with PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
       run: |
         PSMDB=percona/percona-server-mongodb:${{ matrix.psmdb }} docker-compose build
         docker-compose up -d
+      working-directory: ./pbm-functional/pytest
+    - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
+      run: |
         docker-compose run test pytest -s --junitxml=junit.xml -k ${{ matrix.test }}
       working-directory: ./pbm-functional/pytest
     - name: Publish Test Report

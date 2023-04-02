@@ -50,7 +50,7 @@ def test_logical(start_cluster,cluster):
     cluster.make_restore(backup_full,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(cluster.connection)["test"]["test1"].count_documents({}) == len(documents)
-    print("\nFinished successfully\n")
+    Cluster.log("Finished successfully")
 
 @pytest.mark.timeout(300,func_only=True)
 def test_physical(start_cluster,cluster):
@@ -61,7 +61,7 @@ def test_physical(start_cluster,cluster):
     assert int(result.deleted_count) == len(documents)
     cluster.make_restore(backup,restart_cluster=True, make_resync=True, check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
-    print("\nFinished successfully\n")
+    Cluster.log("Finished successfully")
 
 @pytest.mark.timeout(300,func_only=True)
 def test_incremental(start_cluster,cluster):
@@ -73,5 +73,5 @@ def test_incremental(start_cluster,cluster):
     assert int(result.deleted_count) == len(documents)
     cluster.make_restore(backup,restart_cluster=True, make_resync=True, check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
-    print("\nFinished successfully\n")
+    Cluster.log("Finished successfully")
 

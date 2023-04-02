@@ -37,8 +37,10 @@ def start_cluster(cluster,request):
         cluster.create()
         cluster.setup_pbm()
         os.chmod("/backups",0o777)
-        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none")
+        os.system("rm -rf /backups/*")
+        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none --out json")
         assert result.rc == 0
+        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
         client=pymongo.MongoClient(cluster.connection)
         client.admin.command("enableSharding", "test")
         client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
@@ -67,20 +69,20 @@ def test_logical(start_cluster,cluster):
             collection.insert_one({"f": 6}, session=session)
             collection.insert_one({"g": 7}, session=session)
             collection.insert_one({"h": 8}, session=session)
+            collection.insert_one({"i": 9}, session=session)
+            collection.insert_one({"j": 10}, session=session)
+            collection.insert_one({"k": 11}, session=session)
+            collection.insert_one({"l": 12}, session=session)
             session.commit_transaction()
     time.sleep(10)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr
-    print("\npitr time is:")
-    print(pitr)
+    Cluster.log("Time for PITR is: " + pitr)
     time.sleep(10)
 
     cluster.disable_pitr()
     cluster.make_restore(backup,check_pbm_status=True)
-    results = pymongo.MongoClient(cluster.connection)["test"]["test"].find({})
-    for result in results:
-        print(result)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents) + 4
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents) + 8
 
     folder="/backups/pbmPitr/rs1/" + datetime.utcnow().strftime("%Y%m%d") + "/"
     for entry in os.scandir(folder):
@@ -88,17 +90,15 @@ def test_logical(start_cluster,cluster):
     with open(file, "rb") as f:
         data= f.read()
         docs = bson.decode_all(data)
-        print("oplog entry for rs1")
-        print(docs)
         for doc in docs:
             if "commitTransaction" in doc["o"]:
                 if doc["o"]["commitTransaction"] == 1:
-                    print("\noplog entry with commitTransaction")
-                    print(doc)
+                    Cluster.log("Oplog entry with commitTransaction: \n" + str(doc))
                     index = docs.index(doc)
-                    print("\nindex")
-                    print(index)
+                    Cluster.log("Index: " + str(index))
 
+    Cluster.log("Modifying oplog backup for shard rs1")
+    Cluster.log("Removing oplog entry with commitTransaction and all entries after it")
     del docs[index:]
     with open(file, "wb") as f:
         f.truncate()
@@ -108,7 +108,4 @@ def test_logical(start_cluster,cluster):
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
-    results = pymongo.MongoClient(cluster.connection)["test"]["test"].find({})
-    for result in results:
-        print(result)
-    print("\nFinished successfully\n")
+    Cluster.log("Finished successfully\n")

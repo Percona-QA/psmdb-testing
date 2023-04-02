@@ -75,7 +75,7 @@ def test_logical(start_cluster,cluster,newcluster):
     newcluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(newcluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
-    print("\nFinished successfully\n")
+    Cluster.log("Finished successfully")
 
 '''
 @pytest.mark.timeout(300,func_only=True)

@@ -49,5 +49,5 @@ def test_physical(start_cluster,cluster):
     assert int(result.deleted_count) == len(documents)
     cluster.make_restore(backup,restart_cluster=True, make_resync=True, check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
-    print("\nFinished successfully\n")
+    Cluster.log("Finished successfully")
 

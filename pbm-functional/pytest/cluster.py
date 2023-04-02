@@ -5,6 +5,7 @@ import pymongo
 import json
 import copy
 import concurrent.futures
+from datetime import datetime
 
 # the structure of the cluster could be one of
 # 1. { _id: "rsname", members: [{host: "host", hidden: boolean, priority: int, arbiterOnly: bool}, ...]} for replicaset
@@ -234,11 +235,11 @@ class Cluster:
 
     # configures and starts all docker-containers, creates necessary layout, setups athorization
     def create(self):
-        print("\nCreating cluster:")
-        print(self.config)
+        start = time.time()
+        Cluster.log("Creating cluster: " + str(self.config))
         if self.layout == "replicaset":
             for host in self.config['members']:
-                print("Creating container " + host['host'])
+                Cluster.log("Creating container " + host['host'])
                 pbm_mongodb_uri = copy.deepcopy(self.pbm_mongodb_uri)
                 if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                     pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
@@ -263,7 +264,7 @@ class Cluster:
             for shard in self.config['shards']:
                 conn = shard['_id'] + "/"
                 for host in shard['members']:
-                    print("Creating container " + host['host'])
+                    Cluster.log("Creating container " + host['host'])
                     pbm_mongodb_uri = copy.deepcopy(self.pbm_mongodb_uri)
                     if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                         pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
@@ -285,7 +286,7 @@ class Cluster:
                 shards.append(conn)
             conn = self.config['configserver']['_id'] + "/"
             for host in self.config['configserver']['members']:
-                print("Creating container " + host['host'])
+                Cluster.log("Creating container " + host['host'])
                 pbm_mongodb_uri = copy.deepcopy(self.pbm_mongodb_uri)
                 if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                     pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
@@ -310,7 +311,7 @@ class Cluster:
             self.__setup_replicasets(
                 self.config['shards'] + [self.config['configserver']])
             self.__setup_authorizations(self.config['shards'])
-            print("\nCreating container " + self.config['mongos'])
+            Cluster.log("Creating container " + self.config['mongos'])
             docker.from_env().containers.run(
                 image='replica_member/local',
                 name=self.config['mongos'],
@@ -326,15 +327,17 @@ class Cluster:
             client = pymongo.MongoClient(connection)
             for shard in shards:
                 result = client.admin.command("addShard", shard)
-                print("adding shard: " + shard + "\n" + str(result))
+                Cluster.log("Adding shard \"" + shard + "\":\n" + str(result))
         self.restart_pbm_agents()
+        duration = time.time() - start
+        Cluster.log("The cluster was prepared in {} seconds".format(duration))
 
     # setups pbm from default config-file, minio as storage
     def setup_pbm(self):
         host = self.pbm_cli
         n = testinfra.get_host("docker://" + host)
         result = n.check_output('pbm config --file=/etc/pbm.conf --out=json')
-        print(json.loads(result))
+        Cluster.log("Setup PBM:\n" + result)
         time.sleep(5)
 
     # pbm --force-resync
@@ -342,12 +345,11 @@ class Cluster:
         n = testinfra.get_host("docker://" + self.pbm_cli)
         result = n.check_output('pbm config --force-resync --out json')
         parsed_result = json.loads(result)
-        print(parsed_result)
+        Cluster.log('Started resync: ' + result)
         timeout = time.time() + 30
         while True:
             logs = self.__find_event_msg("resync", "succeed")
             if logs:
-                print(logs)
                 break
             if time.time() > timeout:
                 assert False
@@ -366,8 +368,7 @@ class Cluster:
                 else:
                     start = n.check_output('pbm backup --out=json')
                 name = json.loads(start)['name']
-                print("Backup started:")
-                print(name)
+                Cluster.log("Backup started")
                 break
             if time.time() > timeout:
                 assert False
@@ -375,14 +376,12 @@ class Cluster:
         timeout = time.time() + 600
         while True:
             status = self.get_status()
-            print("current operation:")
-            print(status['running'])
+            Cluster.log("Current operation: " + str(status['running']))
             if status['backups']['snapshot']:
                 for snapshot in status['backups']['snapshot']:
                     if snapshot['name'] == name:
                         if snapshot['status'] == 'done':
-                            print("Backup found:")
-                            print(snapshot)
+                            Cluster.log("Backup found: " + str(snapshot))
                             return name
                             break
                         elif snapshot['status'] == 'error':
@@ -401,22 +400,39 @@ class Cluster:
             client = pymongo.MongoClient(self.connection)
             result = client.admin.command("balancerStop")
             client.close()
-            print("Stopping balancer")
-            print(result)
+            Cluster.log("Stopping balancer: " + str(result))
             self.stop_mongos()
         self.stop_arbiters()
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        timeout = time.time() + 600
+        timeout = time.time() + 60
+
         while True:
             if not self.get_status()['running']:
-                print("Restore started: " + name)
-                output = n.check_output('pbm restore ' + name + ' --wait')
-                print(output)
                 break
             if time.time() > timeout:
-                assert False
+                assert False, "Cannot start restore, another operation running"
             time.sleep(1)
-        self.start_arbiters()
+        Cluster.log("Restore started")
+        result = n.run('timeout 180 pbm restore ' + name + ' --wait')
+        if result.rc == 124:
+            # try to catch possible failures if timeout exceeded
+            for host in self.mongod_hosts:
+                try:
+                    container = docker.from_env().containers.get(host)
+                    get_logs = container.exec_run(
+                        'cat /var/lib/mongo/pbm.restore.log', stderr=False)
+                    if get_logs.exit_code == 0:
+                        Cluster.log(
+                            "!!!!Possible failure on {}, file pbm.restore.log was found:".format(host))
+                        Cluster.log(get_logs.output.decode('utf-8'))
+                except docker.errors.APIError:
+                    pass
+            assert False, "Timeout for restore exceeded"
+        elif result.rc == 0:
+            Cluster.log(result.stdout)
+        else:
+            assert False, result.stdout + result.stderr
+
         for key, value in kwargs.items():
             if key == "restart_cluster" and value:
                 self.restart()
@@ -429,37 +445,37 @@ class Cluster:
             self.start_mongos()
             client = pymongo.MongoClient(self.connection)
             result = client.admin.command("balancerStart")
-            print("Starting balancer")
-            print(result)
+            Cluster.log("Starting balancer: " + str(result))
 
     # destroys cluster
     def destroy(self):
-        print("\nDestroying cluster:")
-        print(self.all_hosts)
+        print("\n")
+        #Cluster.log("Destroying cluster:")
+        #Cluster.log(self.all_hosts)
         # the last resort to catch possible failures if timeout exceeded
-        for host in self.mongod_hosts:
-            try:
-                container = docker.from_env().containers.get(host)
-                result = container.exec_run(
-                    'cat /var/lib/mongo/pbm.restore.log', stderr=False)
-                if result.exit_code == 0:
-                    print(
-                        "\n!!!!Possible failure on {}, file pbm.restore.log was found:".format(host))
-                    print(result.output.decode('utf-8'))
-            except docker.errors.APIError:
-                pass
+        #for host in self.mongod_hosts:
+        #    try:
+        #        container = docker.from_env().containers.get(host)
+        #        result = container.exec_run(
+        #            'cat /var/lib/mongo/pbm.restore.log', stderr=False)
+        #        if result.exit_code == 0:
+        #            Cluster.log(
+        #                "!!!!Possible failure on {}, file pbm.restore.log was found:".format(host))
+        #            Cluster.log(result.output.decode('utf-8'))
+        #    except docker.errors.APIError:
+        #        pass
         for host in self.all_hosts:
             try:
                 container = docker.from_env().containers.get(host)
                 container.remove(force=True)
-                print("Container {} was removed".format(host))
+                Cluster.log("Container {} was removed".format(host))
             except docker.errors.NotFound:
                 pass
 
     # restarts all containers with mongod sequentially
     def restart(self):
         for host in self.mongod_hosts:
-            print("Restarting " + host)
+            Cluster.log("Restarting " + host)
             docker.from_env().containers.get(host).restart()
         time.sleep(1)
         self.wait_for_primaries()
@@ -467,13 +483,13 @@ class Cluster:
     # stops mongos container
     def stop_mongos(self):
         if self.layout == "sharded":
-            print("Stopping " + self.config['mongos'])
+            Cluster.log("Stopping " + self.config['mongos'])
             docker.from_env().containers.get(self.config['mongos']).kill()
 
     # starts mongos container
     def start_mongos(self):
         if self.layout == "sharded":
-            print("Starting " + self.config['mongos'])
+            Cluster.log("Starting " + self.config['mongos'])
             docker.from_env().containers.get(self.config['mongos']).start()
             time.sleep(1)
             Cluster.wait_for_primary(
@@ -482,14 +498,14 @@ class Cluster:
     # stops mongod's on arbiter hosts
     def stop_arbiters(self):
         for host in self.arbiter_hosts:
-            print("Stopping arbiter on " + host)
+            Cluster.log("Stopping arbiter on " + host)
             n = testinfra.get_host("docker://" + host)
             n.check_output("supervisorctl stop mongod")
 
     # starts mongod's on arbiter hosts
     def start_arbiters(self):
         for host in self.arbiter_hosts:
-            print("Starting arbiter on " + host)
+            Cluster.log("Starting arbiter on " + host)
             n = testinfra.get_host("docker://" + host)
             n.check_output("supervisorctl start mongod")
 
@@ -498,8 +514,7 @@ class Cluster:
         n = testinfra.get_host("docker://" + self.pbm_cli)
         result = n.check_output(
             "pbm config --set pitr.enabled=true --set pitr.compression=none --out json")
-        print("Enabling PITR:")
-        print(result)
+        Cluster.log("Enabling PITR: " + result)
         timeout = time.time() + 600
         while True:
             if self.check_pitr():
@@ -513,8 +528,7 @@ class Cluster:
         n = testinfra.get_host("docker://" + self.pbm_cli)
         result = n.check_output(
             "pbm config --set pitr.enabled=false --out json")
-        print("Disabling PITR:")
-        print(result)
+        Cluster.log("Disabling PITR: " + result)
         timeout = time.time() + 600
         while True:
             if not self.check_pitr():
@@ -533,7 +547,6 @@ class Cluster:
     def setup_replicaset(replicaset):
         primary = replicaset['members'][0]['host']
         primary = testinfra.get_host("docker://" + primary)
-        print("\nSetup " + replicaset['_id'])
         rs = copy.deepcopy(replicaset)
         rs['members'][0]['priority'] = 1000
         for id, data in enumerate(rs['members']):
@@ -541,10 +554,9 @@ class Cluster:
             rs['members'][id]['host'] = rs['members'][id]['host'] + ":27017"
         init_rs = ('\'config =' +
                    json.dumps(rs) +
-                   ';\nrs.initiate(config);\'')
-        print(init_rs)
-        logs = primary.check_output("mongo --quiet --eval " + init_rs)
-        print(logs)
+                   ';rs.initiate(config);\'')
+        result = primary.check_output("mongo --quiet --eval " + init_rs)
+        Cluster.log("Setup replicaset " + json.dumps(rs) + ":\n" + result)
 
     def __setup_replicasets(self, replicasets):
         with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -555,17 +567,17 @@ class Cluster:
     def setup_authorization(host,uri):
         primary = testinfra.get_host("docker://" + host)
         Cluster.wait_for_primary(host, "mongodb://127.0.0.1:27017")
-        print("\nSetup authorization on " + host)
-        print("\nAdding root user")
+        Cluster.log("Setup authorization on " + host)
+        Cluster.log("Adding root user on " + host)
         init_root_user = '\'db.getSiblingDB("admin").createUser({ user: "root", pwd: "root", roles: [ "root", "userAdminAnyDatabase", "clusterAdmin" ] });\''
         logs = primary.check_output("mongo --quiet --eval " + init_root_user)
-        print(logs)
-        print("\nAdding pbm role")
+        #Cluster.log(logs)
+        Cluster.log("Adding pbm role on " + host)
         init_pbm_role = '\'db.getSiblingDB("admin").createRole({"role": "pbmAnyAction","privileges":[{"resource":{"anyResource":true},"actions":["anyAction"]}],"roles":[]});\''
         logs = primary.check_output(
             "mongo -u root -p root --quiet --eval " + init_pbm_role)
-        print(logs)
-        print("\nAdding pbm user")
+        #Cluster.log(logs)
+        Cluster.log("Adding pbm user on " + host)
         init_pbm_user = ('\'db.getSiblingDB("admin").createUser({user:"pbm",pwd:"pbmpass","roles":[' +
                          '{"db":"admin","role":"readWrite","collection":""},' +
                          '{"db":"admin","role":"backup" },' +
@@ -592,19 +604,19 @@ class Cluster:
                          '{"db":"admin","role":"pbmAnyAction" }]});\'')
         logs = primary.check_output(
             "mongo -u root -p root --quiet --eval " + init_pbm_user)
-        print(logs)
+        #Cluster.log(logs)
         if "authMechanism=MONGODB-X509" in uri:
             logs = primary.check_output(
                 "mongo -u root -p root --quiet --eval " + x509_pbm_user)
-            print(logs)
+            #Cluster.log(logs)
         if "authMechanism=GSSAPI" in uri:
             logs = primary.check_output(
                 "mongo -u root -p root --quiet --eval " + krb_pbm_user)
-            print(logs)
+            #Cluster.log(logs)
         if "authMechanism=PLAIN" in uri:
             logs = primary.check_output(
                 "mongo -u root -p root --quiet --eval " + ldap_mongo_grp)
-            print(logs)
+            #Cluster.log(logs)
 
     def __setup_authorizations(self, replicasets):
         with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -617,25 +629,24 @@ class Cluster:
     def wait_for_primary(host, connection):
         n = testinfra.get_host("docker://" + host)
         timeout = time.time() + 60
-        print("Checking ismaster() on host: " + host)
+        Cluster.log("Checking ismaster() on host " + host)
         while True:
             result = n.run(
                 "mongo " + connection + " --quiet --eval 'db.hello().isWritablePrimary'")
             if 'true' in result.stdout.lower():
-                print("Host " + host + " became primary")
+                Cluster.log("Host " + host + " became primary")
                 return True
                 break
             elif 'mongoservererror' in result.stderr.lower():
                 assert False, result.stderr
             else:
-                print("Waiting for " + host + " to became primary")
+                Cluster.log("Waiting for " + host + " to became primary")
             if time.time() > timeout:
                 assert False
             time.sleep(3)
-        print("\n")
 
     def wait_for_primaries(self):
-        print(self.primary_hosts)
+        Cluster.log(self.primary_hosts)
         with concurrent.futures.ProcessPoolExecutor() as executor:
             for primary in self.primary_hosts:
                 executor.submit(Cluster.wait_for_primary, primary,
@@ -674,9 +685,9 @@ class Cluster:
     def check_pbm_status(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
         result = n.check_output('pbm status --out=json')
-        print("\nPBM status:")
         parsed_result = json.loads(result)
-        print(json.dumps(parsed_result, indent=4))
+        Cluster.log("PBM status: \n" + str(parsed_result['cluster']))
+        #Cluster.log(json.dumps(parsed_result['cluster'], indent=4))
         hosts = []
         for replicaset in parsed_result['cluster']:
             for host in replicaset['nodes']:
@@ -687,7 +698,7 @@ class Cluster:
 
     @staticmethod
     def restart_pbm_agent(host):
-        print("Restarting pbm-agent on host " + host)
+        Cluster.log("Restarting pbm-agent on host " + host)
         n = testinfra.get_host("docker://" + host)
         n.check_output('supervisorctl restart pbm-agent')
         assert n.supervisor('pbm-agent').is_running
@@ -712,17 +723,15 @@ class Cluster:
         assert n.supervisor('pbm-agent').is_running
 
     def downgrade(self,**kwargs):
-        print("\nDowngrading PBM")
+        Cluster.log("Downgrading PBM")
         ver = self.get_version()
-        print("Current PBM version:")
-        print(ver)
+        Cluster.log("Current PBM version: " + str(ver))
         with concurrent.futures.ProcessPoolExecutor() as executor:
             for host in self.pbm_hosts:
                 executor.submit(Cluster.downgrade_single, host, **kwargs)
         time.sleep(5)
         ver = self.get_version()
-        print("New PBM version:")
-        print(ver)
+        Cluster.log("New PBM version: " + str(ver))
 
     @staticmethod
     def upgrade_single(host):
@@ -733,24 +742,26 @@ class Cluster:
         assert n.supervisor('pbm-agent').is_running
 
     def upgrade(self):
-        print("\nUpgrading PBM")
+        Cluster.log("Upgrading PBM" )
         ver = self.get_version()
-        print("Current PBM version:")
-        print(ver)
+        Cluster.log("Current PBM version: " + str(ver))
         with concurrent.futures.ProcessPoolExecutor() as executor:
             for host in self.pbm_hosts:
                 executor.submit(Cluster.upgrade_single, host)
         time.sleep(5)
         ver = self.get_version()
-        print("New PBM version:")
-        print(ver)
+        Cluster.log("New PBM version: " + str(ver))
 
     def get_logs(self):
         for container in self.all_hosts:
             header = "Logs from {name}:".format(name=container)
-            print(header, '\n', "=" * len(header))
+            Cluster.log(header, '', "=" * len(header))
             try:
                 print(docker.from_env().containers.get(
                     container).logs().decode("utf-8", errors="replace"))
             except docker.errors.NotFound:
-                print()
+                pass
+
+    @staticmethod
+    def log(*args, **kwargs):
+        print("[%s]" % (datetime.now()).strftime('%Y-%m-%dT%H:%M:%S'),*args, **kwargs)
