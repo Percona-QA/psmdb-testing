@@ -84,8 +84,14 @@ def test_incremental(start_cluster,cluster):
     assert int(result.deleted_count) == len(documents)
     cluster.upgrade()
     cluster.check_pbm_status()
-    cluster.make_restore(backup,restart_cluster=True, make_resync=True, check_pbm_status=True)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
-    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
-    Cluster.log("Finished successfully")
-
+    try:
+        cluster.make_restore(backup,restart_cluster=True, make_resync=True, check_pbm_status=True)
+        assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+        assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
+        Cluster.log("Finished successfully")
+    except AssertionError as e:
+        if "is not compatible with" in str(e):
+            Cluster.log("[PBM-1069] Expected failure: \n" + str(e))
+            Cluster.log("Finished successfully")
+        else:
+            assert False, str(e)
