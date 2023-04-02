@@ -84,7 +84,7 @@ def test_physical(start_cluster,cluster,newcluster):
     cluster.destroy()
 
     newcluster.make_resync()
-    newcluster.make_restore(backup,restart_cluster=True, make_resync=True, check_pbm_status=True)
+    newcluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
     assert pymongo.MongoClient(newcluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
@@ -98,7 +98,7 @@ def test_incremental(start_cluster,cluster,newcluster):
     cluster.destroy()
 
     newcluster.make_resync()
-    newcluster.make_restore(backup,restart_cluster=True, make_resync=True, check_pbm_status=True)
+    newcluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
     assert pymongo.MongoClient(newcluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")

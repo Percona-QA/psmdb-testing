@@ -54,7 +54,7 @@ def test_physical(start_cluster,cluster):
     assert int(result.deleted_count) == len(documents)
     cluster.upgrade()
     cluster.check_pbm_status()
-    cluster.make_restore(backup,restart_cluster=True, make_resync=True, check_pbm_status=True)
+    cluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
