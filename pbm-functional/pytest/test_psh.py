@@ -17,13 +17,7 @@ def docker_client():
 
 @pytest.fixture(scope="package")
 def config():
-    return { "mongos": "mongos",
-             "configserver":
-                            {"_id": "rscfg", "members": [{"host":"rscfg01"},{"host": "rscfg02"},{"host": "rscfg03" }]},
-             "shards":[
-                            {"_id": "rs1", "members": [{"host":"rs101"},{"host": "rs102"},{"host": "rs103" }]},
-                            {"_id": "rs2", "members": [{"host":"rs201"},{"host": "rs202"},{"host": "rs203" }]}
-                      ]}
+    return { "_id": "rs1", "members": [{"host":"rs101"},{"host":"rs102"},{"host": "rs103","hidden": True,"priority": 0},{"host":"rs104"},{"host": "rs105" }]}
 
 @pytest.fixture(scope="package")
 def cluster(config):
@@ -34,13 +28,8 @@ def start_cluster(cluster,request):
     try:
         cluster.destroy()
         cluster.create()
-        cluster.downgrade()
         cluster.setup_pbm()
-        client=pymongo.MongoClient(cluster.connection)
-        client.admin.command("enableSharding", "test")
-        client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
         yield True
-
     finally:
         if request.config.getoption("--verbose"):
             cluster.get_logs()
@@ -51,13 +40,14 @@ def test_logical(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("logical")
+    #check if the backup was taken from the hidden node
+    logs=cluster.exec_pbm_cli("logs -n rs1/rs103:27017 -e backup -o json").stdout
+    assert backup in logs
+    Cluster.log("Logs from hidden node:\n" + logs)
     result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
     assert int(result.deleted_count) == len(documents)
-    cluster.upgrade()
-    cluster.check_pbm_status()
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
-    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
 @pytest.mark.timeout(300,func_only=True)
@@ -65,33 +55,29 @@ def test_physical(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("physical")
+    #check if the backup was taken from the hidden node
+    logs=cluster.exec_pbm_cli("logs -n rs1/rs103:27017 -e backup -o json").stdout
+    assert backup in logs
+    Cluster.log("Logs from hidden node:\n" + logs)
     result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
     assert int(result.deleted_count) == len(documents)
-    cluster.upgrade()
-    cluster.check_pbm_status()
     cluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
-    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
 @pytest.mark.timeout(300,func_only=True)
 def test_incremental(start_cluster,cluster):
     cluster.check_pbm_status()
-    cluster.make_backup("incremental --base")
+    init_backup=cluster.make_backup("incremental --base")
+    #check if the backup was taken from the hidden node
+    logs=cluster.exec_pbm_cli("logs -n rs1/rs103:27017 -e backup -o json").stdout
+    assert init_backup in logs
+    Cluster.log("Logs from hidden node:\n" + logs)
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
-    backup = cluster.make_backup("incremental")
+    backup=cluster.make_backup("incremental")
     result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
     assert int(result.deleted_count) == len(documents)
-    cluster.upgrade()
-    cluster.check_pbm_status()
-    try:
-        cluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
-        assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
-        assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
-        Cluster.log("Finished successfully")
-    except AssertionError as e:
-        if "is not compatible with" in str(e):
-            Cluster.log("[PBM-1069] Expected failure: \n" + str(e))
-            Cluster.log("Finished successfully")
-        else:
-            assert False, str(e)
+    cluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    Cluster.log("Finished successfully")
+

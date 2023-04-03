@@ -27,10 +27,13 @@ jobs:
       TEST: ${{ github.event.inputs.test || '-k logical --verbose test_sharded.py' }}
     steps:
     - uses: actions/checkout@v2
+    - name: Setup environment
+      run: |
+        docker-compose build 
+        docker-compose up -d      
+      working-directory: ./pbm-functional/pytest
     - name: Test ${{ env.TEST }} on PSMDB ${{ env.PSMDB }} PBM branch ${{ env.PBM_BRANCH }}
       run: |
-        docker-compose build
-        docker-compose up -d
         docker-compose run test pytest -s --junitxml=junit.xml ${{ env.TEST }}
       working-directory: ./pbm-functional/pytest
     - name: Publish Test Report

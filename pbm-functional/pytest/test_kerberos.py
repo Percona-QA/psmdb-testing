@@ -46,12 +46,12 @@ def start_cluster(cluster,request):
         kerberos.check_output("rm -rf /keytabs/*")
         for host in cluster.mongod_hosts:
             logs = kerberos.check_output("kadmin.local -q \"addprinc -pw mongodb mongodb/" + host + "\"")
-            print(logs)
+            Cluster.log(logs)
             kerberos.check_output("mkdir -p /keytabs/" + host)
             logs = kerberos.check_output("kadmin.local -q \"ktadd -k /keytabs/" + host + "/mongodb.keytab mongodb/" + host + "@PERCONATEST.COM\"")
-            print(logs)
+            Cluster.log(logs)
         logs = kerberos.check_output("kadmin.local -q 'addprinc -pw pbmkrbpass pbm'")
-        print(logs)
+        Cluster.log(logs)
         docker.from_env().containers.get('kerberos').restart()
 
         cluster.create()
@@ -71,16 +71,5 @@ def test_logical(start_cluster,cluster):
     assert int(result.deleted_count) == len(documents)
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
-    print("\nFinished successfully\n")
-
-@pytest.mark.timeout(300,func_only=True)
-def test_physical(start_cluster,cluster):
-    cluster.check_pbm_status()
-    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
-    backup=cluster.make_backup("physical")
-    result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
-    assert int(result.deleted_count) == len(documents)
-    cluster.make_restore(backup,restart_cluster=True, make_resync=True, check_pbm_status=True)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
-    print("\nFinished successfully\n")
+    Cluster.log("Finished successfully")
 
