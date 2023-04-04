@@ -70,16 +70,25 @@ class Cluster:
             for id, member in enumerate(rs['members']):
                 assert isinstance(member, dict)
                 assert set(member.keys()) <= {
-                    'host', 'priority', 'arbiterOnly', 'hidden'}
+                    'host', 'priority', 'arbiterOnly', 'hidden', 'secondaryDelaySecs', 'votes', 'buildIndexes'}
                 assert 'host' in member and isinstance(member['host'], str)
+                if id == 0:
+                    assert set(member.keys()) == {'host'}
                 if 'priority' in member:
                     assert isinstance(member['priority'], int)
                 if 'arbiterOnly' in member:
                     assert isinstance(member['arbiterOnly'], bool)
                 if 'hidden' in member:
                     assert isinstance(member['hidden'], bool)
-                if id == 0:
-                    assert set(member.keys()) == {'host'}
+                if 'secondaryDelaySecs' in member:
+                    assert isinstance(member['secondaryDelaySecs'], int)
+                if 'votes' in member:
+                    assert isinstance(member['votes'], int)
+                    assert member['votes'] in [0,1]
+                    if member['votes'] == 0:
+                        assert member['priority'] == 0
+                if 'buildIndexes' in member:
+                    assert isinstance(member['buildIndexes'], bool)
                 if member['host'] not in hosts:
                     hosts.append(member['host'])
                 else:
