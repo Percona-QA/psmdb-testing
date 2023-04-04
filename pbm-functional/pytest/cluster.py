@@ -70,7 +70,7 @@ class Cluster:
             for id, member in enumerate(rs['members']):
                 assert isinstance(member, dict)
                 assert set(member.keys()) <= {
-                    'host', 'priority', 'arbiterOnly', 'hidden', 'secondaryDelaySecs', 'votes', 'buildIndexes'}
+                    'host', 'priority', 'arbiterOnly', 'hidden', 'secondaryDelaySecs', 'slaveDelay', 'votes', 'buildIndexes'}
                 assert 'host' in member and isinstance(member['host'], str)
                 if id == 0:
                     assert set(member.keys()) == {'host'}
@@ -82,6 +82,8 @@ class Cluster:
                     assert isinstance(member['hidden'], bool)
                 if 'secondaryDelaySecs' in member:
                     assert isinstance(member['secondaryDelaySecs'], int)
+                if 'slaveDelay' in member:
+                    assert isinstance(member['slaveDelay'], int)
                 if 'votes' in member:
                     assert isinstance(member['votes'], int)
                     assert member['votes'] in [0,1]
@@ -368,7 +370,7 @@ class Cluster:
     # creates backup based on type (no checking input - it's hack for situation like 'incremental --base')
     def make_backup(self, type):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        timeout = time.time() + 30
+        timeout = time.time() + 60
         while True:
             if not self.get_status()['running']:
                 if type:
@@ -446,6 +448,7 @@ class Cluster:
             if key == "restart_cluster" and value:
                 self.restart()
                 self.restart_pbm_agents()
+                self.check_initsync()
             if key == "make_resync" and value:
                 self.make_resync()
             if key == "check_pbm_status" and value:
@@ -770,6 +773,17 @@ class Cluster:
                     container).logs().decode("utf-8", errors="replace"))
             except docker.errors.NotFound:
                 pass
+
+    @staticmethod
+    def check_initsync_single(host):
+        n = testinfra.get_host("docker://" + host)
+        result = n.check_output("mongo -u root -p root --quiet --eval \"db.adminCommand( { getLog:'global'} ).log.forEach(x => {print(x)})\" | grep INITSYNC")
+        assert "INITSYNC" not in result, 'INITSYNC found on ' + host + ' :\n' + result
+
+    def check_initsync(self):
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            for host in self.pbm_hosts:
+                executor.submit(Cluster.check_initsync_single, host)
 
     @staticmethod
     def log(*args, **kwargs):

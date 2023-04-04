@@ -11,19 +11,38 @@ from cluster import Cluster
 
 documents=[{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
 
+
 @pytest.fixture(scope="package")
 def docker_client():
     return docker.from_env()
 
 @pytest.fixture(scope="package")
-def config():
-    return { "_id": "rs1", "members": [
-        {"host": "rs101"},
-        {"host": "rs102", "priority": 2 },
-        {"host": "rs103", "hidden": True, "priority": 0, "votes": 0},
-        {"host": "rs104", "secondaryDelaySecs": 1, "priority": 0, "votes": 0, "buildIndexes": False },
-        {"host": "rs105", "priority": 3}
+def mongod_version():
+    return docker.from_env().containers.run(
+                    image='replica_member/local',
+                    remove=True,
+                    command='mongod --version'
+          ).decode("utf-8", errors="replace")
+
+@pytest.fixture(scope="package")
+def config(mongod_version):
+    if ( "4.2" or "4.4" )  in mongod_version:
+        return { "_id": "rs1", "members": [
+            {"host": "rs101"},
+            {"host": "rs102", "priority": 2 },
+            {"host": "rs103", "hidden": True, "priority": 0, "votes": 0},
+            {"host": "rs104", "slaveDelay": 1, "priority": 0, "votes": 0, "buildIndexes": False },
+            {"host": "rs105", "priority": 3}
         ]}
+    else:
+        return { "_id": "rs1", "members": [
+            {"host": "rs101"},
+            {"host": "rs102", "priority": 2 },
+            {"host": "rs103", "hidden": True, "priority": 0, "votes": 0},
+            {"host": "rs104", "secondaryDelaySecs": 1, "priority": 0, "votes": 0, "buildIndexes": False },
+            {"host": "rs105", "priority": 3}
+        ]}
+
 
 @pytest.fixture(scope="package")
 def cluster(config):
@@ -63,6 +82,7 @@ def test_physical(start_cluster,cluster):
         assert 'hidden' not in member or member['hidden'] == rs_config['members'][index]['hidden']
         assert 'votes' not in member or member['votes'] == rs_config['members'][index]['votes']
         assert 'secondaryDelaySecs' not in member or member['secondaryDelaySecs'] == rs_config['members'][index]['secondaryDelaySecs']
+        assert 'slaveDelay' not in member or member['slaveDelay'] == rs_config['members'][index]['slaveDelay']
         assert 'buildIndexes' not in member or member['buildIndexes'] == rs_config['members'][index]['buildIndexes']
     Cluster.log("Finished successfully")
 
@@ -89,6 +109,7 @@ def test_incremental(start_cluster,cluster):
         assert 'hidden' not in member or member['hidden'] == rs_config['members'][index]['hidden']
         assert 'votes' not in member or member['votes'] == rs_config['members'][index]['votes']
         assert 'secondaryDelaySecs' not in member or member['secondaryDelaySecs'] == rs_config['members'][index]['secondaryDelaySecs']
+        assert 'slaveDelay' not in member or member['slaveDelay'] == rs_config['members'][index]['slaveDelay']
         assert 'buildIndexes' not in member or member['buildIndexes'] == rs_config['members'][index]['buildIndexes']
     Cluster.log("Finished successfully")
 
