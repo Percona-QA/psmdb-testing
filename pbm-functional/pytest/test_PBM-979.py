@@ -26,7 +26,7 @@ def mongod_version():
 
 @pytest.fixture(scope="package")
 def config(mongod_version):
-    if ( "4.2" or "4.4" )  in mongod_version:
+    if "4.2" in mongod_version or "4.4" in mongod_version:
         return { "_id": "rs1", "members": [
             {"host": "rs101"},
             {"host": "rs102", "priority": 2 },
