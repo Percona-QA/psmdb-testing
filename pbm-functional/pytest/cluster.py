@@ -396,6 +396,7 @@ class Cluster:
                             return name
                             break
                         elif snapshot['status'] == 'error':
+                            self.get_logs()
                             assert False, snapshot['error']
                             break
             if time.time() > timeout:
