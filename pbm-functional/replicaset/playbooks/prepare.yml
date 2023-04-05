@@ -27,7 +27,7 @@
       filesystem:
         fstype: xfs
         dev: "/dev/nvme1n1"
-      when: instance_type == "i3en.large" or instance_type == "i3en.xlarge"
+      when: instance_type == "i3en.large" or instance_type == "i3en.xlarge" or instance_type == "i3en.3xlarge"
 
     - name: Create and mount disks
       mount:
@@ -45,7 +45,7 @@
         fstype: xfs
         opts: defaults,noatime,nodiscard
         state: mounted
-      when: instance_type == "i3en.large" or instance_type == "i3en.xlarge"
+      when: instance_type == "i3en.large" or instance_type == "i3en.xlarge" or instance_type == "i3en.3xlarge"
 
     - set_fact:
         ssh_pubkey: "{{ lookup('env', 'SSH_PUBKEY') | default('none', true) }}"
