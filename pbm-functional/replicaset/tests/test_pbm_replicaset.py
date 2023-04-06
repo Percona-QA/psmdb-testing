@@ -200,7 +200,7 @@ def load_data(node,port,count):
     config_json = json.dumps(config, indent=4)
     print(config_json)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
-    result = node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
+    result = node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 100')
 
 def check_count_data(node,port):
     result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.binary.count()' --quiet | tail -1")
