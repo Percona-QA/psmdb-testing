@@ -9,7 +9,6 @@ import threading
 import os
 
 from cluster import Cluster
-from bson import ObjectId
 
 @pytest.fixture(scope="package")
 def config():
@@ -40,81 +39,67 @@ def start_cluster(cluster,request):
         cluster.destroy()
 
 @pytest.mark.timeout(300,func_only=True)
-def test_scenario_1(start_cluster,cluster):
+def test_logical(start_cluster,cluster):
     cluster.check_pbm_status()
 
     client = pymongo.MongoClient(cluster.connection)
     db = client.test
     collection = db.test
     Cluster.log("Create collection, unique index and insert data")
-    collection.insert_one({"a": 1, "b": 1, "c": ObjectId("5d37ace6bb70d20017b2e12f"), "d": 2})
-    collection.insert_one({"a": 1, "b": 1, "d": 1})
-    collection.insert_one({"a": 1, "b": 1})
-    collection.insert_one({"a": 1, "b": 1, "c": ObjectId("5d37ace6bb70d20017b2e12f")})
-    collection.create_index([("a",1),("b",1),("c",1),("d",1)], name='test_index', unique = True, background=True, partialFilterExpression={"c": {"$type":"objectId"}})
+    collection.insert_one({"a": 1, "b": 1, "c": 1})
+    collection.create_index([("a",1),("b",1),("c",1)], name='test_index', unique = True)
     res = pymongo.MongoClient(cluster.connection)["test"]["test"].find({})
     Cluster.log('Collection:')
     for r in res:
         Cluster.log(r)
 
     def upsert_1():
+        Cluster.log("Starting background upsert 1")
         while upsert:
             query = {"a": 1}
-            update = {"$set": {"a": "1", "b": 1, "c":ObjectId("5d37ace6bb70d20017b2e12f"), "d":random.randint(0,1)}}
+            update = {"$set": {"a": 1, "b": 1, "c": 1}}
             pymongo.MongoClient(cluster.connection)['test']['test'].delete_one(query)
             try:
                 doc = pymongo.MongoClient(cluster.connection)['test']['test'].find_one_and_update(query,update,upsert=True,return_document=pymongo.collection.ReturnDocument.AFTER)
-                Cluster.log(doc)
+                #Cluster.log(doc)
             except pymongo.errors.DuplicateKeyError:
                 pass
+        Cluster.log("Stopping background upsert 1")
 
     def upsert_2():
+        Cluster.log("Starting background upsert 2")
         while upsert:
             query = {"b": 1}
-            update = {"$set": {"a": "1", "b": 1, "c":ObjectId("5d37ace6bb70d20017b2e12f"), "d":random.randint(0,1)}}
+            update = {"$set": {"a": 2, "b": 1, "c": 1}}
             pymongo.MongoClient(cluster.connection)['test']['test'].delete_one(query)
             try:
                 doc = pymongo.MongoClient(cluster.connection)['test']['test'].find_one_and_update(query,update,upsert=True,return_document=pymongo.collection.ReturnDocument.AFTER)
-                Cluster.log(doc)
+                #Cluster.log(doc)
             except pymongo.errors.DuplicateKeyError:
                 pass
+        Cluster.log("Stopping background upsert 2")
 
     upsert=True
     t1 = threading.Thread(target=upsert_1)
     t2 = threading.Thread(target=upsert_2)
     t1.start()
     t2.start()
-    start = cluster.exec_pbm_cli('backup --out json').stdout
-    name = json.loads(start)['name']
-    Cluster.log(name)
-    timeout = time.time() + 600
-    progress = True
-    txn = True
-    while progress:
-        status = cluster.get_status()
-        Cluster.log("Current operation: " + str(status['running']))
-        if status['backups']['snapshot']:
-            for snapshot in status['backups']['snapshot']:
-                if snapshot['name'] == name:
-                    if snapshot['status'] == 'done':
-                        Cluster.log("Backup found: " + str(snapshot))
-                        progress = False
-                        break
-        if time.time() > timeout:
-            assert False, "Backup timeout exceeded"
-        time.sleep(0.1)
+
+    backup = cluster.make_backup("logical")
+
     upsert=False
     t2.join()
     t1.join()
+
     res = pymongo.MongoClient(cluster.connection)["test"]["test"].find({})
     Cluster.log('Collection:')
     for r in res:
         Cluster.log(r)
 
     try:
-        cluster.make_restore(name,check_pbm_status=True)
+        cluster.make_restore(backup,check_pbm_status=True)
     except AssertionError:
-        file = '/backups/' + name + '/rs1/local.oplog.rs.bson'
+        file = '/backups/' + backup + '/rs1/local.oplog.rs.bson'
         with open(file, "rb") as f:
             data= f.read()
             docs = bson.decode_all(data)
@@ -128,3 +113,4 @@ def test_scenario_1(start_cluster,cluster):
         Cluster.log(r)
 
     Cluster.log("Finished successfully\n")
+
