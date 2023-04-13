@@ -30,12 +30,12 @@ RUN mkdir -p /pbm-old && mkdir -p /pbm-new && \
     apt update && apt -y install gcc libgssapi-krb5-2 libkrb5-dev libsasl2-modules-gssapi-mit && \
     git clone https://github.com/percona/percona-backup-mongodb.git && cd percona-backup-mongodb && \
     git checkout $PBM_BRANCH && git pull && \
-    sed -E "s|(.+)https://%s.blob.core.windows.net/%s(.+)|\1http://azurite:10000/%s/%s\2|" -i pbm/storage/azure/azure.go && \
+    sed -E "s|(.+)https://%s.blob.core.windows.net|\1http://azurite:10000/%s/|" -i pbm/storage/azure/azure.go && \
     make build && cp -rpf bin/* /pbm-new/ && rm -rf bin && \
     git reset --hard && \
     git branch -r | grep release | sed 's/origin\///'| grep -v $PBM_BRANCH | sort --version-sort | tail -1 | xargs git checkout && \
     git pull && \
-    sed -E "s|(.+)https://%s.blob.core.windows.net/%s(.+)|\1http://azurite:10000/%s/%s\2|" -i pbm/storage/azure/azure.go && \
+    sed -E "s|(.+)https://%s.blob.core.windows.net|\1http://azurite:10000/%s/|" -i pbm/storage/azure/azure.go && \
     make build && cp -rpf bin/* /pbm-old/ && rm -rf bin 
 
 FROM $PSMDB
