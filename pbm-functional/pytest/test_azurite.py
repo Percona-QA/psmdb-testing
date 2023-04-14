@@ -50,6 +50,10 @@ def start_cluster(cluster, request):
         client.admin.command("enableSharding", "test")
         client.admin.command(
             "shardCollection", "test.test", key={"_id": "hashed"})
+        client.admin.command(
+            "shardCollection", "test.test2", key={"_id": "hashed"})
+        client.admin.command(
+            "shardCollection", "test.test3", key={"_id": "hashed"})
         yield True
     finally:
         if request.config.getoption("--verbose"):
@@ -67,6 +71,34 @@ def test_logical(start_cluster, cluster):
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully\n")
+
+@pytest.mark.timeout(500, func_only=True)
+def test_logical_pitr(start_cluster,cluster):
+    cluster.check_pbm_status()
+    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
+    backup_l1=cluster.make_backup("logical")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+    time.sleep(60)
+    # make several following backups and then remove them to check the continuity of PITR timeframe
+    pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_many(documents)
+    backup_l2=cluster.make_backup("logical")
+    time.sleep(60)
+    pymongo.MongoClient(cluster.connection)["test"]["test3"].insert_many(documents)
+    backup_l3=cluster.make_backup("logical")
+    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    backup="--time=" + pitr
+    Cluster.log("Time for PITR is: " + pitr)
+    time.sleep(60)
+    cluster.delete_backup(backup_l2)
+    cluster.delete_backup(backup_l3)
+    cluster.disable_pitr()
+    time.sleep(10)
+    pymongo.MongoClient(cluster.connection).drop_database('test')
+    cluster.make_restore(backup,check_pbm_status=True)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test2"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test3"].count_documents({}) == len(documents)
+    Cluster.log("Finished successfully")
 
 @pytest.mark.timeout(300, func_only=True)
 def test_physical(start_cluster, cluster):

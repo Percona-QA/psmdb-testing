@@ -6,6 +6,7 @@ import json
 import copy
 import concurrent.futures
 from datetime import datetime
+import re
 
 # the structure of the cluster could be one of
 # 1. { _id: "rsname", members: [{host: "host", hidden: boolean, priority: int, arbiterOnly: bool}, ...]} for replicaset
@@ -523,10 +524,11 @@ class Cluster:
             n.check_output("supervisorctl start mongod")
 
     # enables PITR
-    def enable_pitr(self):
+    def enable_pitr(self,**kwargs):
         n = testinfra.get_host("docker://" + self.pbm_cli)
+        pitr_extra_args = kwargs.get('pitr_extra_args', "")
         result = n.check_output(
-            "pbm config --set pitr.enabled=true --set pitr.compression=none --out json")
+            "pbm config --set pitr.enabled=true --set pitr.compression=none --out json " + pitr_extra_args)
         Cluster.log("Enabling PITR: " + result)
         timeout = time.time() + 600
         while True:
@@ -789,3 +791,11 @@ class Cluster:
     @staticmethod
     def log(*args, **kwargs):
         print("[%s]" % (datetime.now()).strftime('%Y-%m-%dT%H:%M:%S'),*args, **kwargs)
+
+    def delete_backup(self, name):
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        result = n.check_output('pbm delete-backup -y ' + name)
+        if re.search(r"\[done\](?!.*\berror\b)", result):
+            Cluster.log(result)
+        else:
+            assert False, result
