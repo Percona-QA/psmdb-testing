@@ -106,6 +106,7 @@ services:
         - PBM_BRANCH=${PBM_BRANCH:-main}
         - GO_VER=${GO_VER:-latest}
         - PSMDB=${PSMDB:-percona/percona-server-mongodb:latest}
+        - PR_NUMBER=${PR_NUMBER}
     command: /bin/bash
     depends_on:
       - pykmip
