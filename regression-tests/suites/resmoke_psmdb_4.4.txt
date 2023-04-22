@@ -18,7 +18,7 @@ backup_tde_cbc|wiredTiger
 backup_tde_gcm|wiredTiger
 benchmarks --jobs=1 --perfReportFile=perf.json|wiredTiger
 benchmarks_sharding --jobs=1 --perfReportFile=perf_sharding.json|wiredTiger
-buildscripts_test|wiredTiger
+ buildscripts_test|wiredTiger
 bulk_gle_passthrough|wiredTiger
 causally_consistent_hedged_reads_jscore_passthrough|wiredTiger
 causally_consistent_jscore_passthrough|wiredTiger
@@ -50,7 +50,7 @@ concurrency_replication_multi_stmt_txn --jobs=1|wiredTiger
 concurrency_replication_multi_stmt_txn_ubsan --jobs=1|wiredTiger
 concurrency_replication_ubsan --jobs=1|wiredTiger
 concurrency_replication_wiredtiger_cursor_sweeps --jobs=1|wiredTiger
-concurrency_replication_wiredtiger_eviction_debug --jobs=1|wiredTiger
+ concurrency_replication_wiredtiger_eviction_debug --jobs=1|wiredTiger
 concurrency_sharded_causal_consistency --jobs=1|wiredTiger
 concurrency_sharded_causal_consistency_and_balancer --jobs=1|wiredTiger
 concurrency_sharded_clusterwide_ops_add_remove_shards --jobs=1|wiredTiger
@@ -70,7 +70,7 @@ concurrency_sharded_with_stepdowns_and_balancer --jobs=1|wiredTiger
 concurrency_simultaneous --jobs=1|wiredTiger
 concurrency_simultaneous_replication --jobs=1|wiredTiger
 concurrency_simultaneous_replication_wiredtiger_cursor_sweeps --jobs=1|wiredTiger
-concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|wiredTiger
+ concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|wiredTiger
 core|wiredTiger
 core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command|wiredTiger
 core_auth|wiredTiger
@@ -92,7 +92,7 @@ external_auth_aws|wiredTiger
 failpoints|wiredTiger
 failpoints_auth|wiredTiger
 fle|wiredTiger
-free_monitoring|wiredTiger
+ free_monitoring|wiredTiger
 generational_fuzzer|wiredTiger
 generational_fuzzer_replication|wiredTiger
 gle_auth --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
@@ -292,7 +292,7 @@ concurrency_replication_multi_stmt_txn --jobs=1|inMemory
 concurrency_replication_multi_stmt_txn_ubsan --jobs=1|inMemory
 concurrency_replication_ubsan --jobs=1|inMemory
 concurrency_replication_wiredtiger_cursor_sweeps --jobs=1|inMemory
-concurrency_replication_wiredtiger_eviction_debug --jobs=1|inMemory
+ concurrency_replication_wiredtiger_eviction_debug --jobs=1|inMemory
 concurrency_sharded_causal_consistency --jobs=1|inMemory
 concurrency_sharded_causal_consistency_and_balancer --jobs=1|inMemory
 concurrency_sharded_clusterwide_ops_add_remove_shards --jobs=1|inMemory
@@ -312,7 +312,7 @@ concurrency_sharded_with_stepdowns_and_balancer --jobs=1|inMemory
 concurrency_simultaneous --jobs=1|inMemory
 concurrency_simultaneous_replication --jobs=1|inMemory
 concurrency_simultaneous_replication_wiredtiger_cursor_sweeps --jobs=1|inMemory
-concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|inMemory
+ concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|inMemory
 core|inMemory
 core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command|inMemory
 core_auth|inMemory
@@ -334,7 +334,7 @@ external_auth_aws|inMemory
 failpoints|inMemory
 failpoints_auth|inMemory
 fle|inMemory
-free_monitoring|inMemory
+ free_monitoring|inMemory
 generational_fuzzer|inMemory
 generational_fuzzer_replication|inMemory
 gle_auth --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
@@ -390,13 +390,13 @@ multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|inMemory
 multi_stmt_txn_jscore_passthrough_with_migration|inMemory
  multiversion|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4.1
  multiversion_auth|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4.1
-no_passthrough|inMemory
-no_passthrough_with_mongod|inMemory
+no_passthrough --jobs=1|inMemory
+no_passthrough_with_mongod --storageEngineCacheSizeGB=10 --jobs=1|inMemory
  no_server|inMemory
 ocsp --jobs=1|inMemory
 parallel --jobs=1|inMemory
 parallel --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command --jobs=1|inMemory
-percona_no_passthrough_with_mongod|inMemory
+percona_no_passthrough_with_mongod --jobs=1|inMemory
 ratelimit|inMemory
 read_concern_linearizable_passthrough|inMemory
 read_concern_majority_passthrough|inMemory
