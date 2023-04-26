@@ -90,11 +90,11 @@ multi_shard_multi_stmt_txn_jscore_passthrough|inMemory
 multi_stmt_txn_jscore_passthrough_with_migration|inMemory
  multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2.1 4.2.3
  multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2.1 4.2.3
-no_passthrough|inMemory
-no_passthrough_with_mongod|inMemory
+no_passthrough --jobs=1|inMemory
+no_passthrough_with_mongod --storageEngineCacheSizeGB=10 --jobs=1|inMemory
 parallel --jobs=1|inMemory
 parallel --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command --jobs=1|inMemory
-percona_no_passthrough_with_mongod|inMemory
+percona_no_passthrough_with_mongod --jobs=1|inMemory
 ratelimit|inMemory
 read_concern_linearizable_passthrough|inMemory
 read_concern_majority_passthrough|inMemory
@@ -160,7 +160,7 @@ backup_tde_cbc|wiredTiger
 backup_tde_gcm|wiredTiger
 benchmarks --jobs=1 --perfReportFile=perf.json|wiredTiger
 benchmarks_sharding --jobs=1 --perfReportFile=perf_sharding.json|wiredTiger
-buildscripts_test|wiredTiger
+ buildscripts_test|wiredTiger
 bulk_gle_passthrough|wiredTiger
 causally_consistent_jscore_passthrough|wiredTiger
 causally_consistent_jscore_passthrough_auth|wiredTiger

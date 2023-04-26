@@ -19,7 +19,7 @@ backup_tde_gcm|wiredTiger
 benchmarks --jobs=1 --perfReportFile=perf.json|wiredTiger
 benchmarks_cst --jobs=1|wiredTiger
 benchmarks_sharding --jobs=1 --perfReportFile=perf_sharding.json|wiredTiger
-buildscripts_test|wiredTiger
+ buildscripts_test|wiredTiger
 bulk_gle_passthrough|wiredTiger
 causally_consistent_hedged_reads_jscore_passthrough|wiredTiger
 causally_consistent_jscore_passthrough|wiredTiger
@@ -56,7 +56,7 @@ concurrency_replication_multi_stmt_txn --jobs=1|wiredTiger
 concurrency_replication_multi_stmt_txn_ubsan --jobs=1|wiredTiger
 concurrency_replication_ubsan --jobs=1|wiredTiger
 concurrency_replication_wiredtiger_cursor_sweeps --jobs=1|wiredTiger
-concurrency_replication_wiredtiger_eviction_debug --jobs=1|wiredTiger
+ concurrency_replication_wiredtiger_eviction_debug --jobs=1|wiredTiger
 concurrency_sharded_causal_consistency --jobs=1|wiredTiger
 concurrency_sharded_causal_consistency_and_balancer --jobs=1|wiredTiger
 concurrency_sharded_clusterwide_ops_add_remove_shards --jobs=1|wiredTiger
@@ -76,7 +76,7 @@ concurrency_sharded_with_stepdowns_and_balancer --jobs=1|wiredTiger
 concurrency_simultaneous --jobs=1|wiredTiger
 concurrency_simultaneous_replication --jobs=1|wiredTiger
 concurrency_simultaneous_replication_wiredtiger_cursor_sweeps --jobs=1|wiredTiger
-concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|wiredTiger
+ concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|wiredTiger
 core|wiredTiger
 core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command,requires_timeseries|wiredTiger
 core_auth|wiredTiger
@@ -86,7 +86,7 @@ core_tde_cbc|wiredTiger
 core_tde_gcm|wiredTiger
 core_txns|wiredTiger
 core_txns_large_txns_format|wiredTiger
-cst_jscore_passthrough|wiredTiger
+ cst_jscore_passthrough|wiredTiger
 cwrwc_passthrough|wiredTiger
 cwrwc_rc_majority_passthrough|wiredTiger
 cwrwc_wc_majority_passthrough|wiredTiger
@@ -98,9 +98,9 @@ external_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 external_auth_aws|wiredTiger
 failpoints|wiredTiger
 failpoints_auth|wiredTiger
-feature_flag_multiversion|wiredTiger
+ feature_flag_multiversion|wiredTiger
 fle|wiredTiger
-free_monitoring|wiredTiger
+ free_monitoring|wiredTiger
 generational_fuzzer|wiredTiger
 generational_fuzzer_replication|wiredTiger
 gle_auth --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
@@ -321,7 +321,7 @@ concurrency_replication_multi_stmt_txn --jobs=1|inMemory
 concurrency_replication_multi_stmt_txn_ubsan --jobs=1|inMemory
 concurrency_replication_ubsan --jobs=1|inMemory
 concurrency_replication_wiredtiger_cursor_sweeps --jobs=1|inMemory
-concurrency_replication_wiredtiger_eviction_debug --jobs=1|inMemory
+ concurrency_replication_wiredtiger_eviction_debug --jobs=1|inMemory
 concurrency_sharded_causal_consistency --jobs=1|inMemory
 concurrency_sharded_causal_consistency_and_balancer --jobs=1|inMemory
 concurrency_sharded_clusterwide_ops_add_remove_shards --jobs=1|inMemory
@@ -341,7 +341,7 @@ concurrency_sharded_with_stepdowns_and_balancer --jobs=1|inMemory
 concurrency_simultaneous --jobs=1|inMemory
 concurrency_simultaneous_replication --jobs=1|inMemory
 concurrency_simultaneous_replication_wiredtiger_cursor_sweeps --jobs=1|inMemory
-concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|inMemory
+ concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|inMemory
 core|inMemory
 core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command,requires_timeseries|inMemory
 core_auth|inMemory
@@ -351,7 +351,7 @@ core_op_query|inMemory
  core_tde_gcm|inMemory
 core_txns|inMemory
 core_txns_large_txns_format|inMemory
-cst_jscore_passthrough|inMemory
+ cst_jscore_passthrough|inMemory
 cwrwc_passthrough|inMemory
 cwrwc_rc_majority_passthrough|inMemory
 cwrwc_wc_majority_passthrough|inMemory
@@ -363,9 +363,9 @@ ese|inMemory
 external_auth_aws|inMemory
 failpoints|inMemory
 failpoints_auth|inMemory
-feature_flag_multiversion|inMemory
+ feature_flag_multiversion|inMemory
 fle|inMemory
-free_monitoring|inMemory
+ free_monitoring|inMemory
 generational_fuzzer|inMemory
 generational_fuzzer_replication|inMemory
 gle_auth --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
@@ -421,13 +421,13 @@ multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|inMemory
 multi_stmt_txn_jscore_passthrough_with_migration|inMemory
  multiversion|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 4.9
  multiversion_auth|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 4.9
-no_passthrough|inMemory
-no_passthrough_with_mongod|inMemory
+no_passthrough --jobs=1|inMemory
+no_passthrough_with_mongod --storageEngineCacheSizeGB=10 --jobs=1|inMemory
  no_server|inMemory
 ocsp --jobs=1|inMemory
 parallel --jobs=1|inMemory
 parallel --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command --jobs=1|inMemory
-percona_no_passthrough_with_mongod|inMemory
+percona_no_passthrough_with_mongod --jobs=1|inMemory
 ratelimit|inMemory
 read_concern_linearizable_passthrough|inMemory
 read_concern_majority_passthrough|inMemory

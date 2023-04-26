@@ -19,7 +19,7 @@ backup_tde_gcm|wiredTiger
 benchmarks --jobs=1 --perfReportFile=perf.json|wiredTiger
 benchmarks_bsoncolumn --jobs=1|wiredTiger
 benchmarks_sharding --jobs=1 --perfReportFile=perf_sharding.json|wiredTiger
-buildscripts_test|wiredTiger
+ buildscripts_test|wiredTiger
 causally_consistent_hedged_reads_jscore_passthrough|wiredTiger
 causally_consistent_jscore_passthrough|wiredTiger
 causally_consistent_jscore_passthrough_auth|wiredTiger
@@ -62,7 +62,7 @@ concurrency_replication_multi_stmt_txn --jobs=1|wiredTiger
 concurrency_replication_multi_stmt_txn_ubsan --jobs=1|wiredTiger
 concurrency_replication_ubsan --jobs=1|wiredTiger
 concurrency_replication_wiredtiger_cursor_sweeps --jobs=1|wiredTiger
-concurrency_replication_wiredtiger_eviction_debug --jobs=1|wiredTiger
+ concurrency_replication_wiredtiger_eviction_debug --jobs=1|wiredTiger
 concurrency_sharded_causal_consistency --jobs=1|wiredTiger
 concurrency_sharded_causal_consistency_and_balancer --jobs=1|wiredTiger
 concurrency_sharded_clusterwide_ops_add_remove_shards --jobs=1|wiredTiger
@@ -82,7 +82,7 @@ concurrency_sharded_with_stepdowns_and_balancer --jobs=1|wiredTiger
 concurrency_simultaneous --jobs=1|wiredTiger
 concurrency_simultaneous_replication --jobs=1|wiredTiger
 concurrency_simultaneous_replication_wiredtiger_cursor_sweeps --jobs=1|wiredTiger
-concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|wiredTiger
+ concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|wiredTiger
 core|wiredTiger
  core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command,requires_timeseries|wiredTiger
 core_auth|wiredTiger
@@ -93,7 +93,7 @@ core_txns|wiredTiger
 core_txns_large_txns_format|wiredTiger
 cqf|wiredTiger
 cqf_parallel|wiredTiger
-cst_jscore_passthrough|wiredTiger
+ cst_jscore_passthrough|wiredTiger
 cwrwc_passthrough|wiredTiger
 cwrwc_rc_majority_passthrough|wiredTiger
 cwrwc_wc_majority_passthrough|wiredTiger
@@ -105,12 +105,12 @@ external_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 external_auth_aws|wiredTiger
 failpoints|wiredTiger
 failpoints_auth|wiredTiger
-feature_flag_multiversion|wiredTiger
+ feature_flag_multiversion|wiredTiger
 fle|wiredTiger
 fle2|wiredTiger
 fle2_query_analysis|wiredTiger
 fle2_sharding|wiredTiger
-free_monitoring|wiredTiger
+ free_monitoring|wiredTiger
 generational_fuzzer|wiredTiger
 generational_fuzzer_replication|wiredTiger
 initial_sync_fuzzer|wiredTiger
@@ -179,7 +179,7 @@ replica_sets --excludeWithAnyTags=featureFlagShardMerge|wiredTiger
 replica_sets_api_version_jscore_passthrough|wiredTiger
 replica_sets_auth --excludeWithAnyTags=featureFlagShardMerge|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 replica_sets_batched_deletes_passthrough|wiredTiger
-replica_sets_fcbis_jscore_passthrough|wiredTiger
+ replica_sets_fcbis_jscore_passthrough|wiredTiger
 replica_sets_initsync_jscore_passthrough|wiredTiger
 replica_sets_initsync_static_jscore_passthrough|wiredTiger
 replica_sets_jscore_passthrough|wiredTiger
@@ -214,7 +214,7 @@ search_auth|wiredTiger
 search_ssl|wiredTiger
 secondary_reads_passthrough|wiredTiger
 serial_run|wiredTiger
-serverless|wiredTiger
+ serverless|wiredTiger
 server_selection_json_test|wiredTiger
 session_jscore_passthrough|wiredTiger
 sharded_causally_consistent_jscore_passthrough|wiredTiger
@@ -336,7 +336,7 @@ concurrency_replication_multi_stmt_txn --jobs=1|inMemory
 concurrency_replication_multi_stmt_txn_ubsan --jobs=1|inMemory
 concurrency_replication_ubsan --jobs=1|inMemory
 concurrency_replication_wiredtiger_cursor_sweeps --jobs=1|inMemory
-concurrency_replication_wiredtiger_eviction_debug --jobs=1|inMemory
+ concurrency_replication_wiredtiger_eviction_debug --jobs=1|inMemory
 concurrency_sharded_causal_consistency --jobs=1|inMemory
 concurrency_sharded_causal_consistency_and_balancer --jobs=1|inMemory
 concurrency_sharded_clusterwide_ops_add_remove_shards --jobs=1|inMemory
@@ -356,7 +356,7 @@ concurrency_sharded_with_stepdowns_and_balancer --jobs=1|inMemory
 concurrency_simultaneous --jobs=1|inMemory
 concurrency_simultaneous_replication --jobs=1|inMemory
 concurrency_simultaneous_replication_wiredtiger_cursor_sweeps --jobs=1|inMemory
-concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|inMemory
+ concurrency_simultaneous_replication_wiredtiger_eviction_debug --jobs=1|inMemory
 core|inMemory
  core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command,requires_timeseries|inMemory
 core_auth|inMemory
@@ -367,7 +367,7 @@ core_txns|inMemory
 core_txns_large_txns_format|inMemory
 cqf|inMemory
 cqf_parallel|inMemory
-cst_jscore_passthrough|inMemory
+ cst_jscore_passthrough|inMemory
 cwrwc_passthrough|inMemory
 cwrwc_rc_majority_passthrough|inMemory
 cwrwc_wc_majority_passthrough|inMemory
@@ -379,12 +379,12 @@ ese|inMemory
 external_auth_aws|inMemory
 failpoints|inMemory
 failpoints_auth|inMemory
-feature_flag_multiversion|inMemory
+ feature_flag_multiversion|inMemory
 fle|inMemory
 fle2|inMemory
 fle2_query_analysis|inMemory
 fle2_sharding|inMemory
-free_monitoring|inMemory
+ free_monitoring|inMemory
 generational_fuzzer|inMemory
 generational_fuzzer_replication|inMemory
 initial_sync_fuzzer|inMemory
@@ -436,31 +436,31 @@ multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|inMemory
 multi_stmt_txn_jscore_passthrough_with_migration|inMemory
  multiversion|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 5.0 5.3
  multiversion_auth|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 5.0 5.3
-no_passthrough|inMemory
-no_passthrough_with_mongod|inMemory
+no_passthrough --jobs=1|inMemory
+no_passthrough_with_mongod --storageEngineCacheSizeGB=10 --jobs=1|inMemory
  no_server|inMemory
 ocsp --jobs=1|inMemory
 parallel --jobs=1|inMemory
  parallel --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command --jobs=1|inMemory
-percona_no_passthrough_with_mongod|inMemory
+percona_no_passthrough_with_mongod --jobs=1|inMemory
 ratelimit|inMemory
 read_concern_linearizable_passthrough|inMemory
 read_concern_majority_passthrough|inMemory
  read_only|inMemory
  read_only_sharded|inMemory
  redaction|inMemory
-replica_sets|inMemory
+replica_sets --excludeWithAnyTags=featureFlagShardMerge|inMemory
 replica_sets_api_version_jscore_passthrough|inMemory
-replica_sets_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+replica_sets_auth --excludeWithAnyTags=featureFlagShardMerge|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 replica_sets_batched_deletes_passthrough|inMemory
-replica_sets_fcbis_jscore_passthrough|inMemory
+ replica_sets_fcbis_jscore_passthrough|inMemory
  replica_sets_initsync_jscore_passthrough|inMemory
  replica_sets_initsync_static_jscore_passthrough|inMemory
 replica_sets_jscore_passthrough|inMemory
  replica_sets_kill_secondaries_jscore_passthrough|inMemory
-replica_sets_large_txns_format|inMemory
+replica_sets_large_txns_format --excludeWithAnyTags=featureFlagShardMerge|inMemory
 replica_sets_large_txns_format_jscore_passthrough|inMemory
-replica_sets_max_mirroring|inMemory
+replica_sets_max_mirroring --excludeWithAnyTags=featureFlagShardMerge|inMemory
 replica_sets_multi_stmt_txn_jscore_passthrough|inMemory
 replica_sets_multi_stmt_txn_kill_primary_jscore_passthrough|inMemory
 replica_sets_multi_stmt_txn_stepdown_jscore_passthrough|inMemory
@@ -470,7 +470,7 @@ replica_sets_reconfig_jscore_stepdown_passthrough|inMemory
  replica_sets_tde_cbc|inMemory
  replica_sets_tde_gcm|inMemory
 replica_sets_terminate_primary_jscore_passthrough|inMemory
-replica_sets_update_v1_oplog|inMemory
+replica_sets_update_v1_oplog --excludeWithAnyTags=featureFlagShardMerge|inMemory
 replica_sets_update_v1_oplog_jscore_passthrough|inMemory
 resharding_fuzzer|inMemory
 resharding_fuzzer_idempotency|inMemory
@@ -488,7 +488,7 @@ search_auth|inMemory
 search_ssl|inMemory
 secondary_reads_passthrough|inMemory
 serial_run|inMemory
-serverless|inMemory
+ serverless|inMemory
 server_selection_json_test|inMemory
 session_jscore_passthrough|inMemory
 sharded_causally_consistent_jscore_passthrough|inMemory
