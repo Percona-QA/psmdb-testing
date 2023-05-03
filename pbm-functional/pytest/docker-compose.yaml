@@ -10,6 +10,13 @@ services:
       - fs:/backups
     container_name: test
     hostname: test
+    environment:
+      - JIRA_SERVER=${JIRA_SERVER:-}
+      - JIRA_USERNAME=${JIRA_USERNAME:-}
+      - JIRA_PASSWORD=${JIRA_PASSWORD:-}
+      - JENKINS_URL=${JENKINS_URL:-}
+      - GIT_URL=https://github.com/percona/percona-backup-mongodb
+      - GIT_BRANCH=${PBM_BRANCH:-main}
     networks:
       - test
 
@@ -106,7 +113,7 @@ services:
         - PBM_BRANCH=${PBM_BRANCH:-main}
         - GO_VER=${GO_VER:-latest}
         - PSMDB=${PSMDB:-percona/percona-server-mongodb:latest}
-        - PR_NUMBER=${PR_NUMBER}
+        - PR_NUMBER=${PR_NUMBER:-}
     command: /bin/bash
     depends_on:
       - pykmip

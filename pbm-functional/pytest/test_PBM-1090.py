@@ -38,6 +38,7 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy()
 
+@pytest.mark.testcase(test_case_key="T204", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)
 def test_scenario(start_cluster,cluster):
     cluster.check_pbm_status()

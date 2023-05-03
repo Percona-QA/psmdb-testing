@@ -48,6 +48,7 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy()
 
+@pytest.mark.testcase(test_case_key="T218", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)
 def test_logical(start_cluster,cluster):
     cluster.check_pbm_status()
@@ -71,6 +72,7 @@ def test_logical(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
+@pytest.mark.testcase(test_case_key="T194", test_step_key=1)
 @pytest.mark.timeout(500, func_only=True)
 def test_logical_pitr(start_cluster,cluster):
     cluster.check_pbm_status()
