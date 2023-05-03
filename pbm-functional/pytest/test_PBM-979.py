@@ -61,6 +61,7 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy()
 
+@pytest.mark.testcase(test_case_key="T233", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)
 def test_logical(start_cluster,cluster):
     time.sleep(5) # wait for delayed node
@@ -79,6 +80,7 @@ def test_logical(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     Cluster.log("Finished successfully")
 
+@pytest.mark.testcase(test_case_key="T195", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)
 def test_physical(start_cluster,cluster):
     time.sleep(5) # wait for delayed node
@@ -108,6 +110,7 @@ def test_physical(start_cluster,cluster):
         assert 'buildIndexes' not in member or member['buildIndexes'] == rs_config['members'][index]['buildIndexes']
     Cluster.log("Finished successfully")
 
+@pytest.mark.testcase(test_case_key="T234", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)
 def test_incremental(start_cluster,cluster):
     time.sleep(5)

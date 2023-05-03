@@ -63,6 +63,7 @@ def start_cluster(cluster,newcluster,request):
         cluster.destroy()
         newcluster.destroy()
 
+@pytest.mark.testcase(test_case_key="T211", test_step_key=1)
 @pytest.mark.timeout(600,func_only=True)
 def test_logical(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
