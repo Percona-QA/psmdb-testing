@@ -3,6 +3,6 @@ RUN apk add --no-cache docker python3 py-pip bash git
 RUN pip install --no-cache-dir docker && \
     pip install --no-cache-dir pytest-testinfra && \
     pip install --no-cache-dir pytest-timeout && \
-    pip install --no-cache-dir pytest_adaptavist && \
+    pip install --no-cache-dir pytest-adaptavist && \
     pip install --no-cache-dir pymongo
 WORKDIR /test
