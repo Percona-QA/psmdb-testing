@@ -17,8 +17,8 @@ JSTESTS = ['test_kerberos_simple.js','test_ldap_simple.js']
 
 @pytest.mark.parametrize("binary", BINARIES)
 def test_binary_version(host, binary):
-    result = host.run(f"/usr/bin/{binary} --version")
-    assert match_exp_version.group(1) in result.stdout, f"{result.stdout}\n{result.stderr}"
+    result = host.check_output(f"/usr/bin/{binary} --version")
+    assert match_exp_version.group(1) in result, f"{result}"
 
 @pytest.mark.parametrize("jstest", JSTESTS)
 def test_jstests(host, jstest):
