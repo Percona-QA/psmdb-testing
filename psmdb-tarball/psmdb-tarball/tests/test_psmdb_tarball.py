@@ -1,4 +1,5 @@
 import os
+import re
 import pytest
 
 import testinfra.utils.ansible_runner
@@ -7,7 +8,17 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
 
+BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
+            'mongofiles', 'mongoimport', 'mongorestore', 'mongotop', 'mongostat']
+tarball_url = os.environ["TARBALL"]
+match_exp_version = re.search(r'server-mongodb-(\d+\.\d+\.\d+-\d+)', tarball_url)
+
 JSTESTS = ['test_kerberos_simple.js','test_ldap_simple.js']
+
+@pytest.mark.parametrize("binary", BINARIES)
+def test_binary_version(host, binary):
+    result = host.run(f"/usr/bin/{binary} --version")
+    assert match_exp_version.group(1) in result.stdout, f"{result.stdout}\n{result.stderr}"
 
 @pytest.mark.parametrize("jstest", JSTESTS)
 def test_jstests(host, jstest):
