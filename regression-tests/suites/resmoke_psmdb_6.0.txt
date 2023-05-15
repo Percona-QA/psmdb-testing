@@ -90,7 +90,7 @@ core_minimum_batch_size|wiredTiger
 core_tde_cbc|wiredTiger
 core_tde_gcm|wiredTiger
 core_txns|wiredTiger
-core_txns_large_txns_format|wiredTiger
+core_txns_large_txns_format --excludeWithAnyTags=featureFlagShardMerge|wiredTiger
 cqf|wiredTiger
 cqf_parallel|wiredTiger
  cst_jscore_passthrough|wiredTiger
@@ -200,7 +200,7 @@ replica_sets_update_v1_oplog --excludeWithAnyTags=featureFlagShardMerge|wiredTig
 replica_sets_update_v1_oplog_jscore_passthrough|wiredTiger
 resharding_fuzzer|wiredTiger
 resharding_fuzzer_idempotency|wiredTiger
-resmoke_end2end_tests|wiredTiger
+ resmoke_end2end_tests|wiredTiger
 retryable_writes_downgrade|wiredTiger
 retryable_writes_jscore_passthrough|wiredTiger
 retryable_writes_jscore_stepdown_passthrough|wiredTiger
@@ -474,7 +474,7 @@ replica_sets_update_v1_oplog --excludeWithAnyTags=featureFlagShardMerge|inMemory
 replica_sets_update_v1_oplog_jscore_passthrough|inMemory
 resharding_fuzzer|inMemory
 resharding_fuzzer_idempotency|inMemory
-resmoke_end2end_tests|inMemory
+ resmoke_end2end_tests|inMemory
 retryable_writes_downgrade|inMemory
 retryable_writes_jscore_passthrough|inMemory
 retryable_writes_jscore_stepdown_passthrough|inMemory

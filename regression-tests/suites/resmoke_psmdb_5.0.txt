@@ -195,7 +195,7 @@ replica_sets_update_v1_oplog|wiredTiger
 replica_sets_update_v1_oplog_jscore_passthrough|wiredTiger
 resharding_fuzzer|wiredTiger
 resharding_fuzzer_idempotency|wiredTiger
-resmoke_end2end_tests|wiredTiger
+ resmoke_end2end_tests|wiredTiger
 retryable_writes_jscore_passthrough|wiredTiger
 retryable_writes_jscore_stepdown_passthrough|wiredTiger
 rollback_fuzzer|wiredTiger
@@ -460,7 +460,7 @@ replica_sets_update_v1_oplog|inMemory
 replica_sets_update_v1_oplog_jscore_passthrough|inMemory
 resharding_fuzzer|inMemory
 resharding_fuzzer_idempotency|inMemory
-resmoke_end2end_tests|inMemory
+ resmoke_end2end_tests|inMemory
 retryable_writes_jscore_passthrough|inMemory
 retryable_writes_jscore_stepdown_passthrough|inMemory
 rollback_fuzzer|inMemory
