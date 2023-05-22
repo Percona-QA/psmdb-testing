@@ -48,6 +48,8 @@ def start_cluster(cluster,newcluster,request):
     try:
         cluster.destroy()
         newcluster.destroy()
+        os.chmod("/backups",0o777)
+        os.system("rm -rf /backups/*")
         cluster.create()
         cluster.setup_pbm()
         newcluster.create()
@@ -106,3 +108,20 @@ def test_incremental(start_cluster,cluster,newcluster):
     assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
+
+@pytest.mark.timeout(600,func_only=True)
+def test_external(start_cluster,cluster,newcluster):
+    cluster.check_pbm_status()
+    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
+    backup = cluster.external_backup_start()
+    cluster.external_backup_copy(backup)
+    cluster.external_backup_finish(backup)
+    cluster.destroy()
+
+    newcluster.make_resync()
+    restore=newcluster.external_restore_start(backup=backup)
+    newcluster.external_restore_copy(backup)
+    newcluster.external_restore_finish(restore)
+    assert pymongo.MongoClient(newcluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
+    Cluster.log("Finished successfully")
