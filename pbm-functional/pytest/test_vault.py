@@ -62,7 +62,7 @@ def test_incremental(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     Cluster.log("Finished successfully")
 
-
+@pytest.mark.testcase(test_case_key="T239", test_step_key=1)
 @pytest.mark.timeout(600,func_only=True)
 def test_external(start_cluster,cluster):
     cluster.check_pbm_status()

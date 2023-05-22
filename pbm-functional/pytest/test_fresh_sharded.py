@@ -108,7 +108,7 @@ def test_incremental(start_cluster,cluster,newcluster):
     assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-
+@pytest.mark.testcase(test_case_key="T238", test_step_key=1)
 @pytest.mark.timeout(600,func_only=True)
 def test_external(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
