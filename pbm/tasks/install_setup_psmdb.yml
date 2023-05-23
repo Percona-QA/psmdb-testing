@@ -1,4 +1,7 @@
-# This task installs all the PSMDB packages without using the meta package
+# This task installs all the necessary packages and configures PSMDB
+# 1) PSMDB version should be defined in psmdb_to_test env using format:
+# psmdb-60 for PSMDB 6.0+ / psmdb-50 for PSMDB 5.0+ / etc.
+# 2) Package percona-release should be installed and required PSMDB repo should be enabled beforehand
 
 - set_fact:
     psmdb_mongosh: "{{ lookup('env', 'psmdb_to_test').split('-')[1] }}"
@@ -70,3 +73,18 @@
     dest: /usr/bin/mongo
     state: link
   when: psmdb_mongosh >= "60"
+
+- name: stop mongod service
+  service: name=mongod state=stopped
+
+- name: add replica set name into mongod config
+  replace:
+    path: /etc/mongod.conf
+    regexp: '^#replication:'
+    replace: 'replication:\n  replSetName: "rs1"'
+
+- name: start mongod service
+  service: name=mongod state=started
+
+- name: initiate mongod replica set
+  command: mongo --eval 'rs.initiate()'
