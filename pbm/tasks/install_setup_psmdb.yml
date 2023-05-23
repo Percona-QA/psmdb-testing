@@ -1,10 +1,15 @@
-# This task installs all the necessary packages and configures PSMDB
-# 1) PSMDB version should be defined in psmdb_to_test env using format:
-# psmdb-60 for PSMDB 6.0+ / psmdb-50 for PSMDB 5.0+ / etc.
-# 2) Package percona-release should be installed and required PSMDB repo should be enabled beforehand
+# Used by PMM, change with caution
+# This task installs all the necessary packages and configures PSMDB:
+# 1) Package percona-release should be installed and required PSMDB repo should be enabled beforehand
+# 2) PSMDB version should be passed as var using format: psmdb-60 for PSMDB 6.0+/psmdb-50 for PSMDB 5.0+/etc.
+# Can be included to another playbook like described below:
+# - name: some name for the task
+#   include_tasks: ../tasks/install_setup_psmdb.yml
+#   vars:
+#    psmdb_to_test: "psmdb-60"
 
 - set_fact:
-    psmdb_mongosh: "{{ lookup('env', 'psmdb_to_test').split('-')[1] }}"
+    psmdb_mongosh: "{{ psmdb_to_test.split('-')[1] }}"
 
 - name: install psmdb deb packages
   apt:
