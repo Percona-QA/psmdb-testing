@@ -15,7 +15,7 @@
   when: lookup('env', 'install_repo') != "main" and lookup('env', 'install_repo') != "tools"
 
 - name: setup pbm repo with percona-release
-  command: percona-release enable pbm                   
+  command: percona-release enable pbm
   vars:
     install_repo: "{{ lookup('env', 'install_repo') }}"
   when: lookup('env', 'install_repo') == "main"
@@ -26,24 +26,8 @@
     install_repo: "{{ lookup('env', 'install_repo') }}"
   when: lookup('env', 'install_repo') == "tools"
 
-
 - name: include tasks for PSMDB install
-  include_tasks: install_psmdb_full.yml
-
-- name: stop mongod service
-  service: name=mongod state=stopped
-
-- name: add replica set name into mongod config
-  replace:
-    path: /etc/mongod.conf
-    regexp: '^#replication:'
-    replace: 'replication:\n  replSetName: "rs1"'
-
-- name: start mongod service
-  service: name=mongod state=started
-
-- name: initiate mongod replica set
-  command: mongo --eval 'rs.initiate()'
+  include_tasks: ../../tasks/install_setup_psmdb.yml
 
 - name: install PBM new deb packages
   apt:
