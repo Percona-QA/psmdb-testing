@@ -846,6 +846,7 @@ class Cluster:
             client.close()
             Cluster.log("Stopping balancer: " + str(result))
             self.stop_mongos()
+        self.stop_arbiters()
         backup_name = kwargs.get('backup', "")
         n = testinfra.get_host("docker://" + self.pbm_cli)
         result = n.check_output("pbm restore --external " + backup_name)
@@ -862,6 +863,7 @@ class Cluster:
                 n.check_output("rm -rf /var/lib/mongo/*")
                 files="/backups/" + backup + "/" + rsname + "/*"
                 n.check_output("cp -rp "  + files + " /var/lib/mongo/")
+                n.check_output("touch /var/lib/mongo/pbm.restore.log && chown mongodb /var/lib/mongo/pbm.restore.log")
                 Cluster.log("Copying files " + files + " to host " + node['host'])
 
             for shard in self.config['shards']:
@@ -870,16 +872,20 @@ class Cluster:
                     n = testinfra.get_host("docker://" + node['host'])
                     n.check_output("rm -rf /var/lib/mongo/*")
                     files="/backups/" + backup + "/" + rsname + "/*"
-                    n.check_output("cp -rp "  + files + " /var/lib/mongo/")
-                    Cluster.log("Copying files " + files + " to host " + node['host'])
+                    if node['host'] not in self.arbiter_hosts:
+                        n.check_output("cp -rp "  + files + " /var/lib/mongo/")
+                        n.check_output("touch /var/lib/mongo/pbm.restore.log && chown mongodb /var/lib/mongo/pbm.restore.log")
+                        Cluster.log("Copying files " + files + " to host " + node['host'])
         else:
             rsname = self.config['_id']
             for node in self.config['members']:
                 n = testinfra.get_host("docker://" + node['host'])
                 n.check_output("rm -rf /var/lib/mongo/*")
                 files="/backups/" + backup + "/" + rsname + "/*"
-                n.check_output("cp -rp "  + files + " /var/lib/mongo/")
-                Cluster.log("Copying files " + files + " to host " + node['host'])
+                if node['host'] not in self.arbiter_hosts:
+                    n.check_output("cp -rp "  + files + " /var/lib/mongo/")
+                    n.check_output("touch /var/lib/mongo/pbm.restore.log && chown mongodb /var/lib/mongo/pbm.restore.log")
+                    Cluster.log("Copying files " + files + " to host " + node['host'])
 
     def external_restore_finish(self, restore):
         n = testinfra.get_host("docker://" + self.pbm_cli)

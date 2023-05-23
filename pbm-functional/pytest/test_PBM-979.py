@@ -142,3 +142,34 @@ def test_incremental(start_cluster,cluster):
         assert 'buildIndexes' not in member or member['buildIndexes'] == rs_config['members'][index]['buildIndexes']
     Cluster.log("Finished successfully")
 
+@pytest.mark.testcase(test_case_key="T240", test_step_key=1)
+@pytest.mark.timeout(600,func_only=True)
+def test_external(start_cluster,cluster):
+    time.sleep(5)
+    cluster.check_pbm_status()
+    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
+    backup = cluster.external_backup_start()
+    result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
+    assert int(result.deleted_count) == len(documents)
+    cluster.external_backup_copy(backup)
+    cluster.external_backup_finish(backup)
+    time.sleep(10)
+    restore=cluster.external_restore_start(backup=backup)
+    cluster.external_restore_copy(backup)
+    cluster.external_restore_finish(restore)
+    time.sleep(5)
+    cluster.check_pbm_status()
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    Cluster.log("Cluster config: \n" + str(cluster.config))
+    rs_config = pymongo.MongoClient(cluster.connection).admin.command('replSetGetConfig')['config']
+    Cluster.log("RS config after restore: \n" + str(rs_config))
+    for member in cluster.config['members']:
+        index = cluster.config['members'].index(member)
+        assert member['host'] in rs_config['members'][index]['host']
+        assert 'priority' not in member or member['priority'] == rs_config['members'][index]['priority']
+        assert 'hidden' not in member or member['hidden'] == rs_config['members'][index]['hidden']
+        assert 'votes' not in member or member['votes'] == rs_config['members'][index]['votes']
+        assert 'secondaryDelaySecs' not in member or member['secondaryDelaySecs'] == rs_config['members'][index]['secondaryDelaySecs']
+        assert 'slaveDelay' not in member or member['slaveDelay'] == rs_config['members'][index]['slaveDelay']
+        assert 'buildIndexes' not in member or member['buildIndexes'] == rs_config['members'][index]['buildIndexes']
+    Cluster.log("Finished successfully")
