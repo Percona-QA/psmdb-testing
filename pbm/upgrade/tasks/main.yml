@@ -59,6 +59,8 @@
 
 - name: include tasks for installing and PSMDB
   include_tasks: ../../tasks/install_setup_psmdb.yml
+  vars:
+    psmdb_to_test: "{{ lookup('env', 'psmdb_to_test') }}"
 
 - name: Print PBM debian package name
   debug:
