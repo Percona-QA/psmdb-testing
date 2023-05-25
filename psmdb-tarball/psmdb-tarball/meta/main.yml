@@ -1,5 +1,7 @@
 ---
 galaxy_info:
+  role_name: psmdb_tarball
+  namespace: psmdb
   author: your name
   description: your description
   company: your company (optional)

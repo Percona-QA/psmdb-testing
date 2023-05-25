@@ -10,10 +10,12 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
 
 BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
             'mongofiles', 'mongoimport', 'mongorestore', 'mongotop', 'mongostat']
+
 tarball_url = os.environ["TARBALL"]
 match_exp_version = re.search(r'server-mongodb-(\d+\.\d+\.\d+-\d+)', tarball_url)
 
 JSTESTS = ['test_kerberos_simple.js','test_ldap_simple.js']
+SUITES = ['multiversion_kmip', 'multiversion_vault']
 
 @pytest.mark.parametrize("binary", BINARIES)
 def test_binary_version(host, binary):
@@ -22,9 +24,16 @@ def test_binary_version(host, binary):
 
 @pytest.mark.parametrize("jstest", JSTESTS)
 def test_jstests(host, jstest):
-    cmd = "cd /percona-server-mongodb && python3 buildscripts/resmoke.py run /psmdb-testing/jstests/"  + jstest 
+    cmd = "cd /percona-server-mongodb && python3 buildscripts/resmoke.py run /package-testing/jstests/"  + jstest
     with host.sudo():
         result = host.run(cmd)
         print(result.stderr)
     assert result.rc == 0, result.stdout
 
+@pytest.mark.parametrize("suites", SUITES)
+def test_suites(host, suites):
+    cmd = "cd /percona-server-mongodb && python3 buildscripts/resmoke.py run --suite "  + suites
+    with host.sudo():
+        result = host.run(cmd)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout

@@ -43,7 +43,7 @@
 - name: Clone psmdb-testing repo
   git: 
     repo: 'https://github.com/Percona-QA/psmdb-testing.git'
-    dest: /psmdb-testing
+    dest: /package-testing
     version: "main"
 
 - name: Create mongod symlink inside the workdir for 4.2 support
@@ -175,3 +175,22 @@
     path: /percona-server-mongodb/.resmoke_mongo_version.yml
     line: "mongo_version: {{mongodb_ver[0]}}"
     create: yes
+
+- name: Setup multiversion
+  shell: python3 buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 4.2 4.4 5.0 6.0
+  args:
+    chdir: /percona-server-mongodb
+  when: not ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22" )
+
+- name: Setup multiversion
+  shell: python3 buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0
+  args:
+    chdir: /percona-server-mongodb
+  when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22"
+
+- name: Fix test
+  shell: sed -E 's/.+last-continuous.+//g' -i /percona-server-mongodb/jstests/multiVersion/genericSetFCVUsage/do_upgrade_downgrade.js
+
+- name: Copy suites
+  shell: cp -rp /package-testing/suites/* /percona-server-mongodb/buildscripts/resmokeconfig/suites/
+  ignore_errors: true

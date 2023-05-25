@@ -127,3 +127,8 @@
     remote_src: yes
     src: "/vault_workdir/root_token"
     dest: "/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"
+
+- name: Ensure token has correct permissions
+  file:
+    path: "/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"                                            
+    mode: '0400'
