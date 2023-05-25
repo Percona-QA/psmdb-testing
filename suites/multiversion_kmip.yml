@@ -1,0 +1,18 @@
+test_kind: js_test
+
+selector:
+  roots:
+  - jstests/multiVersion/genericSetFCVUsage/do_upgrade_downgrade.js
+
+executor:
+  config:
+    shell_options:
+      nodb: ''
+      global_vars:
+        TestData:
+          enableEncryption: ''
+          kmipServerName: 127.0.0.1
+          kmipPort: 5696
+          kmipServerCAFile: /pykmip_workdir/ca.crt
+          kmipClientCertificateFile: /pykmip_workdir/mongod.pem
+          encryptionCipherMode: AES256-CBC
