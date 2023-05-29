@@ -141,6 +141,13 @@
     state: present
     executable: pip3
 
+- name: Upgrade PyKMIP
+  pip:
+    name:
+      - PyKMIP
+    state: latest
+    executable: pip3
+
 - name: Fix files permissions
   shell: "find /percona-server-mongodb/jstests -type f | xargs chmod 400"
 
