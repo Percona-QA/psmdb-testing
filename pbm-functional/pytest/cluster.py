@@ -839,7 +839,7 @@ class Cluster:
         result = n.check_output("pbm backup-finish " + name + " -o json")
         Cluster.log("External backup finished: " + result)
 
-    def external_restore_start(self, **kwargs):
+    def external_restore_start(self):
         if self.layout == "sharded":
             client = pymongo.MongoClient(self.connection)
             result = client.admin.command("balancerStop")
@@ -847,9 +847,8 @@ class Cluster:
             Cluster.log("Stopping balancer: " + str(result))
             self.stop_mongos()
         self.stop_arbiters()
-        backup_name = kwargs.get('backup', "")
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output("pbm restore --external " + backup_name)
+        result = n.check_output("pbm restore --external")
         Cluster.log(result)
         restore=result.split()[2]
         Cluster.log("Restore name: " + restore)

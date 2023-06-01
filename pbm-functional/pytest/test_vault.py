@@ -73,7 +73,8 @@ def test_external(start_cluster,cluster):
     cluster.external_backup_copy(backup)
     cluster.external_backup_finish(backup)
     time.sleep(10)
-    restore=cluster.external_restore_start(backup=backup)
+
+    restore=cluster.external_restore_start()
     cluster.external_restore_copy(backup)
     cluster.external_restore_finish(restore)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)

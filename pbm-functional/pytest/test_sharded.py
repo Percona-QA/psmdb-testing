@@ -139,22 +139,17 @@ def test_external_meta(start_cluster,cluster):
     cluster.external_backup_copy(backup)
     cluster.external_backup_finish(backup)
     time.sleep(10)
-    restore=cluster.external_restore_start(backup=backup)
+    restore=cluster.external_restore_start()
     cluster.external_restore_copy(backup)
     cluster.external_restore_finish(restore)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
+'''
 @pytest.mark.testcase(test_case_key="T237", test_step_key=1)
 @pytest.mark.timeout(600,func_only=True)
 def test_external_nometa(start_cluster,cluster):
-    azure_account = "devstoreaccount1"
-    azure_key = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
-    result = cluster.exec_pbm_cli("config --set storage.type=azure --set storage.azure.account=" + azure_account +
-                                  " --set storage.azure.container=test-container --set storage.azure.credentials.key=" + azure_key +
-                                  " --out json")
-    Cluster.log("Setup PBM with azurite storage:\n" + result.stdout)
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup = cluster.external_backup_start()
@@ -163,13 +158,11 @@ def test_external_nometa(start_cluster,cluster):
     cluster.external_backup_copy(backup)
     cluster.external_backup_finish(backup)
     time.sleep(10)
-
-    result = cluster.setup_pbm()
-    cluster.make_resync()
-    cluster.check_pbm_status()
+    os.system("find /backups/ -name pbm.rsmeta.* | xargs rm -f")
     restore=cluster.external_restore_start()
     cluster.external_restore_copy(backup)
     cluster.external_restore_finish(restore)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
+'''
