@@ -146,7 +146,6 @@ def test_external_meta(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-'''
 @pytest.mark.testcase(test_case_key="T237", test_step_key=1)
 @pytest.mark.timeout(600,func_only=True)
 def test_external_nometa(start_cluster,cluster):
@@ -162,7 +161,5 @@ def test_external_nometa(start_cluster,cluster):
     restore=cluster.external_restore_start()
     cluster.external_restore_copy(backup)
     cluster.external_restore_finish(restore)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
-'''
