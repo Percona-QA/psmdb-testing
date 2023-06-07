@@ -5,6 +5,7 @@ import pymongo
 import json
 import copy
 import concurrent.futures
+import os
 from datetime import datetime
 import re
 
@@ -799,3 +800,114 @@ class Cluster:
             Cluster.log(result)
         else:
             assert False, result
+
+    def external_backup_start(self):
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        result = n.check_output("pbm backup -t external -o json")
+        backup = json.loads(result)['name']
+        Cluster.log("External backup name: " + backup)
+        timeout = time.time() + 300
+        while True:
+            status = self.get_status()
+            Cluster.log(status['running'])
+            if status['running']:
+                if status['running']['status'] == "copyReady":
+                    break
+            if time.time() > timeout:
+                assert False
+            time.sleep(1)
+        result = n.check_output("pbm describe-backup " + backup + " -o json")
+        Cluster.log("External backup status: " + result)
+        return backup
+
+    def external_backup_copy(self, name):
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        result = n.check_output("pbm describe-backup " + name + " -o json")
+        description=json.loads(result)
+        assert "replsets" in description
+
+        os.system("mkdir -p /backups/" + name)
+        for rs in description['replsets']:
+            Cluster.log("Performing backup for RS " + rs['name'] + " source node: " + rs['node'].split(':')[0])
+            n = testinfra.get_host("docker://" + rs['node'].split(':')[0])
+            dir = "/backups/" + name + "/" + rs['name'] + "/"
+            os.system("mkdir -p " + dir)
+            n.check_output("cp -rp /var/lib/mongo/* "  + dir)
+
+    def external_backup_finish(self, name):
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        result = n.check_output("pbm backup-finish " + name + " -o json")
+        Cluster.log("External backup finished: " + result)
+
+    def external_restore_start(self):
+        if self.layout == "sharded":
+            client = pymongo.MongoClient(self.connection)
+            result = client.admin.command("balancerStop")
+            client.close()
+            Cluster.log("Stopping balancer: " + str(result))
+            self.stop_mongos()
+        self.stop_arbiters()
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        result = n.check_output("pbm restore --external")
+        Cluster.log(result)
+        restore=result.split()[2]
+        Cluster.log("Restore name: " + restore)
+        return restore
+
+    def external_restore_copy(self, backup):
+        if self.layout == "sharded":
+            rsname = self.config['configserver']['_id']
+            for node in self.config['configserver']['members']:
+                n = testinfra.get_host("docker://" + node['host'])
+                n.check_output("rm -rf /var/lib/mongo/*")
+                files="/backups/" + backup + "/" + rsname + "/*"
+                n.check_output("cp -rp "  + files + " /var/lib/mongo/")
+                n.check_output("touch /var/lib/mongo/pbm.restore.log && chown mongodb /var/lib/mongo/pbm.restore.log")
+                Cluster.log("Copying files " + files + " to host " + node['host'])
+
+            for shard in self.config['shards']:
+                rsname = shard['_id']
+                for node in shard['members']:
+                    n = testinfra.get_host("docker://" + node['host'])
+                    n.check_output("rm -rf /var/lib/mongo/*")
+                    files="/backups/" + backup + "/" + rsname + "/*"
+                    if node['host'] not in self.arbiter_hosts:
+                        n.check_output("cp -rp "  + files + " /var/lib/mongo/")
+                        n.check_output("touch /var/lib/mongo/pbm.restore.log && chown mongodb /var/lib/mongo/pbm.restore.log")
+                        Cluster.log("Copying files " + files + " to host " + node['host'])
+        else:
+            rsname = self.config['_id']
+            for node in self.config['members']:
+                n = testinfra.get_host("docker://" + node['host'])
+                n.check_output("rm -rf /var/lib/mongo/*")
+                files="/backups/" + backup + "/" + rsname + "/*"
+                if node['host'] not in self.arbiter_hosts:
+                    n.check_output("cp -rp "  + files + " /var/lib/mongo/")
+                    n.check_output("touch /var/lib/mongo/pbm.restore.log && chown mongodb /var/lib/mongo/pbm.restore.log")
+                    Cluster.log("Copying files " + files + " to host " + node['host'])
+
+    def external_restore_finish(self, restore):
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        result = n.check_output("pbm restore-finish " + restore + " -c /etc/pbm.conf")
+        Cluster.log(result)
+        timeout = time.time() + 300
+        while True:
+            result = n.check_output("pbm describe-restore " + restore + " -c /etc/pbm.conf -o json")
+            status = json.loads(result)
+            Cluster.log(status['status'])
+            if status['status']=='done':
+                Cluster.log(status)
+                break
+            if time.time() > timeout:
+                assert False
+            time.sleep(1)
+
+        self.restart()
+        self.restart_pbm_agents()
+        self.make_resync()
+        self.check_pbm_status()
+        if self.layout == "sharded":
+            self.start_mongos()
+            client = pymongo.MongoClient(self.connection)
+            result = client.admin.command("balancerStart")
+            Cluster.log("Starting balancer: " + str(result))
