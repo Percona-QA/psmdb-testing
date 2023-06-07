@@ -13,6 +13,7 @@ platforms:
     root_device_name: xvda
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
+      job-name: ${JOB_NAME}
 provisioner:
   name: ansible
   log: True
