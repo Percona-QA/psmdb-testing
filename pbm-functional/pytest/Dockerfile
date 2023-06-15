@@ -1,5 +1,5 @@
 ARG PSMDB=percona/percona-server-mongodb
-ARG GO_VER=latest
+ARG GO_VER=bullseye
 
 FROM alpine as x509
 USER root
