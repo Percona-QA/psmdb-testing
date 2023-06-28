@@ -1,6 +1,6 @@
 FROM debian as builder     
 ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
-ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
+ENV CMAKE_CXX_FLAGS=" -stdlib=libc++ -Wno-error=deprecated-declarations -Wno-error=uninitialized "
 ENV AWS_LIBS=/tmp/lib/aws
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++
@@ -41,7 +41,7 @@ RUN strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongo && \
 
 FROM debian
 ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
-ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
+ENV CMAKE_CXX_FLAGS=" -stdlib=libc++ -Wno-error=deprecated-declarations -Wno-error=uninitialized "
 ENV AWS_LIBS=/tmp/lib/aws
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++
