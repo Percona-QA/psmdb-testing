@@ -2,6 +2,8 @@ FROM debian as builder
 ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
 ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
 ENV AWS_LIBS=/tmp/lib/aws
+ENV CC=/usr/bin/clang
+ENV CXX=/usr/bin/clang++
 ARG psm_ver=7.0.0
 ARG psm_release=0
 ARG branch=v7.0
@@ -28,7 +30,7 @@ RUN cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
     cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="$AWS_LIBS" && \
     make install && cd /opt && rm -rf aws-sdk-cpp
 RUN cd /opt/percona-server-mongodb/ && \
-    buildscripts/scons.py MONGO_VERSION=$psm_ver -j8 --disable-warnings-as-errors --ssl --opt=on --use-sasl-client \
+    buildscripts/scons.py MONGO_VERSION=$psm_ver CC=$CC CXX=$CXX CXXFLAGS="-stdlib=libc++" LINKFLAGS="-stdlib=libc++" -j8 --disable-warnings-as-errors --ssl --opt=on --use-sasl-client \
                           --wiredtiger --audit --inmemory --hotbackup CPPPATH="$AWS_LIBS/include" LIBPATH="$AWS_LIBS/lib" \
                           install-mongod install-mongos install-mongo install-dbtest && \
     buildscripts/scons.py MONGO_VERSION=$psm_ver -j8 --disable-warnings-as-errors build/install/bin/wt
@@ -41,6 +43,8 @@ FROM debian
 ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
 ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
 ENV AWS_LIBS=/tmp/lib/aws
+ENV CC=/usr/bin/clang
+ENV CXX=/usr/bin/clang++
 ARG psm_ver=7.0.0
 ARG psm_release=0
 ARG branch=v7.0
