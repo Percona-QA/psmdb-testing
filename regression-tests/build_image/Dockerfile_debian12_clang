@@ -4,6 +4,7 @@ ENV CMAKE_CXX_FLAGS=" -stdlib=libc++ -Wno-error=deprecated-declarations -Wno-err
 ENV AWS_LIBS=/tmp/lib/aws
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++
+ENV LDFLAGS="-stdlib=libc++"
 ARG psm_ver=7.0.0
 ARG psm_release=0
 ARG branch=v7.0
@@ -45,6 +46,7 @@ ENV CMAKE_CXX_FLAGS=" -stdlib=libc++ -Wno-error=deprecated-declarations -Wno-err
 ENV AWS_LIBS=/tmp/lib/aws
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++
+ENV LDFLAGS="-stdlib=libc++"
 ARG psm_ver=7.0.0
 ARG psm_release=0
 ARG branch=v7.0
