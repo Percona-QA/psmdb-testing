@@ -72,7 +72,9 @@ ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-t
 RUN find jstests -type f | xargs chmod 400 && \
     echo "mongo_version: \"$psm_ver-$psm_release\"" > .resmoke_mongo_version.yml && \
     pip3 install --break-system-packages --upgrade wrapt && \
-    cp /usr/bin/dbtest .
+    cp /usr/bin/dbtest . && \
+    support-files/ldap-sasl/deploy_ldap_and_sasl.sh || true && \
+    echo "START=yes" >> /etc/default/saslauthd    
 ENV PATH="${PATH}:/data/multiversion"
 ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
 ENV TZ=America/New_York
