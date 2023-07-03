@@ -30,11 +30,12 @@ RUN cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
 RUN cd /opt/percona-server-mongodb/ && \
     buildscripts/scons.py MONGO_VERSION=$psm_ver -j8 --disable-warnings-as-errors --ssl --opt=on --use-sasl-client \
                           --wiredtiger --audit --inmemory --hotbackup CPPPATH="$AWS_LIBS/include" LIBPATH="$AWS_LIBS/lib" \
-                          install-mongod install-mongos install-mongo install-dbtest && \
+                          install-mongod install-mongos install-mongo install-mongobridge install-dbtest && \
     buildscripts/scons.py MONGO_VERSION=$psm_ver -j8 --disable-warnings-as-errors build/install/bin/wt
 RUN strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongo && \
     strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongod && \
     strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongos && \
+    strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongobridge && \
     strip --strip-debug /opt/percona-server-mongodb/build/install/bin/dbtest    
 
 FROM debian
