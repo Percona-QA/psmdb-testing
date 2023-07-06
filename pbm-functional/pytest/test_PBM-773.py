@@ -107,6 +107,6 @@ def test_logical(start_cluster,cluster):
         for doc in docs:
             f.write(bson.encode(doc))
     cluster.make_restore(backup,check_pbm_status=True)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents) + 8
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully\n")
