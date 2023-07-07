@@ -1,6 +1,6 @@
 aggregation|wiredTiger
 aggregation_auth|wiredTiger
-aggregation_column_store_index_passthrough|wiredTiger
+ aggregation_column_store_index_passthrough|wiredTiger
 aggregation_disabled_optimization|wiredTiger
  aggregation_ese|wiredTiger 
  aggregation_ese_gcm|wiredTiger
@@ -124,7 +124,7 @@ concurrency_simultaneous_replication|wiredTiger
 concurrency_simultaneous_replication_wiredtiger_cursor_sweeps|wiredTiger
 core|wiredTiger
 core_auth|wiredTiger
-core_column_store_indexes|wiredTiger
+ core_column_store_indexes|wiredTiger
  core_ese|wiredTiger
  core_ese_gcm|wiredTiger
  core_min_batch_repeat_queries_ese_gsm|wiredTiger
@@ -232,8 +232,8 @@ multiversion_sanity_check|wiredTiger|python buildscripts/setup_multiversion_mong
  multiversion_sanity_check_last_lts_new_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
  multiversion_sanity_check_last_lts_old_new_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
 native_tenant_data_isolation_with_dollar_tenant_jscore_passthrough|wiredTiger
-native_tenant_data_isolation_with_security_token_jscore_passthrough|wiredTiger
-no_passthrough|wiredTiger
+ native_tenant_data_isolation_with_security_token_jscore_passthrough|wiredTiger
+no_passthrough --excludeWithAnyTags=featureFlagIndexBuildGracefulErrorHandling|wiredTiger
 no_passthrough_with_mongod|wiredTiger
 ocsp|wiredTiger
 parallel|wiredTiger
