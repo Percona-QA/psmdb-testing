@@ -58,7 +58,7 @@ change_streams_multi_stmt_txn_mongos_passthrough|wiredTiger
 change_streams_multi_stmt_txn_passthrough|wiredTiger
 change_streams_multi_stmt_txn_sharded_collections_passthrough|wiredTiger
 change_streams_multitenant_passthrough|wiredTiger
-change_streams_multitenant_sharded_collections_passthrough|wiredTiger
+ change_streams_multitenant_sharded_collections_passthrough|wiredTiger
 change_streams_per_shard_cursor_passthrough|wiredTiger
 change_streams_secondary_reads|wiredTiger
 change_streams_secondary_reads_sharded_collections|wiredTiger
@@ -135,11 +135,11 @@ core_tde_gcm|wiredTiger
 core_txns|wiredTiger
 core_txns_large_txns_format|wiredTiger
 core_wildcard_indexes|wiredTiger
-cqf|wiredTiger
-cqf_disabled_pipeline_opt|wiredTiger
-cqf_parallel|wiredTiger
-cqf_passthrough|wiredTiger
-cst_jscore_passthrough|wiredTiger
+ cqf|wiredTiger
+ cqf_disabled_pipeline_opt|wiredTiger
+ cqf_parallel|wiredTiger
+ cqf_passthrough|wiredTiger
+cst_jscore_passthrough --excludeWithAnyTags=requires_fcv_70|wiredTiger
 cwrwc_passthrough|wiredTiger
 cwrwc_rc_majority_passthrough|wiredTiger
 cwrwc_wc_majority_passthrough|wiredTiger
@@ -220,7 +220,7 @@ multi_shard_multi_stmt_txn_jscore_passthrough|wiredTiger
 multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough|wiredTiger
 multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|wiredTiger
 multi_stmt_txn_jscore_passthrough_with_migration|wiredTiger
-multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+multiversion --excludeWithAnyTags=requires_fcv_61|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
 multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
 multiversion_auth_future_git_tag|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
 multiversion_future_git_tag|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
@@ -235,11 +235,11 @@ native_tenant_data_isolation_with_dollar_tenant_jscore_passthrough|wiredTiger
  native_tenant_data_isolation_with_security_token_jscore_passthrough|wiredTiger
 no_passthrough --excludeWithAnyTags=featureFlagIndexBuildGracefulErrorHandling|wiredTiger
 no_passthrough_with_mongod|wiredTiger
-ocsp|wiredTiger
+ocsp --jobs=1|wiredTiger
 parallel|wiredTiger
 percona_no_passthrough_with_mongod|wiredTiger
 query_golden_classic|wiredTiger
-query_golden_cqf|wiredTiger
+ query_golden_cqf|wiredTiger
 ratelimit|wiredTiger
 read_concern_linearizable_passthrough|wiredTiger
 read_concern_majority_passthrough|wiredTiger
@@ -266,7 +266,7 @@ replica_sets_kill_secondaries_jscore_passthrough|wiredTiger
 replica_sets_large_txns_format|wiredTiger
 replica_sets_large_txns_format_jscore_passthrough|wiredTiger
  replica_sets_last_continuous|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
-replica_sets_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+replica_sets_last_lts --excludeWithAnyTags=requires_fcv_62,requires_fcv_70|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
 replica_sets_max_mirroring|wiredTiger
 replica_sets_max_mirroring_large_txns_format|wiredTiger
  replica_sets_max_mirroring_large_txns_format_ese|wiredTiger
@@ -345,12 +345,12 @@ sharding_jscore_passthrough|wiredTiger
  sharding_jscore_passthrough_last_lts_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
 sharding_jscore_passthrough_with_config_shard|wiredTiger
  sharding_last_continuous|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
-sharding_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
-sharding_last_lts_mongos_and_mixed_shards|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
-sharding_max_mirroring|wiredTiger
-sharding_max_mirroring_opportunistic_secondary_targeting|wiredTiger
-sharding_max_mirroring_opportunistic_secondary_targeting_ese|wiredTiger
-sharding_max_mirroring_opportunistic_secondary_targeting_ese_gcm|wiredTiger
+sharding_last_lts --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+sharding_last_lts_mongos_and_mixed_shards --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+sharding_max_mirroring --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70|wiredTiger
+sharding_max_mirroring_opportunistic_secondary_targeting --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70|wiredTiger
+ sharding_max_mirroring_opportunistic_secondary_targeting_ese|wiredTiger
+ sharding_max_mirroring_opportunistic_secondary_targeting_ese_gcm|wiredTiger
 sharding_opportunistic_secondary_targeting|wiredTiger
 sharding_tde_cbc|wiredTiger
 sharding_tde_gcm|wiredTiger
