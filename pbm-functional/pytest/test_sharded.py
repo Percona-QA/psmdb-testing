@@ -115,6 +115,31 @@ def test_physical(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
+@pytest.mark.testcase(test_case_key="T244", test_step_key=1)
+@pytest.mark.timeout(600, func_only=True)
+def test_physical_pitr(start_cluster,cluster):
+    cluster.check_pbm_status()
+    cluster.make_backup("logical")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
+    backup=cluster.make_backup("physical")
+    time.sleep(30)
+    pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_many(documents)
+    pymongo.MongoClient(cluster.connection)["test"]["test3"].insert_many(documents)
+    time.sleep(30)
+    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    backup="--time=" + pitr + " --base-snapshot=" + backup
+    Cluster.log("Time for PITR is: " + pitr)
+    time.sleep(60)
+    cluster.disable_pitr()
+    time.sleep(10)
+    cluster.make_restore(backup,restart_cluster=True,check_pbm_status=True)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test2"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test3"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
+    Cluster.log("Finished successfully")
+
 @pytest.mark.timeout(300,func_only=True)
 def test_incremental(start_cluster,cluster):
     cluster.check_pbm_status()
