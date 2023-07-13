@@ -1,0 +1,390 @@
+aggregation|wiredTiger
+aggregation_auth|wiredTiger
+ aggregation_column_store_index_passthrough|wiredTiger
+aggregation_disabled_optimization|wiredTiger
+ aggregation_ese|wiredTiger 
+ aggregation_ese_gcm|wiredTiger
+ aggregation_expression_multiversion_fuzzer_last_continuous|wiredTiger 
+ aggregation_expression_multiversion_fuzzer_last_lts|wiredTiger
+aggregation_facet_unwind_passthrough|wiredTiger
+aggregation_mongos_passthrough|wiredTiger
+ aggregation_multiversion_fuzzer_last_continuous|wiredTiger
+ aggregation_multiversion_fuzzer_last_lts|wiredTiger
+aggregation_one_shard_sharded_collections|wiredTiger
+aggregation_read_concern_majority_passthrough|wiredTiger
+aggregation_repeat_queries|wiredTiger
+aggregation_secondary_reads|wiredTiger
+aggregation_sharded_collections_causally_consistent_passthrough|wiredTiger
+aggregation_sharded_collections_passthrough|wiredTiger
+aggregation_tde_cbc|wiredTiger
+aggregation_tde_gcm|wiredTiger
+analyze_shard_key_jscore_passthrough|wiredTiger
+audit|wiredTiger
+auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+auth_audit|wiredTiger
+backup|wiredTiger
+backup_tde_cbc|wiredTiger
+backup_tde_gcm|wiredTiger
+benchmarks|wiredTiger
+benchmarks_abt|wiredTiger
+benchmarks_abt_lowering|wiredTiger
+benchmarks_abt_path_lowering|wiredTiger
+benchmarks_bsoncolumn|wiredTiger
+benchmarks_expression|wiredTiger
+benchmarks_expression_sbe|wiredTiger
+benchmarks_query|wiredTiger
+benchmarks_replication|wiredTiger
+benchmarks_sharding|wiredTiger
+benchmarks_streams|wiredTiger
+ buildscripts_test|wiredTiger
+causally_consistent_hedged_reads_jscore_passthrough|wiredTiger
+causally_consistent_jscore_passthrough|wiredTiger
+causally_consistent_jscore_passthrough_auth|wiredTiger
+causally_consistent_jscore_txns_passthrough|wiredTiger
+causally_consistent_read_concern_snapshot_passthrough|wiredTiger
+change_streams|wiredTiger
+change_streams_downgrade|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ change_streams_downgrade_last_continuous_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ change_streams_downgrade_last_lts_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ change_streams_last_continuous_new_new_old|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ change_streams_last_continuous_new_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ change_streams_last_continuous_old_new_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ change_streams_last_lts_new_new_old|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ change_streams_last_lts_new_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ change_streams_last_lts_old_new_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+change_streams_mongos_passthrough|wiredTiger
+change_streams_mongos_sessions_passthrough|wiredTiger
+change_streams_multi_stmt_txn_mongos_passthrough|wiredTiger
+change_streams_multi_stmt_txn_passthrough|wiredTiger
+change_streams_multi_stmt_txn_sharded_collections_passthrough|wiredTiger
+change_streams_multitenant_passthrough|wiredTiger
+ change_streams_multitenant_sharded_collections_passthrough|wiredTiger
+change_streams_per_shard_cursor_passthrough|wiredTiger
+change_streams_secondary_reads|wiredTiger
+change_streams_secondary_reads_sharded_collections|wiredTiger
+change_streams_sharded_collections_passthrough|wiredTiger
+ change_streams_sharded_collections_passthrough_last_continuous_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ change_streams_sharded_collections_passthrough_last_lts_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+change_streams_v1_resume_token_passthrough|wiredTiger
+change_streams_v1_resume_token_sharded_collections_passthrough|wiredTiger
+change_streams_whole_cluster_mongos_passthrough|wiredTiger
+change_streams_whole_cluster_passthrough|wiredTiger
+change_streams_whole_cluster_secondary_reads_passthrough|wiredTiger
+change_streams_whole_cluster_secondary_reads_sharded_collections|wiredTiger
+change_streams_whole_cluster_sharded_collections_passthrough|wiredTiger
+change_streams_whole_db_mongos_passthrough|wiredTiger
+change_streams_whole_db_passthrough|wiredTiger
+change_streams_whole_db_secondary_reads_passthrough|wiredTiger
+change_streams_whole_db_secondary_reads_sharded_collections|wiredTiger
+change_streams_whole_db_sharded_collections_passthrough|wiredTiger
+client_encrypt|wiredTiger
+clustered_collection_passthrough|wiredTiger
+concurrency|wiredTiger
+concurrency_compute_mode|wiredTiger
+concurrency_metrics|wiredTiger
+concurrency_replication|wiredTiger
+concurrency_replication_causal_consistency|wiredTiger
+ concurrency_replication_causal_consistency_ubsan|wiredTiger
+concurrency_replication_for_backup_restore|wiredTiger
+concurrency_replication_for_export_import|wiredTiger
+ concurrency_replication_last_continuous_new_new_old|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ concurrency_replication_last_continuous_new_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ concurrency_replication_last_continuous_old_new_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ concurrency_replication_last_lts_new_new_old|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ concurrency_replication_last_lts_new_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ concurrency_replication_last_lts_old_new_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+concurrency_replication_metrics|wiredTiger
+concurrency_replication_multi_stmt_txn|wiredTiger
+ concurrency_replication_multi_stmt_txn_ubsan|wiredTiger
+ concurrency_replication_ubsan|wiredTiger
+concurrency_replication_wiredtiger_cursor_sweeps|wiredTiger
+concurrency_sharded_causal_consistency|wiredTiger
+concurrency_sharded_causal_consistency_and_balancer|wiredTiger
+concurrency_sharded_clusterwide_ops_add_remove_shards|wiredTiger
+concurrency_sharded_initial_sync|wiredTiger
+concurrency_sharded_kill_primary_with_balancer|wiredTiger
+concurrency_sharded_local_read_write_multi_stmt_txn|wiredTiger
+concurrency_sharded_local_read_write_multi_stmt_txn_with_balancer|wiredTiger
+concurrency_sharded_multi_stmt_txn|wiredTiger
+concurrency_sharded_multi_stmt_txn_kill_primary|wiredTiger
+concurrency_sharded_multi_stmt_txn_terminate_primary|wiredTiger
+concurrency_sharded_multi_stmt_txn_with_balancer|wiredTiger
+concurrency_sharded_multi_stmt_txn_with_stepdowns|wiredTiger
+concurrency_sharded_replication|wiredTiger
+ concurrency_sharded_replication_last_continuous_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ concurrency_sharded_replication_last_lts_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+concurrency_sharded_replication_with_balancer|wiredTiger
+concurrency_sharded_terminate_primary_with_balancer|wiredTiger
+concurrency_sharded_with_balancer_and_config_shard|wiredTiger
+concurrency_sharded_with_config_shard|wiredTiger
+concurrency_sharded_with_stepdowns|wiredTiger
+concurrency_sharded_with_stepdowns_and_balancer|wiredTiger
+concurrency_simultaneous|wiredTiger
+concurrency_simultaneous_replication|wiredTiger
+concurrency_simultaneous_replication_wiredtiger_cursor_sweeps|wiredTiger
+core|wiredTiger
+core_auth|wiredTiger
+ core_column_store_indexes|wiredTiger
+ core_ese|wiredTiger
+ core_ese_gcm|wiredTiger
+ core_min_batch_repeat_queries_ese_gsm|wiredTiger
+core_minimum_batch_size|wiredTiger
+core_repeat_queries|wiredTiger
+core_tde_cbc|wiredTiger
+core_tde_gcm|wiredTiger
+core_txns|wiredTiger
+core_txns_large_txns_format|wiredTiger
+core_wildcard_indexes|wiredTiger
+ cqf|wiredTiger
+ cqf_disabled_pipeline_opt|wiredTiger
+ cqf_parallel|wiredTiger
+ cqf_passthrough|wiredTiger
+cst_jscore_passthrough --excludeWithAnyTags=requires_fcv_70|wiredTiger
+cwrwc_passthrough|wiredTiger
+cwrwc_rc_majority_passthrough|wiredTiger
+cwrwc_wc_majority_passthrough|wiredTiger
+decimal|wiredTiger
+disk_wiredtiger|wiredTiger
+ ese|wiredTiger
+external_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+ external_auth_aws|wiredTiger
+ external_auth_oidc|wiredTiger
+failpoints|wiredTiger
+failpoints_auth|wiredTiger
+ feature_flag_multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+fle|wiredTiger
+fle2|wiredTiger
+fle2_high_cardinality|wiredTiger
+fle2_query_analysis|wiredTiger
+fle2_sharding|wiredTiger
+fle2_sharding_high_cardinality|wiredTiger
+ free_monitoring|wiredTiger
+ generational_fuzzer|wiredTiger
+ generational_fuzzer_replication|wiredTiger
+ generational_fuzzer_replication_last_continuous|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ generational_fuzzer_replication_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ initial_sync_fuzzer|wiredTiger
+ initial_sync_fuzzer_last_continuous|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ initial_sync_fuzzer_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+integration_tests_replset|wiredTiger
+integration_tests_replset_ssl_auth|wiredTiger
+integration_tests_sharded|wiredTiger
+integration_tests_standalone|wiredTiger
+integration_tests_standalone_audit|wiredTiger
+json_schema|wiredTiger
+ jstestfuzz|wiredTiger
+ jstestfuzz_interrupt|wiredTiger
+ jstestfuzz_interrupt_replication|wiredTiger
+ jstestfuzz_replication|wiredTiger
+ jstestfuzz_replication_continuous_stepdown|wiredTiger
+ jstestfuzz_replication_fcbis|wiredTiger
+ jstestfuzz_replication_initsync|wiredTiger
+ jstestfuzz_replication_last_continuous_new_new_old|wiredTiger
+ jstestfuzz_replication_last_continuous_new_old_new|wiredTiger
+ jstestfuzz_replication_last_continuous_old_new_new|wiredTiger
+ jstestfuzz_replication_last_lts_new_new_old|wiredTiger
+ jstestfuzz_replication_last_lts_new_old_new|wiredTiger
+ jstestfuzz_replication_last_lts_old_new_new|wiredTiger
+ jstestfuzz_replication_session|wiredTiger
+ jstestfuzz_replication_write_conflicts|wiredTiger
+ jstestfuzz_sharded|wiredTiger
+ jstestfuzz_sharded_causal_consistency|wiredTiger
+ jstestfuzz_sharded_continuous_stepdown|wiredTiger
+ jstestfuzz_sharded_last_continuous_new_old_old_new|wiredTiger
+ jstestfuzz_sharded_last_lts_new_old_old_new|wiredTiger
+ jstestfuzz_sharded_session|wiredTiger
+knobs|wiredTiger
+ldapauthz|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+libfuzzer|wiredTiger|buildscripts/scons.py MONGO_VERSION=7.0.0 CC=/usr/bin/clang CXX=/usr/bin/clang++ --disable-warnings-as-errors --ssl --use-sasl-client --wiredtiger --audit --inmemory --hotbackup CPPPATH=/tmp/lib/aws/include LIBPATH=/tmp/lib/aws/lib LLVM_SYMBOLIZER=/usr/lib/llvm-14/bin/llvm-symbolizer --dbg=on --opt=on --allocator=system --sanitize=fuzzer --ocsp-stapling=off -j8 install-fuzzertests
+libunwind|wiredTiger
+ logging_perf|wiredTiger
+logical_session_cache_replication_100ms_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_replication_10sec_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_replication_1sec_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_replication_default_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_sharding_100ms_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_sharding_100ms_refresh_jscore_txns_passthrough|wiredTiger
+logical_session_cache_sharding_10sec_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_sharding_1sec_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_sharding_default_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_standalone_100ms_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_standalone_10sec_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_standalone_1sec_refresh_jscore_passthrough|wiredTiger
+logical_session_cache_standalone_default_refresh_jscore_passthrough|wiredTiger
+mongos_test|wiredTiger
+ mql_model_haskell|wiredTiger
+ mql_model_mongod|wiredTiger
+ mqlrun|wiredTiger
+multi_shard_local_read_write_multi_stmt_txn_jscore_passthrough|wiredTiger
+multi_shard_multi_stmt_txn_jscore_passthrough|wiredTiger
+multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough|wiredTiger
+multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|wiredTiger
+multi_stmt_txn_jscore_passthrough_with_migration|wiredTiger
+multiversion --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+multiversion_auth --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+multiversion_auth_future_git_tag --excludeWithAnyTags=requires_fcv_61,featureFlagToaster,featureFlagSpoon,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+multiversion_future_git_tag --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+multiversion_sanity_check|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ multiversion_sanity_check_last_continuous_new_new_old|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ multiversion_sanity_check_last_continuous_new_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ multiversion_sanity_check_last_continuous_old_new_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ multiversion_sanity_check_last_lts_new_new_old|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ multiversion_sanity_check_last_lts_new_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ multiversion_sanity_check_last_lts_old_new_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+native_tenant_data_isolation_with_dollar_tenant_jscore_passthrough|wiredTiger
+ native_tenant_data_isolation_with_security_token_jscore_passthrough|wiredTiger
+no_passthrough --excludeWithAnyTags=featureFlagIndexBuildGracefulErrorHandling|wiredTiger
+no_passthrough_with_mongod|wiredTiger
+ocsp --jobs=1|wiredTiger
+parallel|wiredTiger
+percona_no_passthrough_with_mongod|wiredTiger
+query_golden_classic|wiredTiger
+ query_golden_cqf|wiredTiger
+ratelimit|wiredTiger
+read_concern_linearizable_passthrough|wiredTiger
+read_concern_majority_passthrough|wiredTiger
+read_only|wiredTiger
+read_only_sharded|wiredTiger
+redaction|wiredTiger
+replica_sets|wiredTiger
+replica_sets_api_version_jscore_passthrough|wiredTiger
+replica_sets_auth|wiredTiger
+ replica_sets_ese|wiredTiger
+ replica_sets_ese_gcm|wiredTiger
+ replica_sets_fcbis_jscore_passthrough|wiredTiger
+replica_sets_initsync_jscore_passthrough|wiredTiger
+replica_sets_initsync_static_jscore_passthrough|wiredTiger
+replica_sets_jscore_passthrough|wiredTiger
+ replica_sets_jscore_passthrough_last_continuous_new_new_old|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ replica_sets_jscore_passthrough_last_continuous_new_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ replica_sets_jscore_passthrough_last_continuous_old_new_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ replica_sets_jscore_passthrough_last_lts_new_new_old|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ replica_sets_jscore_passthrough_last_lts_new_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ replica_sets_jscore_passthrough_last_lts_old_new_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+replica_sets_kill_primary_jscore_passthrough|wiredTiger
+replica_sets_kill_secondaries_jscore_passthrough|wiredTiger
+replica_sets_large_txns_format|wiredTiger
+replica_sets_large_txns_format_jscore_passthrough|wiredTiger
+ replica_sets_last_continuous|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+replica_sets_last_lts --excludeWithAnyTags=requires_fcv_62,requires_fcv_70,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+replica_sets_max_mirroring|wiredTiger
+replica_sets_max_mirroring_large_txns_format|wiredTiger
+ replica_sets_max_mirroring_large_txns_format_ese|wiredTiger
+ replica_sets_max_mirroring_large_txns_format_ese_gcm|wiredTiger
+replica_sets_multi_stmt_txn_jscore_passthrough|wiredTiger
+replica_sets_multi_stmt_txn_kill_primary_jscore_passthrough|wiredTiger
+replica_sets_multi_stmt_txn_stepdown_jscore_passthrough|wiredTiger
+replica_sets_multi_stmt_txn_terminate_primary_jscore_passthrough|wiredTiger
+replica_sets_reconfig_jscore_passthrough|wiredTiger
+replica_sets_reconfig_jscore_stepdown_passthrough|wiredTiger
+replica_sets_reconfig_kill_primary_jscore_passthrough|wiredTiger
+replica_sets_tde_cbc|wiredTiger
+replica_sets_tde_gcm|wiredTiger
+replica_sets_terminate_primary_jscore_passthrough|wiredTiger
+ resharding_fuzzer|wiredTiger
+ resharding_fuzzer_idempotency|wiredTiger
+ resmoke_end2end_tests|wiredTiger
+ resmoke_validation_tests|wiredTiger
+retryable_writes_downgrade|wiredTiger
+ retryable_writes_downgrade_last_continuous|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ retryable_writes_downgrade_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+retryable_writes_jscore_passthrough|wiredTiger
+retryable_writes_jscore_stepdown_passthrough|wiredTiger
+rollback_fuzzer|wiredTiger
+rollback_fuzzer_clean_shutdowns|wiredTiger
+ rollback_fuzzer_last_continuous|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ rollback_fuzzer_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ rollback_fuzzer_unclean_shutdowns|wiredTiger
+sasl|wiredTiger
+sdam_json_test|wiredTiger|buildscripts/scons.py MONGO_VERSION=7.0.0 --disable-warnings-as-errors --ssl --opt=size -j6 --jlink=2 --use-sasl-client --wiredtiger --audit --inmemory --hotbackup CPPPATH=/tmp/lib/aws/include LIBPATH=/tmp/lib/aws/lib build/install/bin/sdam_json_test
+ search|wiredTiger
+ search_auth|wiredTiger
+ search_pinned_connections_auth|wiredTiger
+ search_ssl|wiredTiger
+secondary_reads_passthrough|wiredTiger
+serial_run|wiredTiger
+server_selection_json_test|wiredTiger|buildscripts/scons.py MONGO_VERSION=7.0.0 --disable-warnings-as-errors --ssl --opt=size -j6 --jlink=2 --use-sasl-client --wiredtiger --audit --inmemory --hotbackup CPPPATH=/tmp/lib/aws/include LIBPATH=/tmp/lib/aws/lib build/install/bin/server_selection_json_test
+ serverless|wiredTiger
+session_jscore_passthrough|wiredTiger
+ shard_merge_causally_consistent_jscore_passthrough|wiredTiger
+ shard_merge_jscore_passthrough|wiredTiger
+ shard_merge_multi_stmt_txn_jscore_passthrough|wiredTiger
+shard_split_causally_consistent_jscore_passthrough|wiredTiger
+shard_split_jscore_passthrough|wiredTiger
+shard_split_kill_primary_jscore_passthrough|wiredTiger
+shard_split_multi_stmt_txn_jscore_passthrough|wiredTiger
+shard_split_stepdown_jscore_passthrough|wiredTiger
+shard_split_terminate_primary_jscore_passthrough|wiredTiger
+sharded_causally_consistent_jscore_passthrough|wiredTiger
+sharded_causally_consistent_jscore_txns_passthrough|wiredTiger
+sharded_causally_consistent_read_concern_snapshot_passthrough|wiredTiger
+sharded_collections_causally_consistent_jscore_txns_passthrough|wiredTiger
+sharded_collections_jscore_passthrough|wiredTiger
+ sharded_collections_jscore_passthrough_last_continuous_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ sharded_collections_jscore_passthrough_last_lts_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+sharded_collections_jscore_passthrough_with_config_shard|wiredTiger
+sharded_jscore_txns|wiredTiger
+sharded_jscore_txns_sharded_collections|wiredTiger
+sharded_multi_stmt_txn_jscore_passthrough|wiredTiger
+sharded_retryable_writes_downgrade|wiredTiger
+ sharded_retryable_writes_downgrade_last_continuous_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ sharded_retryable_writes_downgrade_last_lts_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+sharding|wiredTiger
+sharding_api_strict_passthrough|wiredTiger
+sharding_api_version_jscore_passthrough|wiredTiger
+sharding_auth|wiredTiger
+sharding_auth_audit|wiredTiger
+sharding_clustered_collections|wiredTiger
+sharding_config_shard|wiredTiger
+sharding_continuous_config_stepdown|wiredTiger
+ sharding_ese|wiredTiger
+ sharding_ese_gcm|wiredTiger
+sharding_hello_failures|wiredTiger
+sharding_jscore_passthrough|wiredTiger
+ sharding_jscore_passthrough_last_continuous_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ sharding_jscore_passthrough_last_lts_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+sharding_jscore_passthrough_with_config_shard|wiredTiger
+ sharding_last_continuous|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+sharding_last_lts --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+sharding_last_lts_mongos_and_mixed_shards --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+sharding_max_mirroring --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70|wiredTiger
+sharding_max_mirroring_opportunistic_secondary_targeting --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70|wiredTiger
+ sharding_max_mirroring_opportunistic_secondary_targeting_ese|wiredTiger
+ sharding_max_mirroring_opportunistic_secondary_targeting_ese_gcm|wiredTiger
+sharding_opportunistic_secondary_targeting|wiredTiger
+sharding_tde_cbc|wiredTiger
+sharding_tde_gcm|wiredTiger
+simulate_crash_concurrency_replication|wiredTiger
+slow1|wiredTiger
+ssl|wiredTiger
+ssl_special|wiredTiger
+ssl_x509|wiredTiger
+ streams|wiredTiger
+talk_directly_to_shardsvrs_jscore_passthrough|wiredTiger
+talk_directly_to_shardsvrs_kill_primary_jscore_passthrough|wiredTiger
+tde_cbc|wiredTiger
+tde_gcm|wiredTiger
+telemetry_passthrough|wiredTiger
+tenant_migration_causally_consistent_jscore_passthrough|wiredTiger
+tenant_migration_jscore_passthrough|wiredTiger
+tenant_migration_kill_primary_jscore_passthrough|wiredTiger
+tenant_migration_multi_stmt_txn_jscore_passthrough|wiredTiger
+tenant_migration_stepdown_jscore_passthrough|wiredTiger
+tenant_migration_terminate_primary_jscore_passthrough|wiredTiger
+tla_plus|wiredTiger|apt install -y default-jre && mkdir -p /opt/java/jdk11/bin/ && ln -s /usr/bin/java /opt/java/jdk11/bin/java && ./src/mongo/tla_plus/download-tlc.sh && cp tla2tools.jar src/mongo/tla_plus/
+ tooling_metrics_test|wiredTiger
+unittest_shell_hang_analyzer|wiredTiger
+unittests|wiredTiger
+ unittests_auth|wiredTiger
+ unittests_client|wiredTiger
+ unittests_query|wiredTiger
+ unittests_repl|wiredTiger
+ unittests_sharding|wiredTiger
+ update_fuzzer|wiredTiger
+ update_fuzzer_last_continuous|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ update_fuzzer_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ update_fuzzer_replication|wiredTiger
+ update_fuzzer_replication_last_continuous|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ update_fuzzer_replication_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+watchdog|wiredTiger|apt install -y libtool && chmod +x jstests/watchdog/charybdefs_setup.sh && jstests/watchdog/charybdefs_setup.sh
+write_concern_majority_passthrough|wiredTiger
