@@ -769,7 +769,7 @@ class Cluster:
         Cluster.log("New PBM version: " + str(ver))
 
     def get_logs(self):
-        for container in self.all_hosts:
+        for container in self.pbm_hosts:
             header = "Logs from {name}:".format(name=container)
             Cluster.log(header, '', "=" * len(header))
             try:
