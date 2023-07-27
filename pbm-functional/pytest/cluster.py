@@ -372,9 +372,11 @@ class Cluster:
     # creates backup based on type (no checking input - it's hack for situation like 'incremental --base')
     def make_backup(self, type):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        timeout = time.time() + 60
+        timeout = time.time() + 120
         while True:
-            if not self.get_status()['running']:
+            running = self.get_status()['running']
+            Cluster.log("Current operation: " + str(running))
+            if not running:
                 if type:
                     start = n.check_output(
                         'pbm backup --out=json --type=' + type)
