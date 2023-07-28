@@ -50,11 +50,9 @@ RUN yum -y install python3 python3-devel python-unversioned-command git curl \
     cd percona-server-mongodb/ && \
     git checkout $branch && git pull && \
     pip3 install --user -r etc/pip/dev-requirements.txt && \
-    rm -rf /opt/percona-server-mongodb/.git && mkdir -p /data/db 
-RUN useradd -u 1001 -r -g 0 -m -s /sbin/nologin \
-            -c "Default Application User" mongodb && \
-    chmod g+rwx /var/log/mongo && \
-    chown :0 /var/log/mongo 
+    rm -rf /opt/percona-server-mongodb/.git && mkdir -p /data/db && mkdir -p /var/lib/mongo && \
+    useradd -u 1001 -r -g 0 -m -s /sbin/nologin \
+            -c "Default Application User" mongodb
 COPY --from=builder /opt/percona-server-mongodb/build/install/bin/* /usr/bin/
 WORKDIR /opt/percona-server-mongodb
 ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/resmoke2junit.py .
