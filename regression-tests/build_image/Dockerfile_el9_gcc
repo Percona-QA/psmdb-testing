@@ -1,0 +1,68 @@
+FROM oraclelinux:9 as builder     
+ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
+ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
+ENV AWS_LIBS=/tmp/lib/aws
+ARG psm_ver=7.0.0
+ARG psm_release=0
+ARG branch=v7.0
+ARG AWS_VERSION=1.9.379
+ARG mongo_tools_tag=100.4.1
+ARG jemalloc_tag=psmdb-3.2.11-3.1
+ARG repo=https://github.com/percona/percona-server-mongodb.git
+ARG special_targets="dbtest mongo"
+WORKDIR /opt
+RUN yum -y install gcc-toolset-12 python3 python3-devel lld python-unversioned-command git cmake curl \
+                   binutils-devel openssl-devel openldap-devel krb5-devel libcurl-devel \
+                   cyrus-sasl-devel bzip2-devel zlib-devel lz4-devel xz-devel e2fsprogs-devel && \
+    git clone https://github.com/percona/percona-server-mongodb.git && \
+    cd percona-server-mongodb/ && \
+    git checkout $branch && git pull && \
+    pip3 install --user -r etc/pip/dev-requirements.txt && \
+    rm -rf /opt/percona-server-mongodb/.git && mkdir -p /data/db
+RUN source /opt/rh/gcc-toolset-12/enable && \
+    cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
+    mkdir -p /tmp/lib/aws && \
+    cd aws-sdk-cpp && git checkout $AWS_VERSION && git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="$AWS_LIBS" && \
+    make install && cd /opt && rm -rf aws-sdk-cpp
+RUN cd /opt/percona-server-mongodb/ && \
+    buildscripts/scons.py MONGO_VERSION=$psm_ver CC=/opt/rh/gcc-toolset-12/root/usr/bin/gcc CXX=/opt/rh/gcc-toolset-12/root/usr/bin/g++ \
+                          -j8 --disable-warnings-as-errors --ssl --opt=on --use-sasl-client \
+                          --wiredtiger --audit --inmemory --hotbackup CPPPATH="$AWS_LIBS/include" LIBPATH="$AWS_LIBS/lib64" \
+                          install-mongod install-mongos install-mongo install-dbtest build/install/bin/mongobridge build/install/bin/wt 
+RUN source /opt/rh/gcc-toolset-12/enable && \
+    strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongo && \
+    strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongod && \
+    strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongos && \
+    strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongobridge && \
+    strip --strip-debug /opt/percona-server-mongodb/build/install/bin/dbtest    
+
+FROM oraclelinux:9
+ARG psm_ver=7.0.0
+ARG psm_release=0
+ARG branch=v7.0
+WORKDIR /opt
+RUN yum -y install python3 python3-devel python-unversioned-command git curl \
+                   openssl-devel openldap-devel krb5-devel libcurl-devel \
+                   cyrus-sasl-devel bzip2-devel zlib-devel lz4-devel xz-devel e2fsprogs-devel && \
+    git clone https://github.com/percona/percona-server-mongodb.git && \
+    cd percona-server-mongodb/ && \
+    git checkout $branch && git pull && \
+    pip3 install --user -r etc/pip/dev-requirements.txt && \
+    rm -rf /opt/percona-server-mongodb/.git && mkdir -p /data/db && mkdir -p /var/lib/mongo && \
+    useradd -u 1001 -r -g 0 -m -s /sbin/nologin \
+            -c "Default Application User" mongodb
+COPY --from=builder /opt/percona-server-mongodb/build/install/bin/* /usr/bin/
+WORKDIR /opt/percona-server-mongodb
+ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/resmoke2junit.py .
+RUN find jstests -type f | xargs chmod 400 && \
+    echo "mongo_version: \"$psm_ver-$psm_release\"" > .resmoke_mongo_version.yml && \
+    cp /usr/bin/dbtest . 
+ENV PATH="${PATH}:/data/multiversion"
+ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
+ENV TZ=America/New_York
+ENV PORTABLE=1
+ENV USE_SSE=1
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone    
+EXPOSE 27017
