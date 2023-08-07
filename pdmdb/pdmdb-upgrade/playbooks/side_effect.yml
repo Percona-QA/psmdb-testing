@@ -9,16 +9,27 @@
   become: true
   become_method: sudo
   tasks:
+    - set_fact: to_maj_version={{ to_version.split('-')[1].split('.')[0] }}.{{ to_version.split('-')[1].split('.')[1] }}
+
+    - name: check maj version
+      debug: msg={{to_maj_version}}
+
+    - name: set compatibilty version for downgrade
+      shell: |
+        mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{to_maj_version}}" })'
+      register: set_version
+      when: from_version > to_version
+
     - name: stop services for downgrade
       service:
         name: pbm-agent
         state: stopped
-      when: from_version > to_version 
+      when: from_version > to_version
 
     - name: stop services for downgrade
       service:
         name: mongod
-        state: stopped  
+        state: stopped
       when: from_version > to_version
 
     - name: install necessary deb packages for downgrade
@@ -32,57 +43,11 @@
         - apt-utils
       when: ansible_os_family == "Debian" and from_version > to_version
 
-    - name: uninstall psmdb and pbm deb packages for downgrade
-      apt:
-        name: "{{ packages }}"
-        update_cache: yes
-        state: absent
+    - name: uninstall psmdb and pbm deb/rpm packages for downgrade
+      include_tasks: ../../tasks/remove_psmdb.yml
       vars:
-        packages:
-        - percona-backup-mongodb
-        - percona-server-mongodb
-        - percona-server-mongodb-server
-        - percona-server-mongodb-mongos
-        - percona-server-mongodb-shell
-        - percona-server-mongodb-tools
-        - percona-server-mongodb-dbg
-      when: ansible_os_family == "Debian" and from_version > to_version 
-
-    - name: uninstall psmdb and pbm rpm packages for downgrade
-      yum:
-        name: "{{ packages }}"
-        update_cache: yes
-        state: absent
-      vars:
-        packages:
-        - percona-backup-mongodb
-        - percona-server-mongodb
-        - percona-server-mongodb-server
-        - percona-server-mongodb-mongos
-        - percona-server-mongodb-shell
-        - percona-server-mongodb-tools
-        - percona-server-mongodb-debugsource
-        - percona-server-mongodb-shell-debuginfo
-        - percona-server-mongodb-tools-debuginfo
-        - percona-server-mongodb-mongos-debuginfo
-        - percona-server-mongodb-server-debuginfo
-      when: ansible_os_family == "RedHat"  and ansible_distribution_major_version == "8" and from_version > to_version
-
-    - name: uninstall psmdb and pbm rpm packages for downgrade
-      yum:
-        name: "{{ packages }}"
-        update_cache: yes
-        state: absent
-      vars:
-        packages:
-        - percona-backup-mongodb
-        - percona-server-mongodb
-        - percona-server-mongodb-server
-        - percona-server-mongodb-mongos
-        - percona-server-mongodb-shell
-        - percona-server-mongodb-tools
-        - percona-server-mongodb-debuginfo
-      when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7" and from_version > to_version
+       psmdb_version: "{{ lookup('env', 'FROM_PDMDB_VERSION') }}"
+      when: from_version > to_version
 
     - name: clean and update yum cache
       shell: |
@@ -96,54 +61,34 @@
     - name: enable new pdmdb repo
       command: percona-release enable {{ to_version }} {{ to_repo }}
 
-    - name: update psmdb deb packages
-      apt:
-        name: "{{ packages }}"
-        update_cache: yes
-        state: latest
+    - name: include tasks for installing and PSMDB
+      include_tasks: ../../tasks/install_psmdb.yml
       vars:
-        packages:
-        - percona-server-mongodb
-        - percona-server-mongodb-server
-        - percona-server-mongodb-mongos
-        - percona-server-mongodb-shell
-        - percona-server-mongodb-tools
-        - percona-server-mongodb-dbg
-      when: ansible_os_family == "Debian"
+       psmdb_version: "{{ lookup('env', 'TO_PDMDB_VERSION') }}"
 
-    - name: update psmdb rpm packages
-      yum:
-        name: "{{ packages }}"
-        update_cache: yes
-        state: latest
-      vars:
-        packages:
-        - percona-server-mongodb
-        - percona-server-mongodb-server
-        - percona-server-mongodb-mongos
-        - percona-server-mongodb-shell
-        - percona-server-mongodb-tools
-        - percona-server-mongodb-debugsource
-        - percona-server-mongodb-shell-debuginfo
-        - percona-server-mongodb-tools-debuginfo
-        - percona-server-mongodb-mongos-debuginfo
-        - percona-server-mongodb-server-debuginfo
-      when: ansible_os_family == "RedHat"  and ansible_distribution_major_version == "8"
+    - name: Check if /etc/mongod.conf.rpmsave exists
+      stat:
+        path: /etc/mongod.conf.rpmsave
+      register: stat_rpmsave
 
-    - name: update psmdb rpm packages
-      yum:
-        name: "{{ packages }}"
-        update_cache: yes
-        state: latest
-      vars:
-        packages:
-        - percona-server-mongodb
-        - percona-server-mongodb-server
-        - percona-server-mongodb-mongos
-        - percona-server-mongodb-shell
-        - percona-server-mongodb-tools
-        - percona-server-mongodb-debuginfo
-      when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7"
+    - name: If necessary replace mongod.conf with rpmsave
+      copy:
+        remote_src: yes
+        src: "/etc/mongod.conf.rpmsave"
+        dest: /etc/mongod.conf
+      when: stat_rpmsave.stat.exists
+
+    - name: Check if /etc/sysconfig/pbm-agent.rpmsave exists
+      stat:
+        path: /etc/sysconfig/pbm-agent.rpmsave
+      register: stat_pbm_rpmsave
+
+    - name: If necessary replace pbm sysconfig with rpmsave
+      copy:
+        remote_src: yes
+        src: "/etc/sysconfig/pbm-agent.rpmsave"
+        dest: /etc/sysconfig/pbm-agent
+      when: stat_pbm_rpmsave.stat.exists
 
     - name: perform daemon-reload for systemd-based os
       systemd:
@@ -151,7 +96,7 @@
       when: ansible_service_mgr == "systemd"
 
     - name: restart mongod service
-      service: 
+      service:
         name: mongod
         state: restarted
 
@@ -174,6 +119,6 @@
       when: ansible_service_mgr == "systemd"
 
     - name: restart pbm-agent service
-      service: 
+      service:
         name: pbm-agent
         state: restarted

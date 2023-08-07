@@ -1,0 +1,102 @@
+- set_fact:
+   psmdb_mongosh: "{{ psmdb_version.split('-')[1].split('.')[0] }}"
+
+- name: remove PBM deb packages
+  apt:
+   name: percona-backup-mongodb
+   state: absent
+  when: ansible_os_family == "Debian"
+
+- name: remove PBM rpm packages
+  yum:
+   name: percona-backup-mongodb
+   state: absent
+  when: ansible_os_family == "RedHat"
+
+- name: remove psmdb deb packages
+  apt:
+   name: "{{ packages }}"
+   state: absent
+  vars:
+   packages:
+   - percona-server-mongodb
+   - percona-server-mongodb-server
+   - percona-server-mongodb-mongos
+   - percona-server-mongodb-tools
+   - percona-server-mongodb-dbg
+  when: ansible_os_family == "Debian"
+
+- name: remove psmdb rpm packages
+  yum:
+   name: "{{ packages }}"
+   state: absent
+  vars:
+   packages:
+   - percona-server-mongodb
+   - percona-server-mongodb-server
+   - percona-server-mongodb-mongos
+   - percona-server-mongodb-tools
+   - percona-server-mongodb-debuginfo
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "7"
+
+- name: remove psmdb rpm packages
+  yum:
+   name: "{{ packages }}"
+   state: absent
+  vars:
+   packages:
+   - percona-server-mongodb
+   - percona-server-mongodb-server
+   - percona-server-mongodb-mongos
+   - percona-server-mongodb-tools
+   - percona-server-mongodb-debugsource
+   - percona-server-mongodb-tools-debuginfo
+   - percona-server-mongodb-mongos-debuginfo
+   - percona-server-mongodb-server-debuginfo
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+- name: remove psmdb rpm packages
+  yum:
+   name: "{{ packages }}"
+   state: absent
+  vars:
+   packages:
+   - percona-server-mongodb
+   - percona-server-mongodb-server
+   - percona-server-mongodb-mongos
+   - percona-server-mongodb-tools
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "9"
+
+- name: remove mongo shell deb package
+  apt:
+   name: percona-server-mongodb-shell
+   state: absent
+  when: ansible_os_family == "Debian" and psmdb_mongosh < "6"
+
+- name: remove mongosh deb package
+  apt:
+   name: percona-mongodb-mongosh
+   state: absent
+  when: ansible_os_family == "Debian" and psmdb_mongosh >= "6"
+
+- name: remove mongo shell rpm package
+  yum:
+   name: percona-server-mongodb-shell
+   state: absent
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "7" and psmdb_mongosh < "6"
+
+- name: remove mongo shell rpm package
+  yum:
+   name: "{{ packages }}"
+   state: absent
+  vars:
+   packages:
+   - percona-server-mongodb-shell
+   - percona-server-mongodb-shell-debuginfo
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8" and psmdb_mongosh < "6"
+
+- name: remove mongosh rpm package
+  yum:
+   name: percona-mongodb-mongosh
+   state: absent
+  when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6"
