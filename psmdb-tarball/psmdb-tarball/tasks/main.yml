@@ -128,11 +128,18 @@
     state: latest
     executable: pip3
 
+- name: Hotfix for PyYAML
+  pip:
+    name:
+      - PyYAML==5.3.1
+    state: present
+    executable: pip3
+    extra_args: --ignore-installed
+
 - name: Install Python utilities
   pip:
     requirements: /percona-server-mongodb/etc/pip/dev-requirements.txt
     executable: pip3
-    extra_args: --ignore-installed
 
 - name: Hotfix for cryptography module
   pip:
