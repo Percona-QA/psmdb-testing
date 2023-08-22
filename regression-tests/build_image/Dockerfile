@@ -1,4 +1,4 @@
-ARG OS=ubuntu:18.04
+ARG OS=ubuntu:20.04
 FROM $OS
 ARG branch=release-4.4.9-10
 ARG psm_ver=4.4.9
