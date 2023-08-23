@@ -2,8 +2,8 @@ FROM debian as builder
 ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
 ENV CMAKE_CXX_FLAGS=" -stdlib=libc++ -Wno-error=deprecated-declarations -Wno-error=uninitialized "
 ENV AWS_LIBS=/tmp/lib/aws
-ENV CC=/usr/bin/clang
-ENV CXX=/usr/bin/clang++
+ENV CC=/usr/bin/clang-13
+ENV CXX=/usr/bin/clang++-13
 ENV LDFLAGS="-stdlib=libc++"
 ARG psm_ver=7.0.0
 ARG psm_release=0
@@ -18,10 +18,11 @@ RUN apt update && apt install -y python3 python3-dev python3-pip cmake curl libs
                                  libcurl4-openssl-dev libsasl2-dev liblz4-dev libpcap-dev libbz2-dev libsnappy-dev \
                                  zlib1g-dev libzlcore-dev libsasl2-dev liblzma-dev libext2fs-dev e2fslibs-dev bear \
                                  libc-devtools gcc g++ git wget lsb-release iproute2 net-tools tzdata python-is-python3 \
-                                 clang lld libclang-dev libc++-dev libc++abi-dev && \
+                                 clang-13 libc++-13-dev libc++abi-13-dev libclang-13-dev libfuzzer-13-dev liblld-13-dev lld-13 && \
     git clone https://github.com/percona/percona-server-mongodb.git && \
     cd percona-server-mongodb/ && \
     git checkout $branch && git pull && \
+    pip3 install --user --break-system-packages --upgrade PyYAML==5.3.1 && \
     pip3 install --user --break-system-packages -r etc/pip/dev-requirements.txt && \
     rm -rf /opt/percona-server-mongodb/.git && mkdir -p /data/db
 RUN cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
@@ -33,8 +34,7 @@ RUN cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
 RUN cd /opt/percona-server-mongodb/ && \
     buildscripts/scons.py MONGO_VERSION=$psm_ver CC=$CC CXX=$CXX --libc++ -j8 --disable-warnings-as-errors --ssl --opt=on --use-sasl-client \
                           --wiredtiger --audit --inmemory --hotbackup CPPPATH="$AWS_LIBS/include" LIBPATH="$AWS_LIBS/lib" \
-                          install-mongod install-mongos install-mongo install-dbtest && \
-    buildscripts/scons.py MONGO_VERSION=$psm_ver -j8 --disable-warnings-as-errors build/install/bin/wt
+                          install-mongod install-mongos install-mongo install-dbtest build/install/bin/wt 
 RUN strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongo && \
     strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongod && \
     strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongos && \
@@ -44,8 +44,8 @@ FROM debian
 ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
 ENV CMAKE_CXX_FLAGS=" -stdlib=libc++ -Wno-error=deprecated-declarations -Wno-error=uninitialized "
 ENV AWS_LIBS=/tmp/lib/aws
-ENV CC=/usr/bin/clang
-ENV CXX=/usr/bin/clang++
+ENV CC=/usr/bin/clang-13
+ENV CXX=/usr/bin/clang++-13
 ENV LDFLAGS="-stdlib=libc++"
 ARG psm_ver=7.0.0
 ARG psm_release=0
@@ -60,10 +60,11 @@ RUN apt update && apt install -y python3 python3-dev python3-pip cmake curl libs
                                  libcurl4-openssl-dev libsasl2-dev liblz4-dev libpcap-dev libbz2-dev libsnappy-dev \
                                  zlib1g-dev libzlcore-dev libsasl2-dev liblzma-dev libext2fs-dev e2fslibs-dev bear \
                                  libc-devtools gcc g++ git wget lsb-release iproute2 net-tools tzdata python-is-python3 \
-                                 clang lld libclang-dev libc++-dev libc++abi-dev && \
+                                 clang-13 libc++-13-dev libc++abi-13-dev libclang-13-dev libfuzzer-13-dev liblld-13-dev lld-13 && \
     git clone https://github.com/percona/percona-server-mongodb.git && \
     cd percona-server-mongodb/ && \
     git checkout $branch && git pull && \
+    pip3 install --user --break-system-packages --upgrade PyYAML==5.3.1 && \
     pip3 install --user --break-system-packages -r etc/pip/dev-requirements.txt && \
     rm -rf /opt/percona-server-mongodb/.git && mkdir -p /data/db
 RUN cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
