@@ -5,6 +5,7 @@ import testinfra
 import time
 import os
 import docker
+import platform
 
 from datetime import datetime
 from cluster import Cluster
@@ -26,6 +27,8 @@ def config():
 
 @pytest.fixture(scope="package")
 def cluster(config):
+    if platform.machine() != 'x86_64':
+        pytest.skip("Unsupported architecture")
     return Cluster(config,mongod_datadir="/var/lib/mongo/")
 
 @pytest.fixture(scope="function")

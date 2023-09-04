@@ -1,6 +1,6 @@
 FROM alpine
 USER root
-RUN apk add --no-cache python3 py-pip bash git openssl && cd ~ && \
+RUN apk add --no-cache python3 python3-dev libffi-dev py-pip build-base bash git openssl && cd ~ && \
     git clone https://github.com/OpenVPN/easy-rsa.git && \
     cd easy-rsa/easyrsa3/ && \
     ./easyrsa init-pki && \
