@@ -42,8 +42,13 @@ RUN mkdir -p /pbm-old && mkdir -p /pbm-new && \
 
 FROM $PSMDB
 USER root
-RUN yum install -y epel-release && yum install -y cyrus-sasl-gssapi && yum install -y supervisor && \
-    mkdir -p /pbm-old && mkdir -p /pbm-new && mkdir /etc/pykmip && mkdir /etc/vault && mkdir /etc/x509 
+RUN yum install -y epel-release && yum install -y cyrus-sasl-gssapi && yum install -y supervisor jq && \
+    mkdir -p /pbm-old && mkdir -p /pbm-new && mkdir /etc/pykmip && mkdir /etc/vault && mkdir /etc/x509 && \
+    VERSION=$(mongod --version | tail -n +2 | sed 's|Build Info: ||' | jq -r .version | sed -E 's|-.+||') && \
+    ARCH=$(mongod --version | tail -n +2 | sed 's/Build Info: //' | jq -r .environment.distarch)  && \
+    if [ $ARCH == x86_64 ]; then curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel80-$VERSION.tgz ; fi && \
+    if [ $ARCH == aarch64 ]; then curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel82-$VERSION.tgz ; fi && \
+    mkdir -p /opt/mongodb && tar -C /opt/mongodb --transform='s,^/*[^/]*,,S' -xzvf mongo-ce.tgz && rm -rf mongo-ce.tgz
 COPY --from=builder /pbm-new/ /pbm-new/
 COPY --from=builder /pbm-old/ /pbm-old/
 COPY --from=pykmip /etc/mongod.pem /etc/pykmip/mongod.pem
