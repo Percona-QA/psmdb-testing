@@ -22,12 +22,12 @@
     src: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.glibc2.35.tar.gz
     dest: /tmp/percona-server-mongodb.tar.gz
     mode: '0644'
-  when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22" 
+  when: (ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22") or (ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm')
 
 - name: Unpack new tarball
-  unarchive: 
+  unarchive:
     src: /tmp/percona-server-mongodb.tar.gz
-    dest: /                     
+    dest: /
     remote_src: yes
     extra_opts:
     - --transform
@@ -36,12 +36,12 @@
 - name: Clone PSMDB repo
   git:
     repo: 'https://github.com/percona/percona-server-mongodb.git'
-    dest: /percona-server-mongodb               
+    dest: /percona-server-mongodb
     version: "v{{ repo_branch[0] }}"
     single_branch: yes
 
 - name: Clone psmdb-testing repo
-  git: 
+  git:
     repo: 'https://github.com/Percona-QA/psmdb-testing.git'
     dest: /package-testing
     version: "main"
@@ -67,9 +67,13 @@
 - name: Install percona release package
   include_tasks: ../../../tasks/install_percona_release.yml
 
-- name: Enable psmdb repo (change repo after the 6.0 release)
+- name: Enable psmdb 7.0 experimental repo
+  command: percona-release enable psmdb-70 experimental
+  when: not mongo.stat.exists and repo_branch[0] | float == 7.0
+
+- name: Enable psmdb 6.0 testing repo (for buster and bionic)
   command: percona-release enable psmdb-60 testing
-  when: not mongo.stat.exists
+  when: not mongo.stat.exists and repo_branch[0] | float == 6.0
 
 - name: Install mongosh deb packages
   apt:
@@ -89,13 +93,7 @@
     packages:
     - percona-mongodb-mongosh
     - percona-server-mongodb-shell
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "8" and not mongo.stat.exists
-
-- name: Install mongosh rpm packages
-  command: >
-    yum -y install percona-mongodb-mongosh \
-    https://repo.percona.com/psmdb-60/yum/testing/8Server/RPMS/x86_64/percona-server-mongodb-shell-6.0.0-1.el8.x86_64.rpm
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "9" and not mongo.stat.exists
+  when: ansible_os_family == "RedHat" and not mongo.stat.exists
 
 - name: Copy mongo binary to workdir
   copy:
@@ -110,8 +108,20 @@
     src: /usr/bin/mongosh
     dest: /usr/bin/mongo
     state: link
-    force: yes    
+    force: yes
   when: not mongo.stat.exists
+
+- name: Set extra_args for deb12
+  set_fact:
+    extra_args_deb12: "{{ ' --break-system-packages' if ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm' else '' }}"
+
+- name: Set extra_args for OL systems
+  set_fact:
+    extra_args_oel: "{{ ' --ignore-installed' if ansible_os_family == 'RedHat' else '' }}"
+
+- name: Set extra_args for all other OS systems
+  set_fact:
+    extra_args_other_os: "{{ ' --ignore-installed' if not (ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm') else '' }}"
 
 - name: Upgrade pip
   pip:
@@ -119,14 +129,16 @@
       - pip
     state: latest
     executable: pip3
+    extra_args: "{{ extra_args_deb12 }}"
 
-- name: Install 
+- name: Install
   pip:
     name:
       - virtualenv
       - setuptools
     state: latest
     executable: pip3
+    extra_args: "{{ extra_args_deb12 }}"
 
 - name: Hotfix for PyYAML
   pip:
@@ -134,12 +146,13 @@
       - PyYAML==5.3.1
     state: present
     executable: pip3
-    extra_args: --ignore-installed
+    extra_args: "{{ extra_args_deb12 }} {{ extra_args_other_os }}"
 
 - name: Install Python utilities
   pip:
     requirements: /percona-server-mongodb/etc/pip/dev-requirements.txt
     executable: pip3
+    extra_args: "{{ extra_args_deb12 }} {{ extra_args_oel }}"
 
 - name: Hotfix for cryptography module
   pip:
@@ -147,6 +160,7 @@
       - cryptography==36.0.2
     state: present
     executable: pip3
+    extra_args: "{{ extra_args_deb12 }}"
 
 - name: Upgrade PyKMIP
   pip:
@@ -154,6 +168,16 @@
       - PyKMIP
     state: latest
     executable: pip3
+    extra_args: "{{ extra_args_deb12 }}"
+
+- name: Upgrade wrapt for deb12
+  pip:
+    name:
+      - wrapt
+    state: latest
+    executable: pip3
+    extra_args: "{{ extra_args_deb12 }}"
+  when: ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm'
 
 - name: Fix files permissions
   shell: "find /percona-server-mongodb/jstests -type f | xargs chmod 400"
@@ -194,13 +218,13 @@
   shell: python3 buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 4.2 4.4 5.0 6.0
   args:
     chdir: /percona-server-mongodb
-  when: not ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22" )
+  when: not (( ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22" ) or (ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm'))
 
 - name: Setup multiversion
   shell: python3 buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0
   args:
     chdir: /percona-server-mongodb
-  when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22"
+  when: (ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22") or (ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm')
 
 - name: Fix test
   shell: sed -E 's/.+last-continuous.+//g' -i /percona-server-mongodb/jstests/multiVersion/genericSetFCVUsage/do_upgrade_downgrade.js
