@@ -68,9 +68,10 @@ def test_physical_mixed_env(start_cluster,cluster):
     Cluster.ce_to_psmdb("rscfg02")
     Cluster.ce_to_psmdb("rscfg03")
 
-    #one shard - CE, backup should fail
+    #one shard - CE, backup should fail on preflight check
     Cluster.psmdb_to_ce("rs101")
     Cluster.psmdb_to_ce("rs102")
     Cluster.psmdb_to_ce("rs103")
     cluster.check_pbm_status()
-    assert cluster.exec_pbm_cli("backup -t physical --wait").rc == 1
+    assert cluster.exec_pbm_cli("backup -t physical").rc == 1
+    assert cluster.exec_pbm_cli("backup -t physical -o json").rc == 1
