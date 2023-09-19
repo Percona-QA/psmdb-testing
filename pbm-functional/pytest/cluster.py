@@ -913,3 +913,43 @@ class Cluster:
             client = pymongo.MongoClient(self.connection)
             result = client.admin.command("balancerStart")
             Cluster.log("Starting balancer: " + str(result))
+
+    @staticmethod
+    def psmdb_to_ce(host):
+        n=testinfra.get_host("docker://" + host)
+        state=n.check_output("mongo --quiet --eval 'db.hello().secondary'")
+        Cluster.log("Is mongodb on " + host + " secondary? - " + state)
+        n.check_output('supervisorctl stop mongod')
+        n.check_output('supervisorctl start mongod-ce')
+        Cluster.log("Node " + host + " is now running mongodb CE")
+        n.check_output('supervisorctl restart pbm-agent')
+        timeout = time.time() + 30
+        while True:
+            newstate=n.check_output("mongo --quiet --eval 'db.hello().secondary'")
+            Cluster.log("Is mongodb on " + host + " secondary? - " + newstate)
+            if newstate == state:
+                break
+            if time.time() > timeout:
+                assert False
+            time.sleep(1)
+        Cluster.log("Mongodb on " + host + " is in previous state, is secondary: " + newstate)
+
+    @staticmethod
+    def ce_to_psmdb(host):
+        n=testinfra.get_host("docker://" + host)
+        state=n.check_output("mongo --quiet --eval 'db.hello().secondary'")
+        Cluster.log("Is mongodb on " + host + " secondary? - " + state)
+        n.check_output('supervisorctl stop mongod-ce')
+        n.check_output('supervisorctl start mongod')
+        Cluster.log("Node " + host + " is now running PSMDB")
+        n.check_output('supervisorctl restart pbm-agent')
+        timeout = time.time() + 30
+        while True:
+            newstate=n.check_output("mongo --quiet --eval 'db.hello().secondary'")
+            Cluster.log("Is mongodb on " + host + " secondary? - " + newstate)
+            if newstate == state:
+                break
+            if time.time() > timeout:
+                assert False
+            time.sleep(1)
+        Cluster.log("Mongodb on " + host + " is in previous state, is secondary: " + newstate)
