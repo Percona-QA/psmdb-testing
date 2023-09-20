@@ -367,7 +367,7 @@ class Cluster:
             if time.time() > timeout:
                 assert False
             time.sleep(1)
-        time.sleep(5)
+        time.sleep(10)
 
     # creates backup based on type (no checking input - it's hack for situation like 'incremental --base')
     def make_backup(self, type):
@@ -923,6 +923,7 @@ class Cluster:
         n.check_output('supervisorctl start mongod-ce')
         Cluster.log("Node " + host + " is now running mongodb CE")
         n.check_output('supervisorctl restart pbm-agent')
+        time.sleep(5)
         timeout = time.time() + 30
         while True:
             newstate=n.check_output("mongo --quiet --eval 'db.hello().secondary'")
@@ -943,6 +944,7 @@ class Cluster:
         n.check_output('supervisorctl start mongod')
         Cluster.log("Node " + host + " is now running PSMDB")
         n.check_output('supervisorctl restart pbm-agent')
+        time.sleep(5)
         timeout = time.time() + 30
         while True:
             newstate=n.check_output("mongo --quiet --eval 'db.hello().secondary'")
