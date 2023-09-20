@@ -429,7 +429,7 @@ class Cluster:
                 assert False, "Cannot start restore, another operation running"
             time.sleep(1)
         Cluster.log("Restore started")
-        result = n.run('timeout 180 pbm restore ' + name + ' --wait')
+        result = n.run('timeout 240 pbm restore ' + name + ' --wait')
         if result.rc == 124:
             # try to catch possible failures if timeout exceeded
             for host in self.mongod_hosts:
@@ -453,6 +453,7 @@ class Cluster:
             if key == "restart_cluster" and value:
                 self.restart()
                 self.restart_pbm_agents()
+                time.sleep(10)
                 self.check_initsync()
             if key == "make_resync" and value:
                 self.make_resync()
