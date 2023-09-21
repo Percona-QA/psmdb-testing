@@ -4,7 +4,7 @@
   include_tasks: ../../../tasks/install_percona_release.yml
 
 - name: setup psmdb repo with percona-release
-  command: percona-release enable {{ psmdb_to_test }} testing
+  command: percona-release enable {{ psmdb_to_test }} experimental
   vars:
     psmdb_to_test: "{{ lookup('env', 'psmdb_to_test') }}"
 
