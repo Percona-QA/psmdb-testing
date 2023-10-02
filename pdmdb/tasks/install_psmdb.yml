@@ -42,7 +42,7 @@
       - percona-server-mongodb-tools-debuginfo
       - percona-server-mongodb-mongos-debuginfo
       - percona-server-mongodb-server-debuginfo
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and psmdb_mongosh == "6"
 
 - name: install psmdb rpm packages
   yum:

@@ -12,7 +12,7 @@ RPM_PACKAGES_7 = ['percona-server-mongodb', 'percona-server-mongodb-server', 'pe
                 'percona-server-mongodb-tools', 'percona-server-mongodb-debuginfo']
 RPM_PACKAGES_8 = ['percona-server-mongodb', 'percona-server-mongodb-mongos-debuginfo',
                            'percona-server-mongodb-server-debuginfo',
-                           'percona-server-mongodb-tools-debuginfo', 'percona-server-mongodb-debugsource']
+                           'percona-server-mongodb-tools-debuginfo']
 
 RPM_PACKAGES_9 = ['percona-server-mongodb', 'percona-server-mongodb-server', 'percona-server-mongodb-mongos',
                 'percona-server-mongodb-tools']
