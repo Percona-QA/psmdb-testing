@@ -49,7 +49,7 @@ def start_cluster(cluster,request):
     finally:
         if request.config.getoption("--verbose"):
             cluster.get_logs()
-        cluster.destroy()
+        cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.testcase(test_case_key="T221", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)

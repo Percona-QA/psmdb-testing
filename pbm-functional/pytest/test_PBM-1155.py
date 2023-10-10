@@ -75,7 +75,7 @@ def start_cluster(cluster,request):
         t2.join()
         t3.join()
         t4.join()
-        cluster.destroy()
+        cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.testcase(test_case_key="T246", test_step_key=1)
 @pytest.mark.timeout(6000, func_only=True)

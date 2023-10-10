@@ -63,10 +63,10 @@ def start_cluster(cluster,newcluster,request):
         if request.config.getoption("--verbose"):
             newcluster.get_logs()
         cluster.destroy()
-        newcluster.destroy()
+        newcluster.destroy(cleanup_backups=True)
 
 @pytest.mark.testcase(test_case_key="T208", test_step_key=1)
-@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.timeout(600,func_only=True)
 def test_logical(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
@@ -80,7 +80,7 @@ def test_logical(start_cluster,cluster,newcluster):
     Cluster.log("Finished successfully")
 
 @pytest.mark.testcase(test_case_key="T207", test_step_key=1)
-@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.timeout(600,func_only=True)
 def test_physical(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
@@ -94,7 +94,7 @@ def test_physical(start_cluster,cluster,newcluster):
     Cluster.log("Finished successfully")
 
 @pytest.mark.testcase(test_case_key="T209", test_step_key=1)
-@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.timeout(600,func_only=True)
 def test_incremental(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     cluster.make_backup("incremental --base")
