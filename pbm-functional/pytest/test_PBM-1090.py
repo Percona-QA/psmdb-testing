@@ -36,7 +36,7 @@ def start_cluster(cluster,request):
         Cluster.log("PBM logs:\n" + cluster.exec_pbm_cli('logs -t 0 -sD').stdout)
         if request.config.getoption("--verbose"):
             cluster.get_logs()
-        cluster.destroy()
+        cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.testcase(test_case_key="T204", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)

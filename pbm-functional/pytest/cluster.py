@@ -449,16 +449,21 @@ class Cluster:
         else:
             assert False, result.stdout + result.stderr
 
-        for key, value in kwargs.items():
-            if key == "restart_cluster" and value:
-                self.restart()
-                self.restart_pbm_agents()
-                time.sleep(10)
-                self.check_initsync()
-            if key == "make_resync" and value:
-                self.make_resync()
-            if key == "check_pbm_status" and value:
-                self.check_pbm_status()
+        restart_cluster=kwargs.get('restart_cluster', False)
+        if restart_cluster:
+            self.restart()
+            self.restart_pbm_agents()
+            time.sleep(10)
+            self.check_initsync()
+
+        make_resync=kwargs.get('make_resync', True)
+        if make_resync:
+            self.make_resync()
+
+        check_pbm_status=kwargs.get('check_pbm_status', True)
+        if check_pbm_status:
+            self.check_pbm_status()
+
         if self.layout == "sharded":
             self.start_mongos()
             client = pymongo.MongoClient(self.connection)
@@ -466,22 +471,14 @@ class Cluster:
             Cluster.log("Starting balancer: " + str(result))
 
     # destroys cluster
-    def destroy(self):
+    def destroy(self,**kwargs):
         print("\n")
-        #Cluster.log("Destroying cluster:")
-        #Cluster.log(self.all_hosts)
-        # the last resort to catch possible failures if timeout exceeded
-        #for host in self.mongod_hosts:
-        #    try:
-        #        container = docker.from_env().containers.get(host)
-        #        result = container.exec_run(
-        #            'cat /var/lib/mongo/pbm.restore.log', stderr=False)
-        #        if result.exit_code == 0:
-        #            Cluster.log(
-        #                "!!!!Possible failure on {}, file pbm.restore.log was found:".format(host))
-        #            Cluster.log(result.output.decode('utf-8'))
-        #    except docker.errors.APIError:
-        #        pass
+        cleanup=kwargs.get('cleanup_backups', False)
+        if cleanup:
+            result=self.exec_pbm_cli("delete-pitr --all --force --yes ")
+            Cluster.log(result.stdout + result.stderr)
+            result=self.exec_pbm_cli("delete-backup --older-than=9999-01-01 --force --yes")
+            Cluster.log(result.stdout + result.stderr)
         for host in self.all_hosts:
             try:
                 container = docker.from_env().containers.get(host)

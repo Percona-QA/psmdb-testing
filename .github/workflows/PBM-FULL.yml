@@ -41,7 +41,7 @@ jobs:
       working-directory: ./pbm-functional/pytest
     - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
       run: |
-        docker-compose run test pytest -s --junitxml=junit.xml -k ${{ matrix.test }}
+        docker-compose run --rm test pytest -s --junitxml=junit.xml -k ${{ matrix.test }}
       working-directory: ./pbm-functional/pytest
     - name: Publish Test Report
       uses: mikepenz/action-junit-report@v3
