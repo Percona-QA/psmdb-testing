@@ -111,10 +111,7 @@
   vars:
     packages:
       - percona-server-mongodb-debugsource-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-tools-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-mongos-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-server-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8" and psmdb_mongosh <= "6"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and psmdb_mongosh <= "6"
 
 - name: install psmdb debug rpm packages
   yum:
