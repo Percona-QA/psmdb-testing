@@ -33,7 +33,7 @@
 
 - name: Add ARM support into percona-release
   command: sed -i "s|x86_64|x86_64 aarch64|" /usr/bin/percona-release
-  when: ansible_architecture == "aarch64" or ansible_architecture == "arm64" 
+  when: ansible_architecture == "aarch64" or ansible_architecture == "arm64"
 
 - name: enable psmdb repo
   command: percona-release enable psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }} {{ repo }}
@@ -49,8 +49,8 @@
     create: true
     block: |
       [percona-gated]
-      name=[psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-fips-{{ repo }}-x86_64]
-      baseurl=http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-fips/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/x86_64
+      name=[psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro-{{ repo }}-x86_64]
+      baseurl=http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/x86_64
       enabled=1
       gpgcheck=0
       sslverify=0
@@ -62,7 +62,7 @@
   when: ansible_os_family == "RedHat" and gated_build == true
 
 - name: create apt repo for gated build
-  apt_repository: repo='deb http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-fips/apt/ {{ ansible_distribution_release }} {{ repo }}' state=present update_cache=yes
+  apt_repository: repo='deb http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/apt/ {{ ansible_distribution_release }} {{ repo }}' state=present update_cache=yes
   vars:
     client_id: "{{ lookup('env', 'USERNAME') }}"
     client_token: "{{ lookup('env', 'PASSWORD') }}"
