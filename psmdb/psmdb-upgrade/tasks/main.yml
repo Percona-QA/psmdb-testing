@@ -28,104 +28,14 @@
     repo: "{{ lookup('env', 'FROM_REPO') }}"
     version: "{{ lookup('env', 'FROM_PSMDB_VERSION') }}"
 
-- set_fact:
-    psmdb_mongosh: "{{ lookup('env', 'FROM_PSMDB_VERSION').split('.')[0] }}"
-
-- name: install psmdb deb packages
-  apt:
-    name: "{{ packages }}"
-    update_cache: yes
-  vars:
-    packages:
-    - percona-server-mongodb={{ lookup('env', 'FROM_PSMDB_VERSION') }}*
-    - percona-server-mongodb-server={{ lookup('env', 'FROM_PSMDB_VERSION') }}*
-    - percona-server-mongodb-mongos={{ lookup('env', 'FROM_PSMDB_VERSION') }}*
-    - percona-server-mongodb-tools={{ lookup('env', 'FROM_PSMDB_VERSION') }}*
-#    - percona-server-mongodb-dbg={{ lookup('env', 'FROM_PSMDB_VERSION') }}*
-  when: ansible_os_family == "Debian"
-
-- name: install psmdb rpm packages
-  yum:
-    name: "{{ packages }}"
-    state: latest
-  vars:
-    packages:
-    - percona-server-mongodb-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-    - percona-server-mongodb-server-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-    - percona-server-mongodb-mongos-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-    - percona-server-mongodb-tools-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-#    - percona-server-mongodb-debuginfo-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "7"
-
-- name: install psmdb rpm packages
-  yum:
-    name: "{{ packages }}"
-    state: latest
-  vars:
-    packages:
-      - percona-server-mongodb-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-      - percona-server-mongodb-server-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-      - percona-server-mongodb-mongos-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-      - percona-server-mongodb-tools-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-#      - percona-server-mongodb-debugsource-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-#      - percona-server-mongodb-tools-debuginfo-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-#      - percona-server-mongodb-mongos-debuginfo-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-#      - percona-server-mongodb-server-debuginfo-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8"
-
-- name: install mongo shell deb package
-  apt:
-    name: "{{ packages }}"
-    update_cache: yes
-  vars:
-    packages:
-    - percona-server-mongodb-shell={{ lookup('env', 'FROM_PSMDB_VERSION') }}*
-  when: ansible_os_family == "Debian" and psmdb_mongosh < "6"
-
-- name: install mongosh deb package
-  apt:
-    name: "{{ packages }}"
-    update_cache: yes
-  vars:
-    packages:
-    - percona-mongodb-mongosh
-  when: ansible_os_family == "Debian" and psmdb_mongosh >= "6"
-
-- name: install mongo shell rpm package
-  yum:
-    name: "{{ packages }}"
-    state: latest
-  vars:
-    packages:
-    - percona-server-mongodb-shell-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "7" and psmdb_mongosh < "6"
-
-- name: install mongo shell rpm packages
-  yum:
-    name: "{{ packages }}"
-    state: latest
-  vars:
-    packages:
-      - percona-server-mongodb-shell-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-#      - percona-server-mongodb-shell-debuginfo-{{ lookup('env', 'FROM_PSMDB_VERSION') }}
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8" and psmdb_mongosh < "6"
-
-- name: install mongosh rpm package
-  yum:
-    name: "{{ packages }}"
-    state: latest
-  vars:
-    packages:
-    - percona-mongodb-mongosh
-  when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6"
-
-- name: copy mongosh binary to mongo path for test scripts
-  copy:
-    src: /usr/bin/mongosh
-    dest: /usr/bin/mongo
-    remote_src: true
-    mode: '0755'
-  when: psmdb_mongosh >= "6"
+- block:
+    - name: include tasks for PSMDB install
+      include_tasks: ../../../tasks/install_psmdb.yml
+      vars:
+        psmdb_to_test: "{{ lookup('env', 'PSMDB_VERSION') }}"
+        dbg_packages: false
+  environment:
+    PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
 
 - name: start mongod service
   service: name=mongod state=started
