@@ -114,6 +114,8 @@ services:
         - GO_VER=${GO_VER:-bullseye}
         - PSMDB=${PSMDB:-percona/percona-server-mongodb:latest}
         - PR_NUMBER=${PR_NUMBER:-}
+    environment:
+      - "PERCONA_TELEMETRY_URL=https://check-dev.percona.com/v1/telemetry/GenericReport"
     command: /bin/bash
     depends_on:
       - pykmip
