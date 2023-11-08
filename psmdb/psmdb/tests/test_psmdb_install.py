@@ -127,3 +127,13 @@ def test_load_data(host):
         print(result.stdout)
         print(result.stderr)
     assert result.rc == 0, result.stdout
+
+def test_telemetry(host):
+    file_path = "/usr/local/percona/telemetry_uuid"
+    expected_fields = ["instanceId", "PRODUCT_FAMILY_PSMDB"]
+
+    assert host.file(file_path).exists, f"Telemetry file '{file_path}' does not exist."
+
+    file_content = host.file(file_path).content_string
+    for string in expected_fields:
+        assert string in file_content, f"Field '{string}' wasn't found in file '{file_path}'."
