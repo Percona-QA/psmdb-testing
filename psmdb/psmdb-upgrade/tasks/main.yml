@@ -36,6 +36,15 @@
         dbg_packages: false
   environment:
     PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
+    PERCONA_TELEMETRY_DISABLE: "1"
+
+- name: Check if telemetry is disabled
+  stat: path=/usr/local/percona/telemetry_uuid
+  register: telemetry_uuid
+
+- name: Fail if telemetry is sent
+  fail: msg="Telemetry is sent despite it's disabled"
+  when: telemetry_uuid.stat.exists
 
 - name: start mongod service
   service: name=mongod state=started
