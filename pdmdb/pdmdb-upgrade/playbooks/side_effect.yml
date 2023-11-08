@@ -61,10 +61,13 @@
     - name: enable new pdmdb repo
       command: percona-release enable {{ to_version }} {{ to_repo }}
 
-    - name: include tasks for installing and PSMDB
-      include_tasks: ../../tasks/install_psmdb.yml
-      vars:
-       psmdb_version: "{{ lookup('env', 'TO_PDMDB_VERSION') }}"
+    - block:
+      - name: include tasks for installing and PSMDB
+        include_tasks: ../../tasks/install_psmdb.yml
+        vars:
+          psmdb_to_test: "{{ lookup('env', 'TO_PDMDB_VERSION') }}"
+      environment:
+        PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
 
     - name: Check if /etc/mongod.conf.rpmsave exists
       stat:
