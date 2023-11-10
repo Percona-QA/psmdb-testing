@@ -8,6 +8,9 @@
     from_version: "{{ lookup('env', 'FROM_PSMDB_VERSION') }}"
   become: true
   become_method: sudo
+  environment:
+    PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
+    PERCONA_TELEMETRY_DISABLE: "1"
   tasks:
     - set_fact: to_maj_version={{ to_version.split('.')[0] }}.{{ to_version.split('.')[1] }}
 
@@ -191,6 +194,14 @@
         - percona-mongodb-mongosh
       when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6"
 
+    - name: Check if telemetry is disabled
+      stat: path=/usr/local/percona/telemetry_uuid
+      register: telemetry_uuid
+
+    - name: Fail if telemetry is sent
+      fail: msg="Telemetry is sent despite it's disabled"
+      when: telemetry_uuid.stat.exists
+
     - name: copy mongosh binary to mongo path for test scripts
       copy:
         src: /usr/bin/mongosh
@@ -209,7 +220,7 @@
         path: /etc/mongod.conf.rpmsave
       register: stat_rpmsave
 
-    - name: If necessary replace mongod.conf with rpmsave 
+    - name: If necessary replace mongod.conf with rpmsave
       copy:
         remote_src: yes
         src: "/etc/mongod.conf.rpmsave"
@@ -221,39 +232,39 @@
       stat:
         path: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
       register: stat_token
-      
+
     - name: Ensure vault-token has correct permissions
       file:
         path: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
         owner: mongod
         group: mongod
-        mode: '0400'  
-      when: stat_token.stat.exists    
+        mode: '0400'
+      when: stat_token.stat.exists
 
     - name: Check if vault crt exists
       stat:
         path: /package-testing/scripts/psmdb_encryption/test.cer
       register: stat_crt
-      
+
     - name: Ensure vault crt has correct permissions
       file:
         path: /package-testing/scripts/psmdb_encryption/test.cer
         owner: mongod
         group: mongod
-        mode: '0400' 
-      when:  stat_crt.stat.exists  
-        
+        mode: '0400'
+      when:  stat_crt.stat.exists
+
     - name: Check if keyfile exists
       stat:
         path: /package-testing/scripts/psmdb_encryption/mongodb-keyfile
       register: stat_key
-      
+
     - name: Ensure keyfile has correct permissions
       file:
         path: /package-testing/scripts/psmdb_encryption/mongodb-keyfile
         owner: mongod
         group: mongod
-        mode: '0400' 
+        mode: '0400'
       when:  stat_key.stat.exists
 
     - name: change permissions to mongodb directory after downgrade
@@ -267,7 +278,7 @@
 ### EOF
 
     - name: start mongod service
-      service: 
+      service:
         name: mongod
         state: started
 

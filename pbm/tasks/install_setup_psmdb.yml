@@ -23,6 +23,8 @@
     - percona-server-mongodb-mongos
     - percona-server-mongodb-tools
   when: ansible_os_family == "Debian"
+  environment:
+    PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
 
 - name: install psmdb rpm packages
   yum:
@@ -35,6 +37,8 @@
     - percona-server-mongodb-mongos
     - percona-server-mongodb-tools
   when: ansible_os_family == "RedHat"
+  environment:
+    PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
 
 - name: install mongo shell deb package
   apt:
