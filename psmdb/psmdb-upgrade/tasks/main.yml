@@ -1,5 +1,8 @@
 ---
 # tasks file for PSMDB
+- set_fact:
+    from_repo_pro: "{{ lookup('env', 'FROM_REPO_PRO') }}"
+
 - name: remove the Percona apt main repository
   apt_repository: repo='deb http://repo.percona.com/apt {{ ansible_distribution_release }} main' state=absent update_cache=yes
   when: ansible_os_family == "Debian"
@@ -28,12 +31,41 @@
     repo: "{{ lookup('env', 'FROM_REPO') }}"
     version: "{{ lookup('env', 'FROM_PSMDB_VERSION') }}"
 
+- name: Create yum repo for gated build
+  blockinfile:
+    path: /etc/yum.repos.d/percona-gated.repo
+    mode: '0640'
+    create: true
+    block: |
+      [percona-gated]
+      name=[psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro-{{ repo }}-x86_64]
+      baseurl=http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/x86_64
+      enabled=1
+      gpgcheck=0
+      sslverify=0
+  vars:
+    client_id: "{{ lookup('env', 'USERNAME') }}"
+    client_token: "{{ lookup('env', 'PASSWORD') }}"
+    repo: "{{ lookup('env', 'FROM_REPO') }}"
+    version: "{{ lookup('env', 'FROM_PSMDB_VERSION') }}"
+  when: ansible_os_family == "RedHat" and from_repo_pro == true
+
+- name: create apt repo for gated build
+  apt_repository: repo='deb http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/apt/ {{ ansible_distribution_release }} {{ repo }}' state=present update_cache=yes
+  vars:
+    client_id: "{{ lookup('env', 'USERNAME') }}"
+    client_token: "{{ lookup('env', 'PASSWORD') }}"
+    repo: "{{ lookup('env', 'FROM_REPO') }}"
+    version: "{{ lookup('env', 'FROM_PSMDB_VERSION') }}"
+  when: ansible_os_family == "Debian" and from_repo_pro == true
+
 - block:
     - name: include tasks for PSMDB install
       include_tasks: ../../../tasks/install_psmdb.yml
       vars:
-        psmdb_to_test: "{{ lookup('env', 'PSMDB_VERSION') }}"
+        psmdb_to_test: "{{ lookup('env', 'FROM_PSMDB_VERSION') }}"
         dbg_packages: false
+        psmdb_pkg_name_addon: "{{ '-pro' if from_repo_pro == true else '' }}"
   environment:
     PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
     PERCONA_TELEMETRY_DISABLE: "1"

@@ -17,8 +17,21 @@ RPM_NEW_CENTOS_PACKAGES = ['percona-server-mongodb', 'percona-server-mongodb-mon
 BINARIES = ['mongo', 'mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
             'mongofiles', 'mongoimport', 'mongorestore', 'mongotop', 'mongostat']
 
+PRO_FEATURES = ['FIPSMode']
+
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
 toolkit = os.environ.get("ENABLE_TOOLKIT")
+pro_build = os.environ.get("GATED_BUILD")
+
+def test_pro_version(host):
+    if pro_build != "true":
+        pytest.skip("Skipping PSMDB PRO version check")
+
+    result = host.run("/usr/bin/mongod --version")
+    enabled_features = result.stdout.split('"proFeatures":')[1].split(']')[0]
+
+    for feature in PRO_FEATURES:
+        assert feature in enabled_features, f'"{feature}" not found in proFeatures: {enabled_features}'
 
 def test_version(host):
     if toolkit != "true" :
