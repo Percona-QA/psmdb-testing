@@ -1,9 +1,12 @@
-FROM alpine
-RUN apk add --no-cache docker python3 py-pip bash git
+FROM python:bullseye
+RUN curl -s --location https://www.mongodb.org/static/pgp/libmongocrypt.asc | gpg --dearmor >/etc/apt/trusted.gpg.d/libmongocrypt.gpg && \
+    echo "deb https://libmongocrypt.s3.amazonaws.com/apt/debian bullseye/libmongocrypt/1.8 main" | tee /etc/apt/sources.list.d/libmongocrypt.list 
+RUN apt update -y && apt install -y docker.io bash git curl libmongocrypt-dev
 RUN pip install --no-cache-dir docker && \
     pip install --no-cache-dir pytest-testinfra && \
     pip install --no-cache-dir pytest-timeout && \
     pip install --no-cache-dir adaptavist==2.3.1 && \
     pip install --no-cache-dir pytest-adaptavist && \
-    pip install --no-cache-dir pymongo
+    pip install --no-cache-dir pymongo && \
+    pip install --no-cache-dir 'pymongo[encryption]'
 WORKDIR /test

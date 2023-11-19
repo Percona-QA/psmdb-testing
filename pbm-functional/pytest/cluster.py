@@ -6,7 +6,7 @@ import json
 import copy
 import concurrent.futures
 import os
-from datetime import datetime
+from datetime import datetime, UTC
 import re
 
 # the structure of the cluster could be one of
@@ -791,7 +791,7 @@ class Cluster:
 
     @staticmethod
     def log(*args, **kwargs):
-        print("[%s]" % (datetime.now()).strftime('%Y-%m-%dT%H:%M:%S'),*args, **kwargs)
+        print("[%s]" % (datetime.now(UTC)).strftime('%Y-%m-%dT%H:%M:%S'),*args, **kwargs)
 
     def delete_backup(self, name):
         n = testinfra.get_host("docker://" + self.pbm_cli)
