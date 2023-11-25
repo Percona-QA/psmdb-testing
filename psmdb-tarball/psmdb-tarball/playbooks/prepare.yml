@@ -32,7 +32,7 @@
       - epel-release
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
 
-  - name: install necessary rpm packages for RHEL8
+  - name: install necessary rpm packages for RHEL8+
     yum:
       name: "{{ packages }}"
       state: latest
@@ -55,11 +55,20 @@
       - unzip
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8"
 
+  - name: install necessary rpm packages for RHEL9
+    yum:
+      name: "{{ packages }}"
+      state: latest
+    vars:
+      packages:
+      - openldap-compat
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "9"
+
   - name: Update apt cache
     shell: apt update --allow-releaseinfo-change
     when: ansible_os_family == "Debian"
 
-  - name: Install necessary deb packages 
+  - name: Install necessary deb packages
     apt:
       name: "{{ packages }}"
       update_cache: yes
@@ -102,8 +111,8 @@
       src: /cpython.tar.gz
       dest: /
       remote_src: yes
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version < "8" 
-   
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version < "8"
+
   - name: Configure python
     shell: "./configure --enable-optimizations"
     args:
@@ -114,12 +123,12 @@
     shell: "make install"
     args:
       chdir: /cpython-3.7.15
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version < "8" 
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version < "8"
 
   - name: Add deadsnakes repo for ubuntu 18.04
     apt_repository:
       repo: ppa:deadsnakes/ppa
-    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18" 
+    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
 
   - name: Install necessary python packages
     apt:
@@ -130,7 +139,7 @@
       - python3.7
       - python3.7-dev
       - python3.7-distutils
-    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18" 
+    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
 
   - name: Install necessary python packages RHEL8
     yum:
@@ -141,7 +150,7 @@
       - python38
       - python38-pip
       - python38-devel
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" 
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
 
   - name: Ensure python RHEL8
     shell: alternatives --set python3 /usr/bin/python3.8
