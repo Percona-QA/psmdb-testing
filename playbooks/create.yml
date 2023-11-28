@@ -179,3 +179,11 @@
     - name: Wait for boot process to finish
       pause:
         minutes: 2
+
+    - set_fact:
+        job_name: "{{ lookup('env', 'JOB_NAME') | lower | default('local', true) }}"
+
+    - name: Wait more for boot process to finish for FIPS-enabled OS
+      pause:
+        minutes: 3
+      when: "'fips' in job_name"

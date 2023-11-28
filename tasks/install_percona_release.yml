@@ -4,9 +4,7 @@
     when: ansible_os_family == "Debian"
 
   - name: Install percona release RHEL
-#    yum: name=https://repo.percona.com/yum/release/latest/RPMS/noarch/percona-release-1.0-27.noarch.rpm
-    # Due problem with ansible 2.9.3 version about GPG Key check
-    command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+    command: rpm -ivh --nodigest --nofiledigest https://repo.percona.com/yum/percona-release-latest.noarch.rpm
     args:
       warn: no
     when: ansible_os_family == "RedHat"
@@ -15,5 +13,4 @@
   - name: clean and update yum cache
     shell: |
       yum clean all
-#   yum makecache
     when: ansible_os_family == "RedHat"
