@@ -104,7 +104,17 @@ def test_kmip_encryption(host):
         result = host.run(cmd)
         print(result.stdout)
         print(result.stderr)
-    assert result.rc == 0, result.stdout
+        if result.rc != 0:
+            if host.system_info.distribution == "debian" or host.system_info.distribution == "ubuntu":
+                logs=host.check_output('cat /var/log/mongodb/mongod.log')
+            else:
+                logs=host.check_output('cat /var/log/mongo/mongod.log')
+            print(logs)
+            journal=host.check_output('journalctl -b --no-pager')
+            print(journal)
+            kmip_logs=host.check_output('cat /var/log/pykmip/server.log')
+            print(kmip_logs)
+    assert result.rc == 0, result.stderr
 
 def test_ldap_native(host):
 #    print(host.system_info.arch)
