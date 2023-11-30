@@ -110,10 +110,8 @@ def test_kmip_encryption(host):
             else:
                 logs=host.check_output('cat /var/log/mongo/mongod.log')
             print(logs)
-            journal=host.check_output('journalctl -b --no-pager')
-            print(journal)
-            kmip_logs=host.check_output('cat /var/log/pykmip/server.log')
-            print(kmip_logs)
+        kmip_logs=host.check_output('cat /var/log/pykmip/server.log')
+        print(kmip_logs)
     assert result.rc == 0, result.stderr
 
 def test_ldap_native(host):
