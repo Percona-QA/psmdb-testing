@@ -58,8 +58,7 @@ def start_cluster(cluster,newcluster,request):
         yield True
 
     finally:
-        if request.config.getoption("--verbose"):
-            newcluster.get_logs()
+        newcluster.get_logs()
         cluster.destroy()
         newcluster.destroy(cleanup_backups=True)
 
