@@ -130,13 +130,17 @@
     state: latest
   when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version > "20"
 
+- name: Ugrade pip
+  pip:
+    name: pip
+    state: latest
+
 - name: Install necessary python package
   pip:
     name: "{{ packages }}"
   vars:
     packages:
     - pymongo==3.12 
-    - subprocess32 
     - PyYAML 
     - typing 
     - requests 
