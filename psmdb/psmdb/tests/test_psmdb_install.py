@@ -131,7 +131,16 @@ def test_kerberos(host):
         result = host.run(cmd)
         print(result.stdout)
         print(result.stderr)
-    assert result.rc == 0, result.stdout
+        if result.rc != 0:
+            if host.system_info.distribution == "debian" or host.system_info.distribution == "ubuntu":
+                logs=host.check_output('cat /var/log/mongodb/mongod.log')
+            else:
+                logs=host.check_output('cat /var/log/mongo/mongod.log')
+            print(logs)
+            krb_logs=host.run("mongo --host=$HOSTNAME --authenticationMechanism=GSSAPI --authenticationDatabase='$external' --username exttestro@PERCONATEST.COM --verbose --eval 'db.runCommand({connectionStatus : 1})' ")
+            print(krb_logs.stdout)
+            print(krb_logs.stderr)
+    assert result.rc == 0, result.stderr
 
 def test_aws_auth(host):
     cmd = "/package-testing/scripts/psmdb_aws/psmdb_test_aws_auth.sh"

@@ -98,16 +98,20 @@
   when: not ( "mongod" in getent_passwd.keys() )
 
 - name: Add KRB5_KTNAME for PSMDB deb
-  lineinfile:
+  blockinfile:
     path: /etc/default/mongod
-    line: KRB5_KTNAME=/etc/mongodb.keytab
+    block: |
+      KRB5_KTNAME=/etc/mongodb.keytab
+      KRB5_TRACE=/tmp/krb.log
     create: yes
   when: ansible_os_family == "Debian"
 
 - name: Add KRB5_KTNAME for PSMDB rpm
-  lineinfile:
+  blockinfile:
     path: /etc/sysconfig/mongod
-    line: KRB5_KTNAME=/etc/mongodb.keytab
+    block: |
+      KRB5_KTNAME=/etc/mongodb.keytab
+      KRB5_TRACE=/tmp/krb.log
     create: yes
   when: ansible_os_family == "RedHat"
  
