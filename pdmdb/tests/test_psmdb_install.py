@@ -1,6 +1,6 @@
 import os
 import pytest
-
+from packaging import version
 import testinfra.utils.ansible_runner
 
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -21,7 +21,7 @@ BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
             'mongofiles', 'mongoimport', 'mongorestore', 'mongotop', 'mongostat']
 
 PSMDB_VER = os.environ.get("PDMDB_VERSION").lstrip("pdmdb-")
-
+MONGOSH_VER = os.environ.get("MONGOSH_VERSION")
 
 def test_mongod_service(host):
     mongod = host.service("mongod")
@@ -77,6 +77,13 @@ def test_rpm9_packages(host, package):
 def test_binary_version(host, binary):
     result = host.run(f"{binary} --version")
     assert PSMDB_VER in result.stdout, result.stdout
+
+def test_cli_version(host):
+    result = host.check_output("mongo --version")
+    if version.parse(PSMDB_VER) > version.parse("6.0.0"):
+        assert MONGOSH_VER in result
+    else:
+        assert PSMDB_VER in result
 
 def test_telemetry(host):
     file_path = "/usr/local/percona/telemetry_uuid"
