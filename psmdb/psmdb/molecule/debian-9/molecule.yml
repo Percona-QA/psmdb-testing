@@ -31,7 +31,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: debian9-report.xml
 scenario:
   name: debian-9
   destroy_sequence:

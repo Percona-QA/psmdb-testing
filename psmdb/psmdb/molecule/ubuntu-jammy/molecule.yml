@@ -31,7 +31,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: ujammy-report.xml
 scenario:
   name: ubuntu-jammy
   destroy_sequence:
