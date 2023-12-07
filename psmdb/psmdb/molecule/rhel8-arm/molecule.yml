@@ -31,7 +31,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: rhel8-arm-report.xml
 scenario:
   name: rhel8-arm
   destroy_sequence:

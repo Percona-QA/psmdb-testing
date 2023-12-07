@@ -31,7 +31,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: centos7-report.xml
 scenario:
   name: centos-7
   destroy_sequence:
