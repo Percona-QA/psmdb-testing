@@ -27,7 +27,7 @@ TESTING_BRANCH = os.environ.get("TESTING_BRANCH")
 def get_mongosh_ver():
     url = "https://raw.githubusercontent.com/Percona-QA/psmdb-testing/" + TESTING_BRANCH + "/MONGOSH_VERSION"
     r = requests.get(url)
-    return r.text
+    return r.text.rstrip()
 
 MONGOSH_VER = get_mongosh_ver()
 
