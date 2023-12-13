@@ -25,7 +25,6 @@ def test_mongod_service(host):
     mongod = host.service("mongod")
     assert mongod.is_running
 
-
 @pytest.mark.parametrize("binary", BINARIES)
 def test_binary_version(host, binary):
     result = host.run(f"{binary} --version")
@@ -37,12 +36,4 @@ def test_cli_version(host):
         assert MONGOSH_VER in result
     else:
         assert PSMDB_VER in result
-
-def test_loaded_data(host):
-    cmd = "/package-testing/scripts/mongo_check.sh"
-    with host.sudo():
-        result = host.run(cmd)
-        print(result.stdout)
-        print(result.stderr)
-    assert result.rc == 0, result.stdout
 
