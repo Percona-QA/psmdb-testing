@@ -4,7 +4,7 @@
     toolkit: "{{ lookup('env', 'ENABLE_TOOLKIT') | default('false', true) }}"
 
 - set_fact:
-    gated_build: "{{ lookup('env', 'GATED_BUILD') | default('false', true) }}"
+    pro_build: "{{ lookup('env', 'GATED_BUILD') | default('false', true) }}"
 
 - name: remove the Percona apt main repository
   apt_repository: repo='deb http://repo.percona.com/apt {{ ansible_distribution_release }} main' state=absent update_cache=yes
@@ -37,15 +37,15 @@
   vars:
     repo: "{{ lookup('env', 'REPO') }}"
     version: "{{ lookup('env', 'PSMDB_VERSION') }}"
-  when: gated_build != true
+  when: pro_build != true
 
-- name: Create yum repo for gated build
+- name: Create yum repo for PRO build
   blockinfile:
-    path: /etc/yum.repos.d/percona-gated.repo
+    path: /etc/yum.repos.d/percona-pro.repo
     mode: '0640'
     create: true
     block: |
-      [percona-gated]
+      [percona-pro]
       name=[psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro-{{ repo }}-x86_64]
       baseurl=http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/x86_64
       enabled=1
@@ -56,23 +56,23 @@
     client_token: "{{ lookup('env', 'PASSWORD') }}"
     repo: "{{ lookup('env', 'REPO') }}"
     version: "{{ lookup('env', 'PSMDB_VERSION') }}"
-  when: ansible_os_family == "RedHat" and gated_build == true
+  when: ansible_os_family == "RedHat" and pro_build == true
 
-- name: create apt repo for gated build
+- name: create apt repo for PRO build
   apt_repository: repo='deb http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/apt/ {{ ansible_distribution_release }} {{ repo }}' state=present update_cache=yes
   vars:
     client_id: "{{ lookup('env', 'USERNAME') }}"
     client_token: "{{ lookup('env', 'PASSWORD') }}"
-    repo: "{{ lookup('env', 'REPO') }}"
+    repo: "{{ 'main' if lookup('env', 'REPO') == 'release' else lookup('env', 'REPO') }}"
     version: "{{ lookup('env', 'PSMDB_VERSION') }}"
-  when: ansible_os_family == "Debian" and gated_build == true
+  when: ansible_os_family == "Debian" and pro_build == true
 
 - block:
     - name: include tasks for PSMDB install
       include_tasks: ../../../tasks/install_psmdb.yml
       vars:
         psmdb_to_test: "{{ lookup('env', 'PSMDB_VERSION') }}"
-        psmdb_pkg_name_addon: "{{ '-pro' if gated_build == true else '' }}"
+        psmdb_pkg_name_addon: "{{ '-pro' if pro_build == true else '' }}"
   environment:
     PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
 

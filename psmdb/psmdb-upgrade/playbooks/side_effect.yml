@@ -109,13 +109,13 @@
     - name: enable new psmdb repo
       command: percona-release enable psmdb-{{ to_version.split('.')[0] }}{{ to_version.split('.')[1] }} {{ to_repo }}
 
-    - name: Create yum repo for gated build
+    - name: Create yum repo for PRO build
       blockinfile:
-        path: /etc/yum.repos.d/percona-gated.repo
+        path: /etc/yum.repos.d/percona-pro.repo
         mode: '0640'
         create: true
         block: |
-          [percona-gated]
+          [percona-pro]
           name=[psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro-{{ repo }}-x86_64]
           baseurl=http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/x86_64
           enabled=1
@@ -128,12 +128,12 @@
         version: "{{ lookup('env', 'TO_PSMDB_VERSION') }}"
       when: ansible_os_family == "RedHat" and to_repo_pro == true
 
-    - name: create apt repo for gated build
+    - name: create apt repo for PRO build
       apt_repository: repo='deb http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/apt/ {{ ansible_distribution_release }} {{ repo }}' state=present update_cache=yes
       vars:
         client_id: "{{ lookup('env', 'USERNAME') }}"
         client_token: "{{ lookup('env', 'PASSWORD') }}"
-        repo: "{{ lookup('env', 'TO_REPO') }}"
+        repo: "{{ 'main' if lookup('env', 'REPO') == 'release' else lookup('env', 'REPO') }}"
         version: "{{ lookup('env', 'TO_PSMDB_VERSION') }}"
       when: ansible_os_family == "Debian" and to_repo_pro == true
 
