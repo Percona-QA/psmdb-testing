@@ -55,7 +55,7 @@
   vars:
     client_id: "{{ lookup('env', 'USERNAME') }}"
     client_token: "{{ lookup('env', 'PASSWORD') }}"
-    repo: "{{ 'main' if lookup('env', 'REPO') == 'release' else lookup('env', 'REPO') }}"
+    repo: "{{ 'main' if lookup('env', 'FROM_REPO') == 'release' else lookup('env', 'FROM_REPO') }}"
     version: "{{ lookup('env', 'FROM_PSMDB_VERSION') }}"
   when: ansible_os_family == "Debian" and from_repo_pro == true
 
