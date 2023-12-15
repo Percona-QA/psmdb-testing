@@ -195,7 +195,7 @@ def test_auth(host,auth):
     if auth == 'LDAP':
         result = host.check_output('mongo -u "cn=exttestrw,ou=people,dc=percona,dc=com" -p "exttestrw9a5S" --authenticationDatabase \'$external\' --authenticationMechanism=PLAIN --quiet --eval "db.runCommand({connectionStatus : 1})"')
         print(result)
-        assert 'ok: 1' in result
+        assert 'ok: 1' in result or '"ok" : 1' in result
     if auth == 'GSSAPI':
         with host.sudo():
             hostname = host.check_output('hostname')
@@ -203,11 +203,12 @@ def test_auth(host,auth):
             host.check_output('bash -c "kinit exttestrw <<<\'exttestrw\'"')
             result = host.check_output('mongo -u exttestrw@PERCONATEST.COM --host '+ hostname +' --authenticationMechanism=GSSAPI --authenticationDatabase \'$external\' --quiet --eval "db.runCommand({connectionStatus : 1})"')
             print(result)
-            assert 'ok: 1' in result
+            assert 'ok: 1' in result or '"ok" : 1' in result
     if auth == 'MONGODB-AWS':
         hostname = host.check_output('hostname')
         result = host.check_output('mongo --host '+ hostname + ' --authenticationMechanism MONGODB-AWS --authenticationDatabase \'$external\' --quiet --eval "db.runCommand({connectionStatus : 1})"')
-        assert 'ok: 1' in result
+        print(result)
+        assert 'ok: 1' in result or '"ok" : 1' in result
 
 @pytest.mark.parametrize("encryption,cipher",[('KEYFILE','AES256-CBC'),('KEYFILE','AES256-GCM'),('VAULT','AES256-CBC'),('VAULT','AES256-GCM'),('KMIP','AES256-CBC'),('KMIP','AES256-GCM')])
 def test_encryption(host,encryption,cipher):
