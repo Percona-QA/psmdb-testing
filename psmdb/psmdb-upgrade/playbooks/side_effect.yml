@@ -326,4 +326,9 @@
     - name: set compatibilty version after upgrade
       shell: |
         mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{to_maj_version}}" })'
-      when: from_maj_version < to_maj_version
+      when: from_maj_version < to_maj_version and to_maj_version != "7.0"
+
+    - name: set compatibilty version after upgrade
+      shell: |
+        mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{to_maj_version}}", confirm: true })'
+      when: from_maj_version < to_maj_version and to_maj_version >= "7.0"
