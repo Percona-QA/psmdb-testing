@@ -13,7 +13,7 @@ ARG special_targets="dbtest mongo"
 WORKDIR /opt
 RUN yum -y install gcc-toolset-9 python38 python38-devel lld git cmake curl \
                    binutils-devel openssl-devel openldap-devel krb5-devel libcurl-devel \
-                   cyrus-sasl-devel bzip2-devel zlib-devel lz4-devel xz-devel e2fsprogs-devel && \
+                   cyrus-sasl-devel bzip2-devel zlib-devel lz4-devel xz-devel expat-devel e2fsprogs-devel && \
     alternatives --set python3 /usr/bin/python3.8 && \
     alternatives --set python /usr/bin/python3.8 && \
     pip3 install --upgrade pip && \  
@@ -48,7 +48,7 @@ ARG branch=v7.0
 WORKDIR /opt
 RUN yum -y install python38 python38-devel git curl \
                    openssl-devel openldap-devel krb5-devel libcurl-devel \
-                   cyrus-sasl-devel bzip2-devel zlib-devel lz4-devel xz-devel e2fsprogs-devel && \
+                   cyrus-sasl-devel bzip2-devel zlib-devel lz4-devel xz-devel expat-devel e2fsprogs-devel && \
     alternatives --set python3 /usr/bin/python3.8 && \
     alternatives --set python /usr/bin/python3.8 && \
     pip3 install --upgrade pip && \
