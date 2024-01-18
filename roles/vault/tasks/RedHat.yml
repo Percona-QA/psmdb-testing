@@ -8,6 +8,10 @@
   args:
     creates: /etc/yum.repos.d/hashicorp.repo
 
+- name: Fix Hashicorp yum repo
+  shell: |
+    sed 's/\$releasever/{{ ansible_distribution_major_version }}/g' -i /etc/yum.repos.d/hashicorp.repo
+
 - name: Install Vault via yum
   yum:
     name: vault
