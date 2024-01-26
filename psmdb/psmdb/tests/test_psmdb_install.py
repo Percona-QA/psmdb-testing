@@ -64,6 +64,8 @@ def start_mongod(node,check=True):
             if result.rc != 0:
                 logs = get_logs(node)
                 print(logs)
+                syslogs = node.check_output('journalctl --all --no-pager')
+                print(syslogs)
             assert result.rc == 0 ,result.stderr
             mongod = node.service("mongod")
             assert mongod.is_running
