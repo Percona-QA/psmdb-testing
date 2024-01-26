@@ -39,9 +39,9 @@ def erase_data(node):
 def get_logs(node):
     with node.sudo():
         if node.system_info.distribution == "debian" or node.system_info.distribution == "ubuntu":
-            logs=node.check_output('cat /var/log/mongodb/mongod.log')
+            logs=node.check_output('cat /var/log/mongodb/*')
         else:
-            logs=node.check_output('cat /var/log/mongo/mongod.log')
+            logs=node.check_output('cat /var/log/mongo/*')
     return logs
 
 def erase_logs(node):
