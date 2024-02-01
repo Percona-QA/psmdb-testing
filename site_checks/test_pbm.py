@@ -5,7 +5,7 @@ import json
 from packaging import version
 
 PBM_VER = os.environ.get("PBM_VERSION")
-SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','redhat/7','source','jammy','focal','bionic']
+SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','redhat/7','source','jammy','focal']
 
 def get_package_tuples():
     list = []
