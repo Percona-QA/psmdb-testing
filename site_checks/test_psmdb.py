@@ -8,9 +8,9 @@ PSMDB_VER = os.environ.get("PSMDB_VERSION")
 if version.parse(PSMDB_VER) > version.parse("7.0.0"):
     SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','redhat/7','source','jammy','focal']
 elif version.parse(PSMDB_VER) > version.parse("6.0.0") and version.parse(PSMDB_VER) < version.parse("7.0.0"):
-    SOFTWARE_FILES = ['bullseye','buster','binary','redhat/9','redhat/8','redhat/7','source','jammy','focal','bionic']
+    SOFTWARE_FILES = ['bullseye','buster','binary','redhat/9','redhat/8','redhat/7','source','jammy','focal']
 else:
-    SOFTWARE_FILES = ['bullseye','buster','binary','redhat/8','redhat/7','source','jammy','focal','bionic']
+    SOFTWARE_FILES = ['bullseye','buster','binary','redhat/8','redhat/7','source','jammy','focal']
 
 def get_package_tuples():
     list = []
