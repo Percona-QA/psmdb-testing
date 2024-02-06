@@ -28,10 +28,6 @@
 - name: Install percona release package
   include_tasks: ../../../tasks/install_percona_release.yml
 
-- name: Add ARM support into percona-release
-  command: sed -i "s|x86_64|x86_64 aarch64|" /usr/bin/percona-release
-  when: ansible_architecture == "aarch64" or ansible_architecture == "arm64"
-
 - name: enable psmdb repo
   command: percona-release enable psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }} {{ repo }}
   vars:
