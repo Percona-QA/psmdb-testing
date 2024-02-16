@@ -25,7 +25,8 @@ provisioner:
     converge: ../../playbooks/playbook.yml
 verifier:
   name: testinfra
-  directory: ../../../fips-tests/
+#  directory: ../../../fips-tests/
+  directory: ../../../tests/
   additional_files_or_dirs:
     - ../psmdb/tests/
   options:
