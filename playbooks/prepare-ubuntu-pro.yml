@@ -1,0 +1,25 @@
+---
+- name: Prepare node for running tests
+  hosts: all
+  become: true
+  become_method: sudo
+  gather_facts: true
+  tasks:
+    - name: Subscribe for fips-updates
+      command: pro enable fips-updates --assume-yes
+
+    - name: install needed packages for running tests with apt
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+          - unzip
+          - wget
+          - gnupg
+          - gnupg2
+          - rsync
+          - acl
+          - git
+
