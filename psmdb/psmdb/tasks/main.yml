@@ -42,8 +42,8 @@
     create: true
     block: |
       [percona-pro]
-      name=[psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro-{{ repo }}-x86_64]
-      baseurl=http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/x86_64
+      name=[psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro-{{ repo }}-{{ ansible_architecture }}]
+      baseurl=http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/{{ ansible_architecture }}
       enabled=1
       gpgcheck=0
       sslverify=0
