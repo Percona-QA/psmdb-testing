@@ -54,7 +54,7 @@ def start_cluster(cluster,request):
 
 @pytest.mark.testcase(test_case_key="T249", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)
-def test_disabled(start_cluster,cluster):
+def test_logical(start_cluster,cluster):
     cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
     db = client.test
