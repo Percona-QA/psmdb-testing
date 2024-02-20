@@ -1,0 +1,78 @@
+---
+- name: Download packages to localhost
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - set_fact:
+        tarball_ol9: "{{ lookup('env', 'TARBALL_OL9') | default('https://downloads.percona.com/downloads/percona-server-mongodb-5.0/percona-server-mongodb-5.0.13-11/binary/tarball/percona-server-mongodb-5.0.13-11-x86_64.glibc2.17-minimal.tar.gz', true) }}"
+
+    - name: Get tarball link for jammy
+      set_fact:
+        tarball_jammy: "{{ tarball_ol9 | regex_replace('ol9', 'jammy') }}"      
+
+    - name: Debug tarball for jammy
+      debug:
+        msg: "{{ tarball_jammy }}"
+
+    - name: Get mongodb version
+      set_fact:
+        mongodb_ver: "{{ tarball_ol9 | regex_search('mongodb-pro-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+
+    - name: Get mongodb major version
+      set_fact: 
+        maj_version={{ mongodb_ver[0].split('.')[0] }}
+
+    - name: Debug mongodb major version
+      debug:
+        msg: "{{ maj_version }}"    
+
+    - name: Get git repo branch
+      set_fact:
+        repo_branch: "v{{ mongodb_ver[0].split('.')[0] }}.{{ mongodb_ver[0].split('.')[1] }}"
+
+    - name: Debug repo branch
+      debug:
+        msg: "{{ repo_branch }}"
+
+    - name: Download tarball for ol9 from url
+      get_url:
+        url: '{{ tarball_ol9 }}'
+        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.ol9.tar.gz
+        mode: '0644'
+      when: tarball_ol9.startswith('http') 
+
+    - name: Download tarball for ol9 from s3
+      aws_s3:
+        bucket: "{{ tarball_ol9 | urlsplit('hostname') }}"
+        object: "{{ tarball_ol9 | urlsplit('path') }}"
+        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.ol9.tar.gz
+        mode: get
+      when: tarball_ol9.startswith('s3') 
+
+    - name: Download tarball for jammy from url
+      get_url:
+        url: '{{ tarball_jammy }}'
+        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.jammy.tar.gz
+        mode: '0644'
+      when: tarball_ol9.startswith('http')
+
+    - name: Download tarball for jammy from s3
+      aws_s3:
+        bucket: "{{ tarball_jammy | urlsplit('hostname') }}"
+        object: "{{ tarball_jammy | urlsplit('path') }}"
+        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.jammy.tar.gz
+        mode: get
+      when: tarball_ol9.startswith('s3')  
+
+- name: Converge
+  hosts: all
+  become: true
+  become_method: sudo
+  gather_facts: yes
+  roles:
+    - role: psmdb-tarball-pro
+    - role: '../../../roles/openldap'
+    - role: '../../../roles/kerberos'
+    - role: '../../../roles/kmip'
+    - role: '../../../roles/vault'
