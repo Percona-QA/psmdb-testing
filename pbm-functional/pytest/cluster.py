@@ -429,7 +429,8 @@ class Cluster:
                 assert False, "Cannot start restore, another operation running"
             time.sleep(1)
         Cluster.log("Restore started")
-        result = n.run('timeout 240 pbm restore ' + name + ' --wait')
+        timeout=kwargs.get('timeout', 240)
+        result = n.run('timeout ' + str(timeout) + ' pbm restore ' + name + ' --wait')
         if result.rc == 124:
             # try to catch possible failures if timeout exceeded
             for host in self.mongod_hosts:
