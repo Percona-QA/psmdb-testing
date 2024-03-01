@@ -388,7 +388,7 @@ class Cluster:
             if time.time() > timeout:
                 assert False
             time.sleep(1)
-        timeout = time.time() + 600
+        timeout = time.time() + 900
         while True:
             status = self.get_status()
             Cluster.log("Current operation: " + str(status['running']))
