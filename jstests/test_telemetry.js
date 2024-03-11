@@ -15,11 +15,30 @@ var cleanupTelmDir = function() {
     });
 };
 
-var getTelmData = function() {
+var getTelmRawData = function() {
     var files = listFiles(telmPath);
     var data = '';
     files.forEach((file) => {
         data = data + cat(file.name)
+    });
+    return data;
+};
+
+var getTelmInstanceId = function(conn) {
+    var cmdLineOpts = conn.getDB("admin").runCommand({getCmdLineOpts: 1});
+    var dbPath = cmdLineOpts['parsed']['storage']['dbPath'];
+    var telmId = _readDumpFile(dbPath + "/psmdb_telemetry.data");
+    return telmId[0]['db_instance_id'].str;
+};
+
+var getTelmDataByConn = function(conn) {
+    var id = getTelmInstanceId(conn);
+    var files = listFiles(telmPath);
+    var data = [] ;
+    files.forEach((file) => {
+        if (file.name.includes(id)) {
+            data.push(JSON.parse(cat(file.name)))
+        }
     });
     return data;
 };
@@ -38,11 +57,10 @@ var telmTestSingle = function() {
     assert.eq(1,telmFileList.length,telmFileList);
 
     //test telemetry data
-    var telmData = getTelmData();
+    var jsonTelmData = getTelmDataByConn(singleTest);
     jsTest.log("Get single-node telemetry");
-    jsTest.log(telmData)
+    jsTest.log(jsonTelmData);
 
-    var jsonTelmData = JSON.parse(telmData);
     assert(jsonTelmData['pro_features'],"pro_features doesn't exist");
     if ( jsonTelmData['pro_features'].length > 0 ) {
         assert.eq('mongod-pro',jsonTelmData['source'],jsonTelmData['source']);
@@ -102,9 +120,11 @@ var telmTestRepl = function() {
     assert.eq(3,telmFileList.length,telmFileList);
 
     //test replication_state
-    var telmData = getTelmData();
+    var telmData = getTelmRawData();
     jsTest.log("Get RS telemetry");
     jsTest.log(telmData)
+
+
     assert.includes(telmData,'PRIMARY');
     assert.includes(telmData,'SECONDARY');
     assert.includes(telmData,'ARBITER');
@@ -130,7 +150,7 @@ var telmTestSharding = function() {
     //test mongos + config_svr + shard_svr
     var telmFileList = listFiles(telmPath);
     assert.eq(3,telmFileList.length,telmFileList)
-    var telmData = getTelmData();
+    var telmData = getTelmRawData();
     jsTest.log("Get sharded cluster telemetry");
     jsTest.log(telmData)
     assert.includes(telmData,'mongos');
