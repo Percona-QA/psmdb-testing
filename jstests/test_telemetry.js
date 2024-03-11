@@ -3,7 +3,7 @@
 
 const telmPath = "/usr/local/percona/telemetry/psmdb";
 const setParameterOpts = {
-    perconaTelemetryGracePeriod: 1,
+    perconaTelemetryGracePeriod: 2,
     perconaTelemetryScrapeInterval: 5,
     perconaTelemetryHistoryKeepInterval: 9
 };
@@ -52,7 +52,7 @@ var telmTestSingle = function() {
     });
 
     //test perconaTelemetryGracePeriod
-    sleep(2000);
+    sleep(3000);
     var telmFileList = listFiles(telmPath);
     assert.eq(1,telmFileList.length,telmFileList);
 
@@ -114,20 +114,24 @@ var telmTestRepl = function() {
     replTest.startSet();
     replTest.initiate();
 
-    sleep(2000);
+    sleep(3000);
 
     var telmFileList = listFiles(telmPath);
     assert.eq(3,telmFileList.length,telmFileList);
 
     //test replication_state
-    var telmData = getTelmRawData();
-    jsTest.log("Get RS telemetry");
-    jsTest.log(telmData)
-
-
-    assert.includes(telmData,'PRIMARY');
-    assert.includes(telmData,'SECONDARY');
-    assert.includes(telmData,'ARBITER');
+    var telmData = getTelmData();
+    jsTest.log("Get RS tetemetry");
+    jsTest.log(telmData);
+    var primaryTelmData = getTelmDataByConn(replTest.nodes[0])[0];
+    var secondaryTelmData = getTelmDataByConn(replTest.nodes[1])[0];
+    var arbiterTelmData = getTelmDataByConn(replTest.nodes[2])[0];
+    var dbReplicationId = primaryTelmData['db_replication_id'];
+    assert.eq(primaryTelmData['replication_state'],'PRIMARY');
+    assert.eq(secondaryTelmData['replication_state'],'SECONDARY');
+    assert.eq(arbiterTelmData['replication_state'],'ARBITER');
+    assert.eq(secondaryTelmData['db_replication_id'],dbReplicationId);
+    assert.eq(arbiterTelmData['db_replication_id'],dbReplicationId);
 
     replTest.stopSet();
 };
@@ -145,7 +149,7 @@ var telmTestSharding = function() {
         configOptions: { setParameter: setParameterOpts }
     });
 
-    sleep(2000);
+    sleep(3000);
 
     //test mongos + config_svr + shard_svr
     var telmFileList = listFiles(telmPath);
