@@ -57,7 +57,7 @@ var telmTestSingle = function() {
     assert.eq(1,telmFileList.length,telmFileList);
 
     //test telemetry data
-    var jsonTelmData = getTelmDataByConn(singleTest);
+    var jsonTelmData = getTelmDataByConn(singleTest)[0];
     jsTest.log("Get single-node telemetry");
     jsTest.log(jsonTelmData);
 
