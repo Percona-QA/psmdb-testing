@@ -92,7 +92,7 @@ var telmTestSingle = function() {
 
     //test enable perconaTelemetry
     assert.commandWorked(singleTest.getDB("admin").runCommand({setParameter: 1, "perconaTelemetry": true}));
-    sleep(6000);
+    sleep(3000);
     telmFileList = listFiles(telmPath);
     assert.eq(1,telmFileList.length,telmFileList);
 
@@ -120,7 +120,7 @@ var telmTestRepl = function() {
     assert.eq(3,telmFileList.length,telmFileList);
 
     //test replication_state
-    var telmData = getTelmData();
+    var telmData = getTelmRawData();
     jsTest.log("Get RS tetemetry");
     jsTest.log(telmData);
     var primaryTelmData = getTelmDataByConn(replTest.nodes[0])[0];
@@ -154,13 +154,22 @@ var telmTestSharding = function() {
     //test mongos + config_svr + shard_svr
     var telmFileList = listFiles(telmPath);
     assert.eq(3,telmFileList.length,telmFileList)
+
+    cleanupTelmDir();
+    //wait for sh init
+    sleep(5000);
     var telmData = getTelmRawData();
     jsTest.log("Get sharded cluster telemetry");
     jsTest.log(telmData)
     assert.includes(telmData,'mongos');
-    assert.includes(telmData,'"shard_svr": "true"');
-    assert.includes(telmData,'"config_svr": "true"');
-
+    var configTelmData = getTelmDataByConn(st.config0)[0];
+    var shardTelmData = getTelmDataByConn(st.shard0)[0];
+    assert(configTelmData['db_cluster_id']);
+    assert(shardTelmData['db_cluster_id']);
+    assert.eq(configTelmData['db_cluster_id'],shardTelmData['db_cluster_id']);
+    assert.eq(configTelmData['config_svr'],'true');
+    assert.eq(shardTelmData['shard_svr'],'true');
+    assert.eq(shardTelmData['config_svr'],'false');
     st.stop();
 };
 
