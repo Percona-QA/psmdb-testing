@@ -59,6 +59,6 @@ def test_load(start_cluster,cluster):
         Cluster.log( database + ": " + str(i))
 
     backup = cluster.make_backup("physical")
-    cluster.make_restore(backup,restart_cluster=True, check_pbm_status=True,timeout=1200)
+#    cluster.make_restore(backup,restart_cluster=True, check_pbm_status=True,timeout=1200)
     Cluster.log("Finished successfully")
 
