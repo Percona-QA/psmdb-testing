@@ -12,6 +12,13 @@
 
 - name: Copy tarball
   copy:
+    src: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.ol8.tar.gz
+    dest: /tmp/percona-server-mongodb.tar.gz
+    mode: '0644'
+  when: ansible_distribution == "RedHat" and ansible_distribution_major_version == "8"
+
+- name: Copy tarball
+  copy:
     src: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.ol9.tar.gz
     dest: /tmp/percona-server-mongodb.tar.gz
     mode: '0644'
