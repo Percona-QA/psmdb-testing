@@ -28,7 +28,7 @@ def config():
 
 @pytest.fixture(scope="package")
 def cluster(config):
-    return Cluster(config, mongod_extra_args="--setParameter logicalSessionRefreshMillis=120000") # 2minutes
+    return Cluster(config, mongod_extra_args="--setParameter logicalSessionRefreshMillis=180000") # 3minutes
 
 @pytest.fixture(scope="function")
 def start_cluster(cluster,request):
@@ -58,7 +58,7 @@ def test_physical_pitr(start_cluster,cluster):
     for i in range(30):
          pymongo.MongoClient(cluster.connection)["test"]["test"].insert_one({"a": i})
     cluster.make_backup("logical")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=2")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=3")
     backup=cluster.make_backup("physical")
     for i in range(30):
          pymongo.MongoClient(cluster.connection)["test"]["test"].insert_one({"b": i})
@@ -78,6 +78,7 @@ def test_physical_pitr(start_cluster,cluster):
         if time.time() > timeout:
             assert False
         time.sleep(1)
+    time.sleep(30)
     backup="--time=" + pitr + " --base-snapshot=" + backup
     cluster.disable_pitr()
     cluster.make_restore(backup,restart_cluster=True,check_pbm_status=True)
