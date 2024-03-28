@@ -477,7 +477,7 @@ class Cluster:
         if cleanup:
             result=self.exec_pbm_cli("delete-pitr --all --force --yes ")
             Cluster.log(result.stdout + result.stderr)
-            result=self.exec_pbm_cli("delete-backup --older-than=0 --force --yes")
+            result=self.exec_pbm_cli("delete-backup --older-than=0d --force --yes")
             Cluster.log(result.stdout + result.stderr)
         for host in self.all_hosts:
             try:
