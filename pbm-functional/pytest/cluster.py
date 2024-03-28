@@ -431,7 +431,10 @@ class Cluster:
         Cluster.log("Restore started")
         timeout=kwargs.get('timeout', 240)
         result = n.run('timeout ' + str(timeout) + ' pbm restore ' + name + ' --wait')
-        if result.rc == 124:
+
+        if result.rc == 0:
+            Cluster.log(result.stdout)
+        else:
             # try to catch possible failures if timeout exceeded
             for host in self.mongod_hosts:
                 try:
@@ -444,10 +447,6 @@ class Cluster:
                         Cluster.log(get_logs.output.decode('utf-8'))
                 except docker.errors.APIError:
                     pass
-            assert False, "Timeout for restore exceeded"
-        elif result.rc == 0:
-            Cluster.log(result.stdout)
-        else:
             assert False, result.stdout + result.stderr
 
         restart_cluster=kwargs.get('restart_cluster', False)
@@ -478,7 +477,7 @@ class Cluster:
         if cleanup:
             result=self.exec_pbm_cli("delete-pitr --all --force --yes ")
             Cluster.log(result.stdout + result.stderr)
-            result=self.exec_pbm_cli("delete-backup --older-than=9999-01-01 --force --yes")
+            result=self.exec_pbm_cli("delete-backup --older-than=0 --force --yes")
             Cluster.log(result.stdout + result.stderr)
         for host in self.all_hosts:
             try:
