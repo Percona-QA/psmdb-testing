@@ -436,6 +436,7 @@ class Cluster:
             Cluster.log(result.stdout)
         else:
             # try to catch possible failures if timeout exceeded
+            error=''
             for host in self.mongod_hosts:
                 try:
                     container = docker.from_env().containers.get(host)
@@ -444,10 +445,16 @@ class Cluster:
                     if get_logs.exit_code == 0:
                         Cluster.log(
                             "!!!!Possible failure on {}, file pbm.restore.log was found:".format(host))
-                        Cluster.log(get_logs.output.decode('utf-8'))
+                        logs = get_logs.output.decode('utf-8')
+                        Cluster.log(logs)
+                        if '"s":"F"' in logs:
+                            error = logs
                 except docker.errors.APIError:
                     pass
-            assert False, result.stdout + result.stderr
+            if error:
+                assert False, result.stdout + result.stderr + "\n" + error
+            else:
+                assert False, result.stdout + result.stderr
 
         restart_cluster=kwargs.get('restart_cluster', False)
         if restart_cluster:

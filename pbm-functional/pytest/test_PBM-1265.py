@@ -53,7 +53,7 @@ def start_cluster(cluster,request):
         os.system("rm -rf /backups/*")
 
 @pytest.mark.timeout(1200, func_only=True)
-def test_physical_pitr(start_cluster,cluster):
+def test_physical_pitr_PBM_T251(start_cluster,cluster):
     cluster.check_pbm_status()
     for i in range(30):
          pymongo.MongoClient(cluster.connection)["test"]["test"].insert_one({"a": i})
