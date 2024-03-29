@@ -18,7 +18,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       PSMDB: ${{ github.event.inputs.psmdb || 'percona/percona-server-mongodb' }}
@@ -26,7 +26,7 @@ jobs:
       GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
       TEST: ${{ github.event.inputs.test || '-k logical --verbose test_sharded.py' }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Setup environment
       run: |
         docker-compose build 
@@ -37,7 +37,7 @@ jobs:
         docker-compose run --rm test pytest -s --junitxml=junit.xml ${{ env.TEST }}
       working-directory: ./pbm-functional/pytest
     - name: Publish Test Report
-      uses: mikepenz/action-junit-report@v3
+      uses: mikepenz/action-junit-report@v4
       if: success() || failure() 
       with:
         report_paths: '**/junit.xml'
