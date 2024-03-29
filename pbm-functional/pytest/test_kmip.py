@@ -35,9 +35,8 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.testcase(test_case_key="T197", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)
-def test_physical(start_cluster,cluster):
+def test_physical_PBM_T197(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("physical")
@@ -47,9 +46,8 @@ def test_physical(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     Cluster.log("Finished successfully")
 
-@pytest.mark.testcase(test_case_key="T201", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)
-def test_incremental(start_cluster,cluster):
+def test_incremental_PBM_T201(start_cluster,cluster):
     cluster.check_pbm_status()
     cluster.make_backup("incremental --base")
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)

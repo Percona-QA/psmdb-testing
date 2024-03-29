@@ -62,9 +62,8 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.testcase(test_case_key="T202", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)
-def test_logical(start_cluster,cluster):
+def test_logical_PBM_T202(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("logical")
