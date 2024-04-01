@@ -39,9 +39,11 @@ def erase_data(node):
 def get_logs(node):
     with node.sudo():
         if node.system_info.distribution == "debian" or node.system_info.distribution == "ubuntu":
-            logs=node.check_output('cat /var/log/mongodb/mongod.log')
+            logs=node.check_output('cat /var/log/mongodb/*')
+            logs=logs + node.check_output('journalctl --no-pager -u mongod.service')
         else:
-            logs=node.check_output('cat /var/log/mongo/mongod.log')
+            logs=node.check_output('cat /var/log/mongo/*')
+            logs=logs + node.check_output('journalctl --no-pager -u mongod.service')
     return logs
 
 def erase_logs(node):
