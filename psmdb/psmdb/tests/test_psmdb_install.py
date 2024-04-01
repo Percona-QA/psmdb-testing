@@ -1,4 +1,5 @@
 import os
+import time
 import pytest
 import json
 import yaml
@@ -75,6 +76,7 @@ def restore_defaults(node):
     erase_data(node)
     erase_logs(node)
     copy_default_conf(node)
+    time.sleep(1)
     start_mongod(node)
     print("\n")
 
@@ -88,6 +90,7 @@ def apply_conf(node,conf,clear_data=False,check=True):
     if clear_data:
         erase_data(node)
         erase_logs(node)
+    time.sleep(1)
     start_mongod(node,check)
 
 def check_hotbackup(node):
