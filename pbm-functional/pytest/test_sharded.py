@@ -50,9 +50,8 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.testcase(test_case_key="T218", test_step_key=1)
 @pytest.mark.timeout(600,func_only=True)
-def test_logical(start_cluster,cluster):
+def test_logical_PBM_T218(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     pymongo.MongoClient(cluster.connection)["test"]["test1"].insert_many(documents)
@@ -74,9 +73,8 @@ def test_logical(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-@pytest.mark.testcase(test_case_key="T194", test_step_key=1)
 @pytest.mark.timeout(600, func_only=True)
-def test_logical_pitr(start_cluster,cluster):
+def test_logical_pitr_PBM_T194(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup_l1=cluster.make_backup("logical")
@@ -115,9 +113,8 @@ def test_physical(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-@pytest.mark.testcase(test_case_key="T244", test_step_key=1)
 @pytest.mark.timeout(600, func_only=True)
-def test_physical_pitr(start_cluster,cluster):
+def test_physical_pitr_PBM_T244(start_cluster,cluster):
     cluster.check_pbm_status()
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
@@ -153,9 +150,8 @@ def test_incremental(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-@pytest.mark.testcase(test_case_key="T236", test_step_key=1)
 @pytest.mark.timeout(600,func_only=True)
-def test_external_meta(start_cluster,cluster):
+def test_external_meta_PBM_T236(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup = cluster.external_backup_start()
@@ -171,9 +167,8 @@ def test_external_meta(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-@pytest.mark.testcase(test_case_key="T237", test_step_key=1)
 @pytest.mark.timeout(600,func_only=True)
-def test_external_nometa(start_cluster,cluster):
+def test_external_nometa_PBM_T237(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup = cluster.external_backup_start()

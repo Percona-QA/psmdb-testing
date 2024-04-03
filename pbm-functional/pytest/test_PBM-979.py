@@ -61,9 +61,8 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.testcase(test_case_key="T233", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)
-def test_logical(start_cluster,cluster):
+def test_logical_PBM_T233(start_cluster,cluster):
     time.sleep(5) # wait for delayed node
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
@@ -80,9 +79,8 @@ def test_logical(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     Cluster.log("Finished successfully")
 
-@pytest.mark.testcase(test_case_key="T195", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)
-def test_physical(start_cluster,cluster):
+def test_physical_PBM_T195(start_cluster,cluster):
     time.sleep(5) # wait for delayed node
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
@@ -110,9 +108,8 @@ def test_physical(start_cluster,cluster):
         assert 'buildIndexes' not in member or member['buildIndexes'] == rs_config['members'][index]['buildIndexes']
     Cluster.log("Finished successfully")
 
-@pytest.mark.testcase(test_case_key="T234", test_step_key=1)
 @pytest.mark.timeout(300,func_only=True)
-def test_incremental(start_cluster,cluster):
+def test_incremental_PBM_T234(start_cluster,cluster):
     time.sleep(5)
     cluster.check_pbm_status()
     init_backup=cluster.make_backup("incremental --base")
@@ -142,9 +139,8 @@ def test_incremental(start_cluster,cluster):
         assert 'buildIndexes' not in member or member['buildIndexes'] == rs_config['members'][index]['buildIndexes']
     Cluster.log("Finished successfully")
 
-@pytest.mark.testcase(test_case_key="T240", test_step_key=1)
 @pytest.mark.timeout(600,func_only=True)
-def test_external(start_cluster,cluster):
+def test_external_PBM_T240(start_cluster,cluster):
     time.sleep(5)
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)

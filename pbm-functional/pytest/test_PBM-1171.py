@@ -48,9 +48,8 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.testcase(test_case_key="T248", test_step_key=1)
 @pytest.mark.timeout(600,func_only=True)
-def test_physical_mixed_env(start_cluster,cluster):
+def test_physical_mixed_env_PBM_T248(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
 

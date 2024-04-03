@@ -77,9 +77,8 @@ def start_cluster(cluster,request):
         t4.join()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.testcase(test_case_key="T246", test_step_key=1)
 @pytest.mark.timeout(6000, func_only=True)
-def test_incremental_base(start_cluster,cluster):
+def test_incremental_base_PBM_T246(start_cluster,cluster):
     cluster.check_pbm_status()
     time.sleep(10)
     for i in range(20):
@@ -88,9 +87,8 @@ def test_incremental_base(start_cluster,cluster):
 
     Cluster.log("Finished successfully")
 
-@pytest.mark.testcase(test_case_key="T245", test_step_key=1)
 @pytest.mark.timeout(6000, func_only=True)
-def test_incremental(start_cluster,cluster):
+def test_incremental_PBM_T245(start_cluster,cluster):
     cluster.check_pbm_status()
     time.sleep(10)
     cluster.make_backup("incremental --base")
@@ -106,9 +104,8 @@ def test_incremental(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test2").get("sharded", False)
     Cluster.log("Finished successfully")
 
-@pytest.mark.testcase(test_case_key="T247", test_step_key=1)
 @pytest.mark.timeout(6000, func_only=True)
-def test_physical(start_cluster,cluster):
+def test_physical_PBM_T247(start_cluster,cluster):
     cluster.check_pbm_status()
     time.sleep(10)
     for i in range(20):
