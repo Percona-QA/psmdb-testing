@@ -378,15 +378,20 @@ class Cluster:
             Cluster.log("Current operation: " + str(running))
             if not running:
                 if type:
-                    start = n.check_output(
+                    start = n.run(
                         'pbm backup --out=json --type=' + type)
                 else:
-                    start = n.check_output('pbm backup --out=json')
-                name = json.loads(start)['name']
-                Cluster.log("Backup started")
-                break
+                    start = n.run('pbm backup --out=json')
+                if start.rc == 0:
+                    name = json.loads(start.stdout)['name']
+                    Cluster.log("Backup started")
+                    break
+                elif "resync" in start.stdout:
+                    Cluster.log("Resync in progress, retrying: " + start.stdout)
+                else:
+                    assert False, "Backup failed" + start.stdout + start.stderr
             if time.time() > timeout:
-                assert False
+                assert False, "Timeout for backup start exceeded"
             time.sleep(1)
         timeout = time.time() + 900
         while True:
