@@ -61,8 +61,8 @@
 - name: Install percona release package
   include_tasks: ../../../tasks/install_percona_release.yml
 
-- name: Enable psmdb 7.0 experimental repo
-  command: percona-release enable psmdb-70 experimental
+- name: Enable psmdb 7.0 testing repo
+  command: percona-release enable psmdb-70 testing
   when: not mongo.stat.exists and repo_branch[0] | float == 7.0
 
 - name: Enable psmdb 6.0 testing repo (for buster and bionic)
