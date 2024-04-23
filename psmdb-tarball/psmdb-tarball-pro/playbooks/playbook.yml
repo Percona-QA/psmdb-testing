@@ -7,6 +7,14 @@
     - set_fact:
         tarball_ol9: "{{ lookup('env', 'TARBALL_OL9') | default('https://downloads.percona.com/downloads/percona-server-mongodb-5.0/percona-server-mongodb-5.0.13-11/binary/tarball/percona-server-mongodb-5.0.13-11-x86_64.glibc2.17-minimal.tar.gz', true) }}"
 
+    - name: Get tarball link for deb12
+      set_fact:
+        tarball_deb12: "{{ tarball_ol9 | regex_replace('ol9', 'bookworm') }}"
+
+    - name: Debug tarball for deb12
+      debug:
+        msg: "{{ tarball_deb12 }}"
+
     - name: Get tarball link for ol8
       set_fact:
         tarball_ol8: "{{ tarball_ol9 | regex_replace('ol9', 'ol8') }}"
@@ -42,6 +50,23 @@
     - name: Debug repo branch
       debug:
         msg: "{{ repo_branch }}"
+
+    - name: Download tarball for deb12 from url
+      get_url:
+        url: '{{ tarball_deb12 }}'
+        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.deb12.tar.gz
+        mode: '0644'
+      ignore_errors: yes
+      when: tarball_deb12.startswith('http')
+
+    - name: Download tarball for deb12 from s3
+      aws_s3:
+        bucket: "{{ tarball_deb12 | urlsplit('hostname') }}"
+        object: "{{ tarball_deb12 | urlsplit('path') }}"
+        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.deb12.tar.gz
+        mode: get
+      ignore_errors: yes
+      when: tarball_deb12.startswith('s3')
 
     - name: Download tarball for ol8 from url
       get_url:

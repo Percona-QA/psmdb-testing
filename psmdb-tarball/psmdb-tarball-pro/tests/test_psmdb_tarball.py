@@ -33,6 +33,8 @@ def test_jstests(host, jstest):
 
 @pytest.mark.parametrize("suites", SUITES)
 def test_suites(host, suites):
+    if host.system_info.distribution == "debian":
+	pytest.skip("Skip debian12 as no openssl with FIPS available")
     cmd = "cd /percona-server-mongodb && python3 buildscripts/resmoke.py run --suite "  + suites
     with host.sudo():
         result = host.run(cmd)
