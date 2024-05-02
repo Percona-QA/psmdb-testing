@@ -41,4 +41,3 @@ jobs:
       if: success() || failure() 
       with:
         report_paths: '**/junit.xml'
-
