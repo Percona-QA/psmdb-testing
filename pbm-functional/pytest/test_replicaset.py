@@ -82,7 +82,7 @@ def test_incremental(start_cluster,cluster):
     Cluster.log("Finished successfully")
 
 @pytest.mark.timeout(300,func_only=True)
-def test_logical_timeseries_PBM_T224(start_cluster,cluster):
+def test_disabled_timeseries_PBM_T224(start_cluster,cluster):
     cluster.check_pbm_status()
     client=pymongo.MongoClient(cluster.connection)
     mongod_version=client.server_info()["version"]
