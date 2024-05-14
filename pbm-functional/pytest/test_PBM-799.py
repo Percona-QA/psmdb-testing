@@ -21,7 +21,7 @@ def config():
 
 @pytest.fixture(scope="package")
 def pbm_mongodb_uri():
-    return 'mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin&w=3'
+    return 'mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin&w=3&readConcernLevel=local'
 
 @pytest.fixture(scope="package")
 def cluster(config,pbm_mongodb_uri):
