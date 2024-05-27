@@ -4,7 +4,7 @@
     when: ansible_os_family == "Debian"
 
   - name: Install percona release RHEL
-    command: rpm -ivh --nodigest --nofiledigest https://repo.percona.com/prel/yum/testing/latest/RPMS/noarch/percona-release-1.0-28.noarch.rpm
+    command: rpm -Uvh https://repo.percona.com/prel/yum/testing/latest/RPMS/noarch/percona-release-1.0-28.noarch.rpm
     args:
       warn: no
     when: ansible_os_family == "RedHat"
