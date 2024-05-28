@@ -30,6 +30,7 @@
     name:
     - enum-compat==0.0.2
     executable: pip
+    extra_args: "--trusted-host pypi.python.org"
   when: ansible_distribution_major_version == "7"
 
 - name: Install python3 setuptools
