@@ -37,10 +37,10 @@
     state: present
   vars:
     packages:
-    - http://mirror.centos.org/centos/8-stream/BaseOS/{{ ansible_architecture }}/os/Packages/openldap-2.4.46-18.el8.{{ ansible_architecture }}.rpm
-    - http://mirror.centos.org/centos/8-stream/BaseOS/{{ ansible_architecture }}/os/Packages/openldap-devel-2.4.46-18.el8.{{ ansible_architecture }}.rpm
-    - http://mirror.centos.org/centos/8-stream/BaseOS/{{ ansible_architecture }}/os/Packages/openldap-clients-2.4.46-18.el8.{{ ansible_architecture }}.rpm
-    - http://mirror.centos.org/centos/8-stream/PowerTools/{{ ansible_architecture }}/os/Packages/openldap-servers-2.4.46-18.el8.{{ ansible_architecture }}.rpm
+    - http://vault.centos.org/centos/8-stream/BaseOS/{{ ansible_architecture }}/os/Packages/openldap-2.4.46-18.el8.{{ ansible_architecture }}.rpm
+    - http://vault.centos.org/centos/8-stream/BaseOS/{{ ansible_architecture }}/os/Packages/openldap-devel-2.4.46-18.el8.{{ ansible_architecture }}.rpm
+    - http://vault.centos.org/centos/8-stream/BaseOS/{{ ansible_architecture }}/os/Packages/openldap-clients-2.4.46-18.el8.{{ ansible_architecture }}.rpm
+    - http://vault.centos.org/centos/8-stream/PowerTools/{{ ansible_architecture }}/os/Packages/openldap-servers-2.4.46-18.el8.{{ ansible_architecture }}.rpm
   when: ansible_distribution_major_version == "8"
 
 - name: Import epel gpg key
