@@ -486,8 +486,8 @@ aggregation_disabled_optimization|inMemory
 aggregation_embedded_router_jscore_passthrough|inMemory
  aggregation_ese|inMemory
  aggregation_ese_gcm|inMemory
-aggregation_expression_multiversion_fuzzer_last_continuous|inMemory
-aggregation_expression_multiversion_fuzzer_last_lts|inMemory
+ aggregation_expression_multiversion_fuzzer_last_continuous|inMemory
+ aggregation_expression_multiversion_fuzzer_last_lts|inMemory
 aggregation_facet_unwind_passthrough|inMemory
 aggregation_mongos_passthrough|inMemory
  aggregation_multiversion_fuzzer_last_continuous|inMemory
@@ -557,7 +557,7 @@ change_streams_mongos_passthrough|inMemory
 change_streams_mongos_sessions_passthrough|inMemory
 change_streams_multi_stmt_txn_mongos_passthrough|inMemory
 change_streams_multi_stmt_txn_passthrough|inMemory
-change_streams_multi_stmt_txn_passthrough_with_replica_set_endpoint|inMemory
+ change_streams_multi_stmt_txn_passthrough_with_replica_set_endpoint|inMemory
 change_streams_multi_stmt_txn_sharded_collections_passthrough|inMemory
 change_streams_multitenant_passthrough|inMemory
 change_streams_multitenant_sharded_collections_passthrough|inMemory
@@ -571,17 +571,17 @@ change_streams_sharded_collections_passthrough|inMemory
  change_streams_sharded_collections_passthrough_last_lts_new_old_old_new|inMemory
 change_streams_whole_cluster_mongos_passthrough|inMemory
 change_streams_whole_cluster_passthrough|inMemory
-change_streams_whole_cluster_passthrough_with_replica_set_endpoint|inMemory
+ change_streams_whole_cluster_passthrough_with_replica_set_endpoint|inMemory
 change_streams_whole_cluster_secondary_reads_passthrough|inMemory
 change_streams_whole_cluster_secondary_reads_sharded_collections|inMemory
 change_streams_whole_cluster_sharded_collections_passthrough|inMemory
 change_streams_whole_db_mongos_passthrough|inMemory
 change_streams_whole_db_passthrough|inMemory
-change_streams_whole_db_passthrough_with_replica_set_endpoint|inMemory
+ change_streams_whole_db_passthrough_with_replica_set_endpoint|inMemory
 change_streams_whole_db_secondary_reads_passthrough|inMemory
 change_streams_whole_db_secondary_reads_sharded_collections|inMemory
 change_streams_whole_db_sharded_collections_passthrough|inMemory
-change_streams_with_replica_set_endpoint|inMemory
+ change_streams_with_replica_set_endpoint|inMemory
 client_encrypt|inMemory
 clustered_collection_passthrough|inMemory
 concurrency|inMemory
@@ -600,9 +600,9 @@ concurrency_metrics|inMemory
  concurrency_multitenancy_replication_with_atlas_proxy|inMemory
 concurrency_replication|inMemory
 concurrency_replication_bulk_write|inMemory
-concurrency_replication_bulk_write_with_replica_set_endpoint|inMemory
+ concurrency_replication_bulk_write_with_replica_set_endpoint|inMemory
 concurrency_replication_causal_consistency|inMemory
-concurrency_replication_causal_consistency_with_replica_set_endpoint|inMemory
+ concurrency_replication_causal_consistency_with_replica_set_endpoint|inMemory
 concurrency_replication_for_backup_restore|inMemory
 concurrency_replication_for_export_import|inMemory
  concurrency_replication_last_continuous_new_new_old|inMemory
@@ -612,12 +612,12 @@ concurrency_replication_for_export_import|inMemory
  concurrency_replication_last_lts_new_old_new|inMemory
  concurrency_replication_last_lts_old_new_new|inMemory
 concurrency_replication_metrics|inMemory
-concurrency_replication_metrics_with_replica_set_endpoint|inMemory
+ concurrency_replication_metrics_with_replica_set_endpoint|inMemory
 concurrency_replication_multi_stmt_txn|inMemory
-concurrency_replication_multi_stmt_txn_with_replica_set_endpoint|inMemory
+ concurrency_replication_multi_stmt_txn_with_replica_set_endpoint|inMemory
 concurrency_replication_wiredtiger_cursor_sweeps|inMemory
-concurrency_replication_wiredtiger_cursor_sweeps_with_replica_set_endpoint|inMemory
-concurrency_replication_with_replica_set_endpoint|inMemory
+ concurrency_replication_wiredtiger_cursor_sweeps_with_replica_set_endpoint|inMemory
+ concurrency_replication_with_replica_set_endpoint|inMemory
 concurrency_sharded_causal_consistency|inMemory
 concurrency_sharded_causal_consistency_and_balancer|inMemory
 concurrency_sharded_clusterwide_ops_add_remove_shards|inMemory
@@ -756,11 +756,11 @@ multi_stmt_txn_jscore_passthrough_with_migration|inMemory
 multitenancy_with_atlas_proxy_jscore_passthrough|inMemory
 multitenancy_with_mongoq_jscore_passthrough|inMemory
 multitenancy_with_mongoq_unsigned_token_jscore_passthrough|inMemory
-multiversion|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
+ multiversion|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
  multiversion_auth|inMemory
  multiversion_auth_future_git_tag|inMemory
  multiversion_future_git_tag|inMemory
-multiversion_sanity_check|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
+ multiversion_sanity_check|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
  multiversion_sanity_check_last_continuous_new_new_old|inMemory
  multiversion_sanity_check_last_continuous_new_old_new|inMemory
  multiversion_sanity_check_last_continuous_old_new_new|inMemory
@@ -801,7 +801,7 @@ replica_sets_jscore_passthrough|inMemory
  replica_sets_jscore_passthrough_last_lts_new_new_old|inMemory
  replica_sets_jscore_passthrough_last_lts_new_old_new|inMemory
  replica_sets_jscore_passthrough_last_lts_old_new_new|inMemory
-replica_sets_jscore_passthrough_with_replica_set_endpoint|inMemory
+ replica_sets_jscore_passthrough_with_replica_set_endpoint|inMemory
 replica_sets_kill_primary_jscore_passthrough|inMemory
  replica_sets_kill_primary_jscore_passthrough_last_lts_new_new_old|inMemory
  replica_sets_kill_primary_jscore_passthrough_last_lts_new_old_old|inMemory
@@ -810,7 +810,7 @@ replica_sets_lag_oplog_application_jscore_passthrough|inMemory
 replica_sets_large_txns_format|inMemory
 replica_sets_large_txns_format_jscore_passthrough|inMemory
  replica_sets_last_continuous|inMemory
-replica_sets_last_lts|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
+ replica_sets_last_lts|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
 replica_sets_max_mirroring|inMemory
 replica_sets_max_mirroring_large_txns_format|inMemory
  replica_sets_max_mirroring_large_txns_format_ese|inMemory
@@ -836,11 +836,11 @@ retryable_writes_downgrade|inMemory
 retryable_writes_downgrade_last_lts|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0
 retryable_writes_jscore_passthrough|inMemory
 retryable_writes_jscore_stepdown_passthrough|inMemory
-rollback_fuzzer|inMemory
-rollback_fuzzer_clean_shutdowns|inMemory
+ rollback_fuzzer|inMemory
+ rollback_fuzzer_clean_shutdowns|inMemory
  rollback_fuzzer_last_continuous|inMemory
  rollback_fuzzer_last_lts|inMemory
-rollback_fuzzer_unclean_shutdowns|inMemory
+ rollback_fuzzer_unclean_shutdowns|inMemory
 sasl|inMemory
  sasl_windows_cyrussasl|inMemory
  sdam_json_test|inMemory
@@ -851,7 +851,7 @@ sasl|inMemory
  search_pinned_connections_auth|inMemory
  search_ssl|inMemory
 secondary_reads_passthrough|inMemory
-secondary_reads_passthrough_with_replica_set_endpoint|inMemory
+ secondary_reads_passthrough_with_replica_set_endpoint|inMemory
 serial_run|inMemory
  server_selection_json_test|inMemory
  serverless|inMemory
@@ -875,14 +875,14 @@ sharded_collections_jscore_passthrough|inMemory
  sharded_collections_jscore_passthrough_last_lts_new_old_old_new|inMemory
 sharded_collections_jscore_passthrough_with_auto_bootstrap|inMemory
 sharded_collections_jscore_passthrough_with_config_transitions|inMemory
-sharded_collections_jscore_passthrough_with_replica_set_endpoint|inMemory
+ sharded_collections_jscore_passthrough_with_replica_set_endpoint|inMemory
 sharded_collections_single_writes_without_shard_key_jscore_passthrough|inMemory
 sharded_collections_txns_uninitialized_fcv_jscore_passthrough|inMemory
 sharded_collections_uninitialized_fcv_jscore_passthrough|inMemory
 sharded_jscore_txns|inMemory
 sharded_jscore_txns_sharded_collections|inMemory
-sharded_jscore_txns_sharded_collections_with_replica_set_endpoint|inMemory
-sharded_jscore_txns_with_replica_set_endpoint|inMemory
+ sharded_jscore_txns_sharded_collections_with_replica_set_endpoint|inMemory
+ sharded_jscore_txns_with_replica_set_endpoint|inMemory
 sharded_multi_stmt_txn_jscore_passthrough|inMemory
 sharded_retryable_writes_downgrade|inMemory
  sharded_retryable_writes_downgrade_last_continuous_new_old_old_new|inMemory
@@ -904,10 +904,10 @@ sharding_jscore_passthrough|inMemory
 sharding_jscore_passthrough_with_auto_bootstrap|inMemory
 sharding_jscore_passthrough_with_balancer|inMemory
 sharding_jscore_passthrough_with_config_transitions|inMemory
-sharding_jscore_passthrough_with_replica_set_endpoint|inMemory
-sharding_last_continuous|inMemory
-sharding_last_lts|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
-sharding_last_lts_mongos_and_mixed_shards|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
+ sharding_jscore_passthrough_with_replica_set_endpoint|inMemory
+ sharding_last_continuous|inMemory
+ sharding_last_lts|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
+ sharding_last_lts_mongos_and_mixed_shards|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
 sharding_max_mirroring|inMemory
 sharding_max_mirroring_opportunistic_secondary_targeting|inMemory
  sharding_max_mirroring_opportunistic_secondary_targeting_ese|inMemory
@@ -954,9 +954,9 @@ unsplittable_collections_on_random_shard_jscore_txns|inMemory
  update_fuzzer_replication|inMemory
  update_fuzzer_replication_last_continuous|inMemory
  update_fuzzer_replication_last_lts|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0
-v1index_jscore_passthrough|inMemory
+ v1index_jscore_passthrough|inMemory
  vector_search|inMemory
  vector_search_auth|inMemory
  vector_search_ssl|inMemory
  watchdog|inMemory
-write_concern_majority_passthrough|inMemory
+ write_concern_majority_passthrough|inMemory
