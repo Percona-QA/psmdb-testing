@@ -158,7 +158,7 @@ concurrency_sharded_replication_bulk_write|wiredTiger
 concurrency_sharded_replication_with_balancer|wiredTiger
 concurrency_sharded_replication_with_balancer_and_add_remove_shard|wiredTiger
 concurrency_sharded_replication_with_balancer_and_config_transitions|wiredTiger
-concurrency_sharded_replication_with_balancer_and_config_transitions_and_add_remove_shard|wiredTiger
+ concurrency_sharded_replication_with_balancer_and_config_transitions_and_add_remove_shard|wiredTiger
 concurrency_sharded_terminate_primary_with_balancer|wiredTiger
 concurrency_sharded_with_auto_bootstrap|wiredTiger
 concurrency_sharded_with_balancer_and_auto_bootstrap|wiredTiger
@@ -426,7 +426,7 @@ sharding_jscore_passthrough_with_config_transitions|wiredTiger
 sharding_jscore_passthrough_with_replica_set_endpoint|wiredTiger
  sharding_last_continuous|wiredTiger
 sharding_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
-sharding_last_lts_mongos_and_mixed_shards|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
+ sharding_last_lts_mongos_and_mixed_shards|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
 sharding_max_mirroring|wiredTiger
 sharding_max_mirroring_opportunistic_secondary_targeting|wiredTiger
  sharding_max_mirroring_opportunistic_secondary_targeting_ese|wiredTiger
