@@ -64,8 +64,8 @@ change_streams|wiredTiger
 change_streams_change_collection_replica_sets_kill_secondary_jscore_passthrough|wiredTiger
 change_streams_change_collection_replica_sets_stepdown_primary_jscore_passthrough|wiredTiger
 change_streams_downgrade|wiredTiger
-change_streams_downgrade_last_continuous_new_old_old_new|wiredTiger
-change_streams_downgrade_last_lts_new_old_old_new|wiredTiger
+ change_streams_downgrade_last_continuous_new_old_old_new|wiredTiger
+ change_streams_downgrade_last_lts_new_old_old_new|wiredTiger
  change_streams_last_continuous_new_new_old|wiredTiger
  change_streams_last_continuous_new_old_new|wiredTiger
  change_streams_last_continuous_old_new_new|wiredTiger
@@ -362,7 +362,7 @@ rollback_fuzzer_last_lts|wiredTiger
 rollback_fuzzer_unclean_shutdowns|wiredTiger
 sasl|wiredTiger
 sasl_windows_cyrussasl|wiredTiger
-sdam_json_test|wiredTiger|buildscripts/scons.py MONGO_VERSION=7.0.0 --disable-warnings-as-errors --ssl --opt=size -j6 --jlink=2 --use-sasl-client --wiredtiger --audit --inmemory --hotbackup CPPPATH=/tmp/lib/aws/include LIBPATH=/tmp/lib/aws/lib build/install/bin/sdam_json_test
+sdam_json_test|wiredTiger|buildscripts/scons.py MONGO_VERSION=8.0.0 --disable-warnings-as-errors --ssl --opt=size -j6 --jlink=2 --use-sasl-client --wiredtiger --audit --inmemory --hotbackup CPPPATH=/tmp/lib/aws/include LIBPATH=/tmp/lib/aws/lib build/install/bin/sdam_json_test
  search|wiredTiger
  search_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
  search_end_to_end_sharded_cluster|wiredTiger
@@ -833,7 +833,7 @@ resharding_fuzzer_idempotency|inMemory
  resmoke_validation_tests|inMemory
 retryable_writes_downgrade|inMemory
  retryable_writes_downgrade_last_continuous|inMemory
-retryable_writes_downgrade_last_lts|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0
+ retryable_writes_downgrade_last_lts|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0
 retryable_writes_jscore_passthrough|inMemory
 retryable_writes_jscore_stepdown_passthrough|inMemory
  rollback_fuzzer|inMemory
