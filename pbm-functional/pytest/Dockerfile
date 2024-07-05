@@ -46,9 +46,9 @@ RUN yum install -y epel-release && yum install -y cyrus-sasl-gssapi && yum insta
     mkdir -p /pbm-old && mkdir -p /pbm-new && mkdir /etc/pykmip && mkdir /etc/vault && mkdir /etc/x509 && \
     VERSION=$(mongod --version | tail -n +2 | sed 's|Build Info: ||' | jq -r .version | sed -E 's|-.+||') && \
     ARCH=$(mongod --version | tail -n +2 | sed 's/Build Info: //' | jq -r .environment.distarch)  && \
-    if [ $ARCH == x86_64 ]; then curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel80-$VERSION.tgz ; fi && \
-    if [ $ARCH == aarch64 ]; then curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel82-$VERSION.tgz ; fi && \
-    mkdir -p /opt/mongodb && tar -C /opt/mongodb --transform='s,^/*[^/]*,,S' -xzvf mongo-ce.tgz && rm -rf mongo-ce.tgz
+    if [ $ARCH == x86_64 ]; then curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel80-$VERSION.tgz || true; fi && \
+    if [ $ARCH == aarch64 ]; then curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel82-$VERSION.tgz || true ; fi && \
+    mkdir -p /opt/mongodb && tar -C /opt/mongodb --transform='s,^/*[^/]*,,S' -xzvf mongo-ce.tgz || true && rm -rf mongo-ce.tgz || true
 COPY --from=builder /pbm-new/ /pbm-new/
 COPY --from=builder /pbm-old/ /pbm-old/
 COPY --from=pykmip /etc/mongod.pem /etc/pykmip/mongod.pem
@@ -60,6 +60,7 @@ COPY conf/krb5.conf /etc/krb5.conf
 COPY keyfile /etc/keyfile
 COPY mongodb-keyfile /etc/mongodb-keyfile
 RUN echo -e 'vaulttoken' > /etc/vault/token && \
+    mkdir -p /var/lib/mongo && \
     chown -R mongodb /var/lib/mongo && \
     chown mongodb /etc/keyfile && chmod 400 /etc/keyfile && \
     chown mongodb /etc/mongodb-keyfile && chmod 400 /etc/mongodb-keyfile && \
