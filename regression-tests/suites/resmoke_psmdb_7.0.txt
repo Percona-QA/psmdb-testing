@@ -235,7 +235,7 @@ native_tenant_data_isolation_with_dollar_tenant_jscore_passthrough|wiredTiger
  native_tenant_data_isolation_with_security_token_jscore_passthrough|wiredTiger
 no_passthrough --excludeWithAnyTags=featureFlagIndexBuildGracefulErrorHandling|wiredTiger
 no_passthrough_with_mongod|wiredTiger
-ocsp --jobs=1|wiredTiger
+ ocsp --jobs=1|wiredTiger
 parallel|wiredTiger
 percona_no_passthrough_with_mongod|wiredTiger
 query_golden_classic|wiredTiger
@@ -364,6 +364,7 @@ talk_directly_to_shardsvrs_jscore_passthrough|wiredTiger
 talk_directly_to_shardsvrs_kill_primary_jscore_passthrough|wiredTiger
 tde_cbc|wiredTiger
 tde_gcm|wiredTiger
+telemetry|wiredTiger
 telemetry_passthrough|wiredTiger
 tenant_migration_causally_consistent_jscore_passthrough|wiredTiger
 tenant_migration_jscore_passthrough|wiredTiger
