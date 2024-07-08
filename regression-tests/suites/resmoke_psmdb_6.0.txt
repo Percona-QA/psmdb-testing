@@ -135,7 +135,7 @@ json_schema|wiredTiger
  jstestfuzz_sharded_session|wiredTiger
 knobs|wiredTiger
 ldapauthz|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
-libfuzzer|wiredTiger|apt install -y clang-10 && buildscripts/scons.py CC=/usr/bin/clang-10 CXX=/usr/bin/clang++-10 --disable-warnings-as-errors --ssl --use-sasl-client --wiredtiger --audit --inmemory --hotbackup CPPPATH=/usr/local/include LIBPATH=\"/usr/local/lib /usr/local/lib64\" LLVM_SYMBOLIZER=/usr/lib/llvm-10/bin/llvm-symbolizer --dbg=on --opt=on --allocator=system --sanitize=fuzzer --ocsp-stapling=off -j6 install-fuzzertests
+libfuzzer --jobs=1|wiredTiger|apt install -y clang-10 && buildscripts/scons.py CC=/usr/bin/clang-10 CXX=/usr/bin/clang++-10 --disable-warnings-as-errors --ssl --use-sasl-client --wiredtiger --audit --inmemory --hotbackup CPPPATH=/usr/local/include LIBPATH=\"/usr/local/lib /usr/local/lib64\" LLVM_SYMBOLIZER=/usr/lib/llvm-10/bin/llvm-symbolizer --dbg=on --opt=on --allocator=system --sanitize=fuzzer --ocsp-stapling=off -j6 install-fuzzertests
 libunwind|wiredTiger
  logging_perf|wiredTiger
 logical_session_cache_replication_100ms_refresh_jscore_passthrough|wiredTiger

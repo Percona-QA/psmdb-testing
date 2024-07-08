@@ -258,7 +258,7 @@ json_schema|wiredTiger
  jstestfuzz_sharded_with_replica_set_endpoint|wiredTiger
 knobs|wiredTiger
 ldapauthz|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
-libfuzzer|wiredTiger|buildscripts/scons.py MONGO_VERSION=8.0.0 CC=/usr/bin/clang CXX=/usr/bin/clang++ --disable-warnings-as-errors --ssl --use-sasl-client --wiredtiger --audit --inmemory --hotbackup CPPPATH=/tmp/lib/aws/include LIBPATH=/tmp/lib/aws/lib LLVM_SYMBOLIZER=/usr/lib/llvm-14/bin/llvm-symbolizer --dbg=on --opt=on --allocator=system --sanitize=fuzzer --ocsp-stapling=off -j8 install-fuzzertests
+libfuzzer --jobs=1|wiredTiger|buildscripts/scons.py MONGO_VERSION=8.0.0 CC=/usr/bin/clang CXX=/usr/bin/clang++ --disable-warnings-as-errors --ssl --use-sasl-client --wiredtiger --audit --inmemory --hotbackup CPPPATH=/tmp/lib/aws/include LIBPATH=/tmp/lib/aws/lib LLVM_SYMBOLIZER=/usr/lib/llvm-14/bin/llvm-symbolizer --dbg=on --opt=on --allocator=system --sanitize=fuzzer --ocsp-stapling=off -j8 install-fuzzertests
 libunwind|wiredTiger
 logging_perf|wiredTiger
  magic_restore_replica_sets_jscore_passthrough|wiredTiger
