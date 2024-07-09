@@ -23,6 +23,7 @@ BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
 
 PSMDB_VER = os.environ.get("PDMDB_VERSION").lstrip("pdmdb-")
 TESTING_BRANCH = os.environ.get("TESTING_BRANCH")
+MONGOSH_VER_RHEL7 = '2.1.5'
 
 def get_mongosh_ver():
     url = "https://raw.githubusercontent.com/Percona-QA/psmdb-testing/" + TESTING_BRANCH + "/MONGOSH_VERSION"
@@ -89,7 +90,10 @@ def test_binary_version(host, binary):
 def test_cli_version(host):
     result = host.check_output("mongo --version")
     if version.parse(PSMDB_VER) > version.parse("6.0.0"):
-        assert MONGOSH_VER in result
+	if host.system_info.distribution.lower() in ["redhat", "centos", 'rhel'] and host.system_info.release == '7':
+	   assert MONGOSH_VER_RHEL7 in result
+	else:
+	   assert MONGOSH_VER in result
     else:
         assert PSMDB_VER in result
 
