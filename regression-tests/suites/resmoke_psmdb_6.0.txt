@@ -254,6 +254,7 @@ talk_directly_to_shardsvrs_jscore_passthrough|wiredTiger
 talk_directly_to_shardsvrs_kill_primary_jscore_passthrough|wiredTiger
 tde_cbc|wiredTiger
 tde_gcm|wiredTiger
+telemetry --jobs=1|wiredTiger
  tenant_migration_causally_consistent_jscore_passthrough|wiredTiger 
  tenant_migration_jscore_passthrough|wiredTiger
  tenant_migration_kill_primary_jscore_passthrough|wiredTiger
