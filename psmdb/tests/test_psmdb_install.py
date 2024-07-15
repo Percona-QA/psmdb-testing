@@ -26,6 +26,10 @@ def test_mongod_service(host):
     mongod = host.service("mongod")
     assert mongod.is_running
 
+def test_telemetry_service(host):
+    telemetry = host.service("percona-telemetry-agent")
+    assert telemetry.is_running
+
 @pytest.mark.parametrize("binary", BINARIES)
 def test_binary_version(host, binary):
     result = host.run(f"{binary} --version")
