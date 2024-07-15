@@ -1,19 +1,34 @@
-  - name: Install percona release package Debian
+  - set_fact:
+      prel_version: "{{ lookup('env', 'PREL_VERSION') | default('latest', true) }}"
+
+  - name: Install percona release 1.0-27 package Debian 
     apt:
      deb: https://repo.percona.com/apt/percona-release_1.0-27.generic_all.deb
-    when: ansible_os_family == "Debian"
+    when: ansible_os_family == "Debian" and prel_version != "latest"
 
-  - name: Install percona release RHEL
+  - name: Install percona release 1.0-27 RHEL
     command: rpm -ivh --nodigest --nofiledigest https://repo.percona.com/yum/percona-release-1.0-27.noarch.rpm
     args:
       warn: no
-    when: ansible_os_family == "RedHat"
+    when: ansible_os_family == "RedHat" and prel_version != "latest"
 
-  - name: Add ARM support into percona-release
+  - name: Add ARM support into percona-release 1.0-27
     command: sed -i "s|x86_64|x86_64 aarch64|" /usr/bin/percona-release
-    when: ansible_architecture == "aarch64" or ansible_architecture == "arm64"
+    when: ( ansible_architecture == "aarch64" or ansible_architecture == "arm64" ) and prel_version != "latest"
+
+  - name: Install latest percona release package Debian
+    apt:
+     deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+    when: ansible_os_family == "Debian" and prel_version == "latest"
+
+  - name: Install latest percona release RHEL
+    command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+    args:
+      warn: no
+    when: ansible_os_family == "RedHat" and prel_version == "latest"
 
   - name: clean and update yum cache
     shell: |
       yum clean all
-    when: ansible_os_family == "RedHat"
+    when: ansible_os_family == "RedHat" 
+
