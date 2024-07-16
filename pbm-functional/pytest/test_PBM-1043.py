@@ -56,7 +56,7 @@ def test_logical_PBM_T255(start_cluster,cluster):
 
     cluster.make_backup("logical")
     cluster.exec_pbm_cli("config --file=/etc/pbm-1043.conf")
-    time.sleep(30)
+    time.sleep(60)
     Cluster.log("Check if PITR is running")
     if not cluster.check_pitr():
         logs=cluster.exec_pbm_cli("logs -sD -t0")
