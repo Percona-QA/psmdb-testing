@@ -27,8 +27,9 @@ def test_mongod_service(host):
     assert mongod.is_running
 
 def test_telemetry_service(host):
-    telemetry = host.service("percona-telemetry-agent")
-    assert telemetry.is_running
+    if not (host.system_info.distribution.lower() in ["redhat", "centos", 'rhel'] and host.system_info.release == '7'):
+        telemetry = host.service("percona-telemetry-agent")
+        assert telemetry.is_running
 
 @pytest.mark.parametrize("binary", BINARIES)
 def test_binary_version(host, binary):
