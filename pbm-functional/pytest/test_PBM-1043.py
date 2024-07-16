@@ -58,7 +58,10 @@ def test_logical_PBM_T255(start_cluster,cluster):
     cluster.exec_pbm_cli("config --file=/etc/pbm-1043.conf")
     time.sleep(30)
     Cluster.log("Check if PITR is running")
-    assert cluster.check_pitr()
+    if not cluster.check_pitr():
+        logs=cluster.exec_pbm_cli("logs -sD -t0")
+        assert False, logs.stdout
+
 
     Cluster.log("Start inserting docs in the background")
     background_insert = threading.Thread(target=insert_docs)
@@ -73,7 +76,10 @@ def test_logical_PBM_T255(start_cluster,cluster):
     nrs203.check_output('supervisorctl stop pbm-agent')
 
     time.sleep(60)
-    assert cluster.check_pitr()
+    Cluster.log("Check if PITR is running")
+    if not cluster.check_pitr():
+        logs=cluster.exec_pbm_cli("logs -sD -t0")
+        assert False, logs.stdout
 
     Cluster.log("Start pbm-agent and mongod")
     nrs103.check_output('supervisorctl start mongod')
@@ -81,7 +87,10 @@ def test_logical_PBM_T255(start_cluster,cluster):
 
     time.sleep(60)
     background_insert.join()
-    assert cluster.check_pitr()
+    Cluster.log("Check if PITR is running")
+    if not cluster.check_pitr():
+        logs=cluster.exec_pbm_cli("logs -sD -t0")
+        assert False, logs.stdout
 
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 200
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
