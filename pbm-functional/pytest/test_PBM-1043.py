@@ -88,5 +88,7 @@ def test_logical_PBM_T255(start_cluster,cluster):
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(60)
+    status=cluster.exec_pbm_cli("status")
+    Cluster.log(status.stdout)
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 200
