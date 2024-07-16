@@ -1,0 +1,17 @@
+storage:
+    type: s3
+    s3:
+      endpointUrl: http://minio:9000
+      bucket: bcp
+      prefix: pbme2etest
+      credentials:
+        access-key-id: "minio1234"
+        secret-access-key: "minio1234"
+pitr:
+  enabled: true
+  oplogSpanMin: 0.5
+  priority:
+    rs103:27017: 2
+    rs203:27017: 2
+    rscfg03:27017: 2
+  compression: none  
