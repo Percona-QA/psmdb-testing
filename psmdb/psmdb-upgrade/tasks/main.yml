@@ -39,7 +39,7 @@
     block: |
       [percona-pro]
       name=[psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro-{{ repo }}-x86_64]
-      baseurl=http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/x86_64
+      baseurl=http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/{{ ansible_architecture }}
       enabled=1
       gpgcheck=0
       sslverify=0
@@ -68,15 +68,6 @@
         psmdb_pkg_name_addon: "{{ '-pro' if from_repo_pro == true else '' }}"
   environment:
     PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
-    PERCONA_TELEMETRY_DISABLE: "1"
-
-- name: Check if telemetry is disabled
-  stat: path=/usr/local/percona/telemetry_uuid
-  register: telemetry_uuid
-
-- name: Fail if telemetry is sent
-  fail: msg="Telemetry is sent despite it's disabled"
-  when: telemetry_uuid.stat.exists
 
 - name: start mongod service
   service: name=mongod state=started

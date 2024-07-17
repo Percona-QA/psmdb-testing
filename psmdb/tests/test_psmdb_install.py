@@ -27,6 +27,18 @@ def test_mongod_service(host):
     assert mongod.is_running
 
 def test_telemetry_service(host):
+    parts = PSMDB_VER.split(".")
+    major_version = ".".join(parts[:-1])
+    match major_version:
+        case "5.0":
+         if version.parse(PSMDB_VER) <= version.parse("5.0.27"):
+          pytest.skip("This version doesn't support telemetry")
+        case "6.0":
+         if version.parse(PSMDB_VER) <= version.parse("6.0.15"):
+          pytest.skip("This version doesn't support telemetry")
+        case "7.0":
+         if version.parse(PSMDB_VER) <= version.parse("7.0.11"):
+          pytest.skip("This version doesn't support telemetry")
     if not (host.system_info.distribution.lower() in ["redhat", "centos", 'rhel'] and host.system_info.release == '7'):
         telemetry = host.service("percona-telemetry-agent")
         assert telemetry.is_running
