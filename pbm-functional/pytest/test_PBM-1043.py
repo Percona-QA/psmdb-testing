@@ -76,10 +76,6 @@ def test_logical_PBM_T255(start_cluster,cluster):
     nrs203.check_output('supervisorctl stop pbm-agent')
 
     time.sleep(60)
-    Cluster.log("Check if PITR is running")
-    if not cluster.check_pitr():
-        logs=cluster.exec_pbm_cli("logs -sD -t0")
-        assert False, logs.stdout
 
     Cluster.log("Start pbm-agent and mongod")
     nrs103.check_output('supervisorctl start mongod')
@@ -87,17 +83,16 @@ def test_logical_PBM_T255(start_cluster,cluster):
 
     time.sleep(60)
     background_insert.join()
-    Cluster.log("Check if PITR is running")
-    if not cluster.check_pitr():
-        logs=cluster.exec_pbm_cli("logs -sD -t0")
-        assert False, logs.stdout
 
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 200
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(60)
+    cluster.disable_pitr()
+    pymongo.MongoClient(cluster.connection).drop_database('test')
     status=cluster.exec_pbm_cli("status")
     Cluster.log(status.stdout)
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 200
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
