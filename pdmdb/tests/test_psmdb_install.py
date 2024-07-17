@@ -90,10 +90,10 @@ def test_binary_version(host, binary):
 def test_cli_version(host):
     result = host.check_output("mongo --version")
     if version.parse(PSMDB_VER) > version.parse("6.0.0"):
-	if host.system_info.distribution.lower() in ["redhat", "centos", 'rhel'] and host.system_info.release == '7':
-	   assert MONGOSH_VER_RHEL7 in result
-	else:
-	   assert MONGOSH_VER in result
+        if host.system_info.distribution.lower() in ["redhat", "centos", 'rhel'] and host.system_info.release == '7':
+           assert MONGOSH_VER_RHEL7 in result
+        else:
+           assert MONGOSH_VER in result
     else:
         assert PSMDB_VER in result
 
