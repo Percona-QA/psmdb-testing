@@ -10,7 +10,6 @@
   become_method: sudo
   environment:
     PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
-    PERCONA_TELEMETRY_DISABLE: "1"
   tasks:
     - set_fact: to_maj_version={{ to_version.split('.')[0] }}.{{ to_version.split('.')[1] }}
 
@@ -25,11 +24,17 @@
     - name: check maj version
       debug: msg={{to_maj_version}}_{{from_maj_version}}
 
-    - name: set compatibilty version for downgrade
+    - name: set compatibilty version for downgrade from PSMDB < 7.0
       shell: |
         mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{to_maj_version}}" })'
       register: set_version
-      when: from_maj_version > to_maj_version
+      when: from_maj_version > to_maj_version and from_maj_version < "7.0"
+
+    - name: set compatibilty version for downgrade from PSMDB > 7.0
+      shell: |
+        mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{to_maj_version}}", confirm: true })'
+      register: set_version
+      when: from_maj_version > to_maj_version and from_maj_version >= "7.0"
 
     - name: stop mongod service
       service:
@@ -117,7 +122,7 @@
         block: |
           [percona-pro]
           name=[psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro-{{ repo }}-x86_64]
-          baseurl=http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/x86_64
+          baseurl=http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/{{ ansible_architecture }}
           enabled=1
           gpgcheck=0
           sslverify=0
@@ -235,14 +240,6 @@
         - percona-mongodb-mongosh
       when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6"
 
-    - name: Check if telemetry is disabled
-      stat: path=/usr/local/percona/telemetry_uuid
-      register: telemetry_uuid
-
-    - name: Fail if telemetry is sent
-      fail: msg="Telemetry is sent despite it's disabled"
-      when: telemetry_uuid.stat.exists
-
     - name: copy mongosh binary to mongo path for test scripts
       copy:
         src: /usr/bin/mongosh
@@ -326,7 +323,7 @@
     - name: set compatibilty version after upgrade
       shell: |
         mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{to_maj_version}}" })'
-      when: from_maj_version < to_maj_version and to_maj_version != "7.0"
+      when: from_maj_version < to_maj_version and to_maj_version < "7.0"
 
     - name: set compatibilty version after upgrade
       shell: |
