@@ -54,6 +54,7 @@ def test_logical_PBM_T255(start_cluster,cluster):
             client['test']['test'].insert_one({"doc":i})
             time.sleep(1)
 
+    cluster.check_pbm_status()
     cluster.make_backup("logical")
     cluster.exec_pbm_cli("config --file=/etc/pbm-1043.conf")
     time.sleep(60)
@@ -67,6 +68,11 @@ def test_logical_PBM_T255(start_cluster,cluster):
     background_insert = threading.Thread(target=insert_docs)
     background_insert.start()
     time.sleep(60)
+    Cluster.log("Check if oplog slicer has been started on the nodes with the highest priorities")
+    logs=cluster.exec_pbm_cli("logs -sD -t0 -e pitr")
+    assert '[rscfg/rscfg03:27017] [pitr] created chunk' in logs.stdout
+    assert '[rs1/rs103:27017] [pitr] created chunk' in logs.stdout
+    assert '[rs2/rs203:27017] [pitr] created chunk' in logs.stdout
 
     nrs103=testinfra.get_host("docker://rs103")
     nrs203=testinfra.get_host("docker://rs203")
@@ -96,3 +102,7 @@ def test_logical_PBM_T255(start_cluster,cluster):
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 200
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
+    time.sleep(60)
+    Cluster.log("PITR must be disabled after the restore")
+    assert not cluster.check_pitr()
+    cluster.check_pbm_status()
