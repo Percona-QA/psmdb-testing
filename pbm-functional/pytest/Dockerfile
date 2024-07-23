@@ -56,6 +56,7 @@ COPY --from=pykmip /root/easy-rsa/easyrsa3/pki/ca.crt /etc/pykmip/ca.crt
 COPY --from=x509 /etc/x509/ /etc/x509/
 COPY conf/supervisord.d/ /etc/supervisord.d/
 COPY conf/pbm/minio.yaml /etc/pbm.conf
+COPY conf/pbm/pbm-1043.yaml /etc/pbm-1043.conf
 COPY conf/krb5.conf /etc/krb5.conf
 COPY keyfile /etc/keyfile
 COPY mongodb-keyfile /etc/mongodb-keyfile
