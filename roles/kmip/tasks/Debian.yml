@@ -31,3 +31,18 @@
     state: link
     force: yes
   when: ansible_distribution_major_version != "10" and ansible_distribution_major_version != "18"
+
+- name: Add repo for python 3.11
+  apt_repository:
+    repo: "ppa:deadsnakes/ppa"
+    state: present
+  when: ansible_distribution_major_version == "24"
+
+- name: Install python 3.11
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+    - python3.11
+  when: ansible_distribution_major_version == "24"
