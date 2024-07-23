@@ -44,10 +44,12 @@
 - name: Debug python3 version RHEL8
   shell: "python3 --version"
   register: python_version
+  when: ansible_distribution_major_version >= "8"
 
 - name: Display python version
   debug:
     var: python_version.stdout
+  when: ansible_distribution_major_version >= "8"
 
 - name: Install python3 setuptools
   pip:
