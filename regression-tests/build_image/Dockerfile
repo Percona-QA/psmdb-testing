@@ -1,4 +1,4 @@
-ARG OS=ubuntu:18.04
+ARG OS=ubuntu:22.04
 FROM $OS
 ARG branch=release-4.4.9-10
 ARG psm_ver=4.4.9
@@ -25,8 +25,7 @@ RUN find jstests -type f | xargs chmod 400 \
     && pip install -r etc/pip/dev-requirements.txt \
     && pip uninstall -y pymongo && pip install pymongo==3.12 \
     && pip install --upgrade cryptography==36.0.2 \
-    && support-files/ldap-sasl/deploy_ldap_and_sasl.sh \
-    && ( buildscripts/scons.py CC=/usr/bin/gcc-8 CXX=/usr/bin/g++-8 CPPPATH=/usr/local/include LIBPATH="/usr/local/lib /usr/local/lib64" -j4 build/install/bin/wt || buildscripts/scons.py CC=/usr/bin/gcc-8 CXX=/usr/bin/g++-8 CPPPATH=/usr/local/include LIBPATH="/usr/local/lib /usr/local/lib64" -j4 wt ) \
+    && ( buildscripts/scons.py CC=/usr/bin/gcc-10 CXX=/usr/bin/g++-10 CPPPATH=/usr/local/include LIBPATH="/usr/local/lib /usr/local/lib64" -j4 build/install/bin/wt || buildscripts/scons.py CC=/usr/bin/gcc-10 CXX=/usr/bin/g++-10 CPPPATH=/usr/local/include LIBPATH="/usr/local/lib /usr/local/lib64" -j4 wt ) \
     && ( cp build/install/bin/wt /usr/bin/ || cp build/opt/third_party/wiredtiger/wt /usr/bin/ )\
     && rm -rf build \
     && rm -f resmoke.ini \
@@ -36,7 +35,9 @@ RUN find jstests -type f | xargs chmod 400 \
     && cp -r /usr/bin/mongo* . \
     && sed "s|UNITTEST_ALIAS='unittests',|UNITTEST_ALIAS='install-unittests',|" -i SConstruct \
     && sed "s|INTEGRATION_TEST_ALIAS='integration_tests',|INTEGRATION_TEST_ALIAS='install-integration-tests',|" -i SConstruct \
-    && echo "mongo_version: \"$psm_ver-$psm_release\"" > .resmoke_mongo_version.yml
+    && echo "mongo_version: \"$psm_ver-$psm_release\"" > .resmoke_mongo_version.yml \
+    && support-files/ldap-sasl/deploy_ldap_and_sasl.sh || true \
+    && echo "START=yes" >> /etc/default/saslauthd
 ENV PATH="${PATH}:/data/multiversion"
 ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
 ENV TZ=America/New_York
