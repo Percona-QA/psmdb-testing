@@ -25,23 +25,31 @@
 
     - name: Get tarball link for jammy
       set_fact:
-        tarball_jammy: "{{ tarball_ol9 | regex_replace('ol9', 'jammy') }}"      
+        tarball_jammy: "{{ tarball_ol9 | regex_replace('ol9', 'jammy') }}"
 
     - name: Debug tarball for jammy
       debug:
         msg: "{{ tarball_jammy }}"
+
+    - name: Get tarball link for noble
+      set_fact:
+        tarball_noble: "{{ tarball_ol9 | regex_replace('ol9', 'noble') }}"
+
+    - name: Debug tarball for noble
+      debug:
+        msg: "{{ tarball_noble }}"
 
     - name: Get mongodb version
       set_fact:
         mongodb_ver: "{{ tarball_ol9 | regex_search('mongodb-pro-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
 
     - name: Get mongodb major version
-      set_fact: 
+      set_fact:
         maj_version={{ mongodb_ver[0].split('.')[0] }}
 
     - name: Debug mongodb major version
       debug:
-        msg: "{{ maj_version }}"    
+        msg: "{{ maj_version }}"
 
     - name: Get git repo branch
       set_fact:
@@ -90,7 +98,7 @@
         url: '{{ tarball_ol9 }}'
         dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.ol9.tar.gz
         mode: '0644'
-      when: tarball_ol9.startswith('http') 
+      when: tarball_ol9.startswith('http')
 
     - name: Download tarball for ol9 from s3
       aws_s3:
@@ -98,7 +106,7 @@
         object: "{{ tarball_ol9 | urlsplit('path') }}"
         dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.ol9.tar.gz
         mode: get
-      when: tarball_ol9.startswith('s3') 
+      when: tarball_ol9.startswith('s3')
 
     - name: Download tarball for jammy from url
       get_url:
@@ -113,7 +121,22 @@
         object: "{{ tarball_jammy | urlsplit('path') }}"
         dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.jammy.tar.gz
         mode: get
-      when: tarball_ol9.startswith('s3')  
+      when: tarball_ol9.startswith('s3')
+
+    - name: Download tarball for noble from url
+      get_url:
+        url: '{{ tarball_noble }}'
+        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.noble.tar.gz
+        mode: '0644'
+      when: tarball_ol9.startswith('http')
+
+    - name: Download tarball for noble from s3
+      aws_s3:
+        bucket: "{{ tarball_noble | urlsplit('hostname') }}"
+        object: "{{ tarball_noble | urlsplit('path') }}"
+        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.noble.tar.gz
+        mode: get
+      when: tarball_ol9.startswith('s3')
 
 - name: Converge
   hosts: all
