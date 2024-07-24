@@ -39,7 +39,7 @@
   shell: |
     cd /pykmip_workdir/PyKMIP
     git checkout $(git rev-list --tags --max-count=1)
-    /usr/bin/python3.11 -m pip install -U setuptools cffi
+    /usr/bin/python3.11 -m pip install -U 'setuptools<71.0.0' cffi
     /usr/bin/python3.11 setup.py install
   when: ansible_distribution_major_version == "24"
 
@@ -65,3 +65,7 @@
     state: started
     daemon_reload: true
     name: pykmip
+
+- name: Fix setuptools noble
+  shell: pip3 install -U setuptools --break-system-packages
+  when: ansible_distribution_major_version == "24"
