@@ -39,6 +39,9 @@ def test_telemetry_service(host):
         case "7.0":
          if version.parse(PSMDB_VER) <= version.parse("7.0.11"):
           pytest.skip("This version doesn't support telemetry")
+        case "8.0":
+         if version.parse(PSMDB_VER) <= version.parse("8.0.10"):
+          pytest.skip("This version doesn't support telemetry")
     if not (host.system_info.distribution.lower() in ["redhat", "centos", 'rhel'] and host.system_info.release == '7'):
         telemetry = host.service("percona-telemetry-agent")
         assert telemetry.is_running
