@@ -143,10 +143,21 @@
   pip:
     name:
       - virtualenv
+      - setuptools<71.0.0
+    state: present
+    executable: pip3
+    extra_args: "{{ extra_args_deb12 }}"
+  when: ansible_os_family == "Debian"
+
+- name: Install
+  pip:
+    name:
+      - virtualenv
       - setuptools
     state: latest
     executable: pip3
     extra_args: "{{ extra_args_deb12 }}"
+  when: ansible_os_family == "RedHat"
 
 - name: Hotfix for PyYAML
   pip:
