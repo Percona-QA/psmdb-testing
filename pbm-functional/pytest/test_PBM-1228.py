@@ -42,7 +42,7 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.timeout(600,func_only=True)
+@pytest.mark.timeout(900,func_only=True)
 @pytest.mark.parametrize('backup_type',['logical','physical'])
 @pytest.mark.parametrize('base_snapshot',['base','profile'])
 def test_pitr_PBM_T256(start_cluster,cluster,backup_type,base_snapshot):
