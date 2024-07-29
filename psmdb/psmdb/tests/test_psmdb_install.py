@@ -137,12 +137,17 @@ def test_version_pt(host):
 def test_telemetry(host):
     file_path = "/usr/local/percona/telemetry_uuid"
     expected_fields = ["instanceId", "PRODUCT_FAMILY_PSMDB"]
+    expected_group = "percona-telemetry"
 
     assert host.file(file_path).exists, f"Telemetry file '{file_path}' does not exist."
 
     file_content = host.file(file_path).content_string
     for string in expected_fields:
         assert string in file_content, f"Field '{string}' wasn't found in file '{file_path}'."
+
+    if not (host.system_info.distribution.lower() in ["redhat", "centos", 'rhel'] and host.system_info.release == '7'):
+        file_group = host.file(file_path).group
+        assert file_group == expected_group, f"File '{file_path}' group is '{file_group}', expected group is '{expected_group}'."
 
 def test_profiling(host):
     restore_defaults(host)
