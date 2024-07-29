@@ -1,7 +1,7 @@
 ARG PSMDB=percona/percona-server-mongodb
 ARG GO_VER=bullseye
 
-FROM alpine as x509
+FROM alpine AS x509
 USER root
 ENV EASYRSA_DN=org
 ENV EASYRSA_REQ_COUNTRY=US
@@ -21,10 +21,10 @@ RUN apk add --no-cache bash git openssl && cd ~ && \
     cat pki/issued/psmdb.crt pki/private/psmdb.key > /etc/x509/psmdb.pem && \
     cat pki/issued/pbm.crt pki/private/pbm.key > /etc/x509/pbm.pem 
 
-FROM pykmip/local as pykmip
+FROM pykmip/local AS pykmip
 
-FROM golang:$GO_VER as builder
-ARG PBM_BRANCH=main
+FROM golang:$GO_VER AS builder
+ARG PBM_BRANCH=dev
 ARG PR_NUMBER
 WORKDIR /
 RUN mkdir -p /pbm-old && mkdir -p /pbm-new && \
@@ -57,6 +57,7 @@ COPY --from=x509 /etc/x509/ /etc/x509/
 COPY conf/supervisord.d/ /etc/supervisord.d/
 COPY conf/pbm/minio.yaml /etc/pbm.conf
 COPY conf/pbm/pbm-1043.yaml /etc/pbm-1043.conf
+COPY conf/pbm/filesystem-profile.yaml /etc/pbm-fs-profile.conf
 COPY conf/krb5.conf /etc/krb5.conf
 COPY keyfile /etc/keyfile
 COPY mongodb-keyfile /etc/mongodb-keyfile

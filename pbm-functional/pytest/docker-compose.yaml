@@ -110,7 +110,7 @@ services:
       dockerfile: ./Dockerfile
       context: .
       args:
-        - PBM_BRANCH=${PBM_BRANCH:-main}
+        - PBM_BRANCH=${PBM_BRANCH:-dev}
         - GO_VER=${GO_VER:-bullseye}
         - PSMDB=${PSMDB:-percona/percona-server-mongodb:latest}
         - PR_NUMBER=${PR_NUMBER:-}
