@@ -117,7 +117,7 @@ def test_incremental_PBM_T234(start_cluster,cluster):
     backup=cluster.make_backup("incremental")
     result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
     assert int(result.deleted_count) == len(documents)
-    logs=cluster.exec_pbm_cli("logs -n rs1/rs103:27017 -e backup -o json").stdout
+    logs=cluster.exec_pbm_cli("logs -t 200 -n rs1/rs103:27017 -e backup -o json").stdout
     Cluster.log("Logs from hidden node:\n" + logs)
     assert init_backup in logs
     assert backup in logs

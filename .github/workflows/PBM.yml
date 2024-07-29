@@ -23,7 +23,7 @@ jobs:
         test: [logical, physical, incremental]
     env:
       PSMDB: ${{ github.event.inputs.psmdb || 'percona/percona-server-mongodb' }}
-      PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'main' }}
+      PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'dev' }}
       GO_VER: ${{ github.event.inputs.go_ver || 'latest' }}
     steps:
     - uses: actions/checkout@v4

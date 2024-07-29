@@ -356,18 +356,8 @@ class Cluster:
     # pbm --force-resync
     def make_resync(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output('pbm config --force-resync --out json')
-        parsed_result = json.loads(result)
+        result = n.check_output('pbm config --force-resync --wait')
         Cluster.log('Started resync: ' + result)
-        timeout = time.time() + 30
-        while True:
-            logs = self.__find_event_msg("resync", "succeed")
-            if logs:
-                break
-            if time.time() > timeout:
-                assert False
-            time.sleep(1)
-        time.sleep(10)
 
     # creates backup based on type (no checking input - it's hack for situation like 'incremental --base')
     def make_backup(self, type):
