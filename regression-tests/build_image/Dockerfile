@@ -23,7 +23,6 @@ WORKDIR /opt/percona-server-mongodb
 ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/resmoke2junit.py .
 RUN find jstests -type f | xargs chmod 400 \
     && pip install -r etc/pip/dev-requirements.txt \
-    && pip uninstall -y pymongo && pip install pymongo==3.12 \
     && pip install --upgrade cryptography==36.0.2 \
     && ( buildscripts/scons.py CC=/usr/bin/gcc-10 CXX=/usr/bin/g++-10 CPPPATH=/usr/local/include LIBPATH="/usr/local/lib /usr/local/lib64" -j4 build/install/bin/wt || buildscripts/scons.py CC=/usr/bin/gcc-10 CXX=/usr/bin/g++-10 CPPPATH=/usr/local/include LIBPATH="/usr/local/lib /usr/local/lib64" -j4 wt ) \
     && ( cp build/install/bin/wt /usr/bin/ || cp build/opt/third_party/wiredtiger/wt /usr/bin/ )\
