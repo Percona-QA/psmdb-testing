@@ -1,6 +1,8 @@
 aggregation|wiredTiger
 aggregation_auth|wiredTiger
 aggregation_disabled_optimization|wiredTiger
+ aggregation_ese|wiredTiger
+ aggregation_ese_gcm|wiredTiger
 aggregation_facet_unwind_passthrough|wiredTiger
 aggregation_mongos_passthrough|wiredTiger
 aggregation_one_shard_sharded_collections|wiredTiger
@@ -32,6 +34,7 @@ change_streams_mongos_sessions_passthrough|wiredTiger
 change_streams_multi_stmt_txn_mongos_passthrough|wiredTiger
 change_streams_multi_stmt_txn_passthrough|wiredTiger
 change_streams_multi_stmt_txn_sharded_collections_passthrough|wiredTiger
+change_streams_per_shard_cursor_passthrough|wiredTiger
 change_streams_secondary_reads|wiredTiger
 change_streams_sharded_collections_passthrough|wiredTiger
 change_streams_update_v1_oplog|wiredTiger
@@ -80,6 +83,8 @@ concurrency_simultaneous_replication_wiredtiger_cursor_sweeps --jobs=1|wiredTige
 core|wiredTiger
 core --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command,requires_timeseries|wiredTiger
 core_auth|wiredTiger
+ core_ese|wiredTiger
+ core_ese_gcm|wiredTiger
 core_minimum_batch_size|wiredTiger
 core_op_query|wiredTiger
 core_tde_cbc|wiredTiger
@@ -100,7 +105,6 @@ failpoints|wiredTiger
 failpoints_auth|wiredTiger
  feature_flag_multiversion|wiredTiger
 fle|wiredTiger
- free_monitoring|wiredTiger
 generational_fuzzer|wiredTiger
 generational_fuzzer_replication|wiredTiger
 gle_auth --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
@@ -154,11 +158,10 @@ multi_shard_multi_stmt_txn_jscore_passthrough|wiredTiger
 multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough|wiredTiger
 multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|wiredTiger
 multi_stmt_txn_jscore_passthrough_with_migration|wiredTiger
-multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 4.9
-multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 4.9
+multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4
+multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4
 no_passthrough|wiredTiger
 no_passthrough_with_mongod|wiredTiger
- no_server|wiredTiger
 ocsp --jobs=1|wiredTiger
 parallel --jobs=1|wiredTiger
 parallel --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command --jobs=1|wiredTiger
@@ -172,6 +175,8 @@ redaction|wiredTiger
 replica_sets|wiredTiger
 replica_sets_api_version_jscore_passthrough|wiredTiger
 replica_sets_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+ replica_sets_ese|wiredTiger
+ replica_sets_ese_gcm|wiredTiger
 replica_sets_initsync_jscore_passthrough|wiredTiger
 replica_sets_initsync_static_jscore_passthrough|wiredTiger
 replica_sets_jscore_passthrough|wiredTiger
@@ -184,7 +189,7 @@ replica_sets_multi_stmt_txn_jscore_passthrough|wiredTiger
 replica_sets_multi_stmt_txn_kill_primary_jscore_passthrough|wiredTiger
 replica_sets_multi_stmt_txn_stepdown_jscore_passthrough|wiredTiger
 replica_sets_multi_stmt_txn_terminate_primary_jscore_passthrough|wiredTiger
-replica_sets_multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=multiversion_exclude_tags.yml
+replica_sets_multiversion --excludeWithAnyTags=backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4 && wget https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v50.py -O buildscripts/evergreen_gen_multiversion_tests.py && mkdir generated_resmoke_config && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=generated_resmoke_config/multiversion_exclude_tags.yml
 replica_sets_reconfig_jscore_passthrough|wiredTiger
 replica_sets_reconfig_jscore_stepdown_passthrough|wiredTiger
 replica_sets_reconfig_kill_primary_jscore_passthrough|wiredTiger
@@ -203,6 +208,7 @@ rollback_fuzzer_clean_shutdowns|wiredTiger
 rollback_fuzzer_unclean_shutdowns|wiredTiger
 rollback_multiversion_fuzzer|wiredTiger
 sasl|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+ sasl_windows_cyrussasl|wiredTiger
 sdam_json_test|wiredTiger
 search|wiredTiger
 search_auth|wiredTiger
@@ -226,14 +232,17 @@ sharding_api_version_jscore_passthrough|wiredTiger
 sharding_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 sharding_auth_audit|wiredTiger
 sharding_continuous_config_stepdown|wiredTiger
+ sharding_ese|wiredTiger
+ sharding_ese_gcm|wiredTiger
 sharding_gle_auth_basics_passthrough --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
 sharding_gle_auth_basics_passthrough --shellWriteMode=commands|wiredTiger
 sharding_jscore_op_query_passthrough|wiredTiger
 sharding_jscore_passthrough|wiredTiger
 sharding_jscore_passthrough --shellWriteMode=compatibility --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|wiredTiger
-sharding_last_lts_mongos_and_mixed_shards|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=multiversion_exclude_tags.yml
+sharding_last_lts_mongos_and_mixed_shards --excludeWithAnyTags=backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4 && wget https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v50.py -O buildscripts/evergreen_gen_multiversion_tests.py && mkdir generated_resmoke_config && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=generated_resmoke_config/multiversion_exclude_tags.yml
 sharding_max_mirroring|wiredTiger
-sharding_multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=multiversion_exclude_tags.yml
+sharding_multiversion --excludeWithAnyTags=backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4 && wget https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v50.py -O buildscripts/evergreen_gen_multiversion_tests.py && mkdir generated_resmoke_config && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=generated_resmoke_config/multiversion_exclude_tags.yml
+sharding_opportunistic_secondary_targeting|wiredTiger
 sharding_tde_cbc|wiredTiger
 sharding_tde_gcm|wiredTiger
 sharding_update_v1_oplog|wiredTiger
@@ -241,16 +250,12 @@ sharding_update_v1_oplog_jscore_passthrough|wiredTiger
 slow1 --jobs=1|wiredTiger
 snmp|wiredTiger
 ssl|wiredTiger
+ssl_linear|wiredTiger
 ssl_special|wiredTiger
 ssl_x509|wiredTiger
 tde_cbc|wiredTiger
 tde_gcm|wiredTiger
- tenant_migration_causally_consistent_jscore_passthrough|wiredTiger 
- tenant_migration_jscore_passthrough|wiredTiger
- tenant_migration_kill_primary_jscore_passthrough|wiredTiger
- tenant_migration_multi_stmt_txn_jscore_passthrough|wiredTiger
- tenant_migration_stepdown_jscore_passthrough|wiredTiger
- tenant_migration_terminate_primary_jscore_passthrough|wiredTiger
+telemetry --jobs=1|wiredTiger
 tla_plus|wiredTiger|apt install -y default-jre && mkdir -p /opt/java/jdk11/bin/ && ln -s /usr/bin/java /opt/java/jdk11/bin/java && src/mongo/db/repl/tla_plus/download-tlc.sh && cp tla2tools.jar src/mongo/db/repl/tla_plus/
 unittests|wiredTiger
 unittests_auth|wiredTiger
@@ -260,8 +265,6 @@ unittests_query|wiredTiger
 unittests_repl|wiredTiger
 unittests_sharding|wiredTiger
 watchdog --jobs=1|wiredTiger|chmod +x jstests/watchdog/charybdefs_setup.sh && jstests/watchdog/charybdefs_setup.sh
- with_external_server|wiredTiger
-with_server|wiredTiger
 write_concern_majority_passthrough|wiredTiger
 aggregation|inMemory
 aggregation_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
@@ -365,7 +368,6 @@ failpoints|inMemory
 failpoints_auth|inMemory
  feature_flag_multiversion|inMemory
 fle|inMemory
- free_monitoring|inMemory
 generational_fuzzer|inMemory
 generational_fuzzer_replication|inMemory
 gle_auth --shellWriteMode=legacy --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
@@ -423,7 +425,6 @@ multi_stmt_txn_jscore_passthrough_with_migration|inMemory
  multiversion_auth|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 4.9
 no_passthrough --jobs=1|inMemory
 no_passthrough_with_mongod --storageEngineCacheSizeGB=10 --jobs=1|inMemory
- no_server|inMemory
 ocsp --jobs=1|inMemory
 parallel --jobs=1|inMemory
 parallel --shellReadMode=legacy --shellWriteMode=compatibility --excludeWithAnyTags=requires_find_command --jobs=1|inMemory
@@ -449,7 +450,7 @@ replica_sets_multi_stmt_txn_jscore_passthrough|inMemory
 replica_sets_multi_stmt_txn_kill_primary_jscore_passthrough|inMemory
 replica_sets_multi_stmt_txn_stepdown_jscore_passthrough|inMemory
 replica_sets_multi_stmt_txn_terminate_primary_jscore_passthrough|inMemory
-replica_sets_multiversion|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=multiversion_exclude_tags.yml
+replica_sets_multiversion --excludeWithAnyTags=backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags.yml|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4 && wget https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v50.py -O buildscripts/evergreen_gen_multiversion_tests.py && mkdir generated_resmoke_config && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=generated_resmoke_config/multiversion_exclude_tags.yml
 replica_sets_reconfig_jscore_passthrough|inMemory
 replica_sets_reconfig_jscore_stepdown_passthrough|inMemory
 replica_sets_reconfig_kill_primary_jscore_passthrough|inMemory
@@ -496,9 +497,9 @@ sharding_gle_auth_basics_passthrough --shellWriteMode=commands|inMemory
 sharding_jscore_op_query_passthrough|inMemory
 sharding_jscore_passthrough|inMemory
 sharding_jscore_passthrough --shellWriteMode=compatibility --shellReadMode=legacy --excludeWithAnyTags=requires_find_command|inMemory
-sharding_last_lts_mongos_and_mixed_shards|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=multiversion_exclude_tags.yml
+sharding_last_lts_mongos_and_mixed_shards --excludeWithAnyTags=backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags.yml|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4 && wget https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v50.py -O buildscripts/evergreen_gen_multiversion_tests.py && mkdir generated_resmoke_config && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=generated_resmoke_config/multiversion_exclude_tags.yml
 sharding_max_mirroring|inMemory
-sharding_multiversion|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 3.2 3.4 3.6 4.0 4.0.1 4.0.5 4.2 4.2.1 4.4 && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=multiversion_exclude_tags.yml
+sharding_multiversion --excludeWithAnyTags=backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags.yml|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4 && wget https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v50.py -O buildscripts/evergreen_gen_multiversion_tests.py && mkdir generated_resmoke_config && python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --output=generated_resmoke_config/multiversion_exclude_tags.yml
  sharding_tde_cbc|inMemory
  sharding_tde_gcm|inMemory
 sharding_update_v1_oplog|inMemory
@@ -510,12 +511,6 @@ ssl_special|inMemory
 ssl_x509|inMemory
  tde_cbc|inMemory
  tde_gcm|inMemory
- tenant_migration_causally_consistent_jscore_passthrough|inMemory
- tenant_migration_jscore_passthrough|inMemory
- tenant_migration_kill_primary_jscore_passthrough|inMemory
- tenant_migration_multi_stmt_txn_jscore_passthrough|inMemory
- tenant_migration_stepdown_jscore_passthrough|inMemory
- tenant_migration_terminate_primary_jscore_passthrough|inMemory
 tla_plus|inMemory|apt install -y default-jre && mkdir -p /opt/java/jdk11/bin/ && ln -s /usr/bin/java /opt/java/jdk11/bin/java && src/mongo/db/repl/tla_plus/download-tlc.sh && cp tla2tools.jar src/mongo/db/repl/tla_plus/
 unittests|inMemory
 unittests_auth|inMemory
@@ -525,6 +520,4 @@ unittests_query|inMemory
 unittests_repl|inMemory
 unittests_sharding|inMemory
 watchdog --jobs=1|inMemory|chmod +x jstests/watchdog/charybdefs_setup.sh && jstests/watchdog/charybdefs_setup.sh
- with_external_server|inMemory
-with_server|inMemory
 write_concern_majority_passthrough|inMemory
