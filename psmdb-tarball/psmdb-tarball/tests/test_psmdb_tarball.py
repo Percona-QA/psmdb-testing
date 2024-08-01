@@ -24,7 +24,7 @@ def test_binary_version(host, binary):
 
 @pytest.mark.parametrize("jstest", JSTESTS)
 def test_jstests(host, jstest):
-    cmd = "cd /percona-server-mongodb && python3 buildscripts/resmoke.py run /package-testing/jstests/"  + jstest
+    cmd = "cd /percona-server-mongodb && python3 buildscripts/resmoke.py run --suite no_server /package-testing/jstests/"  + jstest
     with host.sudo():
         result = host.run(cmd)
         print(result.stderr)
