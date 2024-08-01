@@ -7,6 +7,13 @@
   apt_repository:
     repo: "deb https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
     state: present
+  when: ansible_distribution_major_version != "10"
+
+- name: Add HashiCorp apt Repo
+  apt_repository:
+    repo: "deb https://apt.releases.hashicorp.com bullseye main"
+    state: present
+  when: ansible_distribution_major_version == "10"
 
 - name: Install Vault via apt
   apt:
