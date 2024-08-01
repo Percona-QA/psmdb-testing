@@ -51,6 +51,23 @@
     dest: /percona-server-mongodb
     version: "v{{ repo_branch[0] }}"
     single_branch: yes
+  when: not ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24" )
+
+- name: Clone PSMDB repo
+  git:
+    repo: 'https://github.com/percona/percona-server-mongodb.git'
+    dest: /percona-server-mongodb
+    version: "v{{ repo_branch[0] }}"
+    single_branch: yes
+  when: ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24" ) and repo_branch[0] != "5.0"
+
+- name: Clone PSMDB repo
+  git:
+    repo: 'https://github.com/percona/percona-server-mongodb.git'
+    dest: /percona-server-mongodb
+    version: "v6.0"
+    single_branch: yes
+  when: ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24" ) and repo_branch[0] == "5.0"
 
 - name: Clone psmdb-testing repo
   git:
