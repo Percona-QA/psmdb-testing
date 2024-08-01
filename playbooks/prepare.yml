@@ -48,7 +48,7 @@
       when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
 
     - name: setup epel 7 repo
-      yum: name=https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm state=present
+      yum: name=https://dl.fedoraproject.org/pub/archive/epel/7/x86_64/Packages/e/epel-release-7-14.noarch.rpm state=present
       when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
 
     - name: add the Vault and epel CentOS 6 repos
