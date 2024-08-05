@@ -32,12 +32,10 @@ RUN mkdir -p /pbm-old && mkdir -p /pbm-new && \
     git clone https://github.com/percona/percona-backup-mongodb.git && cd percona-backup-mongodb && \
     if [ -n "$PR_NUMBER" ]; then git fetch origin pull/$PR_NUMBER/head:CURRENT_PR; PBM_BRANCH=CURRENT_PR; fi && \
     git checkout $PBM_BRANCH && \
-    sed -E "s|(.+)https://%s.blob.core.windows.net|\1http://azurite:10000/%s/|" -i pbm/storage/azure/azure.go && \
     make build && cp -rpf bin/* /pbm-new/ && rm -rf bin && \
     git reset --hard && \
     git branch -r | grep release | sed 's/origin\///'| grep -v $PBM_BRANCH | sort --version-sort | tail -1 | xargs git checkout && \
     git pull && \
-    sed -E "s|(.+)https://%s.blob.core.windows.net|\1http://azurite:10000/%s/|" -i pbm/storage/azure/azure.go && \
     make build && cp -rpf bin/* /pbm-old/ && rm -rf bin 
 
 FROM $PSMDB
