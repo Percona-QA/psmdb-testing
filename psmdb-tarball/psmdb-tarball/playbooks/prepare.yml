@@ -18,6 +18,16 @@
        sed -i 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/CentOS-Base.repo
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7" and repo_file.stat.exists
 
+  - name: install GPG key for epel 7
+    rpm_key:
+      state: present
+      key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
+  - name: setup epel 7 repo
+    yum: name=https://dl.fedoraproject.org/pub/archive/epel/7/x86_64/Packages/e/epel-release-7-14.noarch.rpm state=present
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
   - name: Install necessary rpm packages
     yum:
       name: "{{ packages }}"
@@ -30,6 +40,8 @@
       - git
       - make
       - openssl-devel
+      - openssl11-devel
+      - ncurses-devel
       - openssl-static
       - readline-devel
       - readline-static
@@ -118,6 +130,12 @@
       src: /opt/python.tar.gz
       dest: /opt
       remote_src: yes
+
+  - name: Fix for centos7
+    shell: "sed -i 's/PKG_CONFIG openssl /PKG_CONFIG openssl11 /g' configure"
+    args:
+      chdir: /opt/Python-{{ python_version }}
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
 
   - name: Configure python
     shell: "./configure --prefix=/opt/python --enable-optimizations"
