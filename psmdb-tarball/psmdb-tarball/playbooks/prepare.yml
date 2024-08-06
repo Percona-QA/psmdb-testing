@@ -37,6 +37,7 @@
       - bzip2-devel
       - bzip2-libs
       - gcc
+      - gcc-c++ 
       - git
       - make
       - openssl-devel
@@ -67,6 +68,7 @@
       - bzip2-devel
       - bzip2-libs
       - gcc
+      - gcc-c++
       - git
       - make
       - openssl-devel
