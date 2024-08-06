@@ -16,3 +16,9 @@
   yum:
     name: vault
     state: present
+  when: ansible_distribution_major_version > "7"
+
+- name: Install Vault for Centos7 from archive
+  yum: name=https://archive.releases.hashicorp.com/RHEL/7/x86_64/stable/vault-1.17.2-1.x86_64.rpm state=present
+  when: ansible_distribution_major_version == "7"
+

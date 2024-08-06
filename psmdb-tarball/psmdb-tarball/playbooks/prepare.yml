@@ -18,6 +18,16 @@
        sed -i 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/CentOS-Base.repo
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7" and repo_file.stat.exists
 
+  - name: install GPG key for epel 7
+    rpm_key:
+      state: present
+      key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
+  - name: setup epel 7 repo
+    yum: name=https://dl.fedoraproject.org/pub/archive/epel/7/x86_64/Packages/e/epel-release-7-14.noarch.rpm state=present
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
   - name: Install necessary rpm packages
     yum:
       name: "{{ packages }}"
@@ -27,9 +37,12 @@
       - bzip2-devel
       - bzip2-libs
       - gcc
+      - gcc-c++ 
       - git
       - make
       - openssl-devel
+      - openssl11-devel
+      - ncurses-devel
       - openssl-static
       - readline-devel
       - readline-static
@@ -55,9 +68,11 @@
       - bzip2-devel
       - bzip2-libs
       - gcc
+      - gcc-c++
       - git
       - make
       - openssl-devel
+      - zlib-devel
       - curl
       - python3-pip
       - python3-devel
@@ -104,134 +119,61 @@
       - unzip
     when: ansible_os_family == "Debian"
 
-#  - name: Clone python repo
-#    git:
-#      repo: 'https://github.com/python/cpython.git'
-#      dest: /cpython
-#      version: "3.7"
-#    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+  - set_fact:
+      tarball: "{{ lookup('env', 'TARBALL') | default('https://downloads.percona.com/downloads/TESTING/psmdb-6.0.16/percona-server-mongodb-6.0.16-13-x86_64.glibc2.17-minimal.tar.gz', true) }}"
+
+  - name: Get mongodb major version
+    set_fact:
+      mongodb_version: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+)', '\\1') }}"
+
+  - set_fact:
+      python_version: "{{ lookup('env', 'PYTHON_VERSION') | default('3.10.14', true) }}"
+    when: mongodb_version[0] | float >= 6.0
+
+  - set_fact:
+      python_version: "{{ lookup('env', 'PYTHON_VERSION') | default('3.8.19', true) }}"
+    when: mongodb_version[0] | float <= 5.0
 
   - name: Download python
     get_url:
-      url: https://github.com/python/cpython/archive/refs/tags/v3.7.15.tar.gz
-      dest: /cpython.tar.gz
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version < "8"
+      url: https://www.python.org/ftp/python/{{ python_version }}/Python-{{ python_version }}.tgz
+      dest: /opt/python.tar.gz
 
   - name: Extract python sources
     unarchive:
-      src: /cpython.tar.gz
-      dest: /
+      src: /opt/python.tar.gz
+      dest: /opt
       remote_src: yes
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version < "8"
+
+  - name: Fix for centos7
+    shell: "sed -i 's/PKG_CONFIG openssl /PKG_CONFIG openssl11 /g' configure"
+    args:
+      chdir: /opt/Python-{{ python_version }}
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
 
   - name: Configure python
-    shell: "./configure --enable-optimizations"
+    shell: "./configure --prefix=/opt/python --enable-optimizations"
     args:
-      chdir: /cpython-3.7.15
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version < "8"
+      chdir: /opt/Python-{{ python_version }}
 
   - name: Install python
-    shell: "make install"
+    shell: "make -j2 install"
     args:
-      chdir: /cpython-3.7.15
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version < "8"
+      chdir: /opt/Python-{{ python_version }}
 
-  - name: Add deadsnakes repo for ubuntu 18.04
-    apt_repository:
-      repo: ppa:deadsnakes/ppa
-    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
-
-  - name: Install necessary python packages
-    apt:
-      name: "{{ packages }}"
-      update_cache: yes
-    vars:
-      packages:
-      - python3.7
-      - python3.7-dev
-      - python3.7-distutils
-    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
-
-  - name: Install necessary python packages RHEL8
-    yum:
-      name: "{{ packages }}"
+  - name: Install virtualenv 
+    pip:
+      name:
+        - virtualenv
       state: latest
-    vars:
-      packages:
-      - python38
-      - python38-pip
-      - python38-devel
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+      executable: /opt/python/bin/pip3
 
-  - name: Ensure python RHEL8
-    shell: alternatives --set python3 /usr/bin/python3.8
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
-
-  - name: Ensure python
-    file:
-      src: /usr/local/bin/python3.7
-      dest: /bin/python3
-      state: link
-      force: yes
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version < "8"
-
-  - name: Ensure python Ubuntu 18.04
-    shell: update-alternatives --install /usr/bin/python python /usr/bin/python3.7 1
-    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
-
-  - name: Ensure python3 Ubuntu 18.04
-    file:
-      src: /usr/bin/python3.7
-      dest: /usr/bin/python3
-      state: link
-      force: yes
-    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
-
-  - name: Fix python3-apt for Ubuntu 18.04
-    file:
-      src: /usr/lib/python3/dist-packages/apt_inst.cpython-36m-x86_64-linux-gnu.so
-      dest: /usr/lib/python3/dist-packages/apt_inst.so
-      state: link
-      force: yes
-    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
-
-  - name: Fix python3-apt for Ubuntu 18.04
-    file:
-      src: /usr/lib/python3/dist-packages/apt_pkg.cpython-36m-x86_64-linux-gnu.so
-      dest: /usr/lib/python3/dist-packages/apt_pkg.so
-      state: link
-      force: yes
-    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
-
-  - name: Fix python-ldap for Ubuntu 18.04
-    file:
-      src: /usr/lib/python3/dist-packages/_ldap.cpython-36m-x86_64-linux-gnu.so
-      dest: /usr/lib/python3/dist-packages/_ldap.so
-      state: link
-      force: yes
-    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
-
-  - name: Force upgrade pip for Ubuntu 18.04
-    shell: python3 -m pip install --upgrade pip
-    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
-
-  - name: Force upgrade PyYAML for Ubuntu 18.04
-    shell: python3 -m pip install --upgrade --ignore-installed PyYAML wrapt
-    when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "18"
-
-  - name: Ensure pip
-    file:
-      src: /usr/local/bin/pip3.7
-      dest: /usr/local/bin/pip3
-      state: link
-      force: yes
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version < "8"
-
-  - name: Ensure pip
-    file:
-      src: /usr/local/bin/pip3.7
-      dest: /bin/pip3
-      state: link
-      force: yes
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version < "8"
+  - name: Upgrade pip and create venv
+    pip:
+      name:
+        - pip
+      state: latest
+      virtualenv: /opt/venv
+      virtualenv_command: /opt/python/bin/virtualenv
+      virtualenv_python: /opt/python/bin/python3
 
