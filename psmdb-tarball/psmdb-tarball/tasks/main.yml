@@ -140,85 +140,10 @@
     force: yes
   when: not mongo.stat.exists
 
-- name: Set extra_args for deb12
-  set_fact:
-    extra_args_deb12: "{{ ' --break-system-packages' if ((ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm') or (ansible_distribution == 'Ubuntu' and ansible_distribution_major_version == '24')) else '' }}"
-
-- name: Set extra_args for OL systems
-  set_fact:
-    extra_args_oel: "{{ ' --ignore-installed' if ansible_os_family == 'RedHat' else '' }}"
-
-- name: Set extra_args for all other OS systems
-  set_fact:
-    extra_args_other_os: "{{ ' --ignore-installed' if not ((ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm') or (ansible_distribution == 'Ubuntu' and ansible_distribution_major_version == '24')) else '' }}"
-
-- name: Upgrade pip
-  pip:
-    name:
-      - pip
-    state: latest
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }}"
-  when: not ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24" )
-
-- name: Uninstall python3 packages noble
-  apt:
-    name:
-      - python3-yaml
-      - python3-typing-extensions
-      - python3-distro
-      - python3-urllib3
-      - python3-pyparsing
-      - python3-twisted
-      - python3-cryptography
-    state: absent
-  when: 
-    - ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24" ) or
-      ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )   
-
-- name: install pip packages
-  pip:
-    name:
-      - setuptools<71.0.0
-      - PyYAML==5.3.1
-      - virtualenv
-      - markdown
-    state: present
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }}"
-
 - name: Install Python utilities
   pip:
     requirements: /percona-server-mongodb/etc/pip/dev-requirements.txt
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }} {{ extra_args_oel }}"
-
-- name: Hotfix for cryptography module
-  pip:
-    name:
-      - cryptography==36.0.2
-    state: present
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }}"
-
-- name: Upgrade PyKMIP
-  pip:
-    name:
-      - PyKMIP
-    state: latest
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }}"
-
-- name: Upgrade wrapt for deb12
-  pip:
-    name:
-      - wrapt
-    state: latest
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }}"
-  when:
-    - ( ansible_distribution == 'Debian' and  ansible_distribution_release == 'bookworm' ) or
-      ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24" )
+    virtualenv: /opt/venv
 
 - name: Fix files permissions
   shell: "find /percona-server-mongodb/jstests -type f | xargs chmod 400"
@@ -256,13 +181,13 @@
     create: yes
 
 - name: Setup multiversion
-  shell: python3 buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 4.2 4.4 5.0 6.0
+  shell: /opt/venv/bin/python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 4.2 4.4 5.0 6.0
   args:
     chdir: /percona-server-mongodb
   when: not (( ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22" ) or (ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm'))
 
 - name: Setup multiversion
-  shell: python3 buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0
+  shell: /opt/venv/bin/python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0
   args:
     chdir: /percona-server-mongodb
   when: (ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22") or (ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm')
