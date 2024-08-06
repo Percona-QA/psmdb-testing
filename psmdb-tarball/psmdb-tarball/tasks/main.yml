@@ -51,23 +51,6 @@
     dest: /percona-server-mongodb
     version: "v{{ repo_branch[0] }}"
     single_branch: yes
-  when: not ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24" )
-
-- name: Clone PSMDB repo
-  git:
-    repo: 'https://github.com/percona/percona-server-mongodb.git'
-    dest: /percona-server-mongodb
-    version: "v{{ repo_branch[0] }}"
-    single_branch: yes
-  when: ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24" ) and repo_branch[0] != "5.0"
-
-- name: Clone PSMDB repo
-  git:
-    repo: 'https://github.com/percona/percona-server-mongodb.git'
-    dest: /percona-server-mongodb
-    version: "v6.0"
-    single_branch: yes
-  when: ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24" ) and repo_branch[0] == "5.0"
 
 - name: Clone psmdb-testing repo
   git:
@@ -75,23 +58,10 @@
     dest: /package-testing
     version: "main"
 
-- name: Create mongod symlink inside the workdir for 4.2 support
-  file:
-    src: /usr/bin/mongod
-    dest: /percona-server-mongodb/mongod
-    state: link
-
 - name: Check if mongo cli exists in PATH
   stat:
     path: /usr/bin/mongo
   register: mongo
-
-- name: Create mongo cli symlink inside the workdir for 4.2 support
-  file:
-    src: /usr/bin/mongo
-    dest: /percona-server-mongodb/mongo
-    state: link
-  when: mongo.stat.exists
 
 - name: Install percona release package
   include_tasks: ../../../tasks/install_percona_release.yml
