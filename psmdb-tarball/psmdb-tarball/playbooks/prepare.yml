@@ -120,7 +120,19 @@
     when: ansible_os_family == "Debian"
 
   - set_fact:
+      tarball: "{{ lookup('env', 'TARBALL') | default('https://downloads.percona.com/downloads/TESTING/psmdb-6.0.16/percona-server-mongodb-6.0.16-13-x86_64.glibc2.17-minimal.tar.gz', true) }}"
+
+  - name: Get mongodb major version
+    set_fact:
+      mongodb_version: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+)', '\\1') }}"
+
+  - set_fact:
       python_version: "{{ lookup('env', 'PYTHON_VERSION') | default('3.10.14', true) }}"
+    when: mongodb_version[0] | float >= 6.0
+
+  - set_fact:
+      python_version: "{{ lookup('env', 'PYTHON_VERSION') | default('3.8.19', true) }}"
+    when: mongodb_version[0] | float <= 5.0
 
   - name: Download python
     get_url:
