@@ -7,10 +7,12 @@
   command: yum-config-manager --add-repo=https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
   args:
     creates: /etc/yum.repos.d/hashicorp.repo
+  when: ansible_distribution_major_version > "7"
 
 - name: Fix Hashicorp yum repo
   shell: |
     sed 's/\$releasever/{{ ansible_distribution_major_version }}/g' -i /etc/yum.repos.d/hashicorp.repo
+  when: ansible_distribution_major_version > "7"
 
 - name: Install Vault via yum
   yum:
