@@ -13,7 +13,11 @@ if version.parse(PSMDB_VER) > version.parse("7.0.0"):
     SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','redhat/7','source','jammy','focal']
 elif version.parse(PSMDB_VER) > version.parse("6.0.0") and version.parse(PSMDB_VER) < version.parse("7.0.0"):
     SOFTWARE_FILES = ['bullseye','buster','binary','redhat/9','redhat/8','redhat/7','source','jammy','focal']
+    if (PDMDB_VER.startswith("5") and version.parse(PDMDB_VER) > version.parse("5.0.27")):
+       SOFTWARE_FILES.append('noble')
     if (PDMDB_VER.startswith("6") and version.parse(PDMDB_VER) > version.parse("6.0.15")):
+       SOFTWARE_FILES.append('noble')
+    if (PDMDB_VER.startswith("7") and version.parse(PDMDB_VER) > version.parse("7.0.12")):
        SOFTWARE_FILES.append('noble')
 else:
     SOFTWARE_FILES = ['bullseye','buster','binary','redhat/8','redhat/7','source','jammy','focal']
