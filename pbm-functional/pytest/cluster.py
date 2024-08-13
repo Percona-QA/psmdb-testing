@@ -410,7 +410,8 @@ class Cluster:
                             assert False, snapshot['error'] + '\n' + logs
                             break
             if time.time() > timeout:
-                assert False, "Backup timeout exceeded"
+                logs = n.check_output("pbm logs -sD -t0")
+                assert False, "Backup timeout exceeded\n" + logs
             time.sleep(1)
 
     # restores backup from name, accept extra-args:
