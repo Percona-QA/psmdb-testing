@@ -402,6 +402,7 @@ class Cluster:
                     if snapshot['name'] == name:
                         if snapshot['status'] == 'done':
                             Cluster.log("Backup found: " + str(snapshot))
+                            time.sleep(1) #wait for releasing locks
                             return name
                             break
                         elif snapshot['status'] == 'error':
