@@ -406,8 +406,8 @@ class Cluster:
                             return name
                             break
                         elif snapshot['status'] == 'error':
-                            self.get_logs()
-                            assert False, snapshot['error']
+                            logs = n.check_output("pbm logs -sD -t0")
+                            assert False, snapshot['error'] + '\n' + logs
                             break
             if time.time() > timeout:
                 assert False, "Backup timeout exceeded"
