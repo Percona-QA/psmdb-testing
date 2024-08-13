@@ -77,3 +77,34 @@ def test_disabled_without_data(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test1").get("sharded", False)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test2").get("sharded", False)
     Cluster.log("Finished successfully")
+
+@pytest.mark.timeout(600,func_only=True)
+def test_logical_PBM_T261(start_cluster,cluster):
+    cluster.check_pbm_status()
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test1").get("sharded", False)
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test2").get("sharded", False)
+    result=cluster.exec_pbm_cli('backup -t logical --wait')
+    assert result.rc != 0, result.stdout
+    assert 'check for timeseries: cannot backup following sharded timeseries: test.test1, test.test2' in result.stderr
+    Cluster.log("Finished successfully")
+
+@pytest.mark.timeout(600,func_only=True)
+def test_incremental_PBM_T262(start_cluster,cluster):
+    cluster.check_pbm_status()
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test1").get("sharded", False)
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test2").get("sharded", False)
+    for i in range(10):
+        pymongo.MongoClient(cluster.connection)["test"]["test1"].insert_one({"timestamp": datetime.now(), "data": i})
+        time.sleep(0.1)
+    base_backup=cluster.make_backup("incremental --base")
+    for i in range(10):
+        pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_one({"timestamp": datetime.now(), "data": i})
+        time.sleep(0.1)
+    backup=cluster.make_backup("incremental")
+    pymongo.MongoClient(cluster.connection).drop_database('test')
+    cluster.make_restore(backup,restart_cluster=True,check_pbm_status=True)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test1"].count_documents({}) == 10
+    assert pymongo.MongoClient(cluster.connection)["test"]["test2"].count_documents({}) == 10
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test1").get("sharded", False)
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test2").get("sharded", False)
+    Cluster.log("Finished successfully")
