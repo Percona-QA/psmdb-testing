@@ -23,7 +23,7 @@ jobs:
     env:
       PSMDB: ${{ github.event.inputs.psmdb || 'percona/percona-server-mongodb' }}
       PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'main' }}
-      GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
+      GO_VER: ${{ github.event.inputs.go_ver || '1.22-bullseye' }}
       TEST: ${{ github.event.inputs.test || '-k logical --verbose test_sharded.py' }}
     steps:
     - uses: actions/checkout@v4
