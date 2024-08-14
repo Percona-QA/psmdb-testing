@@ -70,14 +70,9 @@
 - name: Install percona release package
   include_tasks: ../../../tasks/install_percona_release.yml
 
-- name: Enable psmdb experimental repo
-#  command: percona-release enable psmdb-{{ repo_branch[0].split('.')[0] }}{{ repo_branch[0].split('.')[1] }} experimental
-  command: percona-release enable psmdb-70 experimental
-  when: not mongo.stat.exists and repo_branch[0] | float >= 7.0
-
-- name: Enable psmdb 6.0 testing repo (for buster and bionic)
-  command: percona-release enable psmdb-60 testing
-  when: not mongo.stat.exists and repo_branch[0] | float == 6.0
+- name: Enable psmdb testing repo
+  command: percona-release enable psmdb-{{ repo_branch[0].split('.')[0] }}{{ repo_branch[0].split('.')[1] }} testing
+  when: not mongo.stat.exists and repo_branch[0] | float >= 6.0
 
 - name: Install mongosh deb packages
   apt:
