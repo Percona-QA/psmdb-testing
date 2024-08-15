@@ -27,7 +27,7 @@ jobs:
         test: [logical, physical, incremental, external]
     env:
       PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'dev' }}
-      GO_VER: ${{ github.event.inputs.go_ver || '1.22-bullseye' }}
+      GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
     steps:
     - uses: actions/checkout@v4
     - name: Setup environment with PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}

@@ -110,7 +110,7 @@ services:
       context: .
       args:
         - PBM_BRANCH=${PBM_BRANCH:-dev}
-        - GO_VER=${GO_VER:-1.22-bullseye}
+        - GO_VER=${GO_VER:-bullseye}
         - PSMDB=${PSMDB:-percona/percona-server-mongodb:latest}
         - PR_NUMBER=${PR_NUMBER:-}
     environment:

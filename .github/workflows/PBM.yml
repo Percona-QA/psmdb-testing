@@ -24,7 +24,7 @@ jobs:
     env:
       PSMDB: ${{ github.event.inputs.psmdb || 'percona/percona-server-mongodb' }}
       PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'dev' }}
-      GO_VER: ${{ github.event.inputs.go_ver || '1.22-bullseye' }}
+      GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
     steps:
     - uses: actions/checkout@v4
     - name: Setup environment with PSMDB ${{ env.PSMDB }} and PBM branch ${{ env.PBM_BRANCH }}
