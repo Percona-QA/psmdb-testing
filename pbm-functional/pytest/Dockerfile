@@ -1,5 +1,5 @@
 ARG PSMDB=percona/percona-server-mongodb
-ARG GO_VER=1.22-bullseye
+ARG GO_VER=bullseye
 
 FROM alpine AS x509
 USER root
@@ -14,7 +14,7 @@ RUN apk add --no-cache bash git openssl && cd ~ && \
     cd easy-rsa/easyrsa3/ && \
     ./easyrsa init-pki && \
     ./easyrsa --req-cn=Percona --batch build-ca nopass && \
-    ./easyrsa --req-ou=server --subject-alt-name=DNS:*,IP:127.0.0.1 --batch build-server-full psmdb nopass && \
+    ./easyrsa --req-ou=server --subject-alt-name=DNS:localhost,DNS:rscfg01,DNS:rs101,IP:127.0.0.1 --batch build-server-full psmdb nopass && \
     ./easyrsa --req-ou=client --batch build-client-full pbm nopass && \
     mkdir -p /etc/x509 && \
     cp pki/ca.crt /etc/x509/ca.crt && \
