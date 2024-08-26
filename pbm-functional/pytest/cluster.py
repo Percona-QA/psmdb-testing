@@ -547,12 +547,13 @@ class Cluster:
         result = n.check_output(
             "pbm config --set pitr.enabled=true --set pitr.compression=none --out json " + pitr_extra_args)
         Cluster.log("Enabling PITR: " + result)
-        timeout = time.time() + 600
+        timeout = time.time() + 150
         while True:
             if self.check_pitr():
                 break
             if time.time() > timeout:
-                assert False
+                status=self.get_status()['pitr']
+                assert False, status
             time.sleep(1)
 
     # disables PITR
@@ -561,7 +562,7 @@ class Cluster:
         result = n.check_output(
             "pbm config --set pitr.enabled=false --out json")
         Cluster.log("Disabling PITR: " + result)
-        timeout = time.time() + 600
+        timeout = time.time() + 150
         while True:
             if not self.check_pitr():
                 break
