@@ -79,6 +79,34 @@ def test_logical_PBM_T233(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     Cluster.log("Finished successfully")
 
+@pytest.mark.timeout(600,func_only=True)
+def test_logical_pitr_PBM_T263(start_cluster,cluster):
+    time.sleep(5) # wait for delayed node
+    cluster.check_pbm_status()
+    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
+    backup=cluster.make_backup("logical")
+    #check if the backup was taken from the hidden node
+    logs=cluster.exec_pbm_cli("logs -n rs1/rs103:27017 -e backup -o json").stdout
+    assert backup in logs
+    Cluster.log("Logs from hidden node:\n" + logs)
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+    pymongo.MongoClient(cluster.connection)["test"]["pitr"].insert_many(documents)
+    time.sleep(10)
+    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    backup="--time=" + pitr
+    Cluster.log("Time for PITR is: " + pitr)
+    time.sleep(60)
+    cluster.disable_pitr()
+    time.sleep(10)
+    result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
+    result=pymongo.MongoClient(cluster.connection)["test"]["pitr"].delete_many({})
+    cluster.make_restore(backup)
+    time.sleep(5) # wait for delayed node
+    cluster.check_pbm_status()
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"]["pitr"].count_documents({}) == len(documents)
+    Cluster.log("Finished successfully")
+
 @pytest.mark.timeout(300,func_only=True)
 def test_physical_PBM_T195(start_cluster,cluster):
     time.sleep(5) # wait for delayed node
