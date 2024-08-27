@@ -39,7 +39,7 @@ def start_cluster(cluster,request):
         cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(300,func_only=True)
-def test_logical_PBM_T204(start_cluster,cluster):
+def test_load_PBM_T204(start_cluster,cluster):
     cluster.check_pbm_status()
 
     client = pymongo.MongoClient(cluster.connection)
