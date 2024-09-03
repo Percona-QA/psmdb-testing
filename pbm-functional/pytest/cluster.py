@@ -482,8 +482,6 @@ class Cluster:
             client = pymongo.MongoClient(self.connection)
             result = client.admin.command("balancerStart")
             Cluster.log("Starting balancer: " + str(result))
-            result = client.admin.command("flushRouterConfig")
-            Cluster.log("Executed flushRouterConfig: " + str(result))
             client.close()
 
     # destroys cluster

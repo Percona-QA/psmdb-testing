@@ -164,6 +164,8 @@ def test_load(start_cluster,cluster,backup_t):
     Cluster.log("test1 inserted count: " + str(inserted_test1))
     Cluster.log("test2 inserted count: " + str(inserted_test2))
 
+    time.sleep(60)
+
     if backup_type == "logical":
         restart = False
     else:
