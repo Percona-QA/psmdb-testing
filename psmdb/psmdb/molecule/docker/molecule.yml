@@ -16,11 +16,12 @@ provisioner:
   log: true
   playbooks:
     converge: ../../playbooks/playbook.yml
+    prepare: ../../../../playbooks/prepare.yml
 verifier:
   name: testinfra
-  directory: ../../../tests/
-  additional_files_or_dirs:
-    - ../psmdb/tests/
+  directory: ../../tests/
+#  additional_files_or_dirs:
+#    - ../psmdb/tests/
   options:
     verbose: true
     s: true

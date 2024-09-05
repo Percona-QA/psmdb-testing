@@ -4,6 +4,7 @@ import pytest
 import json
 import yaml
 import testinfra.utils.ansible_runner
+from packaging import version
 
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
@@ -135,6 +136,13 @@ def test_version_pt(host):
     assert PSMDB_VER in version
 
 def test_telemetry(host):
+    if version.parse(PSMDB_VER) <= version.parse("5.0.27"):
+        pytest.skip("This version doesn't support telemetry")
+    if version.parse(PSMDB_VER) >= version.parse("6.0.0") and version.parse(PSMDB_VER) <= version.parse("6.0.15"):
+        pytest.skip("This version doesn't support telemetry")
+    if version.parse(PSMDB_VER) >= version.parse("7.0.0") and version.parse(PSMDB_VER) <= version.parse("7.0.11"):
+        pytest.skip("This version doesn't support telemetry")
+
     file_path = "/usr/local/percona/telemetry_uuid"
     expected_fields = ["instanceId", "PRODUCT_FAMILY_PSMDB"]
     expected_group = "percona-telemetry"
@@ -148,6 +156,34 @@ def test_telemetry(host):
     if not (host.system_info.distribution.lower() in ["redhat", "centos", 'rhel'] and host.system_info.release == '7'):
         file_group = host.file(file_path).group
         assert file_group == expected_group, f"File '{file_path}' group is '{file_group}', expected group is '{expected_group}'."
+
+    #reconfigure telemetry agent
+    with host.sudo():
+        assert host.service('percona-telemetry-agent').is_running
+        assert host.service('percona-telemetry-agent').is_enabled
+        if host.system_info.distribution == "debian" or host.system_info.distribution == "ubuntu":
+            host.check_output("sed -E 's|PERCONA_TELEMETRY_URL=(.+)|PERCONA_TELEMETRY_URL=https://check-dev.percona.com/v1/telemetry/GenericReport|' -i /etc/default/percona-telemetry-agent")
+            host.check_output("sed -E 's|PERCONA_TELEMETRY_CHECK_INTERVAL=(.+)|PERCONA_TELEMETRY_CHECK_INTERVAL=10|' -i /etc/default/percona-telemetry-agent")
+        else:
+            host.check_output("sed -E 's|PERCONA_TELEMETRY_URL=(.+)|PERCONA_TELEMETRY_URL=https://check-dev.percona.com/v1/telemetry/GenericReport|' -i /etc/sysconfig/percona-telemetry-agent")
+            host.check_output("sed -E 's|PERCONA_TELEMETRY_CHECK_INTERVAL=(.+)|PERCONA_TELEMETRY_CHECK_INTERVAL=10|' -i /etc/sysconfig/percona-telemetry-agent")
+        host.check_output('systemctl restart percona-telemetry-agent')
+        assert host.service('percona-telemetry-agent').is_running
+
+    #test mongod telemetry
+    restore_defaults(host)
+    conf = get_default_conf(host)
+    conf['setParameter'] = {}
+    conf['setParameter']['perconaTelemetryGracePeriod'] = 2
+    apply_conf(host,conf,True)
+    time.sleep(3)
+    with host.sudo():
+        assert "1"==host.check_output("ls -1 /usr/local/percona/telemetry/psmdb/ | wc -l")
+        time.sleep(15)
+        logs=host.check_output('cat /var/log/percona/telemetry-agent.log')
+        assert "Sending request to host=check-dev.percona.com." in logs
+        assert "0"==host.check_output("ls -1 /usr/local/percona/telemetry/psmdb/ | wc -l")
+        assert "1"==host.check_output("ls -1 /usr/local/percona/telemetry/history/ | wc -l")
 
 def test_profiling(host):
     restore_defaults(host)
@@ -280,4 +316,3 @@ def test_encryption(host,encryption,cipher):
         assert "Rotated master encryption key" in logs, logs
         assert '"Shutting down","attr":{"exitCode":0}}' in logs, logs
         apply_conf(host,conf)
-
