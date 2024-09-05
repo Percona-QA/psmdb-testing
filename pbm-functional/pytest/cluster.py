@@ -389,7 +389,8 @@ class Cluster:
                 elif "resync" in start.stdout:
                     Cluster.log("Resync in progress, retrying: " + start.stdout)
                 else:
-                    assert False, "Backup failed" + start.stdout + start.stderr
+                    logs = n.check_output("pbm logs -sD -t0")
+                    assert False, "Backup failed" + start.stdout + start.stderr + '\n' + logs
             if time.time() > timeout:
                 assert False, "Timeout for backup start exceeded"
             time.sleep(1)
