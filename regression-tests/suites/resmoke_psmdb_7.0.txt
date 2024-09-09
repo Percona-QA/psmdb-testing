@@ -35,7 +35,6 @@ benchmarks_expression_sbe|wiredTiger
 benchmarks_query|wiredTiger
 benchmarks_replication|wiredTiger
 benchmarks_sharding|wiredTiger
-benchmarks_streams|wiredTiger
  buildscripts_test|wiredTiger
 causally_consistent_hedged_reads_jscore_passthrough|wiredTiger
 causally_consistent_jscore_passthrough|wiredTiger
@@ -220,10 +219,10 @@ multi_shard_multi_stmt_txn_jscore_passthrough|wiredTiger
 multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough|wiredTiger
 multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|wiredTiger
 multi_stmt_txn_jscore_passthrough_with_migration|wiredTiger
-multiversion --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
-multiversion_auth --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
-multiversion_auth_future_git_tag --excludeWithAnyTags=requires_fcv_61,featureFlagToaster,featureFlagSpoon,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
-multiversion_future_git_tag --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+multiversion --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 5.0.28 6.0 6.3
+multiversion_auth --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 5.0.28 6.0 6.3
+multiversion_auth_future_git_tag --excludeWithAnyTags=requires_fcv_61,featureFlagToaster,featureFlagSpoon,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 5.0.28 6.0 6.3
+multiversion_future_git_tag --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 5.0.28 6.0 6.3
 multiversion_sanity_check|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
  multiversion_sanity_check_last_continuous_new_new_old|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
  multiversion_sanity_check_last_continuous_new_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
@@ -266,7 +265,7 @@ replica_sets_kill_secondaries_jscore_passthrough|wiredTiger
 replica_sets_large_txns_format|wiredTiger
 replica_sets_large_txns_format_jscore_passthrough|wiredTiger
  replica_sets_last_continuous|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
-replica_sets_last_lts --excludeWithAnyTags=requires_fcv_62,requires_fcv_70,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+replica_sets_last_lts --excludeWithAnyTags=requires_fcv_62,requires_fcv_70,multiversion_incompatible --excludeWithAnyTags=backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 && wget https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v70.py -O buildscripts/resmokelib/run/generate_multiversion_exclude_tags.py && mkdir -p generated_resmoke_config && python buildscripts/resmoke.py generate-multiversion-exclude-tags --oldBinVersion last_lts
 replica_sets_max_mirroring|wiredTiger
 replica_sets_max_mirroring_large_txns_format|wiredTiger
  replica_sets_max_mirroring_large_txns_format_ese|wiredTiger
@@ -345,8 +344,8 @@ sharding_jscore_passthrough|wiredTiger
  sharding_jscore_passthrough_last_lts_new_old_old_new|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
 sharding_jscore_passthrough_with_config_shard|wiredTiger
  sharding_last_continuous|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
-sharding_last_lts --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
-sharding_last_lts_mongos_and_mixed_shards --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70,multiversion_incompatible|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+sharding_last_lts --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70,multiversion_incompatible --excludeWithAnyTags=backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 && wget https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v70.py -O buildscripts/resmokelib/run/generate_multiversion_exclude_tags.py && mkdir -p generated_resmoke_config && python buildscripts/resmoke.py generate-multiversion-exclude-tags --oldBinVersion last_lts
+sharding_last_lts_mongos_and_mixed_shards --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70,multiversion_incompatible --excludeWithAnyTags=backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 && wget https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v70.py -O buildscripts/resmokelib/run/generate_multiversion_exclude_tags.py && mkdir -p generated_resmoke_config && python buildscripts/resmoke.py generate-multiversion-exclude-tags --oldBinVersion last_lts
 sharding_max_mirroring --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70|wiredTiger
 sharding_max_mirroring_opportunistic_secondary_targeting --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70|wiredTiger
  sharding_max_mirroring_opportunistic_secondary_targeting_ese|wiredTiger
@@ -365,7 +364,6 @@ talk_directly_to_shardsvrs_kill_primary_jscore_passthrough|wiredTiger
 tde_cbc|wiredTiger
 tde_gcm|wiredTiger
 telemetry --jobs=1|wiredTiger
-telemetry_passthrough|wiredTiger
 tenant_migration_causally_consistent_jscore_passthrough|wiredTiger
 tenant_migration_jscore_passthrough|wiredTiger
 tenant_migration_kill_primary_jscore_passthrough|wiredTiger
@@ -419,7 +417,6 @@ auth_audit|inMemory
  benchmarks_query|inMemory
  benchmarks_replication|inMemory
  benchmarks_sharding|inMemory
- benchmarks_streams|inMemory
 causally_consistent_hedged_reads_jscore_passthrough|inMemory
 causally_consistent_jscore_passthrough|inMemory
 causally_consistent_jscore_passthrough_auth|inMemory
@@ -536,10 +533,10 @@ multi_shard_multi_stmt_txn_jscore_passthrough|inMemory
 multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough|inMemory
 multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|inMemory
 multi_stmt_txn_jscore_passthrough_with_migration|inMemory
- multiversion --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
- multiversion_auth --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
- multiversion_auth_future_git_tag --excludeWithAnyTags=requires_fcv_61,featureFlagToaster,featureFlagSpoon,multiversion_incompatible|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
- multiversion_future_git_tag --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ multiversion --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 5.0.28 6.0 6.3
+ multiversion_auth --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 5.0.28 6.0 6.3
+ multiversion_auth_future_git_tag --excludeWithAnyTags=requires_fcv_61,featureFlagToaster,featureFlagSpoon,multiversion_incompatible|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 5.0.28 6.0 6.3
+ multiversion_future_git_tag --excludeWithAnyTags=requires_fcv_61,multiversion_incompatible|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 5.0.28 6.0 6.3
  multiversion_sanity_check|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
 native_tenant_data_isolation_with_dollar_tenant_jscore_passthrough|inMemory
 no_passthrough --excludeWithAnyTags=featureFlagIndexBuildGracefulErrorHandling|inMemory
@@ -564,7 +561,7 @@ replica_sets_jscore_passthrough|inMemory
  replica_sets_kill_secondaries_jscore_passthrough|inMemory
 replica_sets_large_txns_format|inMemory
 replica_sets_large_txns_format_jscore_passthrough|inMemory
- replica_sets_last_lts --excludeWithAnyTags=requires_fcv_62,requires_fcv_70,multiversion_incompatible|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ replica_sets_last_lts --excludeWithAnyTags=requires_fcv_62,requires_fcv_70,multiversion_incompatible --excludeWithAnyTags=backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags.yml|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 && wget https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v70.py -O buildscripts/resmokelib/run/generate_multiversion_exclude_tags.py && mkdir -p generated_resmoke_config && python buildscripts/resmoke.py generate-multiversion-exclude-tags --oldBinVersion last_lts
 replica_sets_max_mirroring|inMemory
 replica_sets_max_mirroring_large_txns_format|inMemory
 replica_sets_multi_stmt_txn_jscore_passthrough|inMemory
@@ -615,8 +612,8 @@ sharding_continuous_config_stepdown|inMemory
 sharding_hello_failures|inMemory
 sharding_jscore_passthrough|inMemory
 sharding_jscore_passthrough_with_config_shard|inMemory
- sharding_last_lts --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70,multiversion_incompatible|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
- sharding_last_lts_mongos_and_mixed_shards --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70,multiversion_incompatible|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3
+ sharding_last_lts --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70,multiversion_incompatible --excludeWithAnyTags=backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags.yml|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 && wget https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v70.py -O buildscripts/resmokelib/run/generate_multiversion_exclude_tags.py && mkdir -p generated_resmoke_config && python buildscripts/resmoke.py generate-multiversion-exclude-tags --oldBinVersion last_lts
+ sharding_last_lts_mongos_and_mixed_shards --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70,multiversion_incompatible --excludeWithAnyTags=backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags.yml|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 && wget https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v70.py -O buildscripts/resmokelib/run/generate_multiversion_exclude_tags.py && mkdir -p generated_resmoke_config && python buildscripts/resmoke.py generate-multiversion-exclude-tags --oldBinVersion last_lts
  sharding_max_mirroring --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70|inMemory
  sharding_max_mirroring_opportunistic_secondary_targeting --excludeWithAnyTags=requires_fcv_61,requires_fcv_62,requires_fcv_63,requires_fcv_70|inMemory
 sharding_opportunistic_secondary_targeting|inMemory
@@ -631,7 +628,6 @@ talk_directly_to_shardsvrs_jscore_passthrough|inMemory
  talk_directly_to_shardsvrs_kill_primary_jscore_passthrough|inMemory
  tde_cbc|inMemory
  tde_gcm|inMemory
- telemetry_passthrough|inMemory
  tenant_migration_causally_consistent_jscore_passthrough|inMemory
  tenant_migration_jscore_passthrough|inMemory
  tenant_migration_kill_primary_jscore_passthrough|inMemory

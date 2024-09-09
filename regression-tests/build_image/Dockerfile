@@ -29,7 +29,6 @@ RUN find jstests -type f | xargs chmod 400 \
     && rm -rf build \
     && rm -f resmoke.ini \
     && mkdir /opt/lib \
-    && cp -r /usr/lib/private /opt/lib/ \
     && cp -r /usr/bin/dbtest . \
     && cp -r /usr/bin/mongo* . \
     && sed "s|UNITTEST_ALIAS='unittests',|UNITTEST_ALIAS='install-unittests',|" -i SConstruct \
@@ -43,4 +42,6 @@ ENV TZ=America/New_York
 ENV PORTABLE=1
 ENV USE_SSE=1
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN case "$psm_ver" in \
+6.0*) wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb; dpkg -i libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb; esac
 
