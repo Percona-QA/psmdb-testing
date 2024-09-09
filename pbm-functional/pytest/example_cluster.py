@@ -11,7 +11,10 @@ config = { "mongos": "mongos",
                         {"_id": "rs2", "members": [{"host": "rs201"}, {"host": "rs202"}, {"host": "rs203"}]}
                     ]}
 
-cluster = Cluster(config)
+#mongod_extra_args = " --setParameter=perconaTelemetryGracePeriod=2 --setParameter=perconaTelemetryScrapeInterval=5"
+mongod_extra_args = " "
+
+cluster = Cluster(config,mongod_extra_args=mongod_extra_args)
 
 def handler(signum,frame):
     cluster.destroy()
@@ -19,7 +22,7 @@ def handler(signum,frame):
 
 cluster.destroy()
 cluster.create()
-cluster.setup_pbm()
+#cluster.setup_pbm()
 
 signal.signal(signal.SIGINT,handler)
 print("\nCluster is prepared and ready to use")
