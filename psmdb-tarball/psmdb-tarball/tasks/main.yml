@@ -178,7 +178,13 @@
   shell: /opt/venv/bin/python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 7.0
   args:
     chdir: /percona-server-mongodb
-  when: (ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22") or (ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm')
+  when: (ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "22") or (ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm')
+
+- name: Setup multiversion
+  shell: /opt/venv/bin/python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 4.4 5.0 6.0 7.0
+  args:
+    chdir: /percona-server-mongodb
+  when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24"
 
 - name: Fix test
   shell: sed -E 's/.+last-continuous.+//g' -i /percona-server-mongodb/jstests/multiVersion/genericSetFCVUsage/do_upgrade_downgrade.js
