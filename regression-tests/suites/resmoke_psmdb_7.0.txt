@@ -234,7 +234,7 @@ native_tenant_data_isolation_with_dollar_tenant_jscore_passthrough|wiredTiger
  native_tenant_data_isolation_with_security_token_jscore_passthrough|wiredTiger
 no_passthrough --excludeWithAnyTags=featureFlagIndexBuildGracefulErrorHandling|wiredTiger
 no_passthrough_with_mongod|wiredTiger
- ocsp --jobs=1|wiredTiger
+ocsp --jobs=1|wiredTiger|pip uninstall -y oscrypto --break-system-packages && pip install -I git+https://github.com/wbond/oscrypto.git --break-system-packages
 parallel|wiredTiger
 percona_no_passthrough_with_mongod|wiredTiger
 query_golden_classic|wiredTiger
