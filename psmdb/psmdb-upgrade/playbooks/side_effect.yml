@@ -90,7 +90,7 @@
 #        - percona-server-mongodb-tools-debuginfo
 #        - percona-server-mongodb-mongos-debuginfo
 #        - percona-server-mongodb-server-debuginfo
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and from_version is version(to_version, '>')
+      when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8" and from_version is version(to_version, '>')
 
     - name: uninstall psmdb rpm packages for downgrade
       yum:
