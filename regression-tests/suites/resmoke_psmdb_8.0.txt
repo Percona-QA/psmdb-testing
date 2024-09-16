@@ -453,7 +453,7 @@ tenant_migration_multi_stmt_txn_jscore_passthrough|wiredTiger
 tenant_migration_stepdown_jscore_passthrough|wiredTiger
 tenant_migration_terminate_primary_jscore_passthrough|wiredTiger
 timeseries_crud_jscore_passthrough|wiredTiger
-tla_plus|wiredTiger|apt install -y default-jre && mkdir -p /opt/java/jdk11/bin/ && ln -s /usr/bin/java /opt/java/jdk11/bin/java && ./src/mongo/tla_plus/download-tlc.sh && cp tla2tools.jar src/mongo/tla_plus/
+tla_plus --jobs=1|wiredTiger|apt install -y default-jre && mkdir -p /opt/java/jdk11/bin/ && ln -s /usr/bin/java /opt/java/jdk11/bin/java && ./src/mongo/tla_plus/download-tlc.sh && cp tla2tools.jar src/mongo/tla_plus/
  unittest_shell_hang_analyzer|wiredTiger
 unittests|wiredTiger
 unittests_auth|wiredTiger
