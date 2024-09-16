@@ -32,12 +32,26 @@ def config(mongod_version):
                       ]}
 
 @pytest.fixture(scope="package")
+def newconfig():
+    return { "mongos": "mongos",
+             "configserver":
+                   {"_id": "newrscfg", "members": [{"host":"newrscfg01"},{"host": "newrscfg02"},{"host": "newrscfg03" }]},
+             "shards":[
+                   {"_id": "newrs1", "members": [{"host":"newrs101"},{"host": "newrs102"},{"host": "newrs103" }]}
+           ]}
+
+@pytest.fixture(scope="package")
 def cluster(config):
     return Cluster(config)
 
+@pytest.fixture(scope="package")
+def newcluster(newconfig):
+    return Cluster(newconfig)
+
 @pytest.fixture(scope="function")
-def start_cluster(cluster,request):
+def start_cluster(cluster,newcluster,request):
     try:
+        newcluster.destroy()
         cluster.destroy()
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
@@ -54,7 +68,8 @@ def start_cluster(cluster,request):
     finally:
         if request.config.getoption("--verbose"):
             cluster.get_logs()
-        cluster.destroy(cleanup_backups=True)
+        cluster.destroy()
+        newcluster.destroy()
 
 @pytest.mark.timeout(900,func_only=True)
 @pytest.mark.parametrize('backup_type',['logical','physical'])
@@ -86,6 +101,31 @@ def test_general_PBM_T257(start_cluster,cluster,backup_type,restore_type):
         cluster.make_restore(pitr_backup,restart_cluster=restart,check_pbm_status=True,make_resync=False)
         assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 1200
         assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
+
+@pytest.mark.timeout(900,func_only=True)
+@pytest.mark.parametrize('backup_type',['logical','physical'])
+def test_remap_PBM_T265(start_cluster,cluster,newcluster,backup_type):
+    cluster.check_pbm_status()
+    client=pymongo.MongoClient(cluster.connection)
+    for i in range(600):
+        client['test']['test'].insert_one({"doc":i})
+
+    backup=cluster.make_backup(backup_type)
+    backup = backup + ' --replset-remapping="newrs1=rs1,newrscfg=rscfg"'
+    cluster.destroy()
+
+    newcluster.create()
+    client=pymongo.MongoClient(newcluster.connection)
+    Cluster.log(client.admin.command({'transitionFromDedicatedConfigServer': 1}))
+    newcluster.setup_pbm()
+    result = newcluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none")
+    assert result.rc == 0
+    newcluster.make_resync()
+
+    restart = True if backup_type == 'physical' else False
+    newcluster.make_restore(backup,restart_cluster=restart,check_pbm_status=True,make_resync=False)
+    assert pymongo.MongoClient(newcluster.connection)["test"]["test"].count_documents({}) == 600
+    assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
 
 @pytest.mark.timeout(900,func_only=True)
 def test_incremental_PBM_T258(start_cluster,cluster):
