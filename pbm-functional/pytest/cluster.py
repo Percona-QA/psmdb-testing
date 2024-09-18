@@ -852,10 +852,19 @@ class Cluster:
 
     def external_backup_finish(self, name):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output("pbm backup-finish " + name + " -o json")
+        result = n.check_output("pbm backup-finish " + name)
         Cluster.log("External backup finished: " + result)
 
     def external_restore_start(self):
+        timeout = time.time() + 60
+        while True:
+            if not self.get_status()['running']:
+                break
+            if time.time() > timeout:
+                assert False, "Cannot start restore, another operation running: " + self.get_status()['running']
+            time.sleep(1)
+        Cluster.log("Restore started")
+
         if self.layout == "sharded":
             client = pymongo.MongoClient(self.connection)
             result = client.admin.command("balancerStop")
