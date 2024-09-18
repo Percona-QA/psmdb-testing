@@ -861,7 +861,9 @@ class Cluster:
             if not self.get_status()['running']:
                 break
             if time.time() > timeout:
-                assert False, "Cannot start restore, another operation running: " + self.get_status()['running']
+                n = testinfra.get_host("docker://" + self.pbm_cli)
+                logs = n.check_output("pbm logs -sD -t0")
+                assert False, "Cannot start restore, another operation running: " + str(self.get_status()['running']) + "\n" + logs
             time.sleep(1)
         Cluster.log("Restore started")
 
