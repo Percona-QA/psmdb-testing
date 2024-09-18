@@ -60,7 +60,7 @@ def start_cluster(cluster,newcluster,request):
         newcluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(600, func_only=True)
-def test_disabled_pitr_PBM_T253(start_cluster,cluster,newcluster):
+def test_logical_pitr_PBM_T253(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
