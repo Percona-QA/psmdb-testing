@@ -7,9 +7,9 @@ from packaging import version
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
 MAJ_VER = PSMDB_VER.split("-")[0]
 if version.parse(PSMDB_VER) > version.parse("7.0.0"):
-    SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','redhat/7','source','jammy','focal']
+    SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','source','jammy','focal']
 elif version.parse(PSMDB_VER) > version.parse("6.0.0") and version.parse(PSMDB_VER) < version.parse("7.0.0"):
-    SOFTWARE_FILES = ['bullseye','buster','binary','redhat/9','redhat/8','redhat/7','source','jammy','focal']
+    SOFTWARE_FILES = ['bullseye','binary','redhat/9','redhat/8','source','jammy','focal']
     if (MAJ_VER.startswith("5") and version.parse(MAJ_VER) > version.parse("5.0.27")):
        SOFTWARE_FILES.append('noble')
     if (MAJ_VER.startswith("6") and version.parse(MAJ_VER) > version.parse("6.0.15")):
@@ -17,7 +17,7 @@ elif version.parse(PSMDB_VER) > version.parse("6.0.0") and version.parse(PSMDB_V
     if (MAJ_VER.startswith("7") and version.parse(MAJ_VER) > version.parse("7.0.12")):
        SOFTWARE_FILES.append('noble')
 else:
-    SOFTWARE_FILES = ['bullseye','buster','binary','redhat/8','redhat/7','source','jammy','focal']
+    SOFTWARE_FILES = ['bullseye','binary','redhat/8','source','jammy','focal']
 
 def get_package_tuples():
     list = []
