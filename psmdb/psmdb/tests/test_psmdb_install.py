@@ -180,7 +180,7 @@ def test_telemetry(host):
     with host.sudo():
         assert "1"==host.check_output("ls -1 /usr/local/percona/telemetry/psmdb/ | wc -l")
         time.sleep(15)
-        logs=host.check_output('cat /var/log/percona/telemetry-agent.log')
+        logs=host.check_output('cat /var/log/percona/telemetry-agent/telemetry-agent.log')
         assert "Sending request to host=check-dev.percona.com." in logs
         assert "0"==host.check_output("ls -1 /usr/local/percona/telemetry/psmdb/ | wc -l")
         assert "1"==host.check_output("ls -1 /usr/local/percona/telemetry/history/ | wc -l")
