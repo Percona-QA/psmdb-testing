@@ -34,6 +34,8 @@ def cluster(config):
 def start_cluster(cluster,request):
     try:
         cluster.destroy()
+        os.chmod("/backups",0o777)
+        os.system("rm -rf /backups/*")
         cluster.create()
         cluster.setup_pbm()
         client=pymongo.MongoClient(cluster.connection)
@@ -46,10 +48,10 @@ def start_cluster(cluster,request):
     finally:
         if request.config.getoption("--verbose"):
             cluster.get_logs()
-        cluster.destroy()
+        cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.timeout(300,func_only=True)
-def test_logical(start_cluster,cluster):
+@pytest.mark.timeout(600,func_only=True)
+def test_logical_PBM_T218(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     pymongo.MongoClient(cluster.connection)["test"]["test1"].insert_many(documents)
@@ -71,8 +73,8 @@ def test_logical(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-@pytest.mark.timeout(500, func_only=True)
-def test_logical_pitr(start_cluster,cluster):
+@pytest.mark.timeout(600, func_only=True)
+def test_logical_pitr_PBM_T194(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup_l1=cluster.make_backup("logical")
@@ -99,7 +101,7 @@ def test_logical_pitr(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"]["test3"].count_documents({}) == len(documents)
     Cluster.log("Finished successfully")
 
-@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.timeout(600,func_only=True)
 def test_physical(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
@@ -108,6 +110,30 @@ def test_physical(start_cluster,cluster):
     assert int(result.deleted_count) == len(documents)
     cluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
+    Cluster.log("Finished successfully")
+
+@pytest.mark.timeout(600, func_only=True)
+def test_physical_pitr_PBM_T244(start_cluster,cluster):
+    cluster.check_pbm_status()
+    cluster.make_backup("logical")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
+    backup=cluster.make_backup("physical")
+    time.sleep(30)
+    pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_many(documents)
+    pymongo.MongoClient(cluster.connection)["test"]["test3"].insert_many(documents)
+    time.sleep(30)
+    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    backup="--time=" + pitr + " --base-snapshot=" + backup
+    Cluster.log("Time for PITR is: " + pitr)
+    time.sleep(60)
+    cluster.disable_pitr()
+    time.sleep(10)
+    cluster.make_restore(backup,restart_cluster=True,check_pbm_status=True)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test2"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test3"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
@@ -124,3 +150,36 @@ def test_incremental(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
+@pytest.mark.timeout(600,func_only=True)
+def test_external_meta_PBM_T236(start_cluster,cluster):
+    cluster.check_pbm_status()
+    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
+    backup = cluster.external_backup_start()
+    result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
+    assert int(result.deleted_count) == len(documents)
+    cluster.external_backup_copy(backup)
+    cluster.external_backup_finish(backup)
+    time.sleep(10)
+    restore=cluster.external_restore_start()
+    cluster.external_restore_copy(backup)
+    cluster.external_restore_finish(restore)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
+    Cluster.log("Finished successfully")
+
+@pytest.mark.timeout(600,func_only=True)
+def test_external_nometa_PBM_T237(start_cluster,cluster):
+    cluster.check_pbm_status()
+    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
+    backup = cluster.external_backup_start()
+    result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
+    assert int(result.deleted_count) == len(documents)
+    cluster.external_backup_copy(backup)
+    cluster.external_backup_finish(backup)
+    time.sleep(10)
+    os.system("find /backups/ -name pbm.rsmeta.* | xargs rm -f")
+    restore=cluster.external_restore_start()
+    cluster.external_restore_copy(backup)
+    cluster.external_restore_finish(restore)
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
+    Cluster.log("Finished successfully")

@@ -36,10 +36,10 @@ def start_cluster(cluster,request):
         Cluster.log("PBM logs:\n" + cluster.exec_pbm_cli('logs -t 0 -sD').stdout)
         if request.config.getoption("--verbose"):
             cluster.get_logs()
-        cluster.destroy()
+        cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(300,func_only=True)
-def test_scenario(start_cluster,cluster):
+def test_load_PBM_T204(start_cluster,cluster):
     cluster.check_pbm_status()
 
     client = pymongo.MongoClient(cluster.connection)

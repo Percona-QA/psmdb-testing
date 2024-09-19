@@ -48,6 +48,8 @@ def start_cluster(cluster,newcluster,request):
     try:
         cluster.destroy()
         newcluster.destroy()
+        os.chmod("/backups",0o777)
+        os.system("rm -rf /backups/*")
         cluster.create()
         cluster.setup_pbm()
         newcluster.create()
@@ -61,10 +63,10 @@ def start_cluster(cluster,newcluster,request):
         if request.config.getoption("--verbose"):
             newcluster.get_logs()
         cluster.destroy()
-        newcluster.destroy()
+        newcluster.destroy(cleanup_backups=True)
 
-@pytest.mark.timeout(300,func_only=True)
-def test_logical(start_cluster,cluster,newcluster):
+@pytest.mark.timeout(600,func_only=True)
+def test_logical_PBM_T208(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("logical")
@@ -76,8 +78,8 @@ def test_logical(start_cluster,cluster,newcluster):
     assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-@pytest.mark.timeout(300,func_only=True)
-def test_physical(start_cluster,cluster,newcluster):
+@pytest.mark.timeout(600,func_only=True)
+def test_physical_PBM_T207(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("physical")
@@ -89,8 +91,8 @@ def test_physical(start_cluster,cluster,newcluster):
     assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-@pytest.mark.timeout(300,func_only=True)
-def test_incremental(start_cluster,cluster,newcluster):
+@pytest.mark.timeout(600,func_only=True)
+def test_incremental_PBM_T209(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     cluster.make_backup("incremental --base")
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
@@ -103,3 +105,19 @@ def test_incremental(start_cluster,cluster,newcluster):
     assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
+@pytest.mark.timeout(600,func_only=True)
+def test_external_PBM_T238(start_cluster,cluster,newcluster):
+    cluster.check_pbm_status()
+    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
+    backup = cluster.external_backup_start()
+    cluster.external_backup_copy(backup)
+    cluster.external_backup_finish(backup)
+    cluster.destroy()
+
+    newcluster.make_resync()
+    restore=newcluster.external_restore_start()
+    newcluster.external_restore_copy(backup)
+    newcluster.external_restore_finish(restore)
+    assert pymongo.MongoClient(newcluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
+    Cluster.log("Finished successfully")

@@ -41,7 +41,9 @@ def start_cluster(cluster, request):
         cluster.setup_pbm()
         azure_account = "devstoreaccount1"
         azure_key = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
-        result = cluster.exec_pbm_cli("config --set storage.type=azure --set storage.azure.account=" + azure_account +
+        azure_endpoint = "http://azurite:10000/" + azure_account
+        result = cluster.exec_pbm_cli("config --set storage.type=azure --set storage.azure.endpointUrl=" + azure_endpoint +
+                                      " --set storage.azure.account=" + azure_account +
                                       " --set storage.azure.container=test-container --set storage.azure.credentials.key=" + azure_key +
                                       " --out json")
         Cluster.log("Setup PBM with azurite storage:\n" + result.stdout)
@@ -58,7 +60,7 @@ def start_cluster(cluster, request):
     finally:
         if request.config.getoption("--verbose"):
             cluster.get_logs()
-        cluster.destroy()
+        cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(300, func_only=True)
 def test_logical(start_cluster, cluster):

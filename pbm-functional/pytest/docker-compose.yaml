@@ -1,4 +1,3 @@
-version: "3"
 services:
   test:
     build:
@@ -10,6 +9,13 @@ services:
       - fs:/backups
     container_name: test
     hostname: test
+    environment:
+      - JIRA_SERVER=${JIRA_SERVER:-}
+      - JIRA_USERNAME=${JIRA_USERNAME:-}
+      - JIRA_PASSWORD=${JIRA_PASSWORD:-}
+      - JENKINS_URL=${JENKINS_URL:-}
+      - GIT_URL=https://github.com/percona/percona-backup-mongodb
+      - GIT_BRANCH=${PBM_BRANCH:-main}
     networks:
       - test
 
@@ -20,7 +26,7 @@ services:
       - "10000:10000"
     networks:
       - test
-    command: azurite-blob --blobHost 0.0.0.0
+    command: azurite-blob --blobHost 0.0.0.0 -d /dev/stdout
 
   minio:
     image: minio/minio
@@ -114,10 +120,12 @@ services:
       dockerfile: ./Dockerfile
       context: .
       args:
-        - PBM_BRANCH=${PBM_BRANCH:-main}
-        - GO_VER=${GO_VER:-latest}
+        - PBM_BRANCH=${PBM_BRANCH:-dev}
+        - GO_VER=${GO_VER:-bullseye}
         - PSMDB=${PSMDB:-percona/percona-server-mongodb:latest}
-        - PR_NUMBER=${PR_NUMBER}
+        - PR_NUMBER=${PR_NUMBER:-}
+    environment:
+      - "PERCONA_TELEMETRY_URL=https://check-dev.percona.com/v1/telemetry/GenericReport"
     command: /bin/bash
     depends_on:
       - pykmip

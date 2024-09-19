@@ -1,0 +1,19 @@
+test_kind: js_test
+
+selector:
+  roots:
+  - jstests/multiVersion/genericSetFCVUsage/do_upgrade_downgrade.js
+
+executor:
+  config:
+    shell_options:
+      nodb: ''
+      global_vars:
+        TestData:
+          enableEncryption: ''
+          vaultServerName: 127.0.0.1
+          vaultPort: 8200
+          vaultTokenFile: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
+          vaultSecret: secret_v2/data/psmdb-test/package-test
+          vaultServerCAFile: /package-testing/scripts/psmdb_encryption/test.cer
+          encryptionCipherMode: AES256-CBC

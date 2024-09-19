@@ -1,0 +1,90 @@
+FROM debian as builder     
+ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
+ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
+ENV AWS_LIBS=/tmp/lib/aws
+ENV CC=/usr/bin/clang
+ENV CXX=/usr/bin/clang++
+ARG psm_ver=7.0.0
+ARG psm_release=0
+ARG branch=v7.0
+ARG AWS_VERSION=1.9.379
+ARG mongo_tools_tag=100.4.1
+ARG jemalloc_tag=psmdb-3.2.11-3.1
+ARG repo=https://github.com/percona/percona-server-mongodb.git
+ARG special_targets="dbtest mongo"
+WORKDIR /opt
+RUN apt update && apt install -y python3 python3-dev python3-pip cmake curl libssl-dev libldap2-dev libkrb5-dev \
+                                 libcurl4-openssl-dev libsasl2-dev liblz4-dev libpcap-dev libbz2-dev libsnappy-dev \
+                                 zlib1g-dev libzlcore-dev libsasl2-dev liblzma-dev libext2fs-dev e2fslibs-dev bear \
+                                 libc-devtools gcc g++ git wget lsb-release iproute2 net-tools tzdata python-is-python3 \
+                                 ninja-build clang lld libclang-dev libc++-dev libc++abi-dev &&  \
+    git clone https://github.com/percona/percona-server-mongodb.git && \
+    cd percona-server-mongodb/ && \
+    git checkout $branch && git pull && \
+    pip3 install --user --break-system-packages --upgrade PyYAML==5.3.1 && \
+    pip3 install --user --break-system-packages -r etc/pip/dev-requirements.txt && \
+    rm -rf /opt/percona-server-mongodb/.git && mkdir -p /data/db
+RUN cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
+    mkdir -p /tmp/lib/aws && \
+    cd aws-sdk-cpp && git checkout $AWS_VERSION && git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="$AWS_LIBS" && \
+    make install && cd /opt && rm -rf aws-sdk-cpp
+RUN cd / && git clone -b release/12.x --depth=1 https://github.com/llvm/llvm-project.git && cd llvm-project && \
+    cmake -S llvm -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_PARALLEL_COMPILE_JOBS=8 -DLLVM_ENABLE_PROJECTS="clang;lld" && \
+    cmake --build build
+ENV PATH="/llvm-project/build/bin/:${PATH}"
+RUN cd /opt/percona-server-mongodb/ && \
+    buildscripts/scons.py MONGO_VERSION=$psm_ver CC=/llvm-project/build/bin/clang CXX=/llvm-project/build/bin/clang++ -j8 --disable-warnings-as-errors --ssl --opt=on --use-sasl-client \
+                          --wiredtiger --audit --inmemory --hotbackup CPPPATH="$AWS_LIBS/include" LIBPATH="$AWS_LIBS/lib" \
+                          install-mongod install-mongos install-mongo install-dbtest build/install/bin/wt 
+RUN strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongo && \
+    strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongod && \
+    strip --strip-debug /opt/percona-server-mongodb/build/install/bin/mongos && \
+    strip --strip-debug /opt/percona-server-mongodb/build/install/bin/dbtest    
+
+FROM debian
+ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
+ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
+ENV AWS_LIBS=/tmp/lib/aws
+ENV CC=/usr/bin/clang
+ENV CXX=/usr/bin/clang++
+ARG psm_ver=7.0.0
+ARG psm_release=0
+ARG branch=v7.0
+ARG AWS_VERSION=1.9.379
+ARG mongo_tools_tag=100.4.1
+ARG jemalloc_tag=psmdb-3.2.11-3.1
+ARG repo=https://github.com/percona/percona-server-mongodb.git
+ARG special_targets="dbtest mongo"
+WORKDIR /opt
+RUN apt update && apt install -y python3 python3-dev python3-pip cmake curl libssl-dev libldap2-dev libkrb5-dev \
+                                 libcurl4-openssl-dev libsasl2-dev liblz4-dev libpcap-dev libbz2-dev libsnappy-dev \
+                                 zlib1g-dev libzlcore-dev libsasl2-dev liblzma-dev libext2fs-dev e2fslibs-dev bear \
+                                 libc-devtools gcc g++ git wget lsb-release iproute2 net-tools tzdata python-is-python3 \
+                                 ninja-build clang lld libclang-dev libc++-dev libc++abi-dev &&  \
+    git clone https://github.com/percona/percona-server-mongodb.git && \
+    cd percona-server-mongodb/ && \
+    git checkout $branch && git pull && \
+    pip3 install --user --break-system-packages --upgrade PyYAML==5.3.1 && \
+    pip3 install --user --break-system-packages -r etc/pip/dev-requirements.txt && \
+    rm -rf /opt/percona-server-mongodb/.git && mkdir -p /data/db
+RUN cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
+    mkdir -p /tmp/lib/aws && \
+    cd aws-sdk-cpp && git checkout $AWS_VERSION && git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="$AWS_LIBS" && \
+    make install && cd /opt && rm -rf aws-sdk-cpp
+COPY --from=builder /opt/percona-server-mongodb/build/install/bin/* /usr/bin/
+WORKDIR /opt/percona-server-mongodb
+ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/resmoke2junit.py .
+RUN find jstests -type f | xargs chmod 400 && \
+    echo "mongo_version: \"$psm_ver-$psm_release\"" > .resmoke_mongo_version.yml && \
+    pip3 install --break-system-packages --upgrade wrapt && \
+    cp /usr/bin/dbtest .
+ENV PATH="${PATH}:/data/multiversion"
+ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
+ENV TZ=America/New_York
+ENV PORTABLE=1
+ENV USE_SSE=1
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone    

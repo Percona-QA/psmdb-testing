@@ -1,6 +1,6 @@
-FROM alpine
+FROM python:3.11-alpine
 USER root
-RUN apk add --no-cache python3 py-pip bash git openssl && cd ~ && \
+RUN apk add --no-cache libffi-dev build-base bash git openssl && cd ~ && \
     git clone https://github.com/OpenVPN/easy-rsa.git && \
     cd easy-rsa/easyrsa3/ && \
     ./easyrsa init-pki && \
@@ -8,7 +8,7 @@ RUN apk add --no-cache python3 py-pip bash git openssl && cd ~ && \
     ./easyrsa --batch build-server-full pykmip nopass && \
     ./easyrsa --batch build-client-full mongod nopass && \
     cat pki/issued/mongod.crt pki/private/mongod.key > /etc/mongod.pem && \
-    pip install --no-cache-dir pykmip && cd ~ && \
+    pip install --no-cache-dir --break-system-packages pykmip && cd ~ && \
     git clone https://github.com/OpenKMIP/PyKMIP && \
     cd PyKMIP && \
     python setup.py install && \

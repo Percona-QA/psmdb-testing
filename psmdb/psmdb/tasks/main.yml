@@ -4,7 +4,7 @@
     toolkit: "{{ lookup('env', 'ENABLE_TOOLKIT') | default('false', true) }}"
 
 - set_fact:
-    psmdb_mongosh: "{{ lookup('env', 'PSMDB_VERSION').split('.')[0] }}"
+    pro_build: "{{ lookup('env', 'GATED_BUILD') | default('false', true) }}"
 
 - name: remove the Percona apt main repository
   apt_repository: repo='deb http://repo.percona.com/apt {{ ansible_distribution_release }} main' state=absent update_cache=yes
@@ -28,126 +28,53 @@
 - name: Install percona release package
   include_tasks: ../../../tasks/install_percona_release.yml
 
-- name: Add ARM support into percona-release
-  command: sed -i "s|x86_64|x86_64 aarch64|" /usr/bin/percona-release
-  when: ansible_architecture == "aarch64" or ansible_architecture == "arm64"
-
 - name: enable psmdb repo
   command: percona-release enable psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }} {{ repo }}
   vars:
     repo: "{{ lookup('env', 'REPO') }}"
     version: "{{ lookup('env', 'PSMDB_VERSION') }}"
+  when: pro_build != true
 
-- name: install psmdb deb packages
-  apt:
-    name: "{{ packages }}"
-    update_cache: yes
+- name: Create yum repo for PRO build
+  blockinfile:
+    path: /etc/yum.repos.d/percona-pro.repo
+    mode: '0640'
+    create: true
+    block: |
+      [percona-pro]
+      name=[psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro-{{ repo }}-{{ ansible_architecture }}]
+      baseurl=http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/{{ ansible_architecture }}
+      enabled=1
+      gpgcheck=0
+      sslverify=0
   vars:
-    packages:
-    - percona-server-mongodb={{ lookup('env', 'PSMDB_VERSION') }}*
-    - percona-server-mongodb-server={{ lookup('env', 'PSMDB_VERSION') }}*
-    - percona-server-mongodb-mongos={{ lookup('env', 'PSMDB_VERSION') }}*
-    - percona-server-mongodb-tools={{ lookup('env', 'PSMDB_VERSION') }}*
-    - percona-server-mongodb-dbg={{ lookup('env', 'PSMDB_VERSION') }}*
-  when: ansible_os_family == "Debian"
+    client_id: "{{ lookup('env', 'USERNAME') }}"
+    client_token: "{{ lookup('env', 'PASSWORD') }}"
+    repo: "{{ lookup('env', 'REPO') }}"
+    version: "{{ lookup('env', 'PSMDB_VERSION') }}"
+  when: ansible_os_family == "RedHat" and pro_build == true
 
-- name: install psmdb rpm packages
-  yum:
-    name: "{{ packages }}"
-    state: latest
+- name: create apt repo for PRO build
+  apt_repository: repo='deb http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/apt/ {{ ansible_distribution_release }} {{ repo }}' state=present update_cache=yes
   vars:
-    packages:
-    - percona-server-mongodb-{{ lookup('env', 'PSMDB_VERSION') }}
-    - percona-server-mongodb-server-{{ lookup('env', 'PSMDB_VERSION') }}
-    - percona-server-mongodb-mongos-{{ lookup('env', 'PSMDB_VERSION') }}
-    - percona-server-mongodb-tools-{{ lookup('env', 'PSMDB_VERSION') }}
-    - percona-server-mongodb-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "7"
+    client_id: "{{ lookup('env', 'USERNAME') }}"
+    client_token: "{{ lookup('env', 'PASSWORD') }}"
+    repo: "{{ 'main' if lookup('env', 'REPO') == 'release' else lookup('env', 'REPO') }}"
+    version: "{{ lookup('env', 'PSMDB_VERSION') }}"
+  when: ansible_os_family == "Debian" and pro_build == true
 
-- name: install psmdb rpm packages
-  yum:
-    name: "{{ packages }}"
-    state: latest
-  vars:
-    packages:
-      - percona-server-mongodb-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-server-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-mongos-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-tools-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-debugsource-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-tools-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-mongos-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-server-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+- block:
+    - name: include tasks for PSMDB install
+      include_tasks: ../../../tasks/install_psmdb.yml
+      vars:
+        psmdb_to_test: "{{ lookup('env', 'PSMDB_VERSION') }}"
+        psmdb_pkg_name_addon: "{{ '-pro' if pro_build == true else '' }}"
+  environment:
+    PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
 
-- name: install psmdb rpm packages
-  yum:
-    name: "{{ packages }}"
-    state: latest
-  vars:
-    packages:
-      - percona-server-mongodb-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-server-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-mongos-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-tools-{{ lookup('env', 'PSMDB_VERSION') }}
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "9"
-
-- name: install mongo shell deb package
-  apt:
-    name: "{{ packages }}"
-    update_cache: yes
-  vars:
-    packages:
-    - percona-server-mongodb-shell={{ lookup('env', 'PSMDB_VERSION') }}*
-  when: ansible_os_family == "Debian" and psmdb_mongosh < "6"
-
-- name: install mongosh deb package
-  apt:
-    name: "{{ packages }}"
-    update_cache: yes
-  vars:
-    packages:
-    - percona-mongodb-mongosh
-  when: ansible_os_family == "Debian" and psmdb_mongosh >= "6"
-
-- name: install mongo shell rpm package
-  yum:
-    name: "{{ packages }}"
-    state: latest
-  vars:
-    packages:
-    - percona-server-mongodb-shell-{{ lookup('env', 'PSMDB_VERSION') }}
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "7" and psmdb_mongosh < "6"
-
-- name: install mongo shell rpm packages
-  yum:
-    name: "{{ packages }}"
-    state: latest
-  vars:
-    packages:
-      - percona-server-mongodb-shell-{{ lookup('env', 'PSMDB_VERSION') }}
-      - percona-server-mongodb-shell-debuginfo-{{ lookup('env', 'PSMDB_VERSION') }}
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8" and psmdb_mongosh < "6"
-
-- name: install mongosh rpm package
-  yum:
-    name: "{{ packages }}"
-    state: latest
-  vars:
-    packages:
-    - percona-mongodb-mongosh                                           
-  when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6"
-
-- name: copy mongosh binary to mongo path for test scripts
-  file:
-    src: /usr/bin/mongosh
-    dest: /usr/bin/mongo
-    state: link
-  when: psmdb_mongosh >= "6"
-  
 - name: Attempt to start mongod service
   block:
-    - name: start mongod service 
+    - name: start mongod service
       service: name=mongod state=started
 
   rescue:
@@ -156,21 +83,89 @@
         journalctl -n 100 --no-pager
       register: journal_content
 
-    - name: Print the journal                       
+    - name: Print the journal
       debug:
         msg: "{{ journal_content }}"
 
-    - name: Read the logs if failed
+    - name: Check mongod logs
       shell: |
-        cat /var/log/mongo/*
-      register: logs_content
+        cat /var/log/mongo/mongod.log
+      register: mongod_logs
+      when: ansible_os_family == "RedHat"
 
-    - name: Print the logs content to a console
+    - name: Check mongod logs
+      shell: |
+        cat /var/log/mongodb/mongod.log
+      register: mongod_logs
+      when: ansible_os_family == "Debian"
+
+    - name: Print mongod logs
       debug:
-        msg: "{{ logs_content }}"
-    
+        msg: "{{ mongod_logs }}"
+
     - name: Fail
       command: /bin/false
+
+- set_fact:
+    job_name: "{{ lookup('env', 'JOB_NAME') | lower | default('local', true) }}"
+
+- name: Reconfigure mongod for fips
+  block:
+    - name: stop mongod service
+      service: name=mongod state=stopped
+
+    - name: Truncate logs
+      shell: truncate -s 0 /var/log/mongo/mongod.log
+      when: ansible_os_family == "RedHat"
+
+    - name: Truncate logs
+      shell: truncate -s 0 /var/log/mongodb/mongod.log
+      when: ansible_os_family == "Debian"
+     
+    - name: Reconfigure mongod.conf
+      blockinfile:
+        path: /etc/mongod.conf
+        marker: "# {mark} ANSIBLE MANAGED BLOCK"
+        insertafter: "net:"
+        block: |
+          {% filter indent(width=2, first=true) %}
+          tls:
+            FIPSMode: true
+          {% endfilter %}
+
+    - name: start mongod service
+      service: name=mongod state=started
+
+  rescue:
+    - name: Check mongod conf
+      shell: |
+        cat /etc/mongod.conf
+      register: mongod_conf
+
+    - name: Print mongod conf
+      debug:
+        msg: "{{ mongod_conf }}"
+
+    - name: Check mongod logs
+      shell: |
+        cat /var/log/mongo/mongod.log
+      register: mongod_logs   
+      when: ansible_os_family == "RedHat"
+
+    - name: Check mongod logs
+      shell: |
+        cat /var/log/mongodb/mongod.log
+      register: mongod_logs
+      when: ansible_os_family == "Debian"   
+
+    - name: Print mongod logs
+      debug:
+        msg: "{{ mongod_logs }}"
+
+    - name: Fail
+      command: /bin/false
+
+  when: "'fips' in job_name"
 
 - name: download package-testing repo with wget
   command: "{{ item }}"
@@ -196,16 +191,6 @@
     name: percona-toolkit
   when: ansible_os_family == "RedHat" and toolkit != false
 
-- name: install latest bats from github
-  command: "{{ item }}"
-  with_items:
-    - rm -f master.zip
-    - wget --no-check-certificate -O master.zip https://github.com/sstephenson/bats/archive/master.zip
-    - unzip master.zip
-    - rm -f master.zip
-    - bats-master/install.sh /usr/local
-    - rm -rf bats-master
-
-- name: Load some data
-  command: /package-testing/scripts/mongo_insert.sh
-
+- name: Make the backup of mongod.conf
+  shell: |
+    cp -r /etc/mongod.conf /etc/mongod.conf.default

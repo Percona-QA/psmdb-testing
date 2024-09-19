@@ -5,6 +5,7 @@ import pymongo
 import json
 import copy
 import concurrent.futures
+import os
 from datetime import datetime
 import re
 
@@ -366,26 +367,34 @@ class Cluster:
             if time.time() > timeout:
                 assert False
             time.sleep(1)
-        time.sleep(5)
+        time.sleep(10)
 
     # creates backup based on type (no checking input - it's hack for situation like 'incremental --base')
     def make_backup(self, type):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        timeout = time.time() + 60
+        timeout = time.time() + 120
         while True:
-            if not self.get_status()['running']:
+            running = self.get_status()['running']
+            Cluster.log("Current operation: " + str(running))
+            if not running:
                 if type:
-                    start = n.check_output(
+                    start = n.run(
                         'pbm backup --out=json --type=' + type)
                 else:
-                    start = n.check_output('pbm backup --out=json')
-                name = json.loads(start)['name']
-                Cluster.log("Backup started")
-                break
+                    start = n.run('pbm backup --out=json')
+                if start.rc == 0:
+                    name = json.loads(start.stdout)['name']
+                    Cluster.log("Backup started")
+                    break
+                elif "resync" in start.stdout:
+                    Cluster.log("Resync in progress, retrying: " + start.stdout)
+                else:
+                    logs = n.check_output("pbm logs -sD -t0")
+                    assert False, "Backup failed" + start.stdout + start.stderr + '\n' + logs
             if time.time() > timeout:
-                assert False
+                assert False, "Timeout for backup start exceeded"
             time.sleep(1)
-        timeout = time.time() + 600
+        timeout = time.time() + 900
         while True:
             status = self.get_status()
             Cluster.log("Current operation: " + str(status['running']))
@@ -394,11 +403,12 @@ class Cluster:
                     if snapshot['name'] == name:
                         if snapshot['status'] == 'done':
                             Cluster.log("Backup found: " + str(snapshot))
+                            time.sleep(1) #wait for releasing locks
                             return name
                             break
                         elif snapshot['status'] == 'error':
-                            self.get_logs()
-                            assert False, snapshot['error']
+                            logs = n.check_output("pbm logs -sD -t0")
+                            assert False, snapshot['error'] + '\n' + logs
                             break
             if time.time() > timeout:
                 assert False, "Backup timeout exceeded"
@@ -426,9 +436,14 @@ class Cluster:
                 assert False, "Cannot start restore, another operation running"
             time.sleep(1)
         Cluster.log("Restore started")
-        result = n.run('timeout 180 pbm restore ' + name + ' --wait')
-        if result.rc == 124:
+        timeout=kwargs.get('timeout', 240)
+        result = n.run('timeout ' + str(timeout) + ' pbm restore ' + name + ' --wait')
+
+        if result.rc == 0:
+            Cluster.log(result.stdout)
+        else:
             # try to catch possible failures if timeout exceeded
+            error=''
             for host in self.mongod_hosts:
                 try:
                     container = docker.from_env().containers.get(host)
@@ -437,47 +452,48 @@ class Cluster:
                     if get_logs.exit_code == 0:
                         Cluster.log(
                             "!!!!Possible failure on {}, file pbm.restore.log was found:".format(host))
-                        Cluster.log(get_logs.output.decode('utf-8'))
+                        logs = get_logs.output.decode('utf-8')
+                        Cluster.log(logs)
+                        if '"s":"F"' in logs:
+                            error = logs
                 except docker.errors.APIError:
                     pass
-            assert False, "Timeout for restore exceeded"
-        elif result.rc == 0:
-            Cluster.log(result.stdout)
-        else:
-            assert False, result.stdout + result.stderr
+            if error:
+                assert False, result.stdout + result.stderr + "\n" + error
+            else:
+                assert False, result.stdout + result.stderr
 
-        for key, value in kwargs.items():
-            if key == "restart_cluster" and value:
-                self.restart()
-                self.restart_pbm_agents()
-                self.check_initsync()
-            if key == "make_resync" and value:
-                self.make_resync()
-            if key == "check_pbm_status" and value:
-                self.check_pbm_status()
+        restart_cluster=kwargs.get('restart_cluster', False)
+        if restart_cluster:
+            self.restart()
+            self.restart_pbm_agents()
+            time.sleep(10)
+            self.check_initsync()
+
+        make_resync=kwargs.get('make_resync', True)
+        if make_resync:
+            self.make_resync()
+
+        check_pbm_status=kwargs.get('check_pbm_status', True)
+        if check_pbm_status:
+            self.check_pbm_status()
+
         if self.layout == "sharded":
             self.start_mongos()
             client = pymongo.MongoClient(self.connection)
             result = client.admin.command("balancerStart")
             Cluster.log("Starting balancer: " + str(result))
+            client.close()
 
     # destroys cluster
-    def destroy(self):
+    def destroy(self,**kwargs):
         print("\n")
-        #Cluster.log("Destroying cluster:")
-        #Cluster.log(self.all_hosts)
-        # the last resort to catch possible failures if timeout exceeded
-        #for host in self.mongod_hosts:
-        #    try:
-        #        container = docker.from_env().containers.get(host)
-        #        result = container.exec_run(
-        #            'cat /var/lib/mongo/pbm.restore.log', stderr=False)
-        #        if result.exit_code == 0:
-        #            Cluster.log(
-        #                "!!!!Possible failure on {}, file pbm.restore.log was found:".format(host))
-        #            Cluster.log(result.output.decode('utf-8'))
-        #    except docker.errors.APIError:
-        #        pass
+        cleanup=kwargs.get('cleanup_backups', False)
+        if cleanup:
+            result=self.exec_pbm_cli("delete-pitr --all --force --yes ")
+            Cluster.log(result.stdout + result.stderr)
+            result=self.exec_pbm_cli("delete-backup --older-than=0d --force --yes")
+            Cluster.log(result.stdout + result.stderr)
         for host in self.all_hosts:
             try:
                 container = docker.from_env().containers.get(host)
@@ -530,12 +546,13 @@ class Cluster:
         result = n.check_output(
             "pbm config --set pitr.enabled=true --set pitr.compression=none --out json " + pitr_extra_args)
         Cluster.log("Enabling PITR: " + result)
-        timeout = time.time() + 600
+        timeout = time.time() + 150
         while True:
             if self.check_pitr():
                 break
             if time.time() > timeout:
-                assert False
+                status=self.get_status()['pitr']
+                assert False, status
             time.sleep(1)
 
     # disables PITR
@@ -544,7 +561,7 @@ class Cluster:
         result = n.check_output(
             "pbm config --set pitr.enabled=false --out json")
         Cluster.log("Disabling PITR: " + result)
-        timeout = time.time() + 600
+        timeout = time.time() + 150
         while True:
             if not self.check_pitr():
                 break
@@ -768,7 +785,7 @@ class Cluster:
         Cluster.log("New PBM version: " + str(ver))
 
     def get_logs(self):
-        for container in self.all_hosts:
+        for container in self.pbm_hosts:
             header = "Logs from {name}:".format(name=container)
             Cluster.log(header, '', "=" * len(header))
             try:
@@ -799,3 +816,167 @@ class Cluster:
             Cluster.log(result)
         else:
             assert False, result
+
+    def external_backup_start(self):
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        result = n.check_output("pbm backup -t external -o json")
+        backup = json.loads(result)['name']
+        Cluster.log("External backup name: " + backup)
+        timeout = time.time() + 300
+        while True:
+            status = self.get_status()
+            Cluster.log(status['running'])
+            if status['running']:
+                if status['running']['status'] == "copyReady":
+                    break
+            if time.time() > timeout:
+                assert False
+            time.sleep(1)
+        result = n.check_output("pbm describe-backup " + backup + " -o json")
+        Cluster.log("External backup status: " + result)
+        return backup
+
+    def external_backup_copy(self, name):
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        result = n.check_output("pbm describe-backup " + name + " -o json")
+        description=json.loads(result)
+        assert "replsets" in description
+
+        os.system("mkdir -p /backups/" + name)
+        for rs in description['replsets']:
+            Cluster.log("Performing backup for RS " + rs['name'] + " source node: " + rs['node'].split(':')[0])
+            n = testinfra.get_host("docker://" + rs['node'].split(':')[0])
+            dir = "/backups/" + name + "/" + rs['name'] + "/"
+            os.system("mkdir -p " + dir)
+            n.check_output("cp -rp /var/lib/mongo/* "  + dir)
+
+    def external_backup_finish(self, name):
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        result = n.check_output("pbm backup-finish " + name)
+        Cluster.log("External backup finished: " + result)
+
+    def external_restore_start(self):
+        timeout = time.time() + 60
+        while True:
+            if not self.get_status()['running']:
+                break
+            if time.time() > timeout:
+                n = testinfra.get_host("docker://" + self.pbm_cli)
+                logs = n.check_output("pbm logs -sD -t0")
+                assert False, "Cannot start restore, another operation running: " + str(self.get_status()['running']) + "\n" + logs
+            time.sleep(1)
+        Cluster.log("Restore started")
+
+        if self.layout == "sharded":
+            client = pymongo.MongoClient(self.connection)
+            result = client.admin.command("balancerStop")
+            client.close()
+            Cluster.log("Stopping balancer: " + str(result))
+            self.stop_mongos()
+        self.stop_arbiters()
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        result = n.check_output("pbm restore --external")
+        Cluster.log(result)
+        restore=result.split()[2]
+        Cluster.log("Restore name: " + restore)
+        return restore
+
+    def external_restore_copy(self, backup):
+        if self.layout == "sharded":
+            rsname = self.config['configserver']['_id']
+            for node in self.config['configserver']['members']:
+                n = testinfra.get_host("docker://" + node['host'])
+                n.check_output("rm -rf /var/lib/mongo/*")
+                files="/backups/" + backup + "/" + rsname + "/*"
+                n.check_output("cp -rp "  + files + " /var/lib/mongo/")
+                n.check_output("touch /var/lib/mongo/pbm.restore.log && chown mongodb /var/lib/mongo/pbm.restore.log")
+                Cluster.log("Copying files " + files + " to host " + node['host'])
+
+            for shard in self.config['shards']:
+                rsname = shard['_id']
+                for node in shard['members']:
+                    n = testinfra.get_host("docker://" + node['host'])
+                    n.check_output("rm -rf /var/lib/mongo/*")
+                    files="/backups/" + backup + "/" + rsname + "/*"
+                    if node['host'] not in self.arbiter_hosts:
+                        n.check_output("cp -rp "  + files + " /var/lib/mongo/")
+                        n.check_output("touch /var/lib/mongo/pbm.restore.log && chown mongodb /var/lib/mongo/pbm.restore.log")
+                        Cluster.log("Copying files " + files + " to host " + node['host'])
+        else:
+            rsname = self.config['_id']
+            for node in self.config['members']:
+                n = testinfra.get_host("docker://" + node['host'])
+                n.check_output("rm -rf /var/lib/mongo/*")
+                files="/backups/" + backup + "/" + rsname + "/*"
+                if node['host'] not in self.arbiter_hosts:
+                    n.check_output("cp -rp "  + files + " /var/lib/mongo/")
+                    n.check_output("touch /var/lib/mongo/pbm.restore.log && chown mongodb /var/lib/mongo/pbm.restore.log")
+                    Cluster.log("Copying files " + files + " to host " + node['host'])
+
+    def external_restore_finish(self, restore):
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        result = n.check_output("pbm restore-finish " + restore + " -c /etc/pbm.conf")
+        Cluster.log(result)
+        timeout = time.time() + 300
+        while True:
+            result = n.check_output("pbm describe-restore " + restore + " -c /etc/pbm.conf -o json")
+            status = json.loads(result)
+            Cluster.log(status['status'])
+            if status['status']=='done':
+                Cluster.log(status)
+                break
+            if time.time() > timeout:
+                assert False
+            time.sleep(1)
+
+        self.restart()
+        self.restart_pbm_agents()
+        self.make_resync()
+        self.check_pbm_status()
+        if self.layout == "sharded":
+            self.start_mongos()
+            client = pymongo.MongoClient(self.connection)
+            result = client.admin.command("balancerStart")
+            Cluster.log("Starting balancer: " + str(result))
+
+    @staticmethod
+    def psmdb_to_ce(host):
+        n=testinfra.get_host("docker://" + host)
+        state=n.check_output("mongo --quiet --eval 'db.hello().secondary'")
+        Cluster.log("Is mongodb on " + host + " secondary? - " + state)
+        n.check_output('supervisorctl stop mongod')
+        n.check_output('supervisorctl start mongod-ce')
+        Cluster.log("Node " + host + " is now running mongodb CE")
+        n.check_output('supervisorctl restart pbm-agent')
+        time.sleep(5)
+        timeout = time.time() + 30
+        while True:
+            newstate=n.check_output("mongo --quiet --eval 'db.hello().secondary'")
+            Cluster.log("Is mongodb on " + host + " secondary? - " + newstate)
+            if newstate == state:
+                break
+            if time.time() > timeout:
+                assert False
+            time.sleep(1)
+        Cluster.log("Mongodb on " + host + " is in previous state, is secondary: " + newstate)
+
+    @staticmethod
+    def ce_to_psmdb(host):
+        n=testinfra.get_host("docker://" + host)
+        state=n.check_output("mongo --quiet --eval 'db.hello().secondary'")
+        Cluster.log("Is mongodb on " + host + " secondary? - " + state)
+        n.check_output('supervisorctl stop mongod-ce')
+        n.check_output('supervisorctl start mongod')
+        Cluster.log("Node " + host + " is now running PSMDB")
+        n.check_output('supervisorctl restart pbm-agent')
+        time.sleep(5)
+        timeout = time.time() + 30
+        while True:
+            newstate=n.check_output("mongo --quiet --eval 'db.hello().secondary'")
+            Cluster.log("Is mongodb on " + host + " secondary? - " + newstate)
+            if newstate == state:
+                break
+            if time.time() > timeout:
+                assert False
+            time.sleep(1)
+        Cluster.log("Mongodb on " + host + " is in previous state, is secondary: " + newstate)

@@ -27,16 +27,18 @@ def cluster(config):
 def start_cluster(cluster,request):
     try:
         cluster.destroy()
+        os.chmod("/backups",0o777)
+        os.system("rm -rf /backups/*")
         cluster.create()
         cluster.setup_pbm()
         yield True
     finally:
         if request.config.getoption("--verbose"):
             cluster.get_logs()
-        cluster.destroy()
+        cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(300,func_only=True)
-def test_physical(start_cluster,cluster):
+def test_physical_PBM_T195(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("physical")
@@ -47,7 +49,7 @@ def test_physical(start_cluster,cluster):
     Cluster.log("Finished successfully")
 
 @pytest.mark.timeout(300,func_only=True)
-def test_incremental(start_cluster,cluster):
+def test_incremental_PBM_T200(start_cluster,cluster):
     cluster.check_pbm_status()
     cluster.make_backup("incremental --base")
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
@@ -58,3 +60,19 @@ def test_incremental(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     Cluster.log("Finished successfully")
 
+@pytest.mark.timeout(600,func_only=True)
+def test_external_PBM_T239(start_cluster,cluster):
+    cluster.check_pbm_status()
+    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
+    backup = cluster.external_backup_start()
+    result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
+    assert int(result.deleted_count) == len(documents)
+    cluster.external_backup_copy(backup)
+    cluster.external_backup_finish(backup)
+    time.sleep(10)
+
+    restore=cluster.external_restore_start()
+    cluster.external_restore_copy(backup)
+    cluster.external_restore_finish(restore)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    Cluster.log("Finished successfully")

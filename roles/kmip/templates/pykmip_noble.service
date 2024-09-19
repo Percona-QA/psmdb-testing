@@ -1,0 +1,9 @@
+[Unit]
+Description=PyKMIP
+After=multi-user.target
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/bin/python3.11 /pykmip_workdir/PyKMIP/bin/run_server.py -f /pykmip_workdir/pykmip_server.conf
+[Install]
+WantedBy=multi-user.target

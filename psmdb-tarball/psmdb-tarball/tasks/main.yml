@@ -1,6 +1,6 @@
 ---
 - set_fact:
-    tarball: "{{ lookup('env', 'TARBALL') | default('https://downloads.percona.com/downloads/percona-server-mongodb-5.0/percona-server-mongodb-5.0.13-11/binary/tarball/percona-server-mongodb-5.0.13-11-x86_64.glibc2.17-minimal.tar.gz', true) }}"
+    tarball: "{{ lookup('env', 'TARBALL') | default('https://downloads.percona.com/downloads/TESTING/psmdb-6.0.16/percona-server-mongodb-6.0.16-13-x86_64.glibc2.17-minimal.tar.gz', true) }}"
 
 - name: Get mongodb version
   set_fact:
@@ -10,24 +10,40 @@
   set_fact:
     repo_branch: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+)', '\\1') }}"
 
-- name: Copy tarball
-  copy:
-    src: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.tar.gz
-    dest: /tmp/percona-server-mongodb.tar.gz
-    mode: '0644'
-  when: not ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22" )
+- name: Detect OS
+  set_fact:
+    os: "{{ item }}"
+  loop:
+    - ol7
+    - ol8
+    - ol9
+    - jammy
+    - focal
+    - noble
+    - bookworm
+    - bullseye
+    - buster
+  when:
+    - ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "20" and item == "focal") or
+      ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "22" and item == "jammy") or
+      ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24" and item == "noble") or
+      ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" and item == "buster") or
+      ( ansible_distribution == "Debian" and ansible_distribution_major_version == "11" and item == "bullseye") or
+      ( ansible_distribution == "Debian" and ansible_distribution_major_version == "12" and item == "bookworm") or
+      ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "7" and item == "ol7") or
+      ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and item == "ol8") or
+      ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "9" and item == "ol9")
 
 - name: Copy tarball
   copy:
-    src: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.glibc2.35.tar.gz
+    src: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}-{{ os }}.tar.gz
     dest: /tmp/percona-server-mongodb.tar.gz
     mode: '0644'
-  when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22" 
 
 - name: Unpack new tarball
-  unarchive: 
+  unarchive:
     src: /tmp/percona-server-mongodb.tar.gz
-    dest: /                     
+    dest: /
     remote_src: yes
     extra_opts:
     - --transform
@@ -36,40 +52,27 @@
 - name: Clone PSMDB repo
   git:
     repo: 'https://github.com/percona/percona-server-mongodb.git'
-    dest: /percona-server-mongodb               
+    dest: /percona-server-mongodb
     version: "v{{ repo_branch[0] }}"
     single_branch: yes
 
 - name: Clone psmdb-testing repo
-  git: 
+  git:
     repo: 'https://github.com/Percona-QA/psmdb-testing.git'
-    dest: /psmdb-testing
+    dest: /package-testing
     version: "main"
-
-- name: Create mongod symlink inside the workdir for 4.2 support
-  file:
-    src: /usr/bin/mongod
-    dest: /percona-server-mongodb/mongod
-    state: link
 
 - name: Check if mongo cli exists in PATH
   stat:
     path: /usr/bin/mongo
   register: mongo
 
-- name: Create mongo cli symlink inside the workdir for 4.2 support
-  file:
-    src: /usr/bin/mongo
-    dest: /percona-server-mongodb/mongo
-    state: link
-  when: mongo.stat.exists
-
 - name: Install percona release package
   include_tasks: ../../../tasks/install_percona_release.yml
 
-- name: Enable psmdb repo (change repo after the 6.0 release)
-  command: percona-release enable psmdb-60 testing
-  when: not mongo.stat.exists
+- name: Enable psmdb testing repo
+  command: percona-release enable psmdb-{{ repo_branch[0].split('.')[0] }}{{ repo_branch[0].split('.')[1] }} testing
+  when: not mongo.stat.exists and repo_branch[0] | float >= 6.0
 
 - name: Install mongosh deb packages
   apt:
@@ -89,17 +92,7 @@
     packages:
     - percona-mongodb-mongosh
     - percona-server-mongodb-shell
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "8" and not mongo.stat.exists
-
-- name: Install mongosh rpm packages
-  yum:
-    name: "{{ packages }}"
-    state: latest
-  vars:
-    packages:
-    - https://repo.percona.com/psmdb-60/yum/testing/8Server/RPMS/x86_64/percona-server-mongodb-shell-6.0.0-1.el8.x86_64.rpm
-    - percona-mongodb-mongosh
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "9" and not mongo.stat.exists
+  when: ansible_os_family == "RedHat" and not mongo.stat.exists
 
 - name: Copy mongo binary to workdir
   copy:
@@ -114,36 +107,31 @@
     src: /usr/bin/mongosh
     dest: /usr/bin/mongo
     state: link
-    force: yes    
+    force: yes
   when: not mongo.stat.exists
-
-- name: Upgrade pip
-  pip:
-    name:
-      - pip
-    state: latest
-    executable: pip3
-
-- name: Install 
-  pip:
-    name:
-      - virtualenv
-      - setuptools
-    state: latest
-    executable: pip3
 
 - name: Install Python utilities
   pip:
     requirements: /percona-server-mongodb/etc/pip/dev-requirements.txt
-    executable: pip3
-    extra_args: --ignore-installed
+    virtualenv: /opt/venv
+  when: repo_branch[0] | float <= 7.0
 
-- name: Hotfix for cryptography module
+- name: Install poetry for PSMDB 8.0
   pip:
     name:
-      - cryptography==36.0.2
-    state: present
-    executable: pip3
+      - poetry==1.5.1
+      - pyproject-hooks==1.0.0
+    state: present    
+    virtualenv: /opt/venv
+  when: repo_branch[0] | float >= 8.0
+
+- name: Install Python utilities for PSMDB 8.0
+  shell: /opt/venv/bin/poetry install --sync --no-root
+  args:
+    chdir: /percona-server-mongodb  
+  environment:
+    POETRY_VIRTUALENVS_CREATE: false    
+  when: repo_branch[0] | float >= 8.0
 
 - name: Fix files permissions
   shell: "find /percona-server-mongodb/jstests -type f | xargs chmod 400"
@@ -179,3 +167,28 @@
     path: /percona-server-mongodb/.resmoke_mongo_version.yml
     line: "mongo_version: {{mongodb_ver[0]}}"
     create: yes
+
+- name: Setup multiversion
+  shell: /opt/venv/bin/python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 4.2 4.4 5.0 6.0 7.0
+  args:
+    chdir: /percona-server-mongodb
+  when: not (( ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22" ) or (ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm'))
+
+- name: Setup multiversion
+  shell: /opt/venv/bin/python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 7.0
+  args:
+    chdir: /percona-server-mongodb
+  when: (ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "22") or (ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm')
+
+- name: Setup multiversion
+  shell: /opt/venv/bin/python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 4.4 5.0 6.0 7.0
+  args:
+    chdir: /percona-server-mongodb
+  when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24"
+
+- name: Fix test
+  shell: sed -E 's/.+last-continuous.+//g' -i /percona-server-mongodb/jstests/multiVersion/genericSetFCVUsage/do_upgrade_downgrade.js
+
+- name: Copy suites
+  shell: cp -rp /package-testing/suites/* /percona-server-mongodb/buildscripts/resmokeconfig/suites/
+  ignore_errors: true

@@ -10,10 +10,6 @@ on:
         description: "golang version"
         required: false
 
-#  push:
-#    branches:
-#      - main
-
   pull_request:
     branches:
       - main
@@ -22,30 +18,33 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        psmdb: ["4.2", "4.4", "5.0", "6.0"]
-        test: [logical, physical, incremental]
+        psmdb: ["5.0", "6.0", "7.0"]
+        test: [logical, physical, incremental, external]
     env:
-      PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'main' }}
-      GO_VER: ${{ github.event.inputs.go_ver || 'latest' }}
+      PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'dev' }}
+      GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Setup environment with PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
       run: |
-        PSMDB=percona/percona-server-mongodb:${{ matrix.psmdb }} docker-compose build
-        docker-compose up -d
+        PSMDB=percona/percona-server-mongodb:${{ matrix.psmdb }} docker compose build
+        docker compose up -d
       working-directory: ./pbm-functional/pytest
     - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
       run: |
-        docker-compose run test pytest -s --junitxml=junit.xml -k ${{ matrix.test }}
+        docker compose run --rm test pytest -s --junitxml=junit.xml -k ${{ matrix.test }}
       working-directory: ./pbm-functional/pytest
+    - name: Print Azurite logs
+      if: failure()
+      run: |
+        docker logs azurite
     - name: Publish Test Report
-      uses: mikepenz/action-junit-report@v3
-      if: success() || failure() 
+      uses: mikepenz/action-junit-report@v4
+      if: success() || failure()
       with:
         report_paths: '**/junit.xml'
-

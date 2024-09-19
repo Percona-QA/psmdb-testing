@@ -5,6 +5,7 @@ import testinfra
 import time
 import os
 import docker
+import platform
 
 from datetime import datetime
 from cluster import Cluster
@@ -26,6 +27,8 @@ def config():
 
 @pytest.fixture(scope="package")
 def cluster(config):
+    if platform.machine() != 'x86_64':
+        pytest.skip("Unsupported architecture")
     return Cluster(config,mongod_datadir="/var/lib/mongo/")
 
 @pytest.fixture(scope="function")
@@ -43,10 +46,10 @@ def start_cluster(cluster,request):
     finally:
         if request.config.getoption("--verbose"):
             cluster.get_logs()
-        cluster.destroy()
+        cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(300,func_only=True)
-def test_physical(start_cluster,cluster):
+def test_disabled_PBM_T235(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("physical")

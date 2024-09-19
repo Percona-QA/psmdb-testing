@@ -61,10 +61,10 @@ def start_cluster(cluster,newcluster,request):
         if request.config.getoption("--verbose"):
             newcluster.get_logs()
         cluster.destroy()
-        newcluster.destroy()
+        newcluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(600,func_only=True)
-def test_logical(start_cluster,cluster,newcluster):
+def test_logical_PBM_T211(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("logical")
@@ -77,29 +77,31 @@ def test_logical(start_cluster,cluster,newcluster):
     assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-'''
-@pytest.mark.timeout(300,func_only=True)
-def test_physical(start_cluster,cluster):
+@pytest.mark.timeout(600,func_only=True)
+def test_physical_PBM_T242(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("physical")
+    backup = backup + ' --replset-remapping="newrs1=rs1,newrs2=rs2,newrscfg=rscfg"'
+    cluster.destroy()
 
     newcluster.make_resync()
     newcluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
-    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
+    assert pymongo.MongoClient(newcluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
 
-@pytest.mark.timeout(300,func_only=True)
-def test_incremental(start_cluster,cluster):
+@pytest.mark.timeout(600,func_only=True)
+def test_incremental_PBM_T243(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     cluster.make_backup("incremental --base")
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("incremental")
+    backup = backup + ' --replset-remapping="newrs1=rs1,newrs2=rs2,newrscfg=rscfg"'
+    cluster.destroy()
 
     newcluster.make_resync()
     newcluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
-    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
+    assert pymongo.MongoClient(newcluster.connection)["test"]["test"].count_documents({}) == len(documents)
+    assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
     print("\nFinished successfully\n")
 
-'''

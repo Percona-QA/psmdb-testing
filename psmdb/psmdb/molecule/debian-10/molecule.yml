@@ -13,6 +13,7 @@ platforms:
     root_device_name: xvda
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
+      job-name: ${JOB_NAME}
 provisioner:
   name: ansible
   log: True
@@ -30,7 +31,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: debian10-report.xml
 scenario:
   name: debian-10
   destroy_sequence:

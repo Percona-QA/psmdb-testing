@@ -1,7 +1,15 @@
-# This task installs all the PSMDB packages without using the meta package
+# Used by PMM, change with caution
+# This task installs all the necessary packages and configures PSMDB:
+# 1) Package percona-release should be installed and required PSMDB repo should be enabled beforehand
+# 2) PSMDB version should be passed as var using format: psmdb-60 for PSMDB 6.0+/psmdb-50 for PSMDB 5.0+/etc.
+# Can be included to another playbook like described below:
+# - name: some name for the task
+#   include_tasks: ../tasks/install_setup_psmdb.yml
+#   vars:
+#    psmdb_to_test: "psmdb-60"
 
 - set_fact:
-    psmdb_mongosh: "{{ lookup('env', 'psmdb_to_test').split('-')[1] }}"
+    psmdb_mongosh: "{{ psmdb_to_test.split('-')[1] }}"
 
 - name: install psmdb deb packages
   apt:
@@ -15,6 +23,8 @@
     - percona-server-mongodb-mongos
     - percona-server-mongodb-tools
   when: ansible_os_family == "Debian"
+  environment:
+    PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
 
 - name: install psmdb rpm packages
   yum:
@@ -27,6 +37,8 @@
     - percona-server-mongodb-mongos
     - percona-server-mongodb-tools
   when: ansible_os_family == "RedHat"
+  environment:
+    PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
 
 - name: install mongo shell deb package
   apt:
@@ -70,3 +82,18 @@
     dest: /usr/bin/mongo
     state: link
   when: psmdb_mongosh >= "60"
+
+- name: stop mongod service
+  service: name=mongod state=stopped
+
+- name: add replica set name into mongod config
+  replace:
+    path: /etc/mongod.conf
+    regexp: '^#replication:'
+    replace: 'replication:\n  replSetName: "rs1"'
+
+- name: start mongod service
+  service: name=mongod state=started
+
+- name: initiate mongod replica set
+  command: mongo --eval 'rs.initiate()'
