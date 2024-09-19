@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        psmdb: ["5.0", "6.0", "7.0"]
+        psmdb: ["5.0", "6.0", "7.0", "8.0"]
         test: [logical, physical, incremental, external]
     env:
       PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'dev' }}
@@ -32,7 +32,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: Setup environment with PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
       run: |
-        PSMDB=percona/percona-server-mongodb:${{ matrix.psmdb }} docker compose build
+        PSMDB=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build
         docker compose up -d
       working-directory: ./pbm-functional/pytest
     - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
