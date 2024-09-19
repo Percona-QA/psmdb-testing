@@ -43,6 +43,17 @@ services:
       - "MINIO_SECRET_KEY=minio1234"
     command: server /backups --console-address ":9001"
 
+  nginx-minio:
+    build:
+      dockerfile: ./Dockerfile-nginx
+      context: .
+    container_name: nginx-minio
+    hostname: nginx-minio
+    networks:
+      - test
+    depends_on:
+      - minio
+
   createbucket:
     container_name: createbucket
     image: minio/mc
