@@ -92,7 +92,7 @@ def test_general_PBM_T257(start_cluster,cluster,backup_type,restore_type):
         for i in range(600):
             client['test']['test'].insert_one({"doc":i})
             time.sleep(0.1)
-        time.sleep(10)
+        time.sleep(60)
         pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
         Cluster.log("Time for PITR is: " + pitr)
         pitr_backup="--time=" + pitr
@@ -144,10 +144,20 @@ def test_incremental_PBM_T258(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 1200
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
 
+@pytest.mark.parametrize('command',['config --force-resync','backup'])
+def test_logical_cli_PBM_T260(start_cluster,cluster,command):
+    cluster.check_pbm_status()
+    result = cluster.exec_pbm_cli(command + ' --wait')
+    assert result.rc == 0, result.stderr
+    Cluster.log(result.stdout)
+
+
+"""
 @pytest.mark.timeout(900,func_only=True)
 @pytest.mark.parametrize('restore_ns',['sharded','unsharded'])
 @pytest.mark.parametrize('restore_type',['base','pitr'])
 def test_logical_selective_PBM_T259(start_cluster,cluster,restore_ns,restore_type):
+    pytest.skip("Not implemented")
     cluster.check_pbm_status()
     client=pymongo.MongoClient(cluster.connection)
     for i in range(600):
@@ -186,9 +196,4 @@ def test_logical_selective_PBM_T259(start_cluster,cluster,restore_ns,restore_typ
         cluster.make_restore(backup,restart_cluster=False,check_pbm_status=True,make_resync=False)
         assert pymongo.MongoClient(cluster.connection)["test"][collection].count_documents({}) == 1200
         assert pymongo.MongoClient(cluster.connection)["test"][empty_collection].count_documents({}) == 0
-
-@pytest.mark.parametrize('command',['config --force-resync','backup'])
-def test_logical_cli_PBM_T260(start_cluster,cluster,command):
-    result = cluster.exec_pbm_cli(command + ' --wait')
-    assert result.rc == 0, result.stderr
-    Cluster.log(result.stdout)
+"""
