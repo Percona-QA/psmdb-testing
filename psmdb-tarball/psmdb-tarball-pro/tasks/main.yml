@@ -75,13 +75,9 @@
 - name: Install percona release package
   include_tasks: ../../../tasks/install_percona_release.yml
 
-- name: Enable psmdb 7.0 testing repo
-  command: percona-release enable psmdb-70 testing
-  when: not mongo.stat.exists and repo_branch[0] | float == 7.0
-
-- name: Enable psmdb 6.0 testing repo (for buster and bionic)
-  command: percona-release enable psmdb-60 testing
-  when: not mongo.stat.exists and repo_branch[0] | float == 6.0
+- name: Enable psmdb testing repo
+  command: percona-release enable psmdb-{{ repo_branch[0].split('.')[0] }}{{ repo_branch[0].split('.')[1] }} testing
+  when: not mongo.stat.exists and repo_branch[0] | float >= 6.0
 
 - name: Install mongosh deb packages
   apt:
@@ -119,84 +115,28 @@
     force: yes
   when: not mongo.stat.exists
 
-- name: Set extra_args for deb12
-  set_fact:
-    extra_args_deb12: "{{ ' --break-system-packages' if ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm' else '' }}"
-
-- name: Set extra_args for OL systems
-  set_fact:
-    extra_args_oel: "{{ ' --ignore-installed' if ansible_os_family == 'RedHat' else '' }}"
-
-- name: Set extra_args for all other OS systems
-  set_fact:
-    extra_args_other_os: "{{ ' --ignore-installed' if not (ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm') else '' }}"
-
-- name: Upgrade pip
-  pip:
-    name:
-      - pip
-    state: latest
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }}"
-
-- name: Install
-  pip:
-    name:
-      - virtualenv
-      - setuptools<71.0.0
-    state: present
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }}"
-  when: ansible_os_family == "Debian"
-
-- name: Install
-  pip:
-    name:
-      - virtualenv
-      - setuptools
-    state: latest
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }}"
-  when: ansible_os_family == "RedHat"
-
-- name: Hotfix for PyYAML
-  pip:
-    name:
-      - PyYAML==5.3.1
-    state: present
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }} {{ extra_args_other_os }}"
-
 - name: Install Python utilities
   pip:
     requirements: /percona-server-mongodb/etc/pip/dev-requirements.txt
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }} {{ extra_args_oel }}"
+    virtualenv: /opt/venv
+  when: repo_branch[0] | float <= 7.0
 
-- name: Hotfix for cryptography module
+- name: Install poetry for PSMDB 8.0
   pip:
     name:
-      - cryptography==36.0.2
-    state: present
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }}"
+      - poetry==1.5.1
+      - pyproject-hooks==1.0.0
+    state: present    
+    virtualenv: /opt/venv
+  when: repo_branch[0] | float >= 8.0
 
-- name: Upgrade PyKMIP
-  pip:
-    name:
-      - PyKMIP
-    state: latest
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }}"
-
-- name: Upgrade wrapt for deb12
-  pip:
-    name:
-      - wrapt
-    state: latest
-    executable: pip3
-    extra_args: "{{ extra_args_deb12 }}"
-  when: ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm'
+- name: Install Python utilities for PSMDB 8.0
+  shell: /opt/venv/bin/poetry install --sync --no-root
+  args:
+    chdir: /percona-server-mongodb  
+  environment:
+    POETRY_VIRTUALENVS_CREATE: false    
+  when: repo_branch[0] | float >= 8.0
 
 - name: Fix files permissions
   shell: "find /percona-server-mongodb/jstests -type f | xargs chmod 400"
