@@ -145,7 +145,7 @@ def test_incremental_PBM_T258(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
 
 @pytest.mark.parametrize('command',['config --force-resync','backup'])
-def test_logical_cli_PBM_T260(start_cluster,cluster,command):
+def test_disabled_cli_PBM_T260(start_cluster,cluster,command):
     cluster.check_pbm_status()
     result = cluster.exec_pbm_cli(command + ' --wait')
     assert result.rc == 0, result.stderr
