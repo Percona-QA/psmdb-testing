@@ -152,7 +152,6 @@ def test_disabled_cli_PBM_T260(start_cluster,cluster,command):
     Cluster.log(result.stdout)
 
 
-"""
 @pytest.mark.timeout(900,func_only=True)
 @pytest.mark.parametrize('restore_ns',['sharded','unsharded'])
 @pytest.mark.parametrize('restore_type',['base','pitr'])
@@ -196,4 +195,3 @@ def test_logical_selective_PBM_T259(start_cluster,cluster,restore_ns,restore_typ
         cluster.make_restore(backup,restart_cluster=False,check_pbm_status=True,make_resync=False)
         assert pymongo.MongoClient(cluster.connection)["test"][collection].count_documents({}) == 1200
         assert pymongo.MongoClient(cluster.connection)["test"][empty_collection].count_documents({}) == 0
-"""
