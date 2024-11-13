@@ -39,6 +39,8 @@ def start_cluster(cluster,request):
             client["test"]["replaces"].insert_one({"key": i, "data": i})
             client["test"]["updates"].insert_one({"key": i, "data": i})
             client["test"]["deletes"].insert_one({"key": i, "data": i})
+            client["test"]["indexes"].insert_one({"key": i, "data": i})
+        client["test"]["indexes"].create_index(["key"],name="old_index")
         yield True
     finally:
         if request.config.getoption("--verbose"):
@@ -46,7 +48,7 @@ def start_cluster(cluster,request):
         cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.parametrize('collection',['inserts','replaces','updates','deletes'])
+@pytest.mark.parametrize('collection',['inserts','replaces','updates','deletes','indexes'])
 def test_logical_pitr_crud_PBM_T270(start_cluster,cluster,collection):
     cluster.check_pbm_status()
     cluster.make_backup("logical")
@@ -58,6 +60,8 @@ def test_logical_pitr_crud_PBM_T270(start_cluster,cluster,collection):
         client["test"]["replaces"].replace_one({"key": i}, {"key": i+10, "data": i+10})
         client["test"]["updates"].update_one({"key": i}, {"$inc": { "data": 10 }})
         client["test"]["deletes"].delete_one({"key": i})
+    client["test"]["indexes"].drop_index("old_index")
+    client["test"]["indexes"].create_index("data",name="new_index")
     time.sleep(5)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     pitr=" --time=" + pitr
@@ -88,9 +92,13 @@ def test_logical_pitr_crud_PBM_T270(start_cluster,cluster,collection):
         assert client["restored"]["updates"].count_documents({})==10
         for i in range(10):
             assert client["restored"]["updates"].find_one({"key": i, "data": i+10})
-    else:
+    elif collection=='deletes':
         assert client["restored"]["deletes"].count_documents({})==0
-
+    else:
+        assert client["restored"]["indexes"].count_documents({})==10
+        assert 'new_index' in client["restored"]["indexes"].index_information()
+        assert 'old_index' not in client["restored"]["indexes"].index_information()
+    Cluster.log("Finished successfully")
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.parametrize('collection',['inserts','replaces','updates','deletes'])
@@ -140,3 +148,4 @@ def test_logical_pitr_with_txn_PBM_T271(start_cluster,cluster,collection):
             assert client["restored"]["updates"].find_one({"key": i, "data": i+10})
     else:
         assert client["restored"]["deletes"].count_documents({})==0
+    Cluster.log("Finished successfully")
