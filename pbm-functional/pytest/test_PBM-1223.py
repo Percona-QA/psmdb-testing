@@ -85,7 +85,7 @@ def test_logical_PBM_T249(start_cluster,cluster):
 
 @pytest.mark.timeout(3600,func_only=True)
 @pytest.mark.parametrize('backup_t',['logic','phys'])
-def test_load(start_cluster,cluster,backup_t):
+def test_load_PBM_T272(start_cluster,cluster,backup_t):
     backup_type = 'logical'
     if backup_t == "phys":
         backup_type = 'physical'
