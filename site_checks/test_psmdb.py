@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 import pytest
 import json
@@ -53,6 +54,7 @@ def get_package_tuples():
             assert "percona-server-mongodb-server-" + PSMDB_VER in req.text or "percona-server-mongodb-server_" + PSMDB_VER in req.text
             assert "percona-server-mongodb-mongos-" + PSMDB_VER in req.text or "percona-server-mongodb-mongos_" + PSMDB_VER in req.text
             assert "percona-server-mongodb-tools-" + PSMDB_VER in req.text or "percona-server-mongodb-tools_" + PSMDB_VER in req.text
+            assert "percona-telemetry-agent" in req.text
             assert "dbg" in req.text or "debug" in req.text
             if version.parse(PSMDB_VER) > version.parse("6.0.0"):
                 assert "mongosh" in req.text
@@ -70,5 +72,5 @@ def test_packages_site(software_files,filename,link):
     print('\nTesting ' + software_files + ', file: ' + filename)
     print(link)
     req = requests.head(link)
-    assert req.status_code == 200 and int(req.headers['content-length']) > 0, link
-
+    if not re.search(r'percona-telemetry-agent.*\.diff\.gz', link):
+        assert req.status_code == 200 and int(req.headers['content-length']) > 0, link

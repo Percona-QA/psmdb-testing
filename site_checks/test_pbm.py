@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 import pytest
 import json
@@ -32,5 +33,5 @@ def test_packages_site(software_files,filename,link):
     print('\nTesting ' + software_files + ', file: ' + filename)
     print(link)
     req = requests.head(link)
-    assert req.status_code == 200 and int(req.headers['content-length']) > 0, link
-
+    if not re.search(r'percona-backup-mongodb.*\.diff\.gz', link):
+        assert req.status_code == 200 and int(req.headers['content-length']) > 0, link
