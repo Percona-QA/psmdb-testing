@@ -24,13 +24,12 @@ BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
 PSMDB_VER = os.environ.get("PDMDB_VERSION").lstrip("pdmdb-")
 TESTING_BRANCH = os.environ.get("TESTING_BRANCH")
 MONGOSH_VER_RHEL7 = '2.1.5'
+MONGOSH_VER = '2.3.2'
 
 def get_mongosh_ver():
     url = "https://raw.githubusercontent.com/Percona-QA/psmdb-testing/" + TESTING_BRANCH + "/MONGOSH_VERSION"
     r = requests.get(url)
     return r.text.rstrip()
-
-MONGOSH_VER = get_mongosh_ver()
 
 def test_mongod_service(host):
     mongod = host.service("mongod")
