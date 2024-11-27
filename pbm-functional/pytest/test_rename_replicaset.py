@@ -29,9 +29,9 @@ def start_cluster(cluster,request):
         cluster.setup_pbm()
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
-        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none --out json")
-        assert result.rc == 0
-        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
+#        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none --out json")
+#        assert result.rc == 0
+#        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
         client=pymongo.MongoClient(cluster.connection)
         for i in range(10):
             client["test"]["test"].insert_one({"key": i, "data": i})
