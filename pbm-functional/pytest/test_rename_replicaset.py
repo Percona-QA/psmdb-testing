@@ -149,3 +149,31 @@ def test_logical_pitr_with_txn_PBM_T271(start_cluster,cluster,collection):
     else:
         assert client["restored"]["deletes"].count_documents({})==0
     Cluster.log("Finished successfully")
+
+@pytest.mark.timeout(300,func_only=True)
+def test_logical_pitr_ddl_PBM_T273(start_cluster,cluster):
+    cluster.check_pbm_status()
+    cluster.make_backup("logical")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
+    time.sleep(5)
+    client = pymongo.MongoClient(cluster.connection)
+    client.drop_database('test')
+    for i in range(10):
+        client["test"]["indexes"].insert_one({"key": i+10, "data": i+10})
+    client["test"]["indexes"].create_index("data",name="new_index")
+    time.sleep(5)
+    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    pitr=" --time=" + pitr
+    Cluster.log("Time for PITR is: " + pitr)
+    time.sleep(10)
+    cluster.disable_pitr()
+    time.sleep(5)
+    backup=pitr + " --ns-from=test.indexes --ns-to=restored.indexes"
+    cluster.make_restore(backup)
+    client = pymongo.MongoClient(cluster.connection)
+    assert client["restored"]["indexes"].count_documents({})==10
+    for i in range(10):
+        assert client["restored"]["indexes"].find_one({"key": i+10, "data": i+10})
+    assert 'new_index' in client["restored"]["indexes"].index_information()
+    assert 'old_index' not in client["restored"]["indexes"].index_information()
+    Cluster.log("Finished successfully")
