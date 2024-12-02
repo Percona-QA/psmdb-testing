@@ -139,3 +139,12 @@
         - git
         - wget
       when: ansible_os_family == "RedHat" and ansible_distribution_major_version|int >= 8
+
+    - name: Install necessary tools for AL
+      yum:
+        name: "{{ packages }}"
+      vars:
+        packages:
+        - iproute
+        - openssl
+      when: ansible_distribution == "Amazon"
