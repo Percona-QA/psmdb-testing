@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        psmdb: ["5.0", "6.0", "7.0", "8.0"]
+        psmdb: ["6.0", "7.0", "8.0"]
         test: [logical, physical, incremental, external]
     env:
       PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'dev' }}
