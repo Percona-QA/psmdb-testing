@@ -145,6 +145,7 @@
         name: "{{ packages }}"
       vars:
         packages:
+        - tar
         - iproute
         - openssl
       when: ansible_distribution == "Amazon"
