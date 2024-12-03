@@ -61,6 +61,10 @@ def stop_mongod(node):
         mongod = node.service("mongod")
         assert mongod.is_running == False
 
+def check_db_start(node):
+    result = node.run('mongo --eval="printjson(db.serverStatus().ok)"')
+    return result.rc == 0 and "1" in result.stdout
+
 def start_mongod(node,check=True):
     with node.sudo():
         result = node.run('systemctl start mongod')
@@ -71,6 +75,11 @@ def start_mongod(node,check=True):
             assert result.rc == 0 ,result.stderr
             mongod = node.service("mongod")
             assert mongod.is_running
+            for _ in range(20):
+              if check_db_start(node):
+                 break
+              else:
+                 time.sleep(0.5)
 
 def restore_defaults(node):
     stop_mongod(node)
@@ -312,6 +321,7 @@ def test_encryption(host,encryption,cipher):
         if encryption == "KMIP":
             new_conf['security']['kmip']['rotateMasterKey'] = 'true'
         apply_conf(host,new_conf,False,False)
+        time.sleep(5)
         logs = get_logs(host)
         assert "Rotated master encryption key" in logs, logs
         assert '"Shutting down","attr":{"exitCode":0}}' in logs, logs
