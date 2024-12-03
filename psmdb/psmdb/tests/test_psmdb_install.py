@@ -61,6 +61,10 @@ def stop_mongod(node):
         mongod = node.service("mongod")
         assert mongod.is_running == False
 
+def check_db_start(node):
+    result = node.run('mongo --eval "show dbs"')
+    return result.rc == 0 and "admin" in result.stdout
+
 def start_mongod(node,check=True):
     with node.sudo():
         result = node.run('systemctl start mongod')
@@ -71,6 +75,13 @@ def start_mongod(node,check=True):
             assert result.rc == 0 ,result.stderr
             mongod = node.service("mongod")
             assert mongod.is_running
+
+            retries = 20
+            for _ in range(retries):
+              if check_db_start(node):
+                 break
+              else:
+                 time.sleep(0.5)
 
 def restore_defaults(node):
     stop_mongod(node)
