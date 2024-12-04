@@ -42,7 +42,7 @@
   - name: install necessary rpm packages for RHEL8+
     yum:
       name: "{{ packages }}"
-      state: latest
+      state: present
     vars:
       packages:
       - iproute
@@ -67,7 +67,7 @@
   - name: install necessary rpm packages for RHEL9
     yum:
       name: "{{ packages }}"
-      state: latest
+      state: present
     vars:
       packages:
       - openldap-compat
