@@ -320,6 +320,13 @@
         name: mongod
         state: started
 
+    - name: check mongod ready status
+      shell: mongo --eval="printjson(db.serverStatus().ok)"
+      register: mongodbready
+      until: mongodbready.stdout | int == 1
+      retries: 20
+      delay: 1
+
     - name: set compatibilty version after upgrade
       shell: |
         mongo --quiet --eval 'db.adminCommand({setFeatureCompatibilityVersion: "{{to_maj_version}}" })'
