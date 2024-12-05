@@ -127,10 +127,14 @@
 
 - name: Install Python utilities for PSMDB 8.0
   shell: /opt/venv/bin/poetry install --sync --no-root
+  retries: 5
+  delay: 1
+  register: result
+  until: result.rc == 0
   args:
     chdir: /percona-server-mongodb  
   environment:
-    POETRY_VIRTUALENVS_CREATE: false    
+    POETRY_VIRTUALENVS_CREATE: false
   when: repo_branch[0] | float >= 8.0
 
 - name: Fix files permissions
