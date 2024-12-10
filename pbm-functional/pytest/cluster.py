@@ -565,8 +565,22 @@ class Cluster:
             time.sleep(1)
 
     # disables PITR
-    def disable_pitr(self):
+    def disable_pitr(self, time_param=None):
         n = testinfra.get_host("docker://" + self.pbm_cli)
+        if time_param:
+            target_time = int(datetime.fromisoformat(time_param).timestamp())
+            pitr_end = 0
+
+            while pitr_end < target_time:
+                result = n.check_output("pbm s -s backups -o json")
+                backups = json.loads(result)
+                if 'backups' in backups and 'pitrChunks' in backups['backups'] and 'pitrChunks' in backups['backups']['pitrChunks']:
+                   pitr_end_cur = backups['backups']['pitrChunks']['pitrChunks'][0].get('range', {}).get('end', None)
+                   if pitr_end_cur is not None:
+                        pitr_end = pitr_end_cur
+                if pitr_end < target_time:
+                    time.sleep(1)
+
         result = n.check_output(
             "pbm config --set pitr.enabled=false --out json")
         Cluster.log("Disabling PITR: " + result)
@@ -625,6 +639,12 @@ class Cluster:
                          '{"db":"admin","role":"clusterMonitor" },' +
                          '{"db":"admin","role":"restore" },' +
                          '{"db":"admin","role":"pbmAnyAction" }]});\'')
+        init_pbm_t_user = ('\'db.getSiblingDB("admin").createUser({user:"pbm_test",pwd:"pbmpass_test1","roles":[' +
+                         '{"db":"admin","role":"readWrite","collection":""},' +
+                         '{"db":"admin","role":"backup" },' +
+                         '{"db":"admin","role":"clusterMonitor" },' +
+                         '{"db":"admin","role":"restore" },' +
+                         '{"db":"admin","role":"pbmAnyAction" }]});\'')
         x509_pbm_user = ('\'db.getSiblingDB("$external").runCommand({createUser:"emailAddress=pbm@percona.com,CN=pbm,OU=client,O=Percona,L=SanFrancisco,ST=California,C=US","roles":[' +
                          '{"db":"admin","role":"readWrite","collection":""},' +
                          '{"db":"admin","role":"backup" },' +
@@ -645,6 +665,8 @@ class Cluster:
                          '{"db":"admin","role":"pbmAnyAction" }]});\'')
         logs = primary.check_output(
             "mongo -u root -p root --quiet --eval " + init_pbm_user)
+        logs = primary.check_output(
+            "mongo -u root -p root --quiet --eval " + init_pbm_t_user)
         #Cluster.log(logs)
         if "authMechanism=MONGODB-X509" in uri:
             logs = primary.check_output(
