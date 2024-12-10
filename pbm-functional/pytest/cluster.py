@@ -625,6 +625,12 @@ class Cluster:
                          '{"db":"admin","role":"clusterMonitor" },' +
                          '{"db":"admin","role":"restore" },' +
                          '{"db":"admin","role":"pbmAnyAction" }]});\'')
+        init_pbm_t_user = ('\'db.getSiblingDB("admin").createUser({user:"pbm_test",pwd:"pbmpass_test1","roles":[' +
+                         '{"db":"admin","role":"readWrite","collection":""},' +
+                         '{"db":"admin","role":"backup" },' +
+                         '{"db":"admin","role":"clusterMonitor" },' +
+                         '{"db":"admin","role":"restore" },' +
+                         '{"db":"admin","role":"pbmAnyAction" }]});\'')
         x509_pbm_user = ('\'db.getSiblingDB("$external").runCommand({createUser:"emailAddress=pbm@percona.com,CN=pbm,OU=client,O=Percona,L=SanFrancisco,ST=California,C=US","roles":[' +
                          '{"db":"admin","role":"readWrite","collection":""},' +
                          '{"db":"admin","role":"backup" },' +
@@ -645,6 +651,8 @@ class Cluster:
                          '{"db":"admin","role":"pbmAnyAction" }]});\'')
         logs = primary.check_output(
             "mongo -u root -p root --quiet --eval " + init_pbm_user)
+        logs = primary.check_output(
+            "mongo -u root -p root --quiet --eval " + init_pbm_t_user)
         #Cluster.log(logs)
         if "authMechanism=MONGODB-X509" in uri:
             logs = primary.check_output(
