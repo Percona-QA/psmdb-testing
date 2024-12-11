@@ -76,3 +76,13 @@
     - openldap-servers
     - openldap-clients
   when: ansible_distribution_major_version == "9"
+
+- name: Install required packages
+  yum:
+    state: present
+    name:
+    - openldap
+    - openldap-devel
+    - openldap-servers
+    - openldap-clients
+  when: ansible_distribution == "Amazon"
