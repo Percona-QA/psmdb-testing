@@ -81,7 +81,8 @@ def test_logical_selective_PBM_T218(start_cluster, cluster):
     backup_partial = cluster.make_backup("logical --ns=test1.test_coll11,test2.*")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     time.sleep(5)
-    client.drop_database("test1")
+    client["test1"]["test_coll11"].drop_index('test_coll11_index_old')
+    client["test1"]["test_coll11"].delete_many({})
     for i in range(10):
         client["test1"]["test_coll11"].insert_one({"key": i + 10, "data": i + 10})
     client["test1"]["test_coll11"].create_index("data", name="test_coll11_index_new")
@@ -100,25 +101,16 @@ def test_logical_selective_PBM_T218(start_cluster, cluster):
     )
     cluster.make_restore(backup_partial, check_pbm_status=True)
     assert client["test1"]["test_coll11"].count_documents({}) == 10
-    assert (
-        client["test1"].command("collstats", "test_coll11").get("sharded", True)
-        is False
-    )
+    assert client["test1"].command("collstats", "test_coll11").get("sharded", True) is False
     assert client["test2"]["test_coll21"].count_documents({}) == 10
     assert client["test2"].command("collstats", "test_coll21").get("sharded", False)
     assert client["test2"]["test_coll22"].count_documents({}) == 10
-    assert (
-        client["test2"].command("collstats", "test_coll22").get("sharded", True)
-        is False
-    )
+    assert client["test2"].command("collstats", "test_coll22").get("sharded", True) is False
     for i in range(10):
         assert client["test1"]["test_coll11"].find_one({"key": i + 10, "data": i + 10})
         assert client["test2"]["test_coll21"].find_one({"key": i, "data": i})
         assert client["test2"]["test_coll22"].find_one({"key": i, "data": i})
-    assert (
-        "test_coll11_index_old"
-        not in client["test1"]["test_coll11"].index_information()
-    )
+    assert "test_coll11_index_old" not in client["test1"]["test_coll11"].index_information()
     assert "test_coll11_index_new" in client["test1"]["test_coll11"].index_information()
     assert "test_coll21_index_old" in client["test2"]["test_coll21"].index_information()
     assert "test_coll22_index_new" in client["test2"]["test_coll22"].index_information()
@@ -126,25 +118,16 @@ def test_logical_selective_PBM_T218(start_cluster, cluster):
     client.drop_database("test2")
     cluster.make_restore(backup_full, check_pbm_status=True)
     assert client["test1"]["test_coll11"].count_documents({}) == 10
-    assert (
-        client["test1"].command("collstats", "test_coll11").get("sharded", True)
-        is False
-    )
+    assert client["test1"].command("collstats", "test_coll11").get("sharded", True) is False
     assert client["test2"]["test_coll21"].count_documents({}) == 10
     assert client["test2"].command("collstats", "test_coll21").get("sharded", False)
     assert client["test2"]["test_coll22"].count_documents({}) == 10
-    assert (
-        client["test2"].command("collstats", "test_coll22").get("sharded", True)
-        is False
-    )
+    assert client["test2"].command("collstats", "test_coll22").get("sharded", True) is False
     for i in range(10):
         assert client["test1"]["test_coll11"].find_one({"key": i + 10, "data": i + 10})
         assert client["test2"]["test_coll21"].find_one({"key": i, "data": i})
         assert client["test2"]["test_coll22"].find_one({"key": i, "data": i})
-    assert (
-        "test_coll11_index_old"
-        not in client["test1"]["test_coll11"].index_information()
-    )
+    assert "test_coll11_index_old" not in client["test1"]["test_coll11"].index_information()
     assert "test_coll11_index_new" in client["test1"]["test_coll11"].index_information()
     assert "test_coll21_index_old" in client["test2"]["test_coll21"].index_information()
     assert "test_coll22_index_new" in client["test2"]["test_coll22"].index_information()
