@@ -99,6 +99,6 @@ def test_load_drop_pitr_PBM_T281(start_cluster,cluster,restore_type,primary_shar
     # catch the logs from mongos on connection timeout error
     except pymongo.errors.AutoReconnect as e:
         mongos_logs = docker.from_env().containers.get('mongos').logs().decode("utf-8", errors="replace")
-        assert False, e + mongos_logs
+        assert False, str(e) + "\nMongos logs:\n"  +str(mongos_logs)
     for i in range(10):
         assert client["testdb"]["test"].find_one({"key": i + 100, "data": i + 100})
