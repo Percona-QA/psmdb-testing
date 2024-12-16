@@ -124,11 +124,20 @@ services:
         - GO_VER=${GO_VER:-bullseye}
         - PSMDB=${PSMDB:-percona/percona-server-mongodb:latest}
         - PR_NUMBER=${PR_NUMBER:-}
+        - MAKE_TARGET=${MAKE_TARGET:-build}
     environment:
       - "PERCONA_TELEMETRY_URL=https://check-dev.percona.com/v1/telemetry/GenericReport"
     command: /bin/bash
     depends_on:
       - pykmip
+
+  golang_reports:
+    image: golang:bullseye
+    command: >
+      /bin/sh -c " mkdir -p /gocoverdir/reports; chmod -R 777 /gocoverdir/reports; exit 0; "  
+    volumes:
+      - .:/test
+      - gocoverdir:/gocoverdir
 
 networks:
   test:
@@ -141,3 +150,5 @@ volumes:
     name: fs
   keytabs:
     name: keytabs
+  gocoverdir:
+    name: gocoverdir

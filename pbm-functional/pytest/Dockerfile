@@ -26,17 +26,18 @@ FROM pykmip/local AS pykmip
 FROM golang:$GO_VER AS builder
 ARG PBM_BRANCH=dev
 ARG PR_NUMBER
+ARG MAKE_TARGET=build
 WORKDIR /
 RUN mkdir -p /pbm-old && mkdir -p /pbm-new && \
     apt update && apt -y install gcc libgssapi-krb5-2 libkrb5-dev libsasl2-modules-gssapi-mit && \
     git clone https://github.com/percona/percona-backup-mongodb.git && cd percona-backup-mongodb && \
     if [ -n "$PR_NUMBER" ]; then git fetch origin pull/$PR_NUMBER/head:CURRENT_PR; PBM_BRANCH=CURRENT_PR; fi && \
     git checkout $PBM_BRANCH && \
-    make build && cp -rpf bin/* /pbm-new/ && rm -rf bin && \
+    make $MAKE_TARGET && cp -rpf bin/* /pbm-new/ && rm -rf bin && \
     git reset --hard && \
     git branch -r | grep release | sed 's/origin\///'| grep -v $PBM_BRANCH | sort --version-sort | tail -1 | xargs git checkout && \
     git pull && \
-    make build && cp -rpf bin/* /pbm-old/ && rm -rf bin 
+    make $MAKE_TARGET && cp -rpf bin/* /pbm-old/ && rm -rf bin 
 
 FROM $PSMDB
 USER root
