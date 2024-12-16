@@ -155,8 +155,8 @@ def test_disabled_cli_PBM_T260(start_cluster,cluster,command):
 @pytest.mark.timeout(900,func_only=True)
 @pytest.mark.parametrize('restore_ns',['sharded','unsharded'])
 @pytest.mark.parametrize('restore_type',['base','pitr'])
-def test_logical_selective_PBM_T259(start_cluster,cluster,restore_ns,restore_type):
-    pytest.skip("Not implemented")
+@pytest.mark.parametrize('backup_type',['full','part'])
+def test_load_selective_PBM_T259(start_cluster,cluster,backup_type,restore_type,restore_ns):
     cluster.check_pbm_status()
     client=pymongo.MongoClient(cluster.connection)
     for i in range(600):
@@ -170,14 +170,17 @@ def test_logical_selective_PBM_T259(start_cluster,cluster,restore_ns,restore_typ
         collection = 'test1'
         empty_collection = 'test'
 
-    if restore_type == 'base':
-        backup=cluster.make_backup("logical --ns=test." + collection)
+    backup = cluster.make_backup("logical")
+
+    if backup_type == 'part':
+       backup = cluster.make_backup("logical --ns=test." + collection)
+       restore = backup
     else:
-        backup = cluster.make_backup("logical")
+       restore = backup + ' --ns=test.' + collection
 
     if restore_type == 'base':
         pymongo.MongoClient(cluster.connection).drop_database('test')
-        cluster.make_restore(backup,restart_cluster=False,check_pbm_status=True,make_resync=False)
+        cluster.make_restore(restore,restart_cluster=False,check_pbm_status=True,make_resync=False)
         assert pymongo.MongoClient(cluster.connection)["test"][collection].count_documents({}) == 600
         assert pymongo.MongoClient(cluster.connection)["test"][empty_collection].count_documents({}) == 0
     else:
@@ -189,9 +192,9 @@ def test_logical_selective_PBM_T259(start_cluster,cluster,restore_ns,restore_typ
         time.sleep(10)
         pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
         Cluster.log("Time for PITR is: " + pitr)
-        pitr_backup="--time=" + pitr + " --ns=test." + collection
-        time.sleep(60)
+        cluster.disable_pitr(pitr)
+        restore = " --base-snapshot=" + restore + " --time=" + pitr
         pymongo.MongoClient(cluster.connection).drop_database('test')
-        cluster.make_restore(backup,restart_cluster=False,check_pbm_status=True,make_resync=False)
+        cluster.make_restore(restore,restart_cluster=False,check_pbm_status=True,make_resync=False)
         assert pymongo.MongoClient(cluster.connection)["test"][collection].count_documents({}) == 1200
         assert pymongo.MongoClient(cluster.connection)["test"][empty_collection].count_documents({}) == 0
