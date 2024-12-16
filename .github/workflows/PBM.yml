@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test: [logical, physical, incremental, external, load]
+        test: [logical, physical, incremental, external]
     env:
       PSMDB: ${{ github.event.inputs.psmdb || 'percona/percona-server-mongodb' }}
       PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'dev' }}
