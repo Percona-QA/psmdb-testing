@@ -263,8 +263,9 @@ class Cluster:
                     detach=True,
                     network='test',
                     environment=["PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
-                                 "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + self.mongod_extra_args],
-                    volumes=["fs:/backups","keytabs:/keytabs"]
+                                 "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + self.mongod_extra_args,
+                                 "GOCOVERDIR=/gocoverdir/reports"],
+                    volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
                 )
                 if "arbiterOnly" in host:
                     if host['arbiterOnly']:
@@ -288,8 +289,9 @@ class Cluster:
                         detach=True,
                         network='test',
                         environment=["PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
-                                     "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + self.mongod_extra_args, "KRB5_TRACE=/dev/stderr"],
-                        volumes=["fs:/backups","keytabs:/keytabs"]
+                                     "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + self.mongod_extra_args, "KRB5_TRACE=/dev/stderr",
+                                     "GOCOVERDIR=/gocoverdir/reports"],
+                        volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
                     )
                     if 'arbiterOnly' in host:
                         if host['arbiterOnly']:
@@ -311,8 +313,9 @@ class Cluster:
                     network='test',
                     environment=["PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
-                                 self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + self.mongod_extra_args],
-                    volumes=["fs:/backups","keytabs:/keytabs"]
+                                 self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + self.mongod_extra_args,
+                                 "GOCOVERDIR=/gocoverdir/reports"],
+                    volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
                 )
                 if "arbiterOnly" in host:
                     if host['arbiterOnly']:
