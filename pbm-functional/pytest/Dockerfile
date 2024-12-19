@@ -41,8 +41,9 @@ RUN mkdir -p /pbm-old && mkdir -p /pbm-new && \
 
 FROM $PSMDB
 USER root
-RUN microdnf install -y yum && yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm -y && yum install -y cyrus-sasl-gssapi supervisor jq 
-RUN mkdir -p /pbm-old && mkdir -p /pbm-new && mkdir /etc/pykmip && mkdir /etc/vault && mkdir /etc/x509 && \
+RUN microdnf install -y yum || true
+RUN yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm -y && yum install -y cyrus-sasl-gssapi supervisor jq && \
+    mkdir -p /pbm-old && mkdir -p /pbm-new && mkdir /etc/pykmip && mkdir /etc/vault && mkdir /etc/x509 && \
     VERSION=$(mongod --version | tail -n +2 | sed 's|Build Info: ||' | jq -r .version | sed -E 's|-.+||') && \
     ARCH=$(mongod --version | tail -n +2 | sed 's/Build Info: //' | jq -r .environment.distarch)  && \
     if [ $ARCH == x86_64 ]; then curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-$VERSION.tgz || true; fi && \
