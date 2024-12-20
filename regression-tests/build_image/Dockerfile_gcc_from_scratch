@@ -4,7 +4,7 @@ ARG toolchain_version=v4
 RUN set -ex; \
     if [ -f "/usr/bin/yum" ] ; \
     then \
-        yum -y update && yum install -y wget curl file glibc-devel gmp-devel mpfr-devel libmpc-devel gcc gcc-c++ bzip2 bzip2-devel openssl-devel zlib-devel libffi-devel xz-devel make tzdata ; \
+        yum -y update && yum install -y --allowerasing wget curl file glibc-devel gmp-devel mpfr-devel libmpc-devel gcc gcc-c++ bzip2 bzip2-devel openssl-devel zlib-devel libffi-devel xz-devel make tzdata ; \
     else \
         apt-get update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl file libgmp-dev libmpfr-dev libmpc-dev gcc g++ bzip2 libbz2-dev libssl-dev zlib1g-dev libreadline-dev libffi-dev make tzdata ; \
     fi
@@ -45,7 +45,7 @@ ARG psm_release=1
 ARG repo=https://github.com/percona/percona-server-mongodb.git
 RUN set -ex; \
     if [ -f "/usr/bin/yum" ] ; then \
-        yum -y update && yum install -y wget git curl cmake lld binutils glibc-devel tzdata; \
+        yum -y update && yum install -y --allowerasing wget git curl cmake lld binutils glibc-devel tzdata; \
     else \
         apt-get update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl git cmake binutils lld tzdata; \
     fi
@@ -123,3 +123,4 @@ ENV PORTABLE=1
 ENV USE_SSE=1
 ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/resmoke2junit.py .
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN useradd -u 1001 -r -g 0 -m -s /sbin/nologin -c "Default Application User" mongodb || true 
