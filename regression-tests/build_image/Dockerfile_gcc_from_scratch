@@ -68,6 +68,7 @@ ENV POETRY_VIRTUALENVS_CREATE=false
 ENV POETRY_INSTALLER_MAX_WORKERS=10
 ENV GLIBC_TUNABLES=glibc.pthread.rseq=0
 RUN set -ex; \
+    pip install --upgrade pip; \
     VER=$(echo $psm_ver | cut -d"." -f1) && \
     if [ $VER -ge 8 ]; then \
         pip install 'poetry==1.5.1' 'pyproject-hooks==1.0.0' && \
