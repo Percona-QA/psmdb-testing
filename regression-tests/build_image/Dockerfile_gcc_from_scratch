@@ -78,6 +78,7 @@ RUN set -ex; \
         done; \
     else \
         pip install --upgrade PyYAML==5.3.1 && \
+        pip install --upgrade referencing==0.35.1 && \
         pip install -r etc/pip/dev-requirements.txt; \        
     fi && echo $PATH
 RUN set -ex; \
