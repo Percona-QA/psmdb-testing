@@ -68,6 +68,7 @@ ENV POETRY_VIRTUALENVS_CREATE=false
 ENV POETRY_INSTALLER_MAX_WORKERS=10
 ENV GLIBC_TUNABLES=glibc.pthread.rseq=0
 RUN set -ex; \
+    pip install --upgrade pip; \
     VER=$(echo $psm_ver | cut -d"." -f1) && \
     if [ $VER -ge 8 ]; then \
         pip install 'poetry==1.5.1' 'pyproject-hooks==1.0.0' && \
@@ -77,6 +78,7 @@ RUN set -ex; \
         done; \
     else \
         pip install --upgrade PyYAML==5.3.1 && \
+        pip install --upgrade referencing==0.35.1 && \
         pip install -r etc/pip/dev-requirements.txt; \        
     fi && echo $PATH
 RUN set -ex; \
@@ -93,7 +95,7 @@ RUN cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
     mkdir -p /opt/aws && \
     cd aws-sdk-cpp && git checkout $AWS_VERSION && git submodule update --init --recursive && \
     mkdir build && cd build && \
-    cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="$AWS_LIBS" && \
+    cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="$AWS_LIBS" -DAUTORUN_UNIT_TESTS=OFF && \
     make install && cd /opt && rm -rf aws-sdk-cpp
 RUN /usr/bin/echo -e "\n\
 CC = \"/opt/gcc/bin/gcc\"\n\
