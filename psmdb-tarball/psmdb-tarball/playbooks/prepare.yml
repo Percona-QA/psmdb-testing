@@ -97,6 +97,7 @@
       - gcc-c++
       - git
       - make
+      - openssl
       - openssl-devel
       - zlib-devel
       - python3-pip
