@@ -64,6 +64,32 @@
       - unzip
     when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8"
 
+  - name: install necessary rpm packages for AL
+    yum:
+      name: "{{ packages }}"
+      state: latest
+    vars:
+      packages:
+      - iproute
+      - tar
+      - bzip2-devel
+      - bzip2-libs
+      - gcc
+      - gcc-c++
+      - git
+      - make
+      - openssl
+      - openssl-devel
+      - zlib-devel
+      - python3-pip
+      - python3-devel
+      - python3-ldap
+      - psmisc
+      - libffi-devel
+      - xz-devel
+      - unzip
+    when: ansible_distribution == "Amazon"
+
   - name: install necessary rpm packages for RHEL9
     yum:
       name: "{{ packages }}"

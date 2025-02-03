@@ -1,49 +1,36 @@
 ---
-- set_fact:
-    tarball_ol9: "{{ lookup('env', 'TARBALL_OL9') | default('https://downloads.percona.com/downloads/percona-server-mongodb-5.0/percona-server-mongodb-5.0.13-11/binary/tarball/percona-server-mongodb-5.0.13-11-x86_64.glibc2.17-minimal.tar.gz', true) }}"
-
 - name: Get mongodb version
   set_fact:
-    mongodb_ver: "{{ tarball_ol9 | regex_search('mongodb-pro-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+    mongodb_ver: "{{ lookup('env', 'PSMDB_VERSION') }}"
 
 - name: Get git repo branch
   set_fact:
-    repo_branch: "{{ tarball_ol9 | regex_search('mongodb-pro-([0-9]+\\.[0-9]+)', '\\1') }}"
+    repo_branch: "{{ mongodb_ver | regex_search('^([0-9]+\\.[0-9]+)', '\\1') }}"
+    minor_version: "{{ mongodb_ver.split('-')[0] }}"
+
+- name: Detect OS
+  set_fact:
+    os: "{{ item }}"
+  loop:
+    - ol8
+    - ol9
+    - ol2023
+    - jammy
+    - noble
+    - bookworm
+  when:
+    - ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "22" and item == "jammy") or
+      ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24" and item == "noble") or
+      ( ansible_distribution == "Debian" and ansible_distribution_major_version == "12" and item == "bookworm") or
+      ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and item == "ol8") or
+      ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "9" and item == "ol9") or
+      ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "2023" and item == "ol2023")
 
 - name: Copy tarball
   copy:
-    src: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.deb12.tar.gz
+    src: /tmp/percona-server-mongodb-pro-{{mongodb_ver}}-x86_64.{{ os }}.tar.gz
     dest: /tmp/percona-server-mongodb.tar.gz
     mode: '0644'
-  when: ansible_distribution == "Debian" and ansible_distribution_major_version == "12"
-
-- name: Copy tarball
-  copy:
-    src: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.ol8.tar.gz
-    dest: /tmp/percona-server-mongodb.tar.gz
-    mode: '0644'
-  when: ansible_distribution == "RedHat" and ansible_distribution_major_version == "8"
-
-- name: Copy tarball
-  copy:
-    src: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.ol9.tar.gz
-    dest: /tmp/percona-server-mongodb.tar.gz
-    mode: '0644'
-  when: ansible_distribution == "RedHat" and ansible_distribution_major_version == "9"
-
-- name: Copy tarball
-  copy:
-    src: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.jammy.tar.gz
-    dest: /tmp/percona-server-mongodb.tar.gz
-    mode: '0644'
-  when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "22"
-
-- name: Copy tarball
-  copy:
-    src: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}.noble.tar.gz
-    dest: /tmp/percona-server-mongodb.tar.gz
-    mode: '0644'
-  when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24"
 
 - name: Unpack new tarball
   unarchive:
@@ -126,7 +113,7 @@
     name:
       - poetry==1.5.1
       - pyproject-hooks==1.0.0
-    state: present    
+    state: present
     virtualenv: /opt/venv
   when: repo_branch[0] | float >= 8.0
 
@@ -137,9 +124,9 @@
   register: result
   until: result.rc == 0
   args:
-    chdir: /percona-server-mongodb  
+    chdir: /percona-server-mongodb
   environment:
-    POETRY_VIRTUALENVS_CREATE: false    
+    POETRY_VIRTUALENVS_CREATE: false
   when: repo_branch[0] | float >= 8.0
 
 - name: Fix files permissions
@@ -174,7 +161,7 @@
 - name: Add mongo version
   lineinfile:
     path: /percona-server-mongodb/.resmoke_mongo_version.yml
-    line: "mongo_version: {{mongodb_ver[0]}}"
+    line: "mongo_version: {{ minor_version }}"
     create: yes
 
 #- name: Setup multiversion
