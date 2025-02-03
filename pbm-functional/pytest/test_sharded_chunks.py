@@ -45,15 +45,11 @@ def start_cluster(cluster,mongod_version,request):
         result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none --out json")
         assert result.rc == 0
         Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
-#        if version.parse(mongod_version) >= version.parse("7.0.0"):
-#            Cluster.log("Set autoMergerIntervalSecs to 30 sec")
-#            result = pymongo.MongoClient('mongodb://root:root@rscfg01:27017?authSource=admin&replicaSet=rscfg').admin.command( { "setParameter": 1, "autoMergerIntervalSecs": 30 } )
-#            print(result)
         client=pymongo.MongoClient(cluster.connection)
         client.admin.command("enableSharding", "test")
         client.admin.command("shardCollection", "test.test", key={"_id": 1})
-        Cluster.log("Set chunksize to 10Mb")
-        result = client['config']['settings'].update_one({ '_id': 'chunksize' },{ "$set": { '_id': 'chunksize', 'value': 10 } },upsert=True)
+        Cluster.log("Set chunksize to 16Mb")
+        result = client['config']['settings'].update_one({ '_id': 'chunksize' }, { "$set": { '_id': 'chunksize', 'value': 16 }}, upsert=True)
         print(result)
         yield True
 
@@ -62,14 +58,79 @@ def start_cluster(cluster,mongod_version,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.parametrize('backup_t',['logic','phys'])
 @pytest.mark.timeout(600,func_only=True)
-def test_load_pitr(start_cluster,cluster,backup_t):
+def test_load_merge_chunks_PBM_T287(start_cluster,cluster,mongod_version):
+    if version.parse(mongod_version) < version.parse("7.0.0"):
+        pytest.skip("Unsupported version for autoMerger")
+    def insert_docs():
+        client=pymongo.MongoClient(cluster.connection)
+        timeout = time.time() + 60
+        while True:
+            id = 'user' + str(random.randint(10**5,10**6-1))
+            data = random.randbytes(10*1024)
+            client['test']['test'].update_one({ '_id': id }, { "$set": { 'data': data}}, upsert=True)
+            if time.time() > timeout:
+                break
+
+    Cluster.log("Set minSnapshotHistoryWindowInSeconds and transactionLifetimeLimitSeconds to 10 sec")
+    for conn in ['rscfg','rs1','rs2','rs3']:
+        result = pymongo.MongoClient('mongodb://root:root@'+conn+'01:27017?authSource=admin&replicaSet='+conn).admin.command( { "setParameter": 1, "transactionLifetimeLimitSeconds": 10 } )
+        result = pymongo.MongoClient('mongodb://root:root@'+conn+'01:27017?authSource=admin&replicaSet='+conn).admin.command( { "setParameter": 1, "minSnapshotHistoryWindowInSeconds": 10 } )
+        print(result)
+    Cluster.log("Set autoMergerIntervalSecs to 10 sec")
+    result = pymongo.MongoClient('mongodb://root:root@rscfg01:27017?authSource=admin&replicaSet=rscfg').admin.command( { "setParameter": 1, "autoMergerIntervalSecs": 10 } )
+    print(result)
+
+    threads = 100
+    Cluster.log("Start inserting docs in the background with " + str(threads) + " threads ")
+    background_insert = [None] * threads
+    for i in range(threads):
+        background_insert[i] = threading.Thread(target=insert_docs)
+        background_insert[i].start()
+
+    time.sleep(5)
+    cluster.check_pbm_status()
+    cluster.make_backup('logical')
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
+    time.sleep(10)
+    expected_docs_count_pitr = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
+    Cluster.log("Expected count documents for PITR: " + str(expected_docs_count_pitr))
+    time.sleep(5)
+    Cluster.log("Check chunks distribution during PITR")
+    client=pymongo.MongoClient(cluster.connection)
+    for chunks in client['config']['chunks'].find():
+        print(chunks)
+    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    backup= "--time=" + pitr
+    Cluster.log("Time for PITR is: " + pitr)
+    Cluster.log("Wait for background threads are finished")
+    for i in range(threads):
+        background_insert[i].join()
+    Cluster.log("Background threads are finished")
+
+    time.sleep(10)
+    Cluster.log("Check chunks distribution before the restore")
+    client=pymongo.MongoClient(cluster.connection)
+    for chunks in client['config']['chunks'].find():
+        print(chunks)
+    cluster.make_restore(backup,check_pbm_status=True)
+
+    try:
+        actual_docs_count = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
+        assert actual_docs_count >= expected_docs_count_pitr
+    except pymongo.errors.AutoReconnect as e:
+        mongos_logs = docker.from_env().containers.get('mongos').logs(tail=100).decode("utf-8", errors="replace")
+        assert False, "Mongos failure - pymongo assertion error: " + str(e) + "\n\nMongos logs:\n" + mongos_logs
+    assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
+    Cluster.log("Finished successfully")
+
+@pytest.mark.parametrize('backup_t',['logic_restart','logic_norestart','phys'])
+@pytest.mark.timeout(600,func_only=True)
+def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster,backup_t):
     def insert_docs():
         client=pymongo.MongoClient(cluster.connection)
         timeout = time.time() + 90
         while True:
-            #simulate the data produced by YCSB
             id = 'user' + str(random.randint(10**12,10**13-1))
             data = random.randbytes(10*1024)
             client['test']['test'].insert_one({'_id':id,'data': data})
@@ -120,7 +181,7 @@ def test_load_pitr(start_cluster,cluster,backup_t):
     total_docs_count = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
     Cluster.log("Total count documents: " + str(total_docs_count))
 
-    restart = True if backup_type == 'physical' else False
+    restart = True if backup_type == 'logic_norestart' else False
     cluster.make_restore(backup,restart_cluster=restart,check_pbm_status=True)
 
     try:
@@ -128,15 +189,15 @@ def test_load_pitr(start_cluster,cluster,backup_t):
         assert actual_docs_count >= expected_docs_count_pitr
     except pymongo.errors.AutoReconnect as e:
         mongos_logs = docker.from_env().containers.get('mongos').logs(tail=100).decode("utf-8", errors="replace")
-        assert False, "Pymongo failure\n:" + str(e) + "\n\nMongos logs:\n" + mongos_logs
+        assert False, "Mongos failure - pymongo assertion error: " + str(e) + "\n\nMongos logs:\n" + mongos_logs
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
 
-@pytest.mark.parametrize('restart_after_restore',[True,False])
-@pytest.mark.parametrize('restore_to_fresh_cluster',[True,False])
+@pytest.mark.parametrize('cluster_state',['same_cluster','new_cluster'])
+@pytest.mark.parametrize('restart_cluster',['restart_after_restore','do_not_restart_after_restore'])
 @pytest.mark.timeout(600,func_only=True)
-def test_load_base(start_cluster,cluster,restart_after_restore,restore_to_fresh_cluster):
+def test_load_chunks_migration_base_PBM_T285(start_cluster,cluster,cluster_state,restart_cluster):
     def insert_docs():
         client=pymongo.MongoClient(cluster.connection)
         timeout = time.time() + 60
@@ -172,7 +233,7 @@ def test_load_base(start_cluster,cluster,restart_after_restore,restore_to_fresh_
     Cluster.log("Background threads are finished")
 
     time.sleep(5)
-    if restore_to_fresh_cluster:
+    if cluster_state == 'new_cluster':
         cluster.destroy()
         cluster.create()
         cluster.setup_pbm()
@@ -188,12 +249,13 @@ def test_load_base(start_cluster,cluster,restart_after_restore,restore_to_fresh_
         total_docs_count = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
         Cluster.log("Total count documents: " + str(total_docs_count))
 
-    cluster.make_restore(backup,restart_cluster=restart_after_restore,check_pbm_status=True)
+    restart = True if restart_cluster == 'restart_after_restore' else False
+    cluster.make_restore(backup,restart_cluster=restart,check_pbm_status=True)
     try:
         actual_docs_count = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
         assert actual_docs_count <= expected_docs_count
     except pymongo.errors.AutoReconnect as e:
         mongos_logs = docker.from_env().containers.get('mongos').logs(tail=100).decode("utf-8", errors="replace")
-        assert False, "Pymongo failure\n:" + str(e) + "\n\nMongos logs:\n" + mongos_logs
+        assert False, "Mongos failure - pymongo assertion error: " + str(e) + "\n\nMongos logs:\n" + mongos_logs
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
