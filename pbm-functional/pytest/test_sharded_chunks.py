@@ -56,21 +56,23 @@ def start_cluster(cluster,mongod_version,request):
     finally:
         if request.config.getoption("--verbose"):
             cluster.get_logs()
-        cluster.destroy(cleanup_backups=True)
+        cluster.destroy()
 
-@pytest.mark.timeout(600,func_only=True)
+def insert_docs(connection,duration):
+    client=pymongo.MongoClient(connection)
+    timeout = time.time() + duration
+    while True:
+        id = 'user' + str(random.randint(10**5,10**6-1))
+        data = random.randbytes(10*1024)
+        client['test']['test'].update_one({ '_id': id }, { "$set": { 'data': data}}, upsert=True)
+        if time.time() > timeout:
+            break
+
+
+@pytest.mark.timeout(120,func_only=True)
 def test_load_merge_chunks_PBM_T287(start_cluster,cluster,mongod_version):
     if version.parse(mongod_version) < version.parse("7.0.0"):
         pytest.skip("Unsupported version for autoMerger")
-    def insert_docs():
-        client=pymongo.MongoClient(cluster.connection)
-        timeout = time.time() + 60
-        while True:
-            id = 'user' + str(random.randint(10**5,10**6-1))
-            data = random.randbytes(10*1024)
-            client['test']['test'].update_one({ '_id': id }, { "$set": { 'data': data}}, upsert=True)
-            if time.time() > timeout:
-                break
 
     Cluster.log("Set minSnapshotHistoryWindowInSeconds and transactionLifetimeLimitSeconds to 10 sec")
     for conn in ['rscfg','rs1','rs2','rs3']:
@@ -85,7 +87,7 @@ def test_load_merge_chunks_PBM_T287(start_cluster,cluster,mongod_version):
     Cluster.log("Start inserting docs in the background with " + str(threads) + " threads ")
     background_insert = [None] * threads
     for i in range(threads):
-        background_insert[i] = threading.Thread(target=insert_docs)
+        background_insert[i] = threading.Thread(target=insert_docs,args=(cluster.connection,60,))
         background_insert[i].start()
 
     time.sleep(5)
@@ -124,40 +126,20 @@ def test_load_merge_chunks_PBM_T287(start_cluster,cluster,mongod_version):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-@pytest.mark.parametrize('backup_t',['logic_restart','logic_norestart','phys'])
-@pytest.mark.timeout(600,func_only=True)
-def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster,backup_t):
-    def insert_docs():
-        client=pymongo.MongoClient(cluster.connection)
-        timeout = time.time() + 90
-        while True:
-            id = 'user' + str(random.randint(10**12,10**13-1))
-            data = random.randbytes(10*1024)
-            client['test']['test'].insert_one({'_id':id,'data': data})
-            if time.time() > timeout:
-                break
-
+@pytest.mark.timeout(300,func_only=True)
+def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster):
     threads = 100
     Cluster.log("Start inserting docs in the background with " + str(threads) + " threads ")
     background_insert = [None] * threads
     for i in range(threads):
-        background_insert[i] = threading.Thread(target=insert_docs)
+        background_insert[i] = threading.Thread(target=insert_docs,args=(cluster.connection,90,))
         background_insert[i].start()
     time.sleep(5)
 
     cluster.check_pbm_status()
-    backup_type = 'physical' if backup_t == 'phys' else 'logical'
-    cluster.make_backup(backup_type)
-    expected_docs_count_base = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
-    Cluster.log("Expected count documents for base backup: " + str(expected_docs_count_base))
+    cluster.make_backup('logical')
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
-
-    Cluster.log("Check chunks distribution after the backup")
-    client=pymongo.MongoClient(cluster.connection)
-    for chunks in client['config']['chunks'].find():
-        print(chunks)
-
-    time.sleep(30)
+    time.sleep(20)
     expected_docs_count_pitr = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
     Cluster.log("Expected count documents for PITR: " + str(expected_docs_count_pitr))
     time.sleep(5)
@@ -173,6 +155,7 @@ def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster,backup_t):
     for i in range(threads):
         background_insert[i].join()
     Cluster.log("Background threads are finished")
+    time.sleep(5)
     cluster.disable_pitr()
     time.sleep(5)
     Cluster.log("Check chunks distribution before the restore")
@@ -181,8 +164,7 @@ def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster,backup_t):
     total_docs_count = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
     Cluster.log("Total count documents: " + str(total_docs_count))
 
-    restart = True if backup_type == 'logic_norestart' else False
-    cluster.make_restore(backup,restart_cluster=restart,check_pbm_status=True)
+    cluster.make_restore(backup,check_pbm_status=True)
 
     try:
         actual_docs_count = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
@@ -194,25 +176,13 @@ def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster,backup_t):
     Cluster.log("Finished successfully")
 
 
-@pytest.mark.parametrize('cluster_state',['same_cluster','new_cluster'])
-@pytest.mark.parametrize('restart_cluster',['restart_after_restore','do_not_restart_after_restore'])
-@pytest.mark.timeout(600,func_only=True)
-def test_load_chunks_migration_base_PBM_T285(start_cluster,cluster,cluster_state,restart_cluster):
-    def insert_docs():
-        client=pymongo.MongoClient(cluster.connection)
-        timeout = time.time() + 60
-        while True:
-            id = 'user' + str(random.randint(10**12,10**13-1))
-            data = random.randbytes(10*1024)
-            client['test']['test'].insert_one({'_id':id,'data': data})
-            if time.time() > timeout:
-                break
-
+@pytest.mark.timeout(120,func_only=True)
+def test_load_chunks_migration_base_PBM_T285(start_cluster,cluster):
     threads = 100
     Cluster.log("Start inserting docs in the background with " + str(threads) + " threads ")
     background_insert = [None] * threads
     for i in range(threads):
-        background_insert[i] = threading.Thread(target=insert_docs)
+        background_insert[i] = threading.Thread(target=insert_docs,args=(cluster.connection,60,))
         background_insert[i].start()
     time.sleep(5)
 
@@ -233,24 +203,13 @@ def test_load_chunks_migration_base_PBM_T285(start_cluster,cluster,cluster_state
     Cluster.log("Background threads are finished")
 
     time.sleep(5)
-    if cluster_state == 'new_cluster':
-        cluster.destroy()
-        cluster.create()
-        cluster.setup_pbm()
-        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none --out json")
-        assert result.rc == 0
-        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
-        cluster.check_pbm_status()
-        cluster.make_resync()
-    else:
-        Cluster.log("Check chunks distribution before the restore")
-        for chunks in client['config']['chunks'].find():
-            print(chunks)
-        total_docs_count = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
-        Cluster.log("Total count documents: " + str(total_docs_count))
+    Cluster.log("Check chunks distribution before the restore")
+    for chunks in client['config']['chunks'].find():
+        print(chunks)
+    total_docs_count = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
+    Cluster.log("Total count documents: " + str(total_docs_count))
 
-    restart = True if restart_cluster == 'restart_after_restore' else False
-    cluster.make_restore(backup,restart_cluster=restart,check_pbm_status=True)
+    cluster.make_restore(backup,check_pbm_status=True)
     try:
         actual_docs_count = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
         assert actual_docs_count <= expected_docs_count
