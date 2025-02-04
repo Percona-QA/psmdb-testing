@@ -17,9 +17,9 @@
     url: http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-Official
     dest: /tmp/RPM-GPG-KEY-CentOS-Official
   retries: 5
-  delay: 5
+  delay: 10
   register: result
-  until: result.status_code == 200
+  until: result.failed == false
   when: ansible_distribution_major_version == "8"
 
 - name: Import CentOS gpg key
