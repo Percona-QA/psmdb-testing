@@ -50,7 +50,7 @@ def create_index_with_options(connection,option):
 
 @pytest.mark.parametrize("index_option", ["collation","sparse","unique","partialFilterExpression","expireAfterSeconds","min","max","wildcardProjection"])
 @pytest.mark.timeout(300,func_only=True)
-def test_logical_PBM_288(start_cluster,cluster,index_option):
+def test_logical_PBM_T288(start_cluster,cluster,index_option):
     cluster.check_pbm_status()
     index = create_index_with_options(cluster.connection,index_option)
     backup = cluster.make_backup("logical")
