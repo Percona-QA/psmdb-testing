@@ -68,20 +68,20 @@ def insert_docs(connection,duration):
         if time.time() > timeout:
             break
 
-@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.timeout(360,func_only=True)
 def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster):
     threads = 100
     Cluster.log("Start inserting docs in the background with " + str(threads) + " threads ")
     background_insert = [None] * threads
     for i in range(threads):
-        background_insert[i] = threading.Thread(target=insert_docs,args=(cluster.connection,120,))
+        background_insert[i] = threading.Thread(target=insert_docs,args=(cluster.connection,150,))
         background_insert[i].start()
-    time.sleep(20)
+    time.sleep(30)
 
     cluster.check_pbm_status()
     cluster.make_backup('logical')
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
-    time.sleep(20)
+    time.sleep(30)
 
     expected_docs_count_pitr = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
     Cluster.log("Expected count documents for PITR: " + str(expected_docs_count_pitr))
