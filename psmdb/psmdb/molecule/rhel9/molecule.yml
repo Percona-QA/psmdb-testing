@@ -6,7 +6,7 @@ driver:
 platforms:
   - name: rhel9-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
-    image: ami-04a616933df665b44
+    image: "${MOLECULE_RHEL9_AMI:-ami-04a616933df665b44}"
     vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: t3.small
     ssh_user: ec2-user

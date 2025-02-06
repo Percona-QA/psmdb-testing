@@ -10,7 +10,7 @@ platforms:
       - primary
       - mc
     region: us-west-2
-    image: ami-087c2c50437d0b80d
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
     vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ec2-user
@@ -22,7 +22,7 @@ platforms:
       - mongo
       - secondary
     region: us-west-2
-    image: ami-087c2c50437d0b80d
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
     vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ec2-user
@@ -34,7 +34,7 @@ platforms:
       - mongo
       - secondary
     region: us-west-2
-    image: ami-087c2c50437d0b80d
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
     vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ec2-user

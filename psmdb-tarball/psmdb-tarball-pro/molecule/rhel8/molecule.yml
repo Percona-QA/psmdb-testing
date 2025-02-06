@@ -6,7 +6,7 @@ driver:
 platforms:
   - name: rhel8-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
-    image: ami-0eaff9f89a47b28e6
+    image: "${MOLECULE_RHEL8_FIPS_AMI:-ami-0eaff9f89a47b28e6}"
     vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: ${INSTANCE_TYPE:-t2.medium}
     ssh_user: ec2-user
