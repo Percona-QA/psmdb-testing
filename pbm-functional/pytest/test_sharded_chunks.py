@@ -9,15 +9,6 @@ import threading
 
 from datetime import datetime
 from cluster import Cluster
-from packaging import version
-
-@pytest.fixture(scope="package")
-def mongod_version():
-    return docker.from_env().containers.run(
-                    image='replica_member/local',
-                    remove=True,
-                    command='bash -c \'mongod --version | head -n1 | sed "s/db version v//"\''
-          ).decode("utf-8", errors="replace")
 
 @pytest.fixture(scope="package")
 def config():
