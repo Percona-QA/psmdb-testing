@@ -26,7 +26,7 @@ def cluster(config):
     return Cluster(config)
 
 @pytest.fixture(scope="function")
-def start_cluster(cluster,mongod_version,request):
+def start_cluster(cluster,request):
     try:
         cluster.destroy()
         os.chmod("/backups",0o777)
