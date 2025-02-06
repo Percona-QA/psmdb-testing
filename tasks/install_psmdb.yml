@@ -67,7 +67,7 @@
   vars:
     packages:
       - "percona-server-mongodb{{ psmdb_pkg_name_addon }}-debugsource-{{ psmdb_to_test }}"
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and psmdb_mongosh <= "6" and (dbg_packages | default(true) | bool)
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and psmdb_mongosh < "6" and (dbg_packages | default(true) | bool)
 
 - name: install psmdb debug rpm packages
   yum:
@@ -78,7 +78,18 @@
       - "percona-server-mongodb-tools-debuginfo-{{ psmdb_to_test }}"
       - "percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}-debuginfo-{{ psmdb_to_test }}"
       - "percona-server-mongodb-server{{ psmdb_pkg_name_addon }}-debuginfo-{{ psmdb_to_test }}"
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8" and psmdb_mongosh >= "7" and (dbg_packages | default(true) | bool)
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8" and psmdb_mongosh >= "6" and (dbg_packages | default(true) | bool)
+
+- name: install psmdb debug rpm packages
+  yum:
+    name: "{{ packages }}"
+    state: latest
+  vars:
+    packages:
+      - "percona-server-mongodb-tools-debuginfo-{{ psmdb_to_test }}"
+      - "percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}-debuginfo-{{ psmdb_to_test }}"
+      - "percona-server-mongodb-server{{ psmdb_pkg_name_addon }}-debuginfo-{{ psmdb_to_test }}"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "2023" and (dbg_packages | default(true) | bool)
 
 - name: install mongosh deb package
   apt:
