@@ -6,7 +6,7 @@ driver:
 platforms:
   - name: ujammy-pro-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
-    image: ami-058168290d30b9c52
+    image: "${MOLECULE_UJAMMY_PRO_AMI:-ami-058168290d30b9c52}"
     vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: t3.large
     ssh_user: ubuntu

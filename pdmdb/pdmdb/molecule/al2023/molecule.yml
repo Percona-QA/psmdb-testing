@@ -6,7 +6,7 @@ driver:
 platforms:
   - name: al2023-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
-    image: ami-0a897ba00eaed7398
+    image: "${MOLECULE_AL2023_AMI:-ami-0a897ba00eaed7398}"
     vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: t2.micro
     ssh_user: ec2-user
