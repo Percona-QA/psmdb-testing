@@ -1,0 +1,32 @@
+services:
+  test:
+    build:
+      dockerfile: ./Dockerfile-testinfra
+      context: .
+    volumes:
+      - .:/test
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - MONGO_VERSION=${MONGO_VERSION:-}
+    container_name: test
+    hostname: test
+    networks:
+      - test
+
+  mlink:
+    image: mlink/local
+    build:
+      dockerfile: ./Dockerfile-mlink
+      context: .
+    container_name: mlink
+    hostname: mlink
+    networks:
+      - test
+
+networks:
+  test:
+    name: test
+
+volumes:
+  mongo-keyfile-vol:
+    name: mongo-keyfile-vol
