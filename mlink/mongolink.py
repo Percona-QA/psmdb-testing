@@ -1,5 +1,6 @@
 import docker
 import json
+import time
 from cluster import Cluster
 
 # class Mongolink for creating/manipulating with single mongolink instance
@@ -35,7 +36,7 @@ class Mongolink:
             name=self.name,
             detach=True,
             network="test",
-            command=f"mongolink -source {self.src} -target {self.dst} -log-level=debug"
+            command=f"mongolink --source {self.src} --target {self.dst} --log-level=debug"
         )
         Cluster.log(f"Mlink '{self.name}' started successfully")
 
@@ -76,9 +77,35 @@ class Mongolink:
 
 
     def finalize(self):
-        try:
-            exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/finalize -d '{}'")
+        max_wait_time = 30
+        start_time = time.time()
 
+        try:
+            while time.time() - start_time < max_wait_time:
+                exec_result = self.container.exec_run("curl -s -X GET http://localhost:2242/status -d '{}'")
+                response = exec_result.output.decode("utf-8").strip()
+                status_code = exec_result.exit_code
+
+                if status_code == 0 and response:
+                    try:
+                        json_response = json.loads(response)
+
+                        if json_response.get("ok") is True:
+                            if json_response.get("finalizable") is True:
+                                Cluster.log("Sync is ready to be finalized")
+                                break
+                            else:
+                                Cluster.log("Sync is NOT ready to be finalized, waiting...")
+                        else:
+                            Cluster.log("Failed to fetch mlink status")
+                            return False
+
+                    except json.JSONDecodeError:
+                        Cluster.log("Received invalid JSON response")
+                        return False
+                time.sleep(5)
+
+            exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/finalize -d '{}'")
             response = exec_result.output.decode("utf-8").strip()
             status_code = exec_result.exit_code
 
@@ -106,7 +133,7 @@ class Mongolink:
 
     def logs(self):
         try:
-            self.container.logs(tail=50).decode("utf-8").strip()
+            logs = self.container.logs(tail=50).decode("utf-8").strip()
             return logs if logs else "No logs found."
 
         except docker.errors.NotFound:

@@ -1,13 +1,9 @@
 import pytest
 import pymongo
-import bson
-import testinfra
 import time
-import os
 import docker
-import threading
+import debugpy
 
-from datetime import datetime
 from cluster import Cluster
 from mongolink import Mongolink
 from db_setup import create_all_types_db

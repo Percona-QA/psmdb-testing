@@ -1,8 +1,11 @@
 ## Setup ##
 
 ```
-!!! Copy mlink repo to local folder
-> git clone git@github.com:Percona-Lab/percona-mongolink.git
+Expected location for percona-mongolink to build docker image properly:
+
+|- psmdb-testing
+|  |- mlink
+|- percona-mongolink
 
 docker-compose build``` - build docker images for the tests
 
@@ -15,7 +18,7 @@ Environment variables for  the setup:
 
 ## Run Tests ##
 
-1) ```docker-compose run test pytest test_sharded.py```
+1) ```docker-compose run test pytest test_basic_sync_rs.py -v```
 
 ## Cleanup ##
 
