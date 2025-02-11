@@ -9,7 +9,7 @@ import threading
 
 from datetime import datetime
 from cluster import Cluster
-from cluster import Mongolink
+from mongolink import Mongolink
 from db_setup import create_all_types_db
 
 

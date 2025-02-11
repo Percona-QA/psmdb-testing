@@ -9,7 +9,7 @@ import threading
 
 from datetime import datetime
 from cluster import Cluster
-from cluster import Mongolink
+from mongolink import Mongolink
 
 @pytest.fixture(scope="package")
 def docker_client():
