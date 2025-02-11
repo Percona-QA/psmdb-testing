@@ -1,11 +1,6 @@
-FROM golang:${GO_VERSION:-latest}
-ARG MLINK_BRANCH=main
-ARG PR_NUMBER
-ARG MAKE_TARGET=build
-WORKDIR /
+ARG GO_VERSION=latest
+FROM golang:$GO_VERSION
 COPY percona-mongolink /percona-mongolink
 RUN apt update && apt -y install curl && \
-    cd percona-mongolink && \
-    if [ -n "$PR_NUMBER" ]; then git fetch origin pull/$PR_NUMBER/head:CURRENT_PR; PBM_BRANCH=CURRENT_PR; fi && \
-    git checkout $MLINK_BRANCH && \
+    cd /percona-mongolink && \
     go build -o /usr/bin/mongolink ./cmd/
