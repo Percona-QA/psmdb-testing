@@ -9,6 +9,119 @@ import os
 from datetime import datetime
 import re
 
+# class Mongolink for creating/manipulating with single mongolink instance
+# name = the name of the container
+# src = mongodb uri for -source option
+# dst = mongodb uri for -target option
+
+class Mongolink:
+    def __init__(self, name, src, dst, **kwargs):
+        self.name = name
+        self.src = src
+        self.dst = dst
+        self.mlink_image = kwargs.get('mlink_image', "mlink/local")
+
+    @property
+    def container(self):
+        client = docker.from_env()
+        container = client.containers.get(self.name)
+        return container
+
+    def create(self):
+        try:
+            existing_container = self.container
+            Cluster.log(f"Removing existing mlink container '{self.name}'...")
+            existing_container.remove(force=True)
+        except docker.errors.NotFound:
+            pass
+
+        Cluster.log(f"Starting mlink to sync from '{self.src}' → '{self.dst}'...")
+        client = docker.from_env()
+        container = client.containers.run(
+            image=self.mlink_image,
+            name=self.name,
+            detach=True,
+            network="test",
+            command=f"mongolink -source {self.src} -target {self.dst} -log-level=debug"
+        )
+        Cluster.log(f"Mlink '{self.name}' started successfully")
+
+    def destroy(self):
+        try:
+            self.container.remove(force=True)
+        except docker.errors.NotFound:
+            pass
+
+    def start(self):
+        try:
+            exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/start -d '{}'")
+
+            response = exec_result.output.decode("utf-8").strip()
+            status_code = exec_result.exit_code
+
+            if status_code == 0 and response:
+                try:
+                    json_response = json.loads(response)
+
+                    if json_response.get("ok") is True:
+                        Cluster.log("Sync started successfully")
+                        return True
+
+                    elif json_response.get("ok") is False:
+                        error_msg = json_response.get("error", "Unknown error")
+                        Cluster.log(f"Failed to start sync between src and dst cluster: {error_msg}")
+                        return False
+
+                except json.JSONDecodeError:
+                    Cluster.log("Received invalid JSON response.")
+
+            Cluster.log("Failed to start sync between src and dst cluster")
+            return False
+        except Exception as e:
+            Cluster.log(f"Unexpected error: {e}")
+            return False
+
+
+    def finalize(self):
+        try:
+            exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/finalize -d '{}'")
+
+            response = exec_result.output.decode("utf-8").strip()
+            status_code = exec_result.exit_code
+
+            if status_code == 0 and response:
+                try:
+                    json_response = json.loads(response)
+
+                    if json_response.get("ok") is True:
+                        Cluster.log("Sync finalized successfully")
+                        return True
+
+                    elif json_response.get("ok") is False:
+                        error_msg = json_response.get("error", "Unknown error")
+                        Cluster.log(f"Failed to finalize sync between src and dst cluster: {error_msg}")
+                        return False
+
+                except json.JSONDecodeError:
+                    Cluster.log("Received invalid JSON response.")
+
+            Cluster.log("Failed to finalize sync between src and dst cluster")
+            return False
+        except Exception as e:
+            Cluster.log(f"Unexpected error: {e}")
+            return False
+
+    def logs(self):
+        try:
+            self.container.logs(tail=50).decode("utf-8").strip()
+            return logs if logs else "No logs found."
+
+        except docker.errors.NotFound:
+            return "Error: mlink container not found."
+        except Exception as e:
+            return f"Error fetching logs: {e}"
+
+
 # the structure of the cluster could be one of
 # 1. { _id: "rsname", members: [{host: "host", hidden: boolean, priority: int, arbiterOnly: bool}, ...]} for replicaset
 # https://www.mongodb.com/docs/manual/reference/replica-configuration/#std-label-replica-set-configuration-document
@@ -19,18 +132,12 @@ import re
 # required parameters: are mongos (str), configserver (replicaset), shards (array of replicasets)
 # mongos - hostname for mongos instance
 
-
 class Cluster:
     def __init__(self, config, **kwargs):
         self.config = config
         self.mongod_extra_args = kwargs.get('mongod_extra_args', "")
         self.mongod_datadir = kwargs.get('mongod_datadir', "/data/db")
-        self.mongo_image = os.getenv("MONGO_VERSION")
-        if not self.mongo_image:
-            self.mongo_image = "mongo:6.0"
-        Cluster.log("Using image: " + self.mongo_image)
-        self.volume_name = "mongo-keyfile-vol"
-        self.generate_keyfile_in_volume()
+        self.mongo_image = kwargs.get('mongo_image', "mongodb/local")
 
     @property
     def config(self):
@@ -139,14 +246,14 @@ class Cluster:
     @property
     def connection(self):
         if self.layout == "replicaset":
-            return "mongodb://root:root@" + self.config['members'][0]['host'] + ":27017/"
+            return "mongodb://root:root@" + self.config['members'][0]['host'] + ":27017/?replicaSet=" + self.config['_id']
         else:
             return "mongodb://root:root@" + self.config['mongos'] + ":27017/"
 
     @property
     def pml_connection(self):
         if self.layout == "replicaset":
-            return "mongodb://pml:test1234@" + self.config['members'][0]['host'] + ":27017/"
+            return "mongodb://pml:test1234@" + self.config['members'][0]['host'] + ":27017/?replicaSet=" + self.config['_id']
         else:
             return "mongodb://pml:test1234@" + self.config['mongos'] + ":27017/"
 
@@ -207,29 +314,14 @@ class Cluster:
         if self.layout == "replicaset":
             for host in self.config['members']:
                 Cluster.log("Creating container " + host['host'])
-                cmd = f"mongod --port 27017 --dbpath {self.mongod_datadir} --replSet {self.config['_id']} --keyFile /tmp/keyfile {self.mongod_extra_args}"
+                cmd = f"mongod --port 27017 --bind_ip 0.0.0.0 --dbpath {self.mongod_datadir} --replSet {self.config['_id']} --keyFile /etc/keyfile {self.mongod_extra_args}"
                 docker.from_env().containers.run(
                     image=self.mongo_image,
                     name=host['host'],
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    entrypoint=[
-                        "bash", "-c",
-                        f"""
-                        mkdir -p {self.mongod_datadir} &&
-                        cp /keyfile-vol/keyfile /tmp/keyfile && chmod 400 /tmp/keyfile &&
-                        if [ -f /entrypoint.sh ]; then
-                            exec /entrypoint.sh "$@"
-                        else
-                            chown 999:999 /tmp/keyfile &&
-                            chown -R 999:999 {self.mongod_datadir} &&
-                            exec docker-entrypoint.sh "$@"
-                        fi
-                        """,
-                        "--"],
-                    command=cmd,
-                    volumes={self.volume_name: {"bind": "/keyfile-vol", "mode": "rw"}}
+                    command=cmd
                 )
             time.sleep(5)
             Cluster.setup_replicaset(self.config)
@@ -240,29 +332,14 @@ class Cluster:
                 conn = shard['_id'] + "/"
                 for host in shard['members']:
                     Cluster.log("Creating container " + host['host'])
-                    cmd = f"mongod --port 27017 --dbpath {self.mongod_datadir} --replSet {shard['_id']} --shardsvr --keyFile /tmp/keyfile {self.mongod_extra_args}"
+                    cmd = f"mongod --port 27017 --bind_ip 0.0.0.0 --dbpath {self.mongod_datadir} --replSet {shard['_id']} --shardsvr --keyFile /etc/keyfile {self.mongod_extra_args}"
                     docker.from_env().containers.run(
                         image=self.mongo_image,
                         name=host['host'],
                         hostname=host['host'],
                         detach=True,
                         network='test',
-                        entrypoint=[
-                            "bash", "-c",
-                           f"""
-                            mkdir -p {self.mongod_datadir}
-                            cp /keyfile-vol/keyfile /tmp/keyfile && chmod 400 /tmp/keyfile &&
-                            if [ -f /entrypoint.sh ]; then
-                                exec /entrypoint.sh "$@"
-                            else
-                                chown 999:999 /tmp/keyfile &&
-                                chown -R 999:999 {self.mongod_datadir} &&
-                                exec docker-entrypoint.sh "$@"
-                            fi
-                            """,
-                            "--"],
-                        command=cmd,
-                        volumes={self.volume_name: {"bind": "/keyfile-vol", "mode": "rw"}}
+                        command=cmd
                     )
                     conn = conn + host['host'] + ':27017,'
                 conn = conn[:-1]
@@ -270,29 +347,14 @@ class Cluster:
             conn = self.config['configserver']['_id'] + "/"
             for host in self.config['configserver']['members']:
                 Cluster.log("Creating container " + host['host'])
-                cmd = f"mongod --port 27017 --dbpath {self.mongod_datadir} --replSet {self.config['configserver']['_id']} --configsvr --keyFile /tmp/keyfile {self.mongod_extra_args}"
+                cmd = f"mongod --port 27017 --bind_ip 0.0.0.0 --dbpath {self.mongod_datadir} --replSet {self.config['configserver']['_id']} --configsvr --keyFile /etc/keyfile {self.mongod_extra_args}"
                 docker.from_env().containers.run(
                     image=self.mongo_image,
                     name=host['host'],
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    entrypoint=[
-                        "bash", "-c",
-                        f"""
-                        mkdir -p {self.mongod_datadir}
-                        cp /keyfile-vol/keyfile /tmp/keyfile && chmod 400 /tmp/keyfile &&
-                        if [ -f /entrypoint.sh ]; then
-                            exec /entrypoint.sh "$@"
-                        else
-                            chown 999:999 /tmp/keyfile &&
-                            chown -R 999:999 {self.mongod_datadir} &&
-                            exec docker-entrypoint.sh "$@"
-                        fi
-                        """,
-                        "--"],
-                    command=cmd,
-                    volumes={self.volume_name: {"bind": "/keyfile-vol", "mode": "rw"}}
+                    command=cmd
                 )
                 conn = conn + host['host'] + ':27017,'
             conn = conn[:-1]
@@ -306,22 +368,9 @@ class Cluster:
                 image=self.mongo_image,
                 name=self.config['mongos'],
                 hostname=self.config['mongos'],
-                entrypoint=[
-                    "bash", "-c",
-                    f"""
-                    cp /keyfile-vol/keyfile /tmp/keyfile && chmod 400 /tmp/keyfile &&
-                    if [ -f /entrypoint.sh ]; then
-                        exec /entrypoint.sh "$@"
-                    else
-                        chown 999:999 /tmp/keyfile &&
-                        exec docker-entrypoint.sh "$@"
-                    fi
-                    """,
-                    "--"],
-                command='mongos --keyFile=/tmp/keyfile --configdb ' + configdb + ' --port 27017 --bind_ip 0.0.0.0',
+                command='mongos --keyFile=/etc/keyfile --configdb ' + configdb + ' --port 27017 --bind_ip 0.0.0.0',
                 detach=True,
-                network='test',
-                volumes={self.volume_name: {"bind": "/keyfile-vol", "mode": "rw"}}
+                network='test'
             )
             time.sleep(1)
             Cluster.setup_authorization(self.config['mongos'])
@@ -442,145 +491,6 @@ class Cluster:
     @staticmethod
     def log(*args, **kwargs):
         print("[%s]" % (datetime.now()).strftime('%Y-%m-%dT%H:%M:%S'),*args, **kwargs)
-
-    def generate_keyfile_in_volume(self):
-        client = docker.from_env()
-        try:
-            client.volumes.get(self.volume_name)
-            Cluster.log(f"Volume '{self.volume_name}' already exists.")
-        except docker.errors.NotFound:
-            client.volumes.create(self.volume_name)
-            Cluster.log(f"Volume '{self.volume_name}' created.")
-
-        container = client.containers.run(
-            image="alpine/openssl:latest",
-            name="keyfile-generator",
-            detach=True,
-            volumes={self.volume_name: {"bind": "/keyfile-vol", "mode": "rw"}},
-            entrypoint=["sh", "-c", f"openssl rand -base64 756 > /keyfile-vol/keyfile"]
-        )
-        container.wait()
-        container.remove()
-        Cluster.log(f"Keyfile successfully created")
-
-    @staticmethod
-    def create_mlink(src, dst, container_name="mlink"):
-        client = docker.from_env()
-
-        try:
-            existing_container = client.containers.get(container_name)
-            Cluster.log(f"Removing existing mlink container '{container_name}'...")
-            existing_container.remove(force=True)
-        except docker.errors.NotFound:
-            pass
-
-        Cluster.log(f"Starting mlink to sync from '{src}' → '{dst}'...")
-
-        container = client.containers.run(
-            image="mlink/local",
-            name=container_name,
-            detach=True,
-            network="test",
-            command=f"mongolink -source {src} -target {dst} -log-level=debug"
-        )
-
-        Cluster.log(f"Mlink '{container_name}' started successfully")
-        return container
-
-    @staticmethod
-    def destroy_mlink(image_name="mlink/local"):
-        client = docker.from_env()
-
-        containers = [c for c in client.containers.list(all=True) if c.attrs["Config"]["Image"] == image_name]
-        if not containers:
-            Cluster.log("No running mlink containers found")
-            return
-
-        for container in containers:
-            container.stop()
-            container.remove()
-            Cluster.log("Removed mlink containers")
-
-    @staticmethod
-    def get_mlink_logs(container=None, image_name="mlink/local"):
-        client = docker.from_env()
-        try:
-            if container is None:
-                containers = [c for c in client.containers.list(all=True) if c.attrs["Config"]["Image"] == image_name]
-                if not containers:
-                    return "Error: No running mlink container found."
-                container = containers[0]
-
-            logs = container.logs(tail=50).decode("utf-8").strip()
-            return logs if logs else "No logs found."
-
-        except docker.errors.NotFound:
-            return "Error: mlink container not found."
-        except Exception as e:
-            return f"Error fetching logs: {e}"
-
-
-    @staticmethod
-    def start_mlink_service(container):
-        client = docker.from_env()
-        try:
-            exec_result = container.exec_run("curl -s -X POST http://localhost:2242/start -d '{}'")
-
-            response = exec_result.output.decode("utf-8").strip()
-            status_code = exec_result.exit_code
-
-            if status_code == 0 and response:
-                try:
-                    json_response = json.loads(response)
-
-                    if json_response.get("ok") is True:
-                        Cluster.log("Sync started successfully")
-                        return True
-
-                    elif json_response.get("ok") is False:
-                        error_msg = json_response.get("error", "Unknown error")
-                        Cluster.log(f"Failed to start sync between src and dst cluster: {error_msg}")
-                        return False
-
-                except json.JSONDecodeError:
-                    Cluster.log("Received invalid JSON response.")
-
-            Cluster.log("Failed to start sync between src and dst cluster")
-            return False
-        except Exception as e:
-            Cluster.log(f"Unexpected error: {e}")
-            return False
-
-    @staticmethod
-    def finalize_mlink_service(container):
-        client = docker.from_env()
-        try:
-            exec_result = container.exec_run("curl -s -X POST http://localhost:2242/finalize -d '{}'")
-
-            response = exec_result.output.decode("utf-8").strip()
-            status_code = exec_result.exit_code
-
-            if status_code == 0 and response:
-                try:
-                    json_response = json.loads(response)
-
-                    if json_response.get("ok") is True:
-                        Cluster.log("Sync finalized successfully")
-                        return True
-
-                    elif json_response.get("ok") is False:
-                        error_msg = json_response.get("error", "Unknown error")
-                        Cluster.log(f"Failed to finalize sync between src and dst cluster: {error_msg}")
-                        return False
-
-                except json.JSONDecodeError:
-                    Cluster.log("Received invalid JSON response.")
-
-            Cluster.log("Failed to finalize sync between src and dst cluster")
-            return False
-        except Exception as e:
-            Cluster.log(f"Unexpected error: {e}")
-            return False
 
     @staticmethod
     def compare_database_hashes(db1_container, db2_container):

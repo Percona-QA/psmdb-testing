@@ -9,6 +9,7 @@ import threading
 
 from datetime import datetime
 from cluster import Cluster
+from cluster import Mongolink
 
 @pytest.fixture(scope="package")
 def docker_client():
@@ -42,22 +43,27 @@ def srcCluster(src_config):
 def dstCluster(dst_config):
     return Cluster(dst_config)
 
+@pytest.fixture(scope="package")
+def mlink(srcCluster,dstCluster):
+    return Mongolink('mlink',srcCluster.pml_connection, dstCluster.pml_connection)
+
 @pytest.fixture(scope="function")
-def start_cluster(srcCluster, dstCluster,request):
+def start_cluster(srcCluster, dstCluster, mlink, request):
     try:
         srcCluster.destroy()
         dstCluster.destroy()
         srcCluster.create()
         dstCluster.create()
+        mlink.create()
         yield True
 
     finally:
         srcCluster.destroy()
         dstCluster.destroy()
-        Cluster.destroy_mlink()
+        mlink.destroy()
 
 
-def test_sharded_mlink_basic(start_cluster, srcCluster, dstCluster):
+def test_sharded_mlink_basic(start_cluster, srcCluster, dstCluster, mlink):
     src = pymongo.MongoClient(srcCluster.connection)
     dst = pymongo.MongoClient(dstCluster.connection)
 
@@ -67,12 +73,9 @@ def test_sharded_mlink_basic(start_cluster, srcCluster, dstCluster):
     src["test_db2"]["test_coll22"].insert_many([{"key": i, "data": i} for i in range(10)])
     src["test_db1"]["test_coll11"].create_index(["key"], name="test_coll11_index_old")
 
-    mlink_container = Cluster.create_mlink(srcCluster.pml_connection, dstCluster.pml_connection)
-    assert mlink_container is not None, "Failed to create mlink service"
-
-    result = Cluster.start_mlink_service(mlink_container)
+    result = mlink.start()
     assert result is True, "Failed to start mlink service"
-    result = Cluster.finalize_mlink_service(mlink_container)
+    result = mlink.finalize()
     assert result is True, "Failed to finalize mlink service"
 
     result = Cluster.compare_data_sharded(srcCluster, dstCluster)
