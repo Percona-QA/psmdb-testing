@@ -9,6 +9,7 @@ import threading
 
 from datetime import datetime
 from cluster import Cluster
+from mongolink import Mongolink
 from db_setup import create_all_types_db
 
 
@@ -24,25 +25,31 @@ def dstRS():
 def srcRS():
     return Cluster({ "_id": "rs1", "members": [{"host":"rs101"},{"host": "rs102"},{"host": "rs103" }]})
 
+@pytest.fixture(scope="package")
+def mlink(srcRS,dstRS):
+    return Mongolink('mlink',srcRS.pml_connection, dstRS.pml_connection)
+
 @pytest.fixture(scope="function")
-def start_cluster(srcRS, dstRS,request):
+def start_cluster(srcRS, dstRS, mlink, request):
     try:
         srcRS.destroy()
         dstRS.destroy()
+        mlink.destroy()
         srcRS.create()
         dstRS.create()
+        mlink.create()
         yield True
 
     finally:
         if request.config.getoption("--verbose"):
-            logs = Cluster.get_mlink_logs()
-            print(f"\n\nmlink Last 50 Logs for {request.node.name}:\n{logs}\n\n")
+            logs = mlink.logs()
+            print(f"\n\nmlink Last 50 Logs for mlink:\n{logs}\n\n")
         srcRS.destroy()
         dstRS.destroy()
-        Cluster.destroy_mlink()
+        mlink.destroy()
 
 
-def test_rs_mlink_basic(start_cluster, srcRS, dstRS):
+def test_rs_mlink_basic(start_cluster, srcRS, dstRS, mlink):
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
 
@@ -52,12 +59,9 @@ def test_rs_mlink_basic(start_cluster, srcRS, dstRS):
     src["test_db2"]["test_coll22"].insert_many([{"key": i, "data": i} for i in range(10)])
     src["test_db1"]["test_coll11"].create_index(["key"], name="test_coll11_index_old")
 
-    mlink_container = Cluster.create_mlink(srcRS.pml_connection, dstRS.pml_connection)
-    assert mlink_container is not None, "Failed to create mlink service"
-
-    result = Cluster.start_mlink_service(mlink_container)
+    result = mlink.start()
     assert result is True, "Failed to start mlink service"
-    result = Cluster.finalize_mlink_service(mlink_container)
+    result = mlink.finalize()
     assert result is True, "Failed to finalize mlink service"
 
     result = Cluster.compare_data_rs(srcRS, dstRS)
@@ -76,17 +80,14 @@ def test_rs_mlink_basic(start_cluster, srcRS, dstRS):
     assert result is False, "Data should not match after modification in dst"
 
 
-def test_rs_mlink_diff_data_types(start_cluster, srcRS, dstRS):
+def test_rs_mlink_diff_data_types(start_cluster, srcRS, dstRS, mlink):
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
 
     init_test_db = create_all_types_db(srcRS.connection,"init_test_db")
     collections = [c for c in init_test_db.list_collection_names() if not c.startswith("system.")]
 
-    mlink_container = Cluster.create_mlink(srcRS.pml_connection, dstRS.pml_connection)
-    assert mlink_container is not None, "Failed to create mlink service"
-
-    result = Cluster.start_mlink_service(mlink_container)
+    result = mlink.start()
     assert result is True, "Failed to start mlink service"
 
     for coll in collections:
@@ -108,7 +109,7 @@ def test_rs_mlink_diff_data_types(start_cluster, srcRS, dstRS):
             collection.delete_many({"status": "old_status"})
     time.sleep(10)
 
-    result = Cluster.finalize_mlink_service(mlink_container)
+    result = mlink.finalize()
     assert result is True, "Failed to finalize mlink service"
 
     result = Cluster.compare_data_rs(srcRS, dstRS)
