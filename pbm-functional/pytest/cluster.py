@@ -660,7 +660,7 @@ class Cluster:
                          '{"db":"admin","role":"clusterMonitor" },' +
                          '{"db":"admin","role":"restore" },' +
                          '{"db":"admin","role":"pbmAnyAction" }]});\'')
-        ldap_mongo_grp = ('\'db.getSiblingDB("admin").runCommand({createRole:"cn=readers,ou=users,dc=example,dc=org",privileges: [],"roles":[' +
+        ldap_mongo_grp = ('\'db.getSiblingDB("admin").runCommand({createRole:"cn=readers,ou=groups,dc=example,dc=org",privileges: [],"roles":[' +
                          '{"db":"admin","role":"readWrite","collection":""},' +
                          '{"db":"admin","role":"backup" },' +
                          '{"db":"admin","role":"clusterMonitor" },' +
