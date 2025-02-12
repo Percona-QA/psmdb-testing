@@ -423,10 +423,6 @@ class Cluster:
     # 3. check_pbm_status = bool - check `pbm status` output, raises error if any agent is failed
     def make_restore(self, name, **kwargs):
         if self.layout == "sharded":
-            client = pymongo.MongoClient(self.connection)
-            result = client.admin.command("balancerStop")
-            client.close()
-            Cluster.log("Stopping balancer: " + str(result))
             self.stop_mongos()
         self.stop_arbiters()
         n = testinfra.get_host("docker://" + self.pbm_cli)
