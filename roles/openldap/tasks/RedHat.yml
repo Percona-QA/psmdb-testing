@@ -68,14 +68,14 @@
     - https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
   when: ansible_distribution_major_version == "9"
 
-- name: Install additional epel repo for x86_64
-  yum:
-    name: "{{packages}}"
-    state: present
-  vars:
-    packages:
-    - https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-9.noarch.rpm
-  when: ansible_distribution_major_version == "9" and ansible_architecture == "x86_64"
+#- name: Install additional epel repo for x86_64
+#  yum:
+#    name: "{{packages}}"
+#    state: present
+#  vars:
+#    packages:
+#    - https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-9.noarch.rpm
+#  when: ansible_distribution_major_version == "9" and ansible_architecture == "x86_64"
 
 - name: Install required packages
   yum:
