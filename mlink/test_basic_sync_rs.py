@@ -6,6 +6,7 @@ import time
 import os
 import docker
 import threading
+import debugpy
 
 from datetime import datetime
 from cluster import Cluster
