@@ -10,6 +10,12 @@ import threading
 from datetime import datetime
 from cluster import Cluster
 
+"""
+- Test creates custom roles and users in `admin` and `test_db1` databases
+- After backup test drops users but keeps roles intact, this ensures that during a restore process, PBM can properly handle:
+  - Restoring users correctly
+  - Handling **pre-existing roles** without conflicts
+"""
 
 @pytest.fixture(scope="package")
 def docker_client():
@@ -90,10 +96,49 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
     client.admin.command({"enableSharding": "test_db2", "primaryShard": "rs2"})
     client.admin.command("shardCollection", "test_db1.test_coll11", key={"_id": "hashed"})
     client.admin.command('updateUser', 'pbm_test', pwd='pbmpass_test2')
-    client.admin.command('createUser', 'admin_random_user1', pwd='test123', roles=[{'role':'readWrite','db':'admin'}, 'userAdminAnyDatabase', 'clusterAdmin'])
-    client_shard.admin.command('createUser', 'admin_random_user2', pwd='test123', roles=[{'role':'readWrite','db':'admin'}, 'userAdminAnyDatabase', 'clusterAdmin'])
-    client.test_db1.command('createUser', 'test_random_user1', pwd='test123', roles=[{'role':'readWrite','db':'test_db1'}, {'role':'clusterManager','db':'admin'}])
-    client_shard.test_db1.command('createUser', 'test_random_user2', pwd='test123', roles=[{'role':'readWrite','db':'test_db1'}, {'role':'clusterManager','db':'admin'}])
+    client.admin.command('createRole', 'customAdminRole',
+        privileges=[
+            {'resource': {'db': 'admin', 'collection': ''}, 'actions': ['find', 'insert', 'update', 'remove']},
+            {'resource': {'cluster': True}, 'actions': ['serverStatus', 'listDatabases', 'addShard', 'removeShard']}
+        ],
+        roles=['readWrite', 'userAdminAnyDatabase', 'clusterAdmin']
+    )
+    client.test_db1.command('createRole', 'customTestDBRole',
+        privileges=[
+            {'resource': {'db': 'test_db1', 'collection': ''}, 'actions': ['find', 'insert', 'update', 'remove']}
+        ],
+        roles=['readWrite']
+    )
+    client_shard.admin.command('createRole', 'customAdminRoleSh',
+        privileges=[
+            {'resource': {'db': 'admin', 'collection': ''}, 'actions': ['find', 'insert', 'update', 'remove']},
+            {'resource': {'db': 'admin', 'collection': 'system.js'}, 'actions': ['find', 'update']},
+            {'resource': {'cluster': True}, 'actions': ['serverStatus', 'listDatabases', 'addShard', 'removeShard']}
+        ],
+        roles=['readWrite', 'userAdminAnyDatabase', 'clusterAdmin']
+    )
+    client_shard.test_db1.command('createRole', 'customTestDBRoleSh',
+        privileges=[
+            {'resource': {'db': 'test_db1', 'collection': ''}, 'actions': ['find', 'insert', 'update', 'remove']}
+        ],
+        roles=['readWrite']
+    )
+    client.admin.command('createUser', 'admin_random_user1',
+        pwd='test123',
+        roles=[{'role': 'customAdminRole', 'db': 'admin'}]
+    )
+    client_shard.admin.command('createUser', 'admin_random_user2',
+        pwd='test123',
+        roles=[{'role': 'customAdminRoleSh', 'db': 'admin'}]
+    )
+    client.test_db1.command('createUser', 'test_random_user1',
+        pwd='test123',
+        roles=[{'role': 'customTestDBRole', 'db': 'test_db1'}]
+    )
+    client_shard.test_db1.command('createUser', 'test_random_user2',
+        pwd='test123',
+        roles=[{'role': 'customTestDBRoleSh', 'db': 'test_db1'}]
+    )
     for i in range(10):
         client["test_db1"]["test_coll11"].insert_one({"key": i, "data": i})
         client["test_db2"]["test_coll21"].insert_one({"key": i, "data": i})
@@ -147,10 +192,10 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
     assert client["test_db2"]["test_coll21"].count_documents({}) == 20
     assert client["test_db2"].command("collstats", "test_coll21").get("sharded", True) is False
 
-    assert check_user(client, "admin", "admin_random_user1", {'readWrite', 'userAdminAnyDatabase', 'clusterAdmin'}) == \
+    assert check_user(client, "admin", "admin_random_user1", {'customAdminRole'}) == \
                                                 (restore_type == 'full_bck'), \
                                                 f"Failed for {restore_type}: admin_random_user1 role mismatch"
-    assert check_user(client_shard, "admin", "admin_random_user2", {'readWrite', 'userAdminAnyDatabase', 'clusterAdmin'}) == \
+    assert check_user(client_shard, "admin", "admin_random_user2", {'customAdminRoleSh'}) == \
                                                 (restore_type == 'full_bck'), \
                                                 f"Failed for {restore_type}: admin_random_user2 role mismatch"
     assert check_user(client, "admin", "admin_random_user3", {'readWrite', 'userAdminAnyDatabase', 'clusterAdmin'}) == \
@@ -159,10 +204,10 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
     assert check_user(client_shard, "admin", "admin_random_user4", {'readWrite', 'userAdminAnyDatabase', 'clusterAdmin'}) == \
                                                 (restore_type == 'full_bck'), \
                                                 f"Failed for {restore_type}: admin_random_user4 role mismatch"
-    assert check_user(client, "test_db1", "test_random_user1", {'readWrite', 'clusterManager'}) == (restore_type not in \
+    assert check_user(client, "test_db1", "test_random_user1", {'customTestDBRole'}) == (restore_type not in \
                                                 ['part_bck','full_bck_part_rst_wo_user']), \
                                                 f"Failed for {restore_type}: test_random_user1 role mismatch"
-    assert check_user(client_shard, "test_db1", "test_random_user2", {'readWrite', 'clusterManager'}) == (restore_type not in \
+    assert check_user(client_shard, "test_db1", "test_random_user2", {'customTestDBRoleSh'}) == (restore_type not in \
                                                 ['part_bck','full_bck_part_rst_wo_user']), \
                                                 f"Failed for {restore_type}: test_random_user2 role mismatch"
     # current limitation: option with-users-and-roles doesn't work with PITR
