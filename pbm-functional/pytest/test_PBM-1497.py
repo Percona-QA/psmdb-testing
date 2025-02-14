@@ -42,6 +42,7 @@ def start_cluster(cluster,request):
     finally:
         if request.config.getoption("--verbose"):
             cluster.get_logs()
+        cluster.destroy()
 
 def insert_docs(connection,duration):
     client=pymongo.MongoClient(connection)
