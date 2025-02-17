@@ -2,6 +2,7 @@ import pytest
 import pymongo
 import bson
 import testinfra
+import threading
 import time
 import os
 import docker
@@ -115,3 +116,73 @@ def test_rs_mlink_diff_data_types(start_cluster, srcRS, dstRS, mlink):
 
     result = Cluster.compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
+
+
+def test_rs_mlink_drop_db(start_cluster, srcRS, dstRS, mlink):
+    src = pymongo.MongoClient(srcRS.connection)
+    dst = pymongo.MongoClient(dstRS.connection)
+
+    src["test_db1"]["test_coll"].insert_many([{"key": i, "data": f"original_{i}"} for i in range(10)])
+    src["test_db1"]["test_coll"].create_index([("key", pymongo.ASCENDING)], name="test_index")
+
+    def start_mlink():
+        result = mlink.start()
+        assert result is True, "Failed to start mlink service"
+        Cluster.log("mlink started successfully.")
+
+    def drop_db():
+        time.sleep(0.1)
+        src.drop_database("test_db1")
+
+    mlink_thread = threading.Thread(target=start_mlink)
+    drop_db_thread = threading.Thread(target=drop_db)
+
+    mlink_thread.start()
+    drop_db_thread.start()
+
+    mlink_thread.join()
+    drop_db_thread.join()
+
+    repl_test_db = create_all_types_db(srcRS.connection,"repl_test_db")
+    src["test_db1"]["test_coll"].insert_many([{"key": i, "data": f"new_{i}"} for i in range(20)])
+    src["test_db1"]["test_coll"].create_index([("data", pymongo.ASCENDING)], name="test_index_new")
+    src.drop_database("repl_test_db")
+    result = mlink.finalize()
+    assert result is True, "Failed to finalize mlink service"
+
+    result = Cluster.compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after recreating dropped database"
+
+def test_rs_mlink_drop_collection(start_cluster, srcRS, dstRS, mlink):
+    src = pymongo.MongoClient(srcRS.connection)
+    dst = pymongo.MongoClient(dstRS.connection)
+
+    src["test_db1"]["test_coll"].insert_many([{"key": i, "data": f"original_{i}"} for i in range(10)])
+    src["test_db1"]["test_coll"].create_index([("key", pymongo.ASCENDING)], name="test_index")
+
+    def start_mlink():
+        result = mlink.start()
+        assert result is True, "Failed to start mlink service"
+        Cluster.log("mlink started successfully.")
+
+    def drop_collection():
+        time.sleep(0.1)
+        src["test_db1"]["test_coll"].drop()
+
+    mlink_thread = threading.Thread(target=start_mlink)
+    drop_collection_thread = threading.Thread(target=drop_collection)
+
+    mlink_thread.start()
+    drop_collection_thread.start()
+
+    mlink_thread.join()
+    drop_collection_thread.join()
+
+    src["test_db1"]["test_coll"].insert_many([{"key": i, "data": f"new_{i}"} for i in range(5)])
+    src["test_db1"]["test_coll"].create_index([("data", pymongo.ASCENDING)], name="test_index_new")
+
+    result = mlink.finalize()
+    assert result is True, "Failed to finalize mlink service"
+
+    result = Cluster.compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after recreating dropped database"

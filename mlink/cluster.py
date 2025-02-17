@@ -337,9 +337,18 @@ class Cluster:
                          '{"db":"admin","role":"clusterMonitor" },' +
                          '{"db":"admin","role":"clusterManager" },' +
                          '{"db":"admin","role":"restore" },' +
+                         '{"db":"admin","role":"dbAdminAnyDatabase" },' +
+                         '{"db":"admin","role":"readWriteAnyDatabase" }]});\'')
+        pml_user_limited = ('\'db.getSiblingDB("admin").createUser({user:"pml_limited",pwd:"test1234","roles":[' +
+                         '{"db":"admin","role":"backup" },' +
+                         '{"db":"admin","role":"clusterMonitor" },' +
+                         '{"db":"admin","role":"clusterManager" },' +
+                         '{"db":"admin","role":"restore" },' +
                          '{"db":"admin","role":"readWriteAnyDatabase" }]});\'')
         logs = primary.check_output(
             "mongosh -u root -p root --quiet --eval " + pml_user)
+        logs = primary.check_output(
+            "mongosh -u root -p root --quiet --eval " + pml_user_limited)
 
     def __setup_authorizations(self, replicasets):
         with concurrent.futures.ProcessPoolExecutor() as executor:

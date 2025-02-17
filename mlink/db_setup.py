@@ -95,8 +95,7 @@ def create_all_types_db(connection_string, db_name="init_test_db"):
         {"content": "Hello MongoDB", "extra": "Some extra data"},
         {"content": "Pytest integration testing", "extra": "Another document"}
     ])
-    # UNTIL PML-55 is fixed
-    #text_collection.create_index([("content", pymongo.TEXT)], name="regular_text_index")
+    text_collection.create_index([("content", pymongo.TEXT)], name="regular_text_index")
 
     # Regular Text Index with Weights
     regular_text_collection = db.regular_text_indexes
@@ -104,12 +103,11 @@ def create_all_types_db(connection_string, db_name="init_test_db"):
         {"title": "MongoDB Basics", "description": "A guide to MongoDB indexes"},
         {"title": "Advanced MongoDB", "description": "Deep dive into text search"}
     ])
-    # UNTIL PML-55 is fixed
-    #regular_text_collection.create_index(
-    #    [("title", pymongo.TEXT), ("description", pymongo.TEXT)],
-    #    name="regular_text_index_with_weights",
-    #    weights={"title": 5, "description": 1}
-    #)
+    regular_text_collection.create_index(
+        [("title", pymongo.TEXT), ("description", pymongo.TEXT)],
+        name="regular_text_index_with_weights",
+        weights={"title": 5, "description": 1}
+    )
 
     # Wildcard Text Index
     wildcard_text_collection = db.wildcard_text_indexes
@@ -118,11 +116,10 @@ def create_all_types_db(connection_string, db_name="init_test_db"):
         {"random_field": "This should also be searchable"},
         {"nested": {"field": "Wildcard indexing applies here too"}}
     ])
-    # UNTIL PML-55 is fixed
-    #wildcard_text_collection.create_index(
-    #    [("$**", pymongo.TEXT)],
-    #    name="wildcard_text_index"
-    #)
+    wildcard_text_collection.create_index(
+        [("$**", pymongo.TEXT)],
+        name="wildcard_text_index"
+    )
 
     # Wildcard Index Variations
     wildcard_collection = db.wildcard_indexes
