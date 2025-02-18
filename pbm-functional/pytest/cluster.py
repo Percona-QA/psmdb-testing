@@ -389,7 +389,7 @@ class Cluster:
                     name = json.loads(start.stdout)['name']
                     Cluster.log("Backup started")
                     break
-                elif "resync" in start.stdout:
+                elif "resync" in start.stdout.lower() or "resync" in start.stderr.lower():
                     Cluster.log("Resync in progress, retrying: " + start.stdout)
                 else:
                     logs = n.check_output("pbm logs -sD -t0")
