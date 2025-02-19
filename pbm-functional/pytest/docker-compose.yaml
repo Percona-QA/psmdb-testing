@@ -38,10 +38,19 @@ services:
       - test
     volumes:
       - backups:/backups
+      - kes:/tls-certs
     environment:
-      - "MINIO_ACCESS_KEY=minio1234"
-      - "MINIO_SECRET_KEY=minio1234"
+      - "MINIO_KMS_KES_ENDPOINT=https://minio-kes:7373"
+      - "MINIO_KMS_KES_CERT_FILE=/tls-certs/client.crt"
+      - "MINIO_KMS_KES_KEY_FILE=/tls-certs/client.key"
+      - "MINIO_KMS_KES_CAPATH=/tls-certs/kes.crt"
+      - "MINIO_KMS_KES_KEY_NAME=minio-key"
+      - "MINIO_ROOT_USER=minio1234"
+      - "MINIO_ROOT_PASSWORD=minio1234"
     command: server /backups --console-address ":9001"
+    depends_on:
+      minio-kes:
+        condition: service_started
 
   nginx-minio:
     build:
@@ -54,6 +63,34 @@ services:
     depends_on:
       - minio
 
+  minio-kes:
+    image: minio/kes
+    volumes:
+      - ./conf:/conf
+      - kes:/tmp/kes
+    ports:
+      - 7373:7373
+    command: server --config /conf/kes.yaml
+    networks:
+      - test
+    depends_on:
+      minio-kes-init:
+        condition: service_completed_successfully
+
+  minio-kes-init:
+    image: minio/kes
+    volumes:
+      - ./conf:/conf
+      - kes:/tmp/kes
+    entrypoint: >
+      /bin/sh -c "
+        ./kes identity new --force --key /tmp/kes/kes.key --cert /tmp/kes/kes.crt --expiry 720h --ip '127.0.0.1' --dns minio-kes minio-kes;
+        ./kes identity new --force --key /tmp/kes/client.key --cert /tmp/kes/client.crt minioApp;
+        cp /conf/kes.yaml /conf/kes.yaml;
+        echo '      - '$(./kes identity of /tmp/kes/client.crt | tail -n 1) >> /conf/kes.yaml;
+        exit 0;
+      "
+
   createbucket:
     container_name: createbucket
     image: minio/mc
@@ -62,7 +99,11 @@ services:
     depends_on:
       - minio
     entrypoint: >
-      /bin/sh -c " sleep 5; /usr/bin/mc config host add myminio http://minio:9000 minio1234 minio1234; /usr/bin/mc mb myminio/bcp; exit 0; "
+      /bin/sh -c "sleep 5; /usr/bin/mc alias set myminio http://minio:9000 minio1234 minio1234; /usr/bin/mc mb myminio/bcp;
+      /usr/bin/mc mb myminio/bcp1; /usr/bin/mc mb myminio/bcp2; /usr/bin/mc mb myminio/bcp3;
+      /usr/bin/mc encrypt set sse-kms minio-key myminio/bcp2; /usr/bin/mc encrypt set sse-s3 myminio/bcp3;
+      exit 0;
+      "
 
   pykmip:
     image: pykmip/local
@@ -134,7 +175,7 @@ services:
   golang_reports:
     image: golang:bullseye
     command: >
-      /bin/sh -c " mkdir -p /gocoverdir/reports; chmod -R 777 /gocoverdir/reports; exit 0; "  
+      /bin/sh -c " mkdir -p /gocoverdir/reports; chmod -R 777 /gocoverdir/reports; exit 0; "
     volumes:
       - .:/test
       - gocoverdir:/gocoverdir
@@ -144,11 +185,13 @@ networks:
     name: test
 
 volumes:
-  backups: 
+  backups:
     name: backups
-  fs: 
+  fs:
     name: fs
   keytabs:
     name: keytabs
   gocoverdir:
     name: gocoverdir
+  kes:
+    name: kes
