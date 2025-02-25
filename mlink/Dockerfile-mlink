@@ -3,4 +3,4 @@ FROM golang:$GO_VERSION
 COPY percona-mongolink /percona-mongolink
 RUN apt update && apt -y install curl && \
     cd /percona-mongolink && \
-    go build -o /usr/bin/mongolink ./cmd/
+    go build -o /usr/bin/mongolink ./mongolink
