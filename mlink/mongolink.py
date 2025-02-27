@@ -36,7 +36,7 @@ class Mongolink:
             name=self.name,
             detach=True,
             network="test",
-            command=f"mongolink -source {self.src} -target {self.dst} -log-level=debug"
+            command=f"mongolink --source {self.src} --target {self.dst} --log-level=debug"
         )
         Cluster.log(f"Mlink '{self.name}' started successfully")
 
