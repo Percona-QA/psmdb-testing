@@ -45,7 +45,7 @@ def start_cluster(srcRS, dstRS, mlink, request):
         mlink.destroy()
 
 
-def test_rs_mlink_basic(start_cluster, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T1(start_cluster, srcRS, dstRS, mlink):
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
 
@@ -76,7 +76,7 @@ def test_rs_mlink_basic(start_cluster, srcRS, dstRS, mlink):
     assert result is False, "Data should not match after modification in dst"
 
 
-def test_rs_mlink_diff_data_types(start_cluster, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T2(start_cluster, srcRS, dstRS, mlink):
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
 

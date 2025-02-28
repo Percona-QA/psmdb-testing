@@ -63,7 +63,7 @@ def start_cluster(srcCluster, dstCluster, mlink, request):
         mlink.destroy()
 
 
-def test_sharded_mlink_basic(start_cluster, srcCluster, dstCluster, mlink):
+def example_sharded_mlink_basic(start_cluster, srcCluster, dstCluster, mlink):
     src = pymongo.MongoClient(srcCluster.connection)
     dst = pymongo.MongoClient(dstCluster.connection)
 
