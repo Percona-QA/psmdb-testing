@@ -1,0 +1,9 @@
+ARG MONGODB_IMAGE=percona/percona-server-mongodb
+FROM $MONGODB_IMAGE
+COPY keyfile /etc/keyfile
+USER root
+RUN mkdir -p /var/lib/mongo && \
+    chown -R mongodb /var/lib/mongo && \
+    chown mongodb /etc/keyfile && chmod 400 /etc/keyfile
+ENTRYPOINT []
+USER mongodb
