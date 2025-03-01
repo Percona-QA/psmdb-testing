@@ -1,5 +1,6 @@
 import docker
 import json
+import re
 import time
 from cluster import Cluster
 
@@ -36,7 +37,7 @@ class Mongolink:
             name=self.name,
             detach=True,
             network="test",
-            command=f"mongolink --source {self.src} --target {self.dst} --log-level=debug"
+            command=f"mongolink --source {self.src} --target {self.dst} --log-level=debug --no-color"
         )
         Cluster.log(f"Mlink '{self.name}' started successfully")
 
@@ -75,36 +76,26 @@ class Mongolink:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
+    def status(self):
+        try:
+            exec_result = self.container.exec_run("curl -s -X GET http://localhost:2242/status -d '{}'")
+            response = exec_result.output.decode("utf-8", errors="ignore").strip()
+            status_code = exec_result.exit_code
+
+            if status_code != 0 or not response:
+                return {"success": False, "error": "Failed to execute mlink status command"}
+
+            try:
+                json_response = json.loads(response.replace("\n", "").replace("\r", "").strip())
+                return {"success": True, "data": json_response}
+            except json.JSONDecodeError as e:
+                return {"success": False, "error": "Invalid JSON response"}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     def finalize(self):
-        max_wait_time = 30
-        start_time = time.time()
-
         try:
-            while time.time() - start_time < max_wait_time:
-                exec_result = self.container.exec_run("curl -s -X GET http://localhost:2242/status -d '{}'")
-                response = exec_result.output.decode("utf-8").strip()
-                status_code = exec_result.exit_code
-
-                if status_code == 0 and response:
-                    try:
-                        json_response = json.loads(response)
-
-                        if json_response.get("ok") is True:
-                            if json_response.get("finalizable") is True:
-                                Cluster.log("Sync is ready to be finalized")
-                                break
-                            else:
-                                Cluster.log("Sync is NOT ready to be finalized, waiting...")
-                        else:
-                            Cluster.log("Failed to fetch mlink status")
-                            return False
-
-                    except json.JSONDecodeError:
-                        Cluster.log("Received invalid JSON response")
-                        return False
-                time.sleep(5)
-
             exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/finalize -d '{}'")
             response = exec_result.output.decode("utf-8").strip()
             status_code = exec_result.exit_code
@@ -125,8 +116,8 @@ class Mongolink:
                 except json.JSONDecodeError:
                     Cluster.log("Received invalid JSON response.")
 
-            Cluster.log("Failed to finalize sync between src and dst cluster")
-            return False
+                Cluster.log("Failed to finalize sync between src and dst cluster")
+                return False
         except Exception as e:
             Cluster.log(f"Unexpected error: {e}")
             return False
@@ -140,3 +131,64 @@ class Mongolink:
             return "Error: mlink container not found."
         except Exception as e:
             return f"Error fetching logs: {e}"
+
+    def check_mlink_errors(self):
+        try:
+            logs = self.container.logs().decode("utf-8").strip()
+
+        except docker.errors.NotFound:
+            return "Error: mlink container not found."
+        except Exception as e:
+            return f"Error fetching logs: {e}"
+
+        error_pattern = re.compile(r"\b(ERROR|error|ERR|err)\b")
+        errors_found = [line for line in logs.split("\n") if error_pattern.search(line)]
+
+        return not bool(errors_found), errors_found
+
+    def wait_for_zero_lag(self, timeout=300, interval=5):
+        start_time = time.time()
+
+        while time.time() - start_time < timeout:
+            status_response = self.status()
+
+            if not status_response["success"]:
+                Cluster.log(f"Error: Impossible to retrieve status, {status_response['error']}")
+                return False
+
+            lag_time = status_response["data"].get("lagTime")
+            if lag_time is None:
+                Cluster.log("Error: No 'lagTime' field not found in status response")
+                return False
+            if lag_time == 0:
+                Cluster.log("Src and dst clusters are in sync")
+                return True
+            time.sleep(interval)
+
+        Cluster.log("Error: Timeout reached while waiting for replication to catch up")
+        return False
+
+    def wait_for_repl_stage(self, timeout=300, interval=1):
+        start_time = time.time()
+
+        while time.time() - start_time < timeout:
+            status_response = self.status()
+
+            if not status_response["success"]:
+                Cluster.log(f"Error: Impossible to retrieve status, {status_response['error']}")
+                return False
+
+            initial_sync = status_response["data"].get("initialSync")
+            if initial_sync is None:
+                time.sleep(interval)
+                continue
+            if "completed" not in initial_sync:
+                time.sleep(interval)
+                continue
+            if initial_sync["completed"]:
+                Cluster.log("Initial sync is completed")
+                return True
+            time.sleep(interval)
+
+        Cluster.log("Error: Timeout reached while waiting for initial sync to complete")
+        return False
