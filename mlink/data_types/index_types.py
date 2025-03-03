@@ -4,36 +4,18 @@ import uuid
 from bson import Decimal128, ObjectId, Binary, Code, Timestamp, Int64, DBRef, UUID_SUBTYPE
 from gridfs import GridFS
 
-def create_all_types_db(connection_string, db_name="init_test_db"):
-    client = pymongo.MongoClient(connection_string)
-    db = client[db_name]
-    client.drop_database(db_name)
-
-    # BSON Data Types Collection
-    bson_collection = db.bson_types
-    bson_docs = [
-        {
-            "_id": ObjectId(),
-            "string": "Hello, World!",
-            "int": 42,
-            "long": Int64(1234567890123456789),
-            "double": 3.14159,
-            "decimal": Decimal128("1234567890.123456789"),
-            "boolean": True,
-            "date": datetime.datetime.now(datetime.timezone.utc),
-            "array": [1, "two", 3.14, True, None],
-            "object": {"nested_key": "nested_value"},
-            "binary": Binary(b"\x00\x01\x02\x03"),
-            "null": None,
-            "regex": {"$regex": "^regex$", "$options": "i"},
-            "javascript": Code("function() { return 42; }"),
-            "timestamp": Timestamp(int(datetime.datetime.now(datetime.timezone.utc).timestamp()), 1),
-            "dbref": DBRef("other_collection", ObjectId()),
-            "uuid": Binary.from_uuid(uuid.uuid4(), UUID_SUBTYPE)
-        }
-        for _ in range(5)
+def create_index_types(db, drop_before_creation=False):
+    collections = [
+        "geo_indexes", "numeric_indexes", "hashed_indexes", "ttl_indexes",
+        "sparse_indexes", "partial_indexes", "text_indexes", "regular_text_indexes",
+        "wildcard_text_indexes", "wildcard_indexes", "multi_key_indexes",
+        "clustered_collection", "unique_compound", "collation_collection"
     ]
-    bson_collection.insert_many(bson_docs)
+
+    if drop_before_creation:
+        for collection in collections:
+            db[collection].drop_indexes()
+            db.drop_collection(collection)
 
     # Geospatial Indexes (2D, 2D Sphere)
     geo_collection = db.geo_indexes
@@ -156,7 +138,8 @@ def create_all_types_db(connection_string, db_name="init_test_db"):
 
     # Unique Compound Index
     unique_compound_collection = db.unique_compound
-    unique_compound_collection.insert_many([{"email": "user1@example.com", "phone": "1234567890"},
+    unique_compound_collection.insert_many([
+        {"email": "user1@example.com", "phone": "1234567890"},
         {"email": "user2@example.com", "phone": "0987654321"}
     ])
     unique_compound_collection.create_index(
@@ -165,26 +148,7 @@ def create_all_types_db(connection_string, db_name="init_test_db"):
         unique=True
     )
 
-    # Capped collection
-    db.create_collection("capped_logs", capped=True, size=1024*1024, max=1000)
-    capped_collection = db.capped_logs
-    capped_collection.insert_many([
-        {"timestamp": datetime.datetime.now(datetime.timezone.utc), "log": "Test log 1"},
-        {"timestamp": datetime.datetime.now(datetime.timezone.utc), "log": "Test log 2"}
-    ])
-
-    # MongoDB view
-    db.command({
-        "create": "user_view",
-        "viewOn": "users",
-        "pipeline": [{"$match": {"status": "active"}}]
-    })
-
-    # GridFS (Large File Storage)
-    fs = GridFS(db)
-    file_id = fs.put(b"BinaryDataOfLargeFile", filename="large_file.txt")
-
-    # Collation Collection (Case-Insensitive Sorting)
+    # Collation Index (Case-Insensitive Sorting)
     collation_collection = db.collation_collection
     collation_collection.insert_many([
         {"name": "Alice"},
@@ -198,19 +162,3 @@ def create_all_types_db(connection_string, db_name="init_test_db"):
         name="collation_index",
         collation=pymongo.collation.Collation(locale="en", strength=2)
     )
-
-    # Create a case-insensitive index
-    collation_collection.create_index(
-        [("name", pymongo.ASCENDING)],
-        name="collation_index",
-        collation=pymongo.collation.Collation(locale="en", strength=2)
-    )
-
-    # Change Streams for Real-time Data
-    change_stream_collection = db.live_updates
-    change_stream_collection.insert_many([
-        {"event": "inserted", "timestamp": datetime.datetime.now(datetime.timezone.utc)},
-        {"event": "updated", "timestamp": datetime.datetime.now(datetime.timezone.utc)}
-    ])
-
-    return db
