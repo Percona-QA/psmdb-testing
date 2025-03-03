@@ -22,7 +22,7 @@ def collect_metrics(event, interval=0.1):
             stats = container.stats(stream=False)
             cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - stats['precpu_stats']['cpu_usage']['total_usage']
             system_delta = stats['cpu_stats']['system_cpu_usage'] - stats['precpu_stats']['system_cpu_usage']
-            cpu_usage = (cpu_delta / system_delta) * len(stats['cpu_stats']['cpu_usage']['percpu_usage']) * 100 if system_delta > 0 else 0
+            cpu_usage = (cpu_delta / system_delta) * stats['cpu_stats']['online_cpus'] * 100 if system_delta > 0 else 0
             memory_usage = stats['memory_stats']['usage'] / (1024 * 1024)
 
             data[container.name]['time'].append(time.time() - start_time)
