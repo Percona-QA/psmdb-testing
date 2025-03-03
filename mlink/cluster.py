@@ -138,11 +138,11 @@ class Cluster:
             return "mongodb://root:root@" + self.config['mongos'] + ":27017/"
 
     @property
-    def pml_connection(self):
+    def mlink_connection(self):
         if self.layout == "replicaset":
-            return "mongodb://pml:test1234@" + self.config['members'][0]['host'] + ":27017/?replicaSet=" + self.config['_id']
+            return "mongodb://mlink:test1234@" + self.config['members'][0]['host'] + ":27017/?replicaSet=" + self.config['_id']
         else:
-            return "mongodb://pml:test1234@" + self.config['mongos'] + ":27017/"
+            return "mongodb://mlink:test1234@" + self.config['mongos'] + ":27017/"
 
     # returns array of hosts with mongod - all hosts except mongos
     @property
@@ -330,16 +330,18 @@ class Cluster:
         Cluster.log("Adding root user on " + host)
         init_root_user = '\'db.getSiblingDB("admin").createUser({ user: "root", pwd: "root", roles: [ "root", "userAdminAnyDatabase", "clusterAdmin" ] });\''
         logs = primary.check_output("mongosh --quiet --eval " + init_root_user)
-        #Cluster.log(logs)
-        Cluster.log("Adding pml user on " + host)
-        pml_user = ('\'db.getSiblingDB("admin").createUser({user:"pml",pwd:"test1234","roles":[' +
+        Cluster.log("Adding system user on " + host)
+        init_s_user = '\'db.getSiblingDB("admin").createUser({ user: "system", pwd: "system", roles: [ "__system" ] });\''
+        logs = primary.check_output("mongosh -u root -p root --quiet --eval " + init_s_user)
+        Cluster.log("Adding mlink user on " + host)
+        mlink_user = ('\'db.getSiblingDB("admin").createUser({user:"mlink",pwd:"test1234","roles":[' +
                          '{"db":"admin","role":"backup" },' +
                          '{"db":"admin","role":"clusterMonitor" },' +
                          '{"db":"admin","role":"clusterManager" },' +
                          '{"db":"admin","role":"restore" },' +
                          '{"db":"admin","role":"readWriteAnyDatabase" }]});\'')
         logs = primary.check_output(
-            "mongosh -u root -p root --quiet --eval " + pml_user)
+            "mongosh -u root -p root --quiet --eval " + mlink_user)
 
     def __setup_authorizations(self, replicasets):
         with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -378,241 +380,3 @@ class Cluster:
     @staticmethod
     def log(*args, **kwargs):
         print("[%s]" % (datetime.now()).strftime('%Y-%m-%dT%H:%M:%S'),*args, **kwargs)
-
-    @staticmethod
-    def compare_database_hashes(db1_container, db2_container):
-        query = (
-            'db.getMongo().getDBNames().forEach(function(i) { '
-            'if (!["admin", "local", "config"].includes(i)) { '
-            'var collections = []; '
-            'db.getSiblingDB(i).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
-            'if (!coll.type || coll.type !== "view") { collections.push(coll.name); } '
-            '}); '
-            'if (collections.length > 0) { '
-            'var result = db.getSiblingDB(i).runCommand({ dbHash: 1, collections: collections }); '
-            'print(JSON.stringify({db: i, md5: result.md5, collections: result.collections})); '
-            '} else { '
-            'print(JSON.stringify({db: i, md5: null, collections: {}})); '
-            '}}});'
-        )
-
-        def get_db_hashes_and_collections(container):
-            exec_result = container.exec_run(f"mongosh -u root -p root --quiet --eval '{query}'")
-            response = exec_result.output.decode("utf-8").strip()
-
-            db_hashes = {}
-            collection_hashes = {}
-
-            for line in response.split("\n"):
-                try:
-                    db_info = json.loads(line)
-                    db_name = db_info["db"]
-                    db_hashes[db_name] = db_info["md5"]
-
-                    for coll, coll_hash in db_info["collections"].items():
-                        collection_hashes[f"{db_name}.{coll}"] = coll_hash
-                except json.JSONDecodeError:
-                    Cluster.log(f"Warning: Skipping invalid JSON line: {line}")
-
-            return db_hashes, collection_hashes
-
-        db1_hashes, db1_collections = get_db_hashes_and_collections(db1_container)
-        db2_hashes, db2_collections = get_db_hashes_and_collections(db2_container)
-
-        Cluster.log("Comparing database hashes...")
-        mismatched_dbs = []
-        for db_name in db1_hashes:
-            if db_name not in db2_hashes:
-                mismatched_dbs.append(db_name)
-                Cluster.log(f"Database '{db_name}' exists in source_DB but not in destination_DB")
-            elif db1_hashes[db_name] != db2_hashes[db_name]:
-                mismatched_dbs.append(db_name)
-                Cluster.log(f"Database '{db_name}' hash mismatch: {db1_hashes[db_name]} != {db2_hashes[db_name]}")
-
-        for db_name in db2_hashes:
-            if db_name not in db1_hashes:
-                mismatched_dbs.append(db_name)
-                Cluster.log(f"Database '{db_name}' exists in destination_DB but not in source_DB")
-
-        Cluster.log("Comparing collection hashes...")
-        mismatched_collections = []
-        for coll_name in db1_collections:
-            if coll_name not in db2_collections:
-                mismatched_collections.append(coll_name)
-                Cluster.log(f"Collection '{coll_name}' exists in source_DB but not in destination_DB")
-            elif db1_collections[coll_name] != db2_collections[coll_name]:
-                mismatched_collections.append(coll_name)
-                Cluster.log(f"Collection '{coll_name}' hash mismatch: {db1_collections[coll_name]} != {db2_collections[coll_name]}")
-
-        for coll_name in db2_collections:
-            if coll_name not in db1_collections:
-                mismatched_collections.append(coll_name)
-                Cluster.log(f"Collection '{coll_name}' exists in destination_DB but not in source_DB")
-
-        return db1_collections.keys() | db2_collections.keys(), mismatched_dbs, mismatched_collections
-
-    @staticmethod
-    def compare_entries_number(db1_container, db2_container):
-        query = (
-            'db.getMongo().getDBNames().forEach(function(i) { '
-            'if (!["admin", "local", "config"].includes(i)) { '
-            'var collections = db.getSiblingDB(i).runCommand({ listCollections: 1 }).cursor.firstBatch '
-            '.filter(function(coll) { return !coll.type || coll.type !== "view"; }) '
-            '.map(function(coll) { return coll.name; }); '
-            'collections.forEach(function(coll) { '
-            'try { '
-            'var count = db.getSiblingDB(i).getCollection(coll).countDocuments({}); '
-            'print(JSON.stringify({db: i, collection: coll, count: count})); '
-            '} catch (err) {} '
-            '});}});'
-        )
-
-        def get_collection_counts(container):
-            exec_result = container.exec_run(f"mongosh -u root -p root --quiet --eval '{query}'")
-            response = exec_result.output.decode("utf-8").strip()
-
-            collection_counts = {}
-
-            for line in response.split("\n"):
-                try:
-                    count_info = json.loads(line)
-                    collection_name = f"{count_info['db']}.{count_info['collection']}"
-                    collection_counts[collection_name] = count_info["count"]
-                except json.JSONDecodeError:
-                    Cluster.log(f"Warning: Skipping invalid JSON line: {line}")
-
-            return collection_counts
-
-        db1_counts = get_collection_counts(db1_container)
-        db2_counts = get_collection_counts(db2_container)
-
-        Cluster.log("Comparing collection record counts...")
-        mismatched_dbs = []
-        mismatched_collections = []
-
-        for coll_name in db1_counts:
-            if coll_name not in db2_counts:
-                mismatched_collections.append(coll_name)
-                Cluster.log(f"Collection '{coll_name}' exists in source_DB but not in destination_DB")
-            elif db1_counts[coll_name] != db2_counts[coll_name]:
-                mismatched_collections.append(coll_name)
-                Cluster.log(f"Collection '{coll_name}' record count mismatch: {db1_counts[coll_name]} != {db2_counts[coll_name]}")
-
-        for coll_name in db2_counts:
-            if coll_name not in db1_counts:
-                mismatched_collections.append(coll_name)
-                Cluster.log(f"Collection '{coll_name}' exists in destination_DB but not in source_DB")
-
-        return db1_counts.keys() | db2_counts.keys(), mismatched_dbs, mismatched_collections
-
-    @staticmethod
-    def compare_collection_indexes(db1_container, db2_container, all_collections):
-        Cluster.log("Comparing collection indexes...")
-        mismatched_indexes = []
-
-        for coll_name in all_collections:
-            db1_indexes = Cluster.get_indexes(db1_container, coll_name)
-            db2_indexes = Cluster.get_indexes(db2_container, coll_name)
-
-            db1_index_dict = {index["name"]: index for index in db1_indexes if "name" in index}
-            db2_index_dict = {index["name"]: index for index in db2_indexes if "name" in index}
-
-            for index_name, index_details in db1_index_dict.items():
-                if index_name not in db2_index_dict:
-                    mismatched_indexes.append((coll_name, index_name))
-                    Cluster.log(f"Collection '{coll_name}': Index '{index_name}' exists in source_DB but not in destination_DB")
-
-            for index_name in db2_index_dict.keys():
-                if index_name not in db1_index_dict:
-                    mismatched_indexes.append((coll_name, index_name))
-                    Cluster.log(f"Collection '{coll_name}': Index '{index_name}' exists in destination_DB but not in source_DB")
-
-            for index_name in set(db1_index_dict.keys()).intersection(db2_index_dict.keys()):
-                index1 = db1_index_dict[index_name]
-                index2 = db2_index_dict[index_name]
-
-                fields_to_compare = ["key", "unique", "sparse", "partialFilterExpression", "expireAfterSeconds"]
-                index1_filtered = {k: index1[k] for k in fields_to_compare if k in index1}
-                index2_filtered = {k: index2[k] for k in fields_to_compare if k in index2}
-
-                if index1_filtered != index2_filtered:
-                    mismatched_indexes.append((coll_name, index_name))
-                    Cluster.log(f"Collection '{coll_name}': Index '{index_name}' differs in structure.")
-                    Cluster.log(f"Source_DB: {json.dumps(index1_filtered, indent=2)}")
-                    Cluster.log(f"Destination_DB: {json.dumps(index2_filtered, indent=2)}")
-
-        return mismatched_indexes
-
-    @staticmethod
-    def get_indexes(container, collection_name):
-        db_name, coll_name = collection_name.split(".", 1)
-
-        query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
-        exec_result = container.exec_run(f"mongosh -u root -p root --quiet --json --eval '{query}'")
-        response = exec_result.output.decode("utf-8").strip()
-
-        try:
-            indexes = json.loads(response)
-
-            def normalize_key(index_key):
-                if isinstance(index_key, dict):
-                    return {k: normalize_key(v) for k, v in index_key.items()}
-                elif isinstance(index_key, list):
-                    return [normalize_key(v) for v in index_key]
-                elif isinstance(index_key, dict) and "$numberInt" in index_key:
-                    return int(index_key["$numberInt"])
-                return index_key
-
-            return sorted([
-                {
-                    "name": index["name"],
-                    "key": normalize_key(index["key"]),
-                    "unique": index.get("unique", False),
-                    "sparse": index.get("sparse", False),
-                    "partialFilterExpression": index.get("partialFilterExpression"),
-                    "expireAfterSeconds": index.get("expireAfterSeconds")
-                }
-                for index in indexes if "key" in index and "name" in index
-            ], key=lambda x: x["name"])
-
-        except json.JSONDecodeError:
-            Cluster.log(f"Error: Unable to parse JSON index response for {collection_name}")
-            Cluster.log(f"Raw response: {response}")
-            return []
-
-    @staticmethod
-    def compare_data_rs(db1, db2):
-        client = docker.from_env()
-
-        db1_container = client.containers.get(db1.entrypoint)
-        db2_container = client.containers.get(db2.entrypoint)
-
-        all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = Cluster.compare_database_hashes(db1_container, db2_container)
-        all_coll_count, mismatch_dbs_count, mismatch_coll_count = Cluster.compare_entries_number(db1_container, db2_container)
-
-        mismatch_indexes = Cluster.compare_collection_indexes(db1_container, db2_container, all_coll_hash)
-
-        if not any([mismatch_dbs_hash, mismatch_coll_hash, mismatch_dbs_count, mismatch_coll_count, mismatch_indexes]):
-            Cluster.log("Data and indexes are consistent between source and destination databases")
-            return True
-        else:
-            Cluster.log("Mismatched databases, collections, or indexes found")
-        return False
-
-    @staticmethod
-    def compare_data_sharded(db1, db2):
-        client = docker.from_env()
-
-        db1_container = client.containers.get(db1.entrypoint)
-        db2_container = client.containers.get(db2.entrypoint)
-
-        all_collections, mismatched_dbs, mismatched_collections = Cluster.compare_entries_number(db1_container, db2_container)
-
-        mismatched_indexes = Cluster.compare_collection_indexes(db1_container, db2_container, all_collections)
-
-        if not mismatched_dbs and not mismatched_collections and not mismatched_indexes:
-            Cluster.log("Data and indexes are consistent between source and destination databases")
-            return True
-        else:
-            Cluster.log("Mismatched databases, collections, or indexes found")
-        return False

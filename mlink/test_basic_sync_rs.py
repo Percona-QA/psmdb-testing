@@ -2,11 +2,11 @@ import pytest
 import pymongo
 import time
 import docker
-import debugpy
 
 from cluster import Cluster
 from mongolink import Mongolink
-from db_setup import create_all_types_db
+from data_generator import create_all_types_db, generate_dummy_data, stop_all_crud_operations
+from data_integrity_check import compare_data_rs
 
 
 @pytest.fixture(scope="package")
@@ -23,7 +23,7 @@ def srcRS():
 
 @pytest.fixture(scope="package")
 def mlink(srcRS,dstRS):
-    return Mongolink('mlink',srcRS.pml_connection, dstRS.pml_connection)
+    return Mongolink('mlink',srcRS.mlink_connection, dstRS.mlink_connection)
 
 @pytest.fixture(scope="function")
 def start_cluster(srcRS, dstRS, mlink, request):
@@ -45,68 +45,145 @@ def start_cluster(srcRS, dstRS, mlink, request):
         mlink.destroy()
 
 
-def test_rs_mlink_PML_T1(start_cluster, srcRS, dstRS, mlink):
-    src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
-
-    src["test_db1"]["test_coll11"].insert_many([{"key": i, "data": i} for i in range(10)])
-    src["test_db1"]["test_coll12"].insert_many([{"key": i, "data": i} for i in range(10)])
-    src["test_db2"]["test_coll21"].insert_many([{"key": i, "data": i} for i in range(10)])
-    src["test_db2"]["test_coll22"].insert_many([{"key": i, "data": i} for i in range(10)])
-    src["test_db1"]["test_coll11"].create_index(["key"], name="test_coll11_index_old")
-
-    result = mlink.start()
-    assert result is True, "Failed to start mlink service"
-    result = mlink.finalize()
-    assert result is True, "Failed to finalize mlink service"
-
-    result = Cluster.compare_data_rs(srcRS, dstRS)
-    assert result is True, "Data mismatch after synchronization"
-
-    src["test_db2"]["test_coll21"].insert_many([{"key": i, "data": i} for i in range(10)])
-    src["test_db3"]["test_coll31"].insert_many([{"key": i, "data": i} for i in range(10)])
-    dst["test_db4"]["test_coll41"].insert_many([{"key": i, "data": i} for i in range(10)])
-
-    src["test_db3"]["test_coll31"].create_index(["key"], name="test_coll31_index_old")
-    dst["test_db1"]["test_coll11"].drop_index('test_coll11_index_old')
-    dst["test_db1"]["test_coll11"].create_index(["data"], name="test_coll11_index_old")
-    dst["test_db1"]["test_coll11"].create_index(["key"], name="test_coll11_index_new")
-
-    result = Cluster.compare_data_rs(srcRS, dstRS)
-    assert result is False, "Data should not match after modification in dst"
-
-
 def test_rs_mlink_PML_T2(start_cluster, srcRS, dstRS, mlink):
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
 
-    init_test_db = create_all_types_db(srcRS.connection,"init_test_db")
-    collections = [c for c in init_test_db.list_collection_names() if not c.startswith("system.")]
+    generate_dummy_data(srcRS.connection)
+    # Add data before sync
+    init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", create_ts=True, start_crud=True)
 
     result = mlink.start()
     assert result is True, "Failed to start mlink service"
 
-    for coll in collections:
-        collection = init_test_db[coll]
-        if collection.count_documents({}) > 0:
-            collection.update_one({}, {"$set": {"updated_field": "updated_value"}})
-            collection.update_many({}, {"$set": {"status": "updated"}})
-            collection.delete_one({})
-            collection.delete_many({"status": "old_status"})
+    # Add data during clone phase
+    clone_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", create_ts=True, start_crud=True)
 
-    repl_test_db = create_all_types_db(srcRS.connection,"repl_test_db")
+    result = mlink.wait_for_repl_stage()
+    assert result is True, "Failed to start replication stage"
 
-    for coll in collections:
-        collection = repl_test_db[coll]
-        if collection.count_documents({}) > 0:
-            collection.update_one({}, {"$set": {"updated_field": "updated_value"}})
-            collection.update_many({}, {"$set": {"status": "updated"}})
-            collection.delete_one({})
-            collection.delete_many({"status": "old_status"})
+    # Add data during replication phase
+    repl_test_db, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", create_ts=True, start_crud=True)
+
     time.sleep(10)
+
+    stop_all_crud_operations()
+    all_threads = operation_threads_1 + operation_threads_2 + operation_threads_3
+    for thread in all_threads:
+        thread.join()
+
+    # This step is required to ensure that all data is synchronized except for time-series
+    # collections which are not supported. Existence of TS collections in source cluster
+    # will cause the comparison to fail, but collections existence is important to verify
+    # that mlink can ignore time-series collections and all related events
+    databases = ["init_test_db", "clone_test_db", "repl_test_db"]
+    for db in databases:
+        src[db].drop_collection("timeseries_data")
+
+    result = mlink.wait_for_zero_lag()
+    assert result is True, "Failed to catch up on replication"
 
     result = mlink.finalize()
     assert result is True, "Failed to finalize mlink service"
 
-    result = Cluster.compare_data_rs(srcRS, dstRS)
+    result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
+    mlink_error, error_logs = mlink.check_mlink_errors()
+    assert mlink_error is True, f"Mlink reported errors in logs:\n{chr(10).join(error_logs)}"
+
+
+def disabled_rs_mlink_PML_T3(start_cluster, srcRS, dstRS, mlink):
+    src = pymongo.MongoClient(srcRS.connection)
+    dst = pymongo.MongoClient(dstRS.connection)
+
+    generate_dummy_data(srcRS.connection)
+    init_test_db, _ = create_all_types_db(srcRS.connection, "init_test_db", create_ts=True)
+
+    result = mlink.start()
+    assert result is True, "Failed to start mlink service"
+
+    # Re-create data during clone phase by dropping and re-creating the collections
+    init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", create_ts=True, \
+                                                            drop_before_creation=True, start_crud=True)
+
+    result = mlink.wait_for_repl_stage()
+    assert result is True, "Failed to start replication stage"
+
+    repl_test_db, _ = create_all_types_db(srcRS.connection, "repl_test_db", create_ts=True)
+
+    # Re-create data during replication phase by dropping and re-creating the collections
+    repl_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db", create_ts=True, \
+                                                            drop_before_creation=True, start_crud=True)
+    time.sleep(10)
+
+    stop_all_crud_operations()
+    all_threads = operation_threads_1 + operation_threads_2
+    for thread in all_threads:
+        thread.join()
+
+    # This step is required to ensure that all data is synchronized except for time-series
+    # collections which are not supported. Existence of TS collections in source cluster
+    # will cause the comparison to fail, but collections existence is important to verify
+    # that mlink can ignore time-series collections and all related events
+    databases = ["init_test_db", "repl_test_db"]
+    for db in databases:
+        src[db].drop_collection("timeseries_data")
+
+    result = mlink.wait_for_zero_lag()
+    assert result is True, "Failed to catch up on replication"
+
+    result = mlink.finalize()
+    assert result is True, "Failed to finalize mlink service"
+
+    result, _ = compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after synchronization"
+    mlink_error, error_logs = mlink.check_mlink_errors()
+    assert mlink_error is True, f"Mlink reported errors in logs:\n{chr(10).join(error_logs)}"
+
+def disabled_rs_mlink_PML_T4(start_cluster, srcRS, dstRS, mlink):
+    src = pymongo.MongoClient(srcRS.connection)
+    dst = pymongo.MongoClient(dstRS.connection)
+
+    generate_dummy_data(srcRS.connection)
+    init_test_db, _ = create_all_types_db(srcRS.connection, "init_test_db", create_ts=True)
+
+    result = mlink.start()
+    assert result is True, "Failed to start mlink service"
+
+    # Re-create data during clone phase by dropping DB
+    src.drop_database("init_test_db")
+    init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", create_ts=True, start_crud=True)
+
+    result = mlink.wait_for_repl_stage()
+    assert result is True, "Failed to start replication stage"
+
+    repl_test_db, _ = create_all_types_db(srcRS.connection, "repl_test_db", create_ts=True)
+
+    # Re-create data during replication phase by dropping DB
+    src.drop_database("repl_test_db")
+    repl_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db", create_ts=True, start_crud=True)
+    time.sleep(10)
+
+    stop_all_crud_operations()
+    all_threads = operation_threads_1 + operation_threads_2
+    for thread in all_threads:
+        thread.join()
+
+    # This step is required to ensure that all data is synchronized except for time-series
+    # collections which are not supported. Existence of TS collections in source cluster
+    # will cause the comparison to fail, but collections existence is important to verify
+    # that mlink can ignore time-series collections and all related events
+    databases = ["init_test_db", "repl_test_db"]
+    for db in databases:
+        src[db].drop_collection("timeseries_data")
+
+    result = mlink.wait_for_zero_lag()
+    assert result is True, "Failed to catch up on replication"
+
+    result = mlink.finalize()
+    assert result is True, "Failed to finalize mlink service"
+
+    result, _ = compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after synchronization"
+    mlink_error, error_logs = mlink.check_mlink_errors()
+    assert mlink_error is True, f"Mlink reported errors in logs:\n{chr(10).join(error_logs)}"

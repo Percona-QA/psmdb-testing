@@ -10,6 +10,7 @@ import threading
 from datetime import datetime
 from cluster import Cluster
 from mongolink import Mongolink
+from data_integrity_check import compare_data_sharded
 
 @pytest.fixture(scope="package")
 def docker_client():
@@ -45,7 +46,7 @@ def dstCluster(dst_config):
 
 @pytest.fixture(scope="package")
 def mlink(srcCluster,dstCluster):
-    return Mongolink('mlink',srcCluster.pml_connection, dstCluster.pml_connection)
+    return Mongolink('mlink',srcCluster.mlink_connection, dstCluster.mlink_connection)
 
 @pytest.fixture(scope="function")
 def start_cluster(srcCluster, dstCluster, mlink, request):
@@ -78,7 +79,7 @@ def example_sharded_mlink_basic(start_cluster, srcCluster, dstCluster, mlink):
     result = mlink.finalize()
     assert result is True, "Failed to finalize mlink service"
 
-    result = Cluster.compare_data_sharded(srcCluster, dstCluster)
+    result = compare_data_sharded(srcCluster, dstCluster)
     assert result is True, "Data mismatch after synchronization"
 
     src["test_db2"]["test_coll21"].insert_many([{"key": i, "data": i} for i in range(10)])
@@ -90,5 +91,5 @@ def example_sharded_mlink_basic(start_cluster, srcCluster, dstCluster, mlink):
     dst["test_db1"]["test_coll11"].create_index(["data"], name="test_coll11_index_old")
     dst["test_db1"]["test_coll11"].create_index(["key"], name="test_coll11_index_new")
 
-    result = Cluster.compare_data_sharded(srcCluster, dstCluster)
+    result = compare_data_sharded(srcCluster, dstCluster)
     assert result is False, "Data should not match after modification in dst"
