@@ -5,31 +5,45 @@ import matplotlib.pyplot as plt
 import pytest
 import os
 from cluster import Cluster
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 
-def collect_metrics(event, interval=0.1):
+def collect_metrics(event, interval=0.5):
     client = docker.from_env()
     data = {}
+    lock = Lock()
     start_time = time.time()
 
-    while not event.is_set():
-        containers = client.containers.list()
-        for container in containers:
-            if "test" in container.name:
-                continue
-            if container.name not in data:
-                data[container.name] = {'time': [], 'cpu': [], 'memory': []}
+    def collect_container_metrics(container):
+        while not event.is_set():
             stats = container.stats(stream=False)
             cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - stats['precpu_stats']['cpu_usage']['total_usage']
             system_delta = stats['cpu_stats']['system_cpu_usage'] - stats['precpu_stats']['system_cpu_usage']
             cpu_usage = (cpu_delta / system_delta) * stats['cpu_stats']['online_cpus'] * 100 if system_delta > 0 else 0
             memory_usage = stats['memory_stats']['usage'] / (1024 * 1024)
 
-            data[container.name]['time'].append(time.time() - start_time)
-            data[container.name]['cpu'].append(cpu_usage)
-            data[container.name]['memory'].append(memory_usage)
+            with lock:
+                if container.name not in data:
+                    data[container.name] = {'time': [], 'cpu': [], 'memory': []}
+                data[container.name]['time'].append(time.time() - start_time)
+                data[container.name]['cpu'].append(cpu_usage)
+                data[container.name]['memory'].append(memory_usage)
 
+            time.sleep(interval)
+
+    threads = []
+    while not event.is_set():
+        containers = client.containers.list()
+        for container in containers:
+            if "test" in container.name:
+                continue
+            if container.name not in data:
+                thread = Thread(target=collect_container_metrics, args=(container,))
+                thread.start()
+                threads.append(thread)
         time.sleep(interval)
+
+    for thread in threads:
+        thread.join()
 
     return data
 
