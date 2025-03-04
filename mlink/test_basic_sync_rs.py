@@ -7,7 +7,7 @@ from cluster import Cluster
 from mongolink import Mongolink
 from data_generator import create_all_types_db, generate_dummy_data, stop_all_crud_operations
 from data_integrity_check import compare_data_rs
-
+from metrics_collector import metrics_collector
 
 @pytest.fixture(scope="package")
 def docker_client():
@@ -15,11 +15,11 @@ def docker_client():
 
 @pytest.fixture(scope="package")
 def dstRS():
-    return Cluster({ "_id": "rs2", "members": [{"host":"rs201"},{"host": "rs202"},{"host": "rs203" }]})
+    return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]})
 
 @pytest.fixture(scope="package")
 def srcRS():
-    return Cluster({ "_id": "rs1", "members": [{"host":"rs101"},{"host": "rs102"},{"host": "rs103" }]})
+    return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]})
 
 @pytest.fixture(scope="package")
 def mlink(srcRS,dstRS):
@@ -45,7 +45,7 @@ def start_cluster(srcRS, dstRS, mlink, request):
         mlink.destroy()
 
 
-def test_rs_mlink_PML_T2(start_cluster, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T2(start_cluster, srcRS, dstRS, mlink, metrics_collector):
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
 
