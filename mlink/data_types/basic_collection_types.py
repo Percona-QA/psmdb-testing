@@ -3,12 +3,14 @@ import datetime
 import uuid
 import re
 from bson import Decimal128, ObjectId, Binary, Code, Timestamp, Int64, DBRef, UUID_SUBTYPE
+from pymongo.collation import Collation
 
 def create_collection_types(db, create_ts=False, drop_before_creation=False):
     collections_metadata = []
 
     if drop_before_creation:
         db.drop_collection("regular_collection")
+        db.drop_collection("fr_collation_collection")
         db.drop_collection("capped_logs")
         db.drop_collection("timeseries_data")
 
@@ -39,8 +41,20 @@ def create_collection_types(db, create_ts=False, drop_before_creation=False):
     regular_collection.insert_many(bson_docs)
     collections_metadata.append({"collection": regular_collection, "capped": False, "timeseries": False})
 
+    # Collection with fr collation
+    fr_collation = Collation(locale='fr', strength=2)
+    fr_collation_collection = db.create_collection("fr_collation_collection", collation=fr_collation)
+    french_docs = [
+        {"string": "cote"},
+        {"string": "coté"},
+        {"string": "côte"},
+        {"string": "côté"}
+    ]
+    fr_collation_collection.insert_many(french_docs)
+    collections_metadata.append({"collection": fr_collation_collection, "capped": False, "timeseries": False})
+
     # Capped Collection
-    db.create_collection("capped_logs", capped=True, size=1024 * 1024, max=1000)
+    db.create_collection("capped_logs", capped=True, size=1024 * 1024, max=20)
     capped_collection = db.capped_logs
     capped_collection.insert_many([
         {"timestamp": datetime.datetime.now(datetime.timezone.utc), "log": "Test log 1"},
@@ -52,10 +66,15 @@ def create_collection_types(db, create_ts=False, drop_before_creation=False):
         # Time-series Collection
         db.create_collection("timeseries_data", timeseries={"timeField": "timestamp", "metaField": "metadata", "granularity": "seconds"})
         timeseries_collection = db.timeseries_data
-        timeseries_collection.insert_many([
-            {"timestamp": datetime.datetime.now(datetime.timezone.utc), "metadata": {"sensor": "A"}, "value": 100},
-            {"timestamp": datetime.datetime.now(datetime.timezone.utc), "metadata": {"sensor": "B"}, "value": 200}
-        ])
+        ts_docs = [
+            {
+                "timestamp": datetime.datetime.now(datetime.timezone.utc),
+                "metadata": {"sensor": f"sensor_{_}"},
+                "value": 20.5 + _
+            }
+            for _ in range(50)
+        ]
+        timeseries_collection.insert_many(ts_docs)
         collections_metadata.append({"collection": timeseries_collection, "capped": False, "timeseries": True})
 
     return collections_metadata
@@ -88,7 +107,8 @@ def perform_crud_ops_collection(collection, capped=False, timeseries=False):
         {"string": "Batch Insert 2", "int": 200},
         {"string": "Batch Insert 3", "int": 10},
         {"string": "Batch Insert 4", "int": 5},
-        {"string": "Batch Insert 5", "boolean": False}
+        {"string": "Batch Insert 5", "boolean": False},
+        {"string": "Batch Insert 6", "boolean": True}
     ]
     collection.insert_many(new_docs)
 
@@ -144,6 +164,8 @@ def perform_crud_ops_collection(collection, capped=False, timeseries=False):
         {"string": "FindOneAndReplace Upserted New"},
         upsert=True
     )
+
+    collection.find_one_and_delete({"string": "Batch Insert 6"})
 
     # https://www.mongodb.com/docs/manual/reference/method/db.collection.bulkWrite/#capped-collections
     bulk_operations = [
