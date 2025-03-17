@@ -6,10 +6,10 @@ from gridfs import GridFS
 
 def create_index_types(db, drop_before_creation=False):
     collections = [
-        "geo_indexes", "numeric_indexes", "hashed_indexes", "ttl_indexes",
-        "sparse_indexes", "partial_indexes", "text_indexes", "regular_text_indexes",
-        "wildcard_text_indexes", "wildcard_indexes", "multi_key_indexes",
-        "clustered_collection", "unique_compound", "collation_collection"
+        "geo_indexes", "hashed_indexes", "ttl_indexes", "partial_indexes",
+        "text_indexes", "regular_text_indexes", "wildcard_text_indexes",
+        "wildcard_indexes", "multi_key_indexes", "clustered_collection",
+        "compound_indexes", "hidden_indexes"
     ]
 
     if drop_before_creation:
@@ -17,47 +17,37 @@ def create_index_types(db, drop_before_creation=False):
             db[collection].drop_indexes()
             db.drop_collection(collection)
 
-    # Geospatial Indexes (2D, 2D Sphere)
+    # Geospatial Index Variants
     geo_collection = db.geo_indexes
     geo_collection.insert_many([
         {"location_2d": [-122.4194, 37.7749]},
         {"location_2dsphere": {"type": "Point", "coordinates": [-74.0060, 40.7128]}},
     ])
-    geo_collection.create_index([("location_2d", pymongo.GEO2D)], name="2d_index")
+
+    geo_collection.create_index([("location_2d", pymongo.GEO2D)], name="2d_index", min=-180, max=180, bits=32)
     geo_collection.create_index([("location_2dsphere", pymongo.GEOSPHERE)], name="2dsphere_index")
 
-    # Numeric Indexes (Sparse vs Non-Sparse)
-    numeric_collection = db.numeric_indexes
-    numeric_collection.insert_many([
-        {"int_field": i, "double_field": i * 1.5} for i in range(10)
-    ])
-    numeric_collection.create_index([("int_field", pymongo.ASCENDING)], name="single_field_index")
-    numeric_collection.create_index([("int_field", pymongo.ASCENDING), ("double_field", pymongo.DESCENDING)], name="compound_index")
-    numeric_collection.create_index([("double_field", pymongo.ASCENDING)], name="sparse_numeric_index", sparse=True)
-
-    # Hashed Indexes (Single-Field vs Compound)
+    # Hashed Index Variants
     hashed_collection = db.hashed_indexes
     hashed_collection.insert_many([
         {"hashed_field": f"user_{i}", "secondary_field": f"extra_{i}"} for i in range(10)
     ])
-    hashed_collection.create_index([("hashed_field", pymongo.HASHED)], name="hashed_index")
-    hashed_collection.create_index([("hashed_field", pymongo.HASHED), ("secondary_field", pymongo.ASCENDING)], name="compound_hashed_index")
+    hashed_collection.create_index([("hashed_field", pymongo.HASHED)], name="hashed_basic_index")
+    hashed_collection.create_index([("hashed_field", pymongo.HASHED)], name="hashed_partial_index",
+                                   partialFilterExpression={"secondary_field": {"$exists": True}})
+    hashed_collection.create_index([("hashed_field", pymongo.HASHED)], name="hashed_sparse_index", sparse=True)
+    hashed_collection.create_index([("hashed_field", pymongo.HASHED), ("secondary_field", pymongo.ASCENDING)],
+                                   name="hashed_compound_index")
 
-    # TTL Index
+    # TTL Index Variants
     ttl_collection = db.ttl_indexes
     ttl_collection.insert_many([
         {"created_at": datetime.datetime.now(datetime.timezone.utc), "short_lived": True},
         {"created_at": datetime.datetime.now(datetime.timezone.utc), "long_lived": True}
     ])
-    ttl_collection.create_index([("created_at", pymongo.ASCENDING)], name="short_ttl_index", expireAfterSeconds=3600)
-
-    # Sparse Index
-    sparse_collection = db.sparse_indexes
-    sparse_collection.insert_many([
-        {"sparse_field": "exists"},
-        {"another_field": "this does not have sparse_field"}
-    ])
-    sparse_collection.create_index([("sparse_field", pymongo.ASCENDING)], name="sparse_index", sparse=True)
+    ttl_collection.create_index([("created_at", pymongo.ASCENDING)], name="ttl_index", expireAfterSeconds=3600)
+    ttl_collection.create_index([("created_at", pymongo.ASCENDING)], name="ttl_partial_index",
+                                expireAfterSeconds=7200, partialFilterExpression={"short_lived": True})
 
     # Partial Index
     partial_collection = db.partial_indexes
@@ -77,7 +67,7 @@ def create_index_types(db, drop_before_creation=False):
         {"content": "Hello MongoDB", "extra": "Some extra data"},
         {"content": "Pytest integration testing", "extra": "Another document"}
     ])
-    text_collection.create_index([("content", pymongo.TEXT)], name="regular_text_index")
+    text_collection.create_index([("content", pymongo.TEXT)], name="regular_text_index", unique=True)
 
     # Regular Text Index with Weights
     regular_text_collection = db.regular_text_indexes
@@ -88,7 +78,10 @@ def create_index_types(db, drop_before_creation=False):
     regular_text_collection.create_index(
         [("title", pymongo.TEXT), ("description", pymongo.TEXT)],
         name="regular_text_index_with_weights",
-        weights={"title": 5, "description": 1}
+        weights={"title": 5, "description": 1},
+        default_language="english",
+        language_override="lang",
+        textIndexVersion=3
     )
 
     # Wildcard Text Index
@@ -111,10 +104,11 @@ def create_index_types(db, drop_before_creation=False):
     ])
     wildcard_collection.create_index([("$**", pymongo.ASCENDING)], name="wildcard_index")
     wildcard_collection.create_index(
-        [("$**", pymongo.ASCENDING)],
-        name="filtered_wildcard_index",
-        partialFilterExpression={"extra_field": {"$exists": True}}
-    )
+        [("$**", pymongo.ASCENDING)], name="filtered_wildcard_index",
+        partialFilterExpression={"extra_field": {"$exists": True}})
+    wildcard_collection.create_index(
+        [("$**", pymongo.ASCENDING)], name="wildcard_projection_index",
+        wildcardProjection={"field1": 1, "nested.subfield": 1})
 
     # Multi-key Index
     multi_key_collection = db.multi_key_indexes
@@ -136,29 +130,31 @@ def create_index_types(db, drop_before_creation=False):
         {"_id": 2, "name": "Bob"}
     ])
 
-    # Unique Compound Index
-    unique_compound_collection = db.unique_compound
-    unique_compound_collection.insert_many([
-        {"email": "user1@example.com", "phone": "1234567890"},
-        {"email": "user2@example.com", "phone": "0987654321"}
+    # Compound Index Variants
+    compound_collection = db.compound_indexes
+    compound_collection.insert_many([
+        {"first_name": "Alice", "last_name": "Smith", "age": 30},
+        {"first_name": "Bob", "last_name": "Brown", "age": 25}
     ])
-    unique_compound_collection.create_index(
-        [("email", pymongo.ASCENDING), ("phone", pymongo.ASCENDING)],
-        name="unique_email_phone_index",
-        unique=True
+    compound_collection.create_index([("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
+                                     name="compound_unique_index", unique=True
+    )
+    compound_collection.create_index( [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
+                                     name="compound_collation_index", collation=pymongo.collation.Collation(locale="en", strength=2)
+    )
+    compound_collection.create_index( [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
+                                     name="compound_partial_index", partialFilterExpression={"age": {"$gt": 20}}
+    )
+    compound_collection.create_index([("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
+                                     name="compound_sparse_index", sparse=True
     )
 
-    # Collation Index (Case-Insensitive Sorting)
-    collation_collection = db.collation_collection
-    collation_collection.insert_many([
-        {"name": "Alice"},
-        {"name": "bob"},
-        {"name": "Charlie"},
-        {"name": "alice"},
-        {"name": "BOB"}
+    # Hidden Index
+    hidden_collection = db.hidden_indexes
+    hidden_collection.insert_many([
+        {"data": "example1"},
+        {"data": "example2"}
     ])
-    collation_collection.create_index(
-        [("name", pymongo.ASCENDING)],
-        name="collation_index",
-        collation=pymongo.collation.Collation(locale="en", strength=2)
+    hidden_collection.create_index(
+        [("data", pymongo.ASCENDING)], name="hidden_index", hidden=True
     )

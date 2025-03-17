@@ -81,7 +81,9 @@ def create_diff_coll_types(db, drop_before_creation=False):
     large_doc = {
         "_id": 1,
         "name": "Large Document Test",
-        "data": "x" * (16 * 1024 * 1024 - 100)
+    # Until PML-85 is fixed
+    #   "data": "x" * 16777160
+        "data": "x" * 16777000
     }
     large_doc_collection.insert_one(large_doc)
 

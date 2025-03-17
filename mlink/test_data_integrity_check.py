@@ -12,11 +12,11 @@ def docker_client():
 
 @pytest.fixture(scope="package")
 def dstRS():
-    return Cluster({ "_id": "rs2", "members": [{"host":"rs201"},{"host": "rs202"},{"host": "rs203" }]})
+    return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]})
 
 @pytest.fixture(scope="package")
 def srcRS():
-    return Cluster({ "_id": "rs1", "members": [{"host":"rs101"},{"host": "rs102"},{"host": "rs103" }]})
+    return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]})
 
 @pytest.fixture(scope="function")
 def start_cluster(srcRS, dstRS, request):
