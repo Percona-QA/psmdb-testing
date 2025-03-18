@@ -31,6 +31,7 @@ def start_cluster(srcRS, dstRS, request):
         srcRS.destroy()
         dstRS.destroy()
 
+@pytest.mark.timeout(300,func_only=True)
 def test_data_integrity_check_PML_T1(start_cluster, srcRS, dstRS):
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
