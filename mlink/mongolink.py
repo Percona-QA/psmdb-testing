@@ -37,7 +37,7 @@ class Mongolink:
             name=self.name,
             detach=True,
             network="test",
-            command=f"mongolink --source {self.src} --target {self.dst} --log-level=debug --no-color"
+            command=f"percona-mongolink --source {self.src} --target {self.dst} --log-level=trace --no-color"
         )
         Cluster.log(f"Mlink '{self.name}' started successfully")
 
@@ -146,7 +146,7 @@ class Mongolink:
 
         return not bool(errors_found), errors_found
 
-    def wait_for_zero_lag(self, timeout=300, interval=5):
+    def wait_for_zero_lag(self, timeout=200, interval=5):
         start_time = time.time()
 
         while time.time() - start_time < timeout:
@@ -168,7 +168,7 @@ class Mongolink:
         Cluster.log("Error: Timeout reached while waiting for replication to catch up")
         return False
 
-    def wait_for_repl_stage(self, timeout=300, interval=1):
+    def wait_for_repl_stage(self, timeout=200, interval=1):
         start_time = time.time()
 
         while time.time() - start_time < timeout:

@@ -45,6 +45,7 @@ def start_cluster(srcRS, dstRS, mlink, request):
         mlink.destroy()
 
 
+@pytest.mark.timeout(300,func_only=True)
 def test_rs_mlink_PML_T2(start_cluster, srcRS, dstRS, mlink, metrics_collector):
     try:
         src = pymongo.MongoClient(srcRS.connection)
@@ -103,6 +104,7 @@ def test_rs_mlink_PML_T2(start_cluster, srcRS, dstRS, mlink, metrics_collector):
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
 
 @pytest.mark.xfail(reason="Known issue: PML-84", strict=True)
+@pytest.mark.timeout(300,func_only=True)
 def test_rs_mlink_PML_T3(start_cluster, srcRS, dstRS, mlink):
     """
     Test to validate handling of index creation failures
@@ -210,6 +212,7 @@ def test_rs_mlink_PML_T3(start_cluster, srcRS, dstRS, mlink):
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
 
+@pytest.mark.timeout(300,func_only=True)
 def test_rs_mlink_PML_T4(start_cluster, srcRS, dstRS, mlink):
     """
     Test to validate handling of index duplicate errors

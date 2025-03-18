@@ -97,7 +97,7 @@ def compare_database_hashes(db1_container, db2_container):
     mismatched_dbs = []
     for db_name in db1_hashes:
         if db_name not in db2_hashes:
-            mismatched_dbs.append(db_name)
+            mismatched_dbs.append((db_name, "missing in dst DB"))
             Cluster.log(f"Database '{db_name}' exists in source_DB but not in destination_DB")
         elif db1_hashes[db_name] != db2_hashes[db_name]:
             mismatched_dbs.append((db_name, "hash mismatch"))
@@ -105,14 +105,14 @@ def compare_database_hashes(db1_container, db2_container):
 
     for db_name in db2_hashes:
         if db_name not in db1_hashes:
-            mismatched_dbs.append(db_name)
+            mismatched_dbs.append((db_name, "missing in src DB"))
             Cluster.log(f"Database '{db_name}' exists in destination_DB but not in source_DB")
 
     Cluster.log("Comparing collection hashes...")
     mismatched_collections = []
     for coll_name in db1_collections:
         if coll_name not in db2_collections:
-            mismatched_collections.append(coll_name)
+            mismatched_collections.append((coll_name, "missing in dst DB"))
             Cluster.log(f"Collection '{coll_name}' exists in source_DB but not in destination_DB")
         elif db1_collections[coll_name] != db2_collections[coll_name]:
             mismatched_collections.append((coll_name, "hash mismatch"))
@@ -120,7 +120,7 @@ def compare_database_hashes(db1_container, db2_container):
 
     for coll_name in db2_collections:
         if coll_name not in db1_collections:
-            mismatched_collections.append(coll_name)
+            mismatched_collections.append((coll_name, "missing in src DB"))
             Cluster.log(f"Collection '{coll_name}' exists in destination_DB but not in source_DB")
 
     return db1_collections.keys() | db2_collections.keys(), mismatched_dbs, mismatched_collections
@@ -165,7 +165,7 @@ def compare_entries_number(db1_container, db2_container):
 
     for coll_name in db1_counts:
         if coll_name not in db2_counts:
-            mismatched_collections.append(coll_name)
+            mismatched_collections.append((coll_name, "missing in dst DB"))
             Cluster.log(f"Collection '{coll_name}' exists in source_DB but not in destination_DB")
         elif db1_counts[coll_name] != db2_counts[coll_name]:
             mismatched_collections.append((coll_name, "record count mismatch"))
@@ -173,7 +173,7 @@ def compare_entries_number(db1_container, db2_container):
 
     for coll_name in db2_counts:
         if coll_name not in db1_counts:
-            mismatched_collections.append(coll_name)
+            mismatched_collections.append((coll_name, "missing in src DB"))
             Cluster.log(f"Collection '{coll_name}' exists in destination_DB but not in source_DB")
 
     return db1_counts.keys() | db2_counts.keys(), mismatched_dbs, mismatched_collections

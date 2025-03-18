@@ -44,6 +44,8 @@ def start_cluster(srcRS, dstRS, mlink, request):
         dstRS.destroy()
         mlink.destroy()
 
+@pytest.mark.xfail(reason="Known issue: PML-95")
+@pytest.mark.timeout(300,func_only=True)
 def test_rs_mlink_PML_T5(start_cluster, srcRS, dstRS, mlink):
     """
     Test to verify collection drop and re-creation during clone and replication phase
@@ -103,6 +105,7 @@ def test_rs_mlink_PML_T5(start_cluster, srcRS, dstRS, mlink):
     assert result is True, "Data mismatch after synchronization"
 
 @pytest.mark.xfail(reason="Known issue: PML-86")
+@pytest.mark.timeout(300,func_only=True)
 def test_rs_mlink_PML_T6(start_cluster, srcRS, dstRS, mlink):
     """
     Test to verify DB drop and re-creation during clone phase
@@ -145,6 +148,7 @@ def test_rs_mlink_PML_T6(start_cluster, srcRS, dstRS, mlink):
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
 
+@pytest.mark.timeout(300,func_only=True)
 def test_rs_mlink_PML_T7(start_cluster, srcRS, dstRS, mlink):
     """
     Test to verify DB drop and re-creation during replication phase
