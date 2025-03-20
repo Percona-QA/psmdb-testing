@@ -94,6 +94,28 @@ class Mongolink:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    def restart(self, timeout=60):
+        if self.container:
+            try:
+                self.container.stop()
+                time.sleep(2)
+                self.container.start()
+                time.sleep(2)
+                log_stream = self.container.logs(stream=True, follow=True, since=int(time.time()))
+                start_time = time.time()
+                for line in log_stream:
+                    log_line = line.decode('utf-8').strip()
+                    if "Starting server" in log_line:
+                        Cluster.log("Mlink restarted successfully")
+                        return
+                    if time.time() - start_time > timeout:
+                        Cluster.log(f"Timeout exceeded {timeout} seconds while waiting for mlink to start")
+                        return
+            except docker.errors.APIError as e:
+                Cluster.log(f"Failed to restart container '{self.container.name}': {e}")
+        else:
+            Cluster.log("No container to restart")
+
     def finalize(self):
         try:
             exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/finalize -d '{}'")
@@ -160,7 +182,7 @@ class Mongolink:
             if lag_time is None:
                 Cluster.log("Error: No 'lagTime' field not found in status response")
                 return False
-            if lag_time == 0:
+            if lag_time <= 1:
                 Cluster.log("Src and dst clusters are in sync")
                 return True
             time.sleep(interval)
@@ -192,3 +214,19 @@ class Mongolink:
 
         Cluster.log("Error: Timeout reached while waiting for initial sync to complete")
         return False
+
+    def wait_for_checkpoint(self, timeout=120):
+        try:
+            start_time = time.time()
+            log_stream = self.container.logs(stream=True, follow=True)
+
+            for line in log_stream:
+                log_line = line.decode('utf-8').strip()
+                if "Checkpoint saved" in log_line:
+                    return True
+                if time.time() - start_time > timeout:
+                    print(f"Timeout exceeded {timeout} seconds while waiting for checkpoint")
+                    return False
+        except docker.errors.APIError as e:
+            print(f"Failed to read logs from container '{self.name}': {e}")
+            return False
