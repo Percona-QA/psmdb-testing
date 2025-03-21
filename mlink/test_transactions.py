@@ -135,7 +135,6 @@ def test_rs_mlink_PML_T8(reset_state, srcRS, dstRS, mlink):
         for thread in all_threads:
             thread.join()
 
-    time.sleep(5)
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
 
@@ -248,7 +247,6 @@ def test_rs_mlink_PML_T9(reset_state, srcRS, dstRS, mlink):
             if thread.is_alive():
                 thread.join()
 
-    time.sleep(5)
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
 
@@ -292,7 +290,6 @@ def test_rs_mlink_PML_T10(reset_state, srcRS, dstRS, mlink):
         except OperationFailure:
             pass
 
-    time.sleep(5)
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
 
@@ -333,7 +330,6 @@ def test_rs_mlink_PML_T11(reset_state, srcRS, dstRS, mlink):
         src["large_txn_db"]["test_coll"].insert_many(large_docs, session=session)
         session.commit_transaction()
 
-    time.sleep(5)
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
 
@@ -374,7 +370,6 @@ def test_rs_mlink_PML_T12(reset_state, srcRS, dstRS, mlink):
         src["large_txn_db3"]["test_coll3"].insert_many(large_docs, session=session)
         session.commit_transaction()
 
-    time.sleep(5)
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
 
@@ -425,7 +420,6 @@ def test_rs_mlink_PML_T13(reset_state, srcRS, dstRS, mlink):
         session1.commit_transaction()
         session2.abort_transaction()
 
-    time.sleep(5)
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
 
