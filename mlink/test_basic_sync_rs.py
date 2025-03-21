@@ -91,7 +91,6 @@ def test_rs_mlink_PML_T2(start_cluster, srcRS, dstRS, mlink, metrics_collector):
     for db in databases:
         src[db].drop_collection("timeseries_data")
 
-    time.sleep(10)
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
 
@@ -184,7 +183,6 @@ def test_rs_mlink_PML_T3(start_cluster, srcRS, dstRS, mlink):
         for thread in all_threads:
             thread.join()
 
-    time.sleep(10)
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
 
@@ -281,7 +279,6 @@ def test_rs_mlink_PML_T4(start_cluster, srcRS, dstRS, mlink):
         for thread in all_threads:
             thread.join()
 
-    time.sleep(10)
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
 

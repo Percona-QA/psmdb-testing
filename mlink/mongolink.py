@@ -1,7 +1,9 @@
 import docker
 import json
 import re
+import pymongo
 import time
+from bson.timestamp import Timestamp
 from cluster import Cluster
 
 # class Mongolink for creating/manipulating with single mongolink instance
@@ -94,6 +96,28 @@ class Mongolink:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    def restart(self, timeout=60):
+        if self.container:
+            try:
+                self.container.stop()
+                time.sleep(2)
+                self.container.start()
+                time.sleep(2)
+                log_stream = self.container.logs(stream=True, follow=True, since=int(time.time()))
+                start_time = time.time()
+                for line in log_stream:
+                    log_line = line.decode('utf-8').strip()
+                    if "Starting server" in log_line:
+                        Cluster.log("Mlink restarted successfully")
+                        return
+                    if time.time() - start_time > timeout:
+                        Cluster.log(f"Timeout exceeded {timeout} seconds while waiting for mlink to start")
+                        return
+            except docker.errors.APIError as e:
+                Cluster.log(f"Failed to restart container '{self.container.name}': {e}")
+        else:
+            Cluster.log("No container to restart")
+
     def finalize(self):
         try:
             exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/finalize -d '{}'")
@@ -146,23 +170,51 @@ class Mongolink:
 
         return not bool(errors_found), errors_found
 
-    def wait_for_zero_lag(self, timeout=200, interval=5):
+    def wait_for_zero_lag(self, timeout=200, interval=1):
         start_time = time.time()
 
-        while time.time() - start_time < timeout:
-            status_response = self.status()
+        try:
+            src_client = pymongo.MongoClient(self.src)
+        except Exception as e:
+            Cluster.log(f"Error: Failed to connect to source MongoDB URI: {e}")
+            return False
 
+        while time.time() - start_time < timeout:
+            try:
+                ping_result = src_client.admin.command("ping")
+                cluster_time = ping_result.get("$clusterTime", {}).get("clusterTime")
+
+                if cluster_time is None:
+                    Cluster.log("Error: Failed to get clusterTime from source")
+                    return False
+            except Exception as e:
+                Cluster.log(f"Error: Failed to retrieve clusterTime from source: {e}")
+                return False
+
+            status_response = self.status()
             if not status_response["success"]:
                 Cluster.log(f"Error: Impossible to retrieve status, {status_response['error']}")
                 return False
 
-            lag_time = status_response["data"].get("lagTime")
-            if lag_time is None:
-                Cluster.log("Error: No 'lagTime' field not found in status response")
+            last_repl_op = status_response["data"].get("lastReplicatedOpTime")
+            if last_repl_op is None:
+                Cluster.log("Error: No 'lastReplicatedOpTime' field found in status response")
                 return False
-            if lag_time == 0:
-                Cluster.log("Src and dst clusters are in sync")
+
+            try:
+                parts = str(last_repl_op).split(".")
+                if len(parts) != 2:
+                    Cluster.log("Error: Invalid lastReplicatedOpTime format, expected 'seconds.increment'")
+                    return False
+                last_ts = Timestamp(int(parts[0]), int(parts[1]))
+            except Exception as e:
+                Cluster.log(f"Error: Failed to parse lastReplicatedOpTime: {e}")
+                return False
+
+            if last_ts >= cluster_time:
+                Cluster.log(f"Src and dst clusters are in sync, last replicated TS {last_ts} >= current cluster time {cluster_time}")
                 return True
+
             time.sleep(interval)
 
         Cluster.log("Error: Timeout reached while waiting for replication to catch up")
@@ -192,3 +244,19 @@ class Mongolink:
 
         Cluster.log("Error: Timeout reached while waiting for initial sync to complete")
         return False
+
+    def wait_for_checkpoint(self, timeout=120):
+        try:
+            start_time = time.time()
+            log_stream = self.container.logs(stream=True, follow=True)
+
+            for line in log_stream:
+                log_line = line.decode('utf-8').strip()
+                if "Checkpoint saved" in log_line:
+                    return True
+                if time.time() - start_time > timeout:
+                    print(f"Timeout exceeded {timeout} seconds while waiting for checkpoint")
+                    return False
+        except docker.errors.APIError as e:
+            print(f"Failed to read logs from container '{self.name}': {e}")
+            return False
