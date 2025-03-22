@@ -1,6 +1,7 @@
 import pytest
 import pymongo
 import time
+import threading
 import docker
 
 from cluster import Cluster
@@ -44,7 +45,6 @@ def start_cluster(srcRS, dstRS, mlink, request):
         dstRS.destroy()
         mlink.destroy()
 
-@pytest.mark.xfail(reason="Known issue: PML-95")
 @pytest.mark.timeout(300,func_only=True)
 def test_rs_mlink_PML_T5(start_cluster, srcRS, dstRS, mlink):
     """
@@ -64,8 +64,12 @@ def test_rs_mlink_PML_T5(start_cluster, srcRS, dstRS, mlink):
         init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", create_ts=True, \
                                                             drop_before_creation=True, start_crud=True)
 
-        result = mlink.wait_for_repl_stage()
-        assert result is True, "Failed to start replication stage"
+        result = mlink.wait_for_repl_stage(timeout=30)
+        if not result:
+            if "ns not found" in mlink.logs():
+                pytest.xfail("Known issue: PML-95")
+            else:
+                assert False, "Failed to start replication stage"
 
         repl_test_db, _ = create_all_types_db(srcRS.connection, "repl_test_db", create_ts=True)
 
@@ -102,8 +106,8 @@ def test_rs_mlink_PML_T5(start_cluster, srcRS, dstRS, mlink):
 
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
+    pytest.fail("Unexpected pass: test should have failed due to PML-95")
 
-@pytest.mark.xfail(reason="Known issue: PML-86")
 @pytest.mark.timeout(300,func_only=True)
 def test_rs_mlink_PML_T6(start_cluster, srcRS, dstRS, mlink):
     """
@@ -115,15 +119,28 @@ def test_rs_mlink_PML_T6(start_cluster, srcRS, dstRS, mlink):
 
         generate_dummy_data(srcRS.connection, "init_test_db")
 
-        result = mlink.start()
-        assert result is True, "Failed to start mlink service"
-
         # Re-create data during clone phase by dropping DB
-        src.drop_database("init_test_db")
+        def start_mlink():
+            result = mlink.start()
+            assert result is True, "Failed to start mlink service"
+        def delayed_drop():
+            time.sleep(0.15)
+            src.drop_database("init_test_db")
+        t1 = threading.Thread(target=start_mlink)
+        t2 = threading.Thread(target=delayed_drop)
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
         init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
 
         result = mlink.wait_for_repl_stage(timeout=30)
-        assert result is True, "Failed to start replication stage"
+        if not result:
+            if "collection dropped" in mlink.logs():
+                pytest.xfail("Known issue: PML-86")
+            else:
+                assert False, "Failed to start replication stage"
 
     except Exception as e:
         raise
@@ -145,6 +162,7 @@ def test_rs_mlink_PML_T6(start_cluster, srcRS, dstRS, mlink):
     assert result is True, "Data mismatch after synchronization"
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
+    pytest.fail("Unexpected pass: test should have failed due to PML-86")
 
 @pytest.mark.timeout(300,func_only=True)
 def test_rs_mlink_PML_T7(start_cluster, srcRS, dstRS, mlink):
