@@ -12,7 +12,7 @@ platforms:
     privileged: true
     pre_build_image: true
     ssh_user: root
-  - name: ${MOLECULE_OS:-source}
+  - name: ${MOLECULE_OS:-destination}
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-amazonlinux2023-ansible:latest}"
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
