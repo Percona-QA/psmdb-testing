@@ -513,18 +513,21 @@ class Cluster:
         print("\n")
         cleanup=kwargs.get('cleanup_backups', False)
         if cleanup:
-            timeout = time.time() + 30
-            self.disable_pitr()
-            result=self.exec_pbm_cli("delete-pitr --all --force --yes ")
-            Cluster.log(result.stdout + result.stderr)
-            while True:
-                if not self.get_status()['running'] or time.time() > timeout:
-                    break
-            result=self.exec_pbm_cli("delete-backup --older-than=0d --force --yes")
-            Cluster.log(result.stdout + result.stderr)
-            while True:
-                if not self.get_status()['running'] or time.time() > timeout:
-                    break
+            try:
+                timeout = time.time() + 30
+                self.disable_pitr()
+                result=self.exec_pbm_cli("delete-pitr --all --force --yes ")
+                Cluster.log(result.stdout + result.stderr)
+                while True:
+                    if not self.get_status()['running'] or time.time() > timeout:
+                        break
+                result=self.exec_pbm_cli("delete-backup --older-than=0d --force --yes")
+                Cluster.log(result.stdout + result.stderr)
+                while True:
+                    if not self.get_status()['running'] or time.time() > timeout:
+                        break
+            except AssertionError as e:
+                pass
 
         for host in self.all_hosts:
             try:
