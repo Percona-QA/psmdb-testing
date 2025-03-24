@@ -1,0 +1,410 @@
+- name: Converge
+  hosts: mongo
+  become: true
+  become_method: sudo
+  tasks:
+    - set_fact:
+        # Set variable
+        psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-44', true) }}"
+
+    - set_fact:
+        # Set variable
+        psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
+
+    - set_fact:
+        # Set variable
+        psmdb_mongosh: "{{ psmdb_to_test.split('-')[1].split('.')[0] }}"
+
+    - set_fact:
+        # Set variable
+        branch: "{{ lookup('env', 'BRANCH') | default('main', true) }}"
+
+    - set_fact:
+        # Set variable
+        storage: "{{ lookup('env', 'STORAGE') }}"
+
+    # Installs iproute2 on deb 11 using apt
+    # Runs only when ansible_distribution_major_version >= "11" and ansible_distribution == "Debian"
+    - name: prerequisite for debian 11
+      apt:
+        name: iproute2
+        update_cache: yes
+      when: ansible_distribution == "Debian" and ansible_distribution_major_version >= "11"      
+
+    # Install all the packages in package variable if ansible_os_family is Redhat
+    - name: Install deps    
+      yum:
+        name: "{{ packages }}"
+      vars:
+        packages:
+        - wget
+        - git
+      when: ansible_os_family == "RedHat"
+
+    # Install all the packages in package variable if ansible_os_family is Debian
+    - name: Install deps
+      apt:
+        name: "{{ packages }}"
+      vars:
+        packages:
+        - wget
+        - git
+      when: ansible_os_family == "Debian"
+
+    # Clones down specified repo to branch specified
+    - name: Clone PBM repo
+      git:
+        repo: 'https://github.com/percona/percona-backup-mongodb.git'
+        dest: /tmp/percona-backup-mongodb
+        version: "{{ branch }}"
+
+    # Sets correct permissions to mongodb-backup_builder.sh script
+    # Creates builddir folder
+    # Runs shell commands to run mongodb-backup_builder.sh script
+    - name: Install build-depth 
+      shell: |
+        chmod +x /tmp/percona-backup-mongodb/packaging/scripts/mongodb-backup_builder.sh
+        mkdir -p /tmp/builddir
+        /tmp/percona-backup-mongodb/packaging/scripts/mongodb-backup_builder.sh --builddir=/tmp/builddir --install_deps=1     
+    
+    # Runs make file which exists in /tmp/percona-backup-mongodb
+    # Creates /tmp/percona-backup-mongodb/bin
+    # Sets environment variables
+    - name: Build PBM
+      command: make build
+      args:
+        chdir: /tmp/percona-backup-mongodb
+        creates: /tmp/percona-backup-mongodb/bin
+      environment:
+        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
+        GOROOT: /usr/local/go/
+        GOBINPATH: /usr/local/go/bin
+
+    # Copies pbm and pbm-agent binaries to /usr/bin folder
+    - name: Install PBM
+      shell: |
+        cp -r /tmp/percona-backup-mongodb/bin/pbm /usr/bin/
+        cp -r /tmp/percona-backup-mongodb/bin/pbm-agent /usr/bin/
+
+    # Sets variable rs_primary_ip for primary rs ip address
+    - name: get primary ip adrress
+      set_fact: 
+        rs_primary_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+      when: inventory_hostname in groups['primary']
+
+    # Outputs the IP address if the current host is the primary group
+    - name: debug primary ip adress
+      debug:
+        msg: "{{rs_primary_ip}}"
+      when: inventory_hostname in groups['primary']
+
+    # Gets IP addresses of secondaries and stores them in rs_secondary_ips
+    - name: get secondaries ip adresses
+      set_fact: 
+        rs_secondary_ips: "{% for host in groups['secondary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+    # Outputs the secondary IPs as debug
+    - name: debug secondaries ip adresses
+      debug:
+        msg: "{{rs_secondary_ips}}"
+
+    # Checks if key exists and specifies the URl of the key
+    # This step is necessary because EPEL packages are signed, and without this key, yum or dnf might fail with signature verification errors.
+    - name: install GPG key for epel 8
+      rpm_key:
+        state: present
+        key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
+      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+    # Installs the Percona repository GPG key needed to install Percona Server, Percona XtraDB, and Percona Backup for MongoDB (PBM)
+    - name: install GPG key for Percona repos
+      rpm_key:
+        state: present
+        key: https://repo.percona.com/yum/RPM-GPG-KEY-Percona
+      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+    # Installs percona repo package on Debian
+    - name: Install percona repository package
+      apt:
+        deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+      when: ansible_os_family == "Debian"
+
+    # Installs percona repo package on Redhat
+    - name: Install latest percona release RHEL
+      command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+      when: ansible_os_family == "RedHat"
+
+    # Enables repo branch
+    - name: setup psmdb repo with percona-release
+      command: percona-release enable {{ psmdb_to_test }} release
+
+    # Installs latest packages listed for debian
+    - name: install psmdb deb packages
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-tools
+      when: ansible_os_family == "Debian"
+
+
+    # Installs latest packages listed for RedHat
+    - name: install psmdb rpm packages
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-tools
+      when: ansible_os_family == "RedHat" and psmdb_version == "latest"
+
+    # Installs packages on Redhat on versions not latest
+    - name: install psmdb rpm packages
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb-{{ psmdb_version }}
+        - percona-server-mongodb-server-{{ psmdb_version }}
+        - percona-server-mongodb-mongos-{{ psmdb_version }}
+        - percona-server-mongodb-tools-{{ psmdb_version }}
+      when: ansible_os_family == "RedHat" and psmdb_version != "latest"
+
+    # Install mongo shell on debian if psmdb mongosh is less tha 6
+    - name: install mongo shell deb package
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+      vars:
+        packages:
+        - percona-server-mongodb-shell
+      when: ansible_os_family == "Debian" and psmdb_mongosh < "6"
+
+    # Install mongosh on debian if psmdb mongosh is greater than 6
+    - name: install mongosh deb package
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+      vars:
+        packages:
+        - percona-mongodb-mongosh
+      when: ansible_os_family == "Debian" and psmdb_mongosh >= "6"
+
+
+
+    - name: install mongo shell rpm package
+      yum:
+        name: "{{ packages }}"
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb-shell
+      when: ansible_os_family == "RedHat" and psmdb_mongosh < "6"
+
+    - name: install mongosh rpm package
+      yum:
+        name: "{{ packages }}"
+        state: latest
+      vars:
+        packages:
+        - percona-mongodb-mongosh                                           
+      when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6"
+
+    - name: copy mongosh binary to mongo path for test scripts
+      file:
+        src: /usr/bin/mongosh
+        dest: /usr/bin/mongo
+        state: link
+      when: psmdb_mongosh >= "6"
+
+    - name: stop mongod service
+      service: name=mongod state=stopped
+
+    - name: create data directory for mongod
+      file:
+        path: /mnt/data/db
+        state: directory
+        mode: '0755'
+        owner: mongod
+        group: mongod
+
+    - name: switch mongod to new dbPath
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  dbPath: /var/lib/mongo'
+        replace: '  dbPath: /mnt/data/db'
+
+    - name: add replica set name into mongod config
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#replication:'
+        replace: 'replication:\n  replSetName: "rs"'
+
+    - name: bind mongod to 0.0.0.0
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  bindIp: 127.0.0.1'
+        replace: '  bindIp: 0.0.0.0'
+
+    - name: start mongod service
+      service: name=mongod state=started
+
+    - name: install pymongo
+      pip:
+        name: pymongo
+
+    - name: Create a replicaset rs
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs
+        login_host: "{{ rs_primary_ip }}"
+        members:
+        - host: "{{ rs_primary_ip }}:27017"
+          priority: 1
+        - host: "{{ rs_secondary_ips.split(',')[0] }}:27017"
+          priority: 0.5
+        - host: "{{ rs_secondary_ips.split(',')[1] }}:27017"
+          priority: 0.5
+      when: inventory_hostname in groups['primary']
+
+    - name: Create systemd unit-file
+      blockinfile:
+        path: /usr/lib/systemd/system/pbm-agent.service
+        mode: '0644'
+        create: true
+        block: |
+          [Unit]
+          Description=pbm-agent
+          After=time-sync.target network.target
+
+          [Service]
+          EnvironmentFile=-/etc/sysconfig/pbm-agent
+          Type=simple
+          User=mongod
+          Group=mongod
+          PermissionsStartOnly=true
+          ExecStart=/usr/bin/pbm-agent
+
+          [Install]
+          WantedBy=multi-user.target
+      when: ansible_os_family == "RedHat"
+
+    - name: edit pbm-agent service config for deb
+      blockinfile:
+        path: /etc/default/pbm-agent
+        mode: '0644'
+        create: true
+        block: |
+          PBM_MONGODB_URI="mongodb://localhost:27017/"
+      when: ansible_os_family == "Debian"
+
+    - name: edit pbm-agent service config for rhel
+      blockinfile:
+        path: /etc/sysconfig/pbm-agent
+        mode: '0644'
+        create: true
+        block: |
+          PBM_MONGODB_URI="mongodb://localhost:27017/"
+      when: ansible_os_family == "RedHat"
+
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: add AWS storage for pbm-agent
+      blockinfile:
+        path: /etc/pbm-agent-storage-aws.conf
+        mode: '0666'
+        create: true
+        block: |
+          storage:
+            type: s3
+            s3:
+               region: us-west-2
+               bucket: pbm-testing-west
+               prefix: replicaset
+               credentials:
+                 access-key-id: {{ access_key }}
+                 secret-access-key: {{ access_secret }}
+          restore:
+            batchSize: 50
+            numInsertionWorkers: 10 
+      vars:
+        access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+        access_secret: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+
+    - name: add GCP storage for pbm-agent
+      copy:
+        src: /tmp/pbm-agent-storage-gcp.conf
+        dest: /etc/pbm-agent-storage-gcp.conf
+        mode: '0666'
+
+    - name: add AZURE storage for pbm-agent
+      copy:
+        src: /tmp/pbm-agent-storage-azure.conf
+        dest: /etc/pbm-agent-storage-azure.conf
+        mode: '0666'     
+
+    - name: Download and install mc
+      get_url:
+        url: 'https://dl.min.io/client/mc/release/linux-amd64/mc'
+        dest: /usr/bin/mc
+        mode: '0755'
+      when: inventory_hostname in groups['mc']
+
+    - name: Download mgodatagen
+      get_url:
+        url: 'https://github.com/feliixx/mgodatagen/releases/download/v0.9.2/mgodatagen_0.9.2_Linux_x86_64.tar.gz'
+        dest: /tmp/mgodatagen.tar.gz
+        mode: '0644'
+
+    - name: Unpack mgodatagen
+      unarchive:
+        src: /tmp/mgodatagen.tar.gz
+        dest: /usr/bin/
+        remote_src: yes
+
+    - name: configure minio
+      command: /usr/bin/mc config host add myminio http://minio:9000 minio1234 minio1234
+      when: inventory_hostname in groups['mc'] and storage == "minio"
+
+    # Bucket stores objects, like a folder in Monio, unit of storage
+    - name: create bucket on minio
+      command: /usr/bin/mc mb myminio/bcp
+      when: inventory_hostname in groups['mc'] and storage == "minio"
+
+
+    - name: add minio storage for pbm-agent
+      blockinfile:
+        path: /etc/pbm-agent-storage-minio.conf
+        mode: '0666'
+        create: true
+        block: |
+          storage:
+              type: s3
+              s3:
+                 endpointUrl: http://minio:9000
+                 bucket: bcp
+                 prefix: pbme2etest
+                 credentials:
+                   access-key-id: "minio1234"
+                   secret-access-key: "minio1234"
+
+    - name: start pbm-agent service
+      service:
+        name: pbm-agent
+        state: started
+        enabled: yes
+
+    - name: Install PMM
+      include_tasks: ../../../tasks/install_pmm.yml

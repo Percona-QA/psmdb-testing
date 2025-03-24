@@ -1,0 +1,29 @@
+---
+- name: cleanup repo
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: remove pbm repo
+      shell: rm -rf /tmp/percona-backup-mongodb
+
+- name: cleanup data
+  hosts: mongo
+  become: true
+  become_method: sudo
+  tasks:
+    - set_fact:
+        storage: "{{ lookup('env', 'STORAGE') }}"
+
+    - name: stop mongod service
+      service: name=mongod state=stopped
+
+    - name: stop pbm-agent service
+      service: name=pbm-agent state=stopped
+
+    - name: erase data directory for mongod
+      shell: rm -rf /mnt/data/db/*
+
+    - name: delete bucket on minio
+      command: /usr/bin/mc rb --force myminio/bcp
+      when: inventory_hostname in groups['mc'] and storage == "minio"

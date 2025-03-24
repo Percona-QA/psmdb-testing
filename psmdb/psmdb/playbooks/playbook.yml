@@ -4,7 +4,7 @@
   become: true
   become_method: sudo
   roles:
-    - role: psmdb
+    - role: '../../../psmdb/psmdb'
     - role: '../../../roles/kmip'
     - role: '../../../roles/vault'
     - role: '../../../roles/openldap'
