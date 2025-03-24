@@ -72,5 +72,7 @@ def test_physical_mixed_env_PBM_T248(start_cluster,cluster):
     Cluster.psmdb_to_ce("rs102")
     Cluster.psmdb_to_ce("rs103")
     cluster.check_pbm_status()
-    assert cluster.exec_pbm_cli("backup -t physical").rc == 1
-    assert cluster.exec_pbm_cli("backup -t physical -o json").rc == 1
+    #removed preflight checks on the cli side due to PBM-1512
+    assert cluster.exec_pbm_cli("backup -t physical --wait ").rc == 1
+#    assert cluster.exec_pbm_cli("backup -t physical").rc == 1
+#    assert cluster.exec_pbm_cli("backup -t physical -o json").rc == 1
