@@ -6,6 +6,7 @@ driver:
 platforms:
   - name: ${MOLECULE_OS:-source}
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-amazonlinux2023-ansible:latest}"
+    cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
@@ -14,6 +15,7 @@ platforms:
     ssh_user: root
   - name: ${MOLECULE_OS:-destination}
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-amazonlinux2023-ansible:latest}"
+    cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
@@ -22,6 +24,7 @@ platforms:
     ssh_user: root
   - name: ${MOLECULE_OS:-pml}
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-amazonlinux2023-ansible:latest}"
+    cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
