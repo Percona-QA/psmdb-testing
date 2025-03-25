@@ -1,5 +1,5 @@
 - name: Converge
-  hosts: mongo
+  hosts: pml
   become: true
   become_method: sudo
   tasks:
