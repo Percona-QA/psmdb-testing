@@ -41,6 +41,7 @@
         name: "{{ packages }}"
       vars:
         packages:
+        - gcc
         - wget
         - git
       when: ansible_os_family == "RedHat"
@@ -51,6 +52,7 @@
         name: "{{ packages }}"
       vars:
         packages:
+        - gcc
         - wget
         - git
       when: ansible_os_family == "Debian"
