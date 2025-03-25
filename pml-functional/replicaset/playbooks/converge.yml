@@ -100,10 +100,6 @@
       register: go_version_output
       ignore_errors: true
 
-    - name: Show go version (debug)
-      debug:
-        var: go_version_output.stdout
-
     # Clones down specified repo to branch specified
     - name: Clone PML repo
       git:
@@ -112,17 +108,6 @@
         version: "{{ branch }}"
       when: inventory_hostname == "pml"
 
-    #    # Sets correct permissions to mongodb-backup_builder.sh script
-    #    # Creates builddir folder
-    #    # Runs shell commands to run mongodb-backup_builder.sh script
-    #    - name: Install build-depth
-    #      shell: |
-    #        chmod +x /tmp/percona-backup-mongodb/packaging/scripts/mongodb-backup_builder.sh
-    #        mkdir -p /tmp/builddir
-    #        /tmp/percona-backup-mongodb/packaging/scripts/mongodb-backup_builder.sh --builddir=/tmp/builddir --install_deps=1
-    
-    # Runs make file which exists in /tmp/percona-backup-mongodb
-    # Creates /tmp/percona-backup-mongodb/bin
     # Sets environment variables
     - name: Build PML
       command: make build
@@ -133,17 +118,25 @@
         GOROOT: /usr/local/go/
         GOBINPATH: /usr/local/go/bin
 
-#    # Copies pbm and pbm-agent binaries to /usr/bin folder
-#    - name: Install PBM
-#      shell: |
-#        cp -r /tmp/percona-backup-mongodb/bin/pbm /usr/bin/
-#        cp -r /tmp/percona-backup-mongodb/bin/pbm-agent /usr/bin/
-#
-#    # Sets variable rs_primary_ip for primary rs ip address
-#    - name: get primary ip adrress
-#      set_fact:
-#        rs_primary_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
-#      when: inventory_hostname in groups['primary']
+    # Sets variable rs_primary_ip for primary rs ip address
+    - name: get source ip address
+      set_fact:
+        source_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+      when: inventory_hostname in groups['source']
+
+    # Sets variable rs_primary_ip for primary rs ip address
+    - name: get destination ip address
+      set_fact:
+        destination_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+      when: inventory_hostname in groups['destination']
+
+    - name: Show source IP (debug)
+      debug:
+        var: source_ip.stdout
+
+    - name: Show destination IP (debug)
+      debug:
+        var: destination_ip.stdout
 #
 #    # Outputs the IP address if the current host is the primary group
 #    - name: debug primary ip adress
