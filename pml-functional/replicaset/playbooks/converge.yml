@@ -118,13 +118,11 @@
         GOROOT: /usr/local/go/
         GOBINPATH: /usr/local/go/bin
 
-    # Sets variable rs_primary_ip for primary rs ip address
     - name: get source ip address
       set_fact:
-        source_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+          source_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
       when: inventory_hostname in groups['source']
 
-    # Sets variable rs_primary_ip for primary rs ip address
     - name: get destination ip address
       set_fact:
         destination_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
