@@ -6,7 +6,7 @@ driver:
 platforms:
   - name: source
     groups:
-      - psmdb
+      - source
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos8-ansible:latest}"
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
@@ -17,7 +17,7 @@ platforms:
       - name: test
   - name: destination
     groups:
-      - psmdb
+      - source
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos8-ansible:latest}"
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
