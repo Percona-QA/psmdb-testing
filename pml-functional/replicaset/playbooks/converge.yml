@@ -91,6 +91,18 @@
               export GOROOT={{ go_install_dir }}/go
               export GOPATH=$HOME/go
               export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+              
+
+    - name: Check go availability
+      command: go version
+      environment:
+        PATH: "/usr/lib/go/bin:{{ ansible_env.PATH }}"
+      register: go_version_output
+      ignore_errors: true
+
+    - name: Show go version (debug)
+      debug:
+        var: go_version_output.stdout
 
     # Clones down specified repo to branch specified
     - name: Clone PML repo
