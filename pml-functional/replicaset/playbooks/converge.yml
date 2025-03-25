@@ -54,7 +54,7 @@
     # Clones down specified repo to branch specified
     - name: Clone PML repo
       git:
-        repo: 'https://github.com/Percona-Lab/percona-mongolink.git'
+        repo: 'https://github.com/percona/percona-backup-mongodb.git'
         dest: /tmp/percona-mongolink
         version: "{{ branch }}"
       when: inventory_hostname == "pml"
