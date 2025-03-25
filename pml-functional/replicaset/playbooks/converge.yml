@@ -41,6 +41,7 @@
         name: "{{ packages }}"
       vars:
         packages:
+        - make
         - gcc
         - wget
         - git
@@ -52,6 +53,7 @@
         name: "{{ packages }}"
       vars:
         packages:
+        - make
         - gcc
         - wget
         - git
