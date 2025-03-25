@@ -1,5 +1,5 @@
 - name: Converge
-  hosts: pml
+  hosts: all
   become: true
   become_method: sudo
   tasks:
@@ -91,7 +91,7 @@
               export GOROOT={{ go_install_dir }}/go
               export GOPATH=$HOME/go
               export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
-              
+      when: inventory_hostname in groups["pml"]
 
     - name: Check go availability
       command: go version
@@ -99,6 +99,7 @@
         PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
       register: go_version_output
       ignore_errors: true
+      when: inventory_hostname in groups["pml"]
 
     # Clones down specified repo to branch specified
     - name: Clone PML repo
@@ -107,6 +108,7 @@
         dest: /tmp/percona-mongolink
         version: "{{ branch }}"
       when: inventory_hostname == "pml"
+      when: inventory_hostname in groups["pml"]
 
     # Sets environment variables
     - name: Build PML
@@ -117,6 +119,7 @@
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
         GOBINPATH: /usr/local/go/bin
+      when: inventory_hostname in groups["pml"]
 
     - name: get source ip address
       set_fact:
