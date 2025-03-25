@@ -17,7 +17,7 @@ platforms:
       - name: test
   - name: destination
     groups:
-      - source
+      - destination
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos8-ansible:latest}"
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
