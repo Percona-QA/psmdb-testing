@@ -61,7 +61,7 @@
     - name: Install Go from official tarball
       become: yes
       vars:
-        go_version: "1.24"
+        go_version: "1.24.1"
         go_tarball: "go{{ go_version }}.linux-amd64.tar.gz"
         go_url: "https://go.dev/dl/{{ go_tarball }}"
         go_install_dir: "/usr/local"
