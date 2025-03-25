@@ -9,6 +9,10 @@
 
     - set_fact:
         # Set variable
+        token: "{{ lookup('env', 'TOKEN') }}"
+
+    - set_fact:
+        # Set variable
         psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
 
     - set_fact:
@@ -54,7 +58,7 @@
     # Clones down specified repo to branch specified
     - name: Clone PML repo
       git:
-        repo: 'https://${TOKEN}github.com/Percona-Lab/percona-mongolink.git'
+        repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
         dest: /tmp/percona-mongolink
         version: "{{ branch }}"
       when: inventory_hostname == "pml"
