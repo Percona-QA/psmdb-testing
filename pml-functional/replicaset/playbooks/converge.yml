@@ -119,7 +119,7 @@
       environment:
         PATH: /usr/lib/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/lib/go/
-        GOBIN: /usr/lib/go/bin
+        GOBINPATH: /usr/lib/go/bin
 
 #    # Copies pbm and pbm-agent binaries to /usr/bin folder
 #    - name: Install PBM
