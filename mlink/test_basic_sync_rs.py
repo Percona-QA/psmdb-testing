@@ -102,7 +102,6 @@ def test_rs_mlink_PML_T2(start_cluster, srcRS, dstRS, mlink, metrics_collector):
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
 
-@pytest.mark.xfail(reason="Known issue: PML-84", strict=True)
 @pytest.mark.timeout(300,func_only=True)
 def test_rs_mlink_PML_T3(start_cluster, srcRS, dstRS, mlink):
     """
@@ -205,10 +204,12 @@ def test_rs_mlink_PML_T3(start_cluster, srcRS, dstRS, mlink):
     unexpected_mismatches = [mismatch for mismatch in summary if mismatch not in expected_mismatches]
 
     assert not missing_mismatches, f"Expected mismatches missing: {missing_mismatches}"
-    assert not unexpected_mismatches, f"Unexpected mismatches detected: {unexpected_mismatches}"
+    if unexpected_mismatches:
+        pytest.xfail("Known issue: PML-84")
 
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
+    pytest.fail("Unexpected pass: test should have failed due to PML-84")
 
 @pytest.mark.timeout(300,func_only=True)
 def test_rs_mlink_PML_T4(start_cluster, srcRS, dstRS, mlink):
@@ -289,3 +290,84 @@ def test_rs_mlink_PML_T4(start_cluster, srcRS, dstRS, mlink):
     assert result is True, "Data mismatch after synchronization"
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
+
+@pytest.mark.timeout(300, func_only=True)
+def test_rs_mlink_PML_T23(start_cluster, srcRS, dstRS, mlink):
+    """
+    Test to validate handling of index creation error on src and dst
+    """
+    try:
+        src = pymongo.MongoClient(srcRS.connection)
+        dst = pymongo.MongoClient(dstRS.connection)
+
+        init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
+        db_name = "test_db"
+        coll_name1, coll_name2, coll_name3 = "test_collection1", "test_collection2", "test_collection3"
+        src[db_name][coll_name1].insert_many([{"name": 1},{"x": 2},{"x": 3}])
+        src[db_name][coll_name2].insert_many([{"x": 1},{"x": 2},{"x": 3},{"x": 3}])
+        src[db_name][coll_name3].insert_many([{"name": 1},{"x": 2},{"x": 3}])
+
+        result = mlink.start()
+        assert result is True, "Failed to start mlink service"
+        result = mlink.wait_for_repl_stage()
+        assert result is True, "Failed to start replication stage"
+
+        repl_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
+
+        src[db_name][coll_name1].create_index("x", unique=True)
+        assert True, "Index creation should succeed"
+        try:
+            src[db_name][coll_name2].create_index("x", unique=True)
+            assert False, "Index creation should fail due to duplicate values"
+        except pymongo.errors.OperationFailure as e:
+            assert e.code == 11000 or "duplicate" in str(e), f"Unexpected error: {e}"
+        # Add duplicate record to dst to force failure on finalize stage
+        dst[db_name][coll_name1].insert_one({"x":3})
+        src[db_name][coll_name3].create_index("x", unique=True)
+        assert True, "Index creation should succeed"
+
+    except Exception as e:
+        raise
+    finally:
+        stop_all_crud_operations()
+        all_threads = []
+        if "operation_threads_1" in locals():
+            all_threads += operation_threads_1
+        if "operation_threads_2" in locals():
+            all_threads += operation_threads_2
+        for thread in all_threads:
+            thread.join()
+
+    result = mlink.wait_for_zero_lag()
+    assert result is True, "Failed to catch up on replication"
+    result = mlink.finalize()
+    assert result is True, "Failed to finalize mlink service"
+
+    expected_mismatches = [
+        ("test_db", "hash mismatch"),
+        ("test_db.test_collection1", "hash mismatch"),
+        ("test_db.test_collection1", "record count mismatch"),
+        ("test_db.test_collection1", "x_1")]
+
+    result, summary = compare_data_rs(srcRS, dstRS)
+    if not result:
+        unexpected = [m for m in summary if m not in expected_mismatches]
+        missing_expected = [m for m in expected_mismatches if m not in summary]
+
+        if missing_expected:
+            assert False, f"Expected mismatches missing: {missing_expected}"
+        if unexpected:
+            pytest.xfail("Known issue: PML-107")
+
+    no_mlink_error, error_logs = mlink.check_mlink_errors()
+    expected_error = "CannotConvertIndexToUnique"
+    if not no_mlink_error:
+        has_expected = any(expected_error in line for line in error_logs)
+        unexpected = [line for line in error_logs if expected_error not in line]
+
+        if unexpected:
+            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
+        elif has_expected:
+            pytest.xfail(f"Expected fail: {expected_error}, mlink should provide summary of such errors")
+    else:
+        pytest.fail("Unexpected pass: test should have failed due to PML-107")
