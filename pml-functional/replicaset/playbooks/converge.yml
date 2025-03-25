@@ -86,9 +86,9 @@
         chdir: /tmp/percona-mongolink
       command: make build
       environment:
-        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
-        GOROOT: /usr/local/go/
-        GOBINPATH: /usr/local/go/bin
+        PATH: /usr/lib/golang/bin:{{ ansible_env.PATH }}
+        GOROOT: /usr/lib/golang/
+        GOBINPATH: /usr/lib/golang/bin
 
 #    # Copies pbm and pbm-agent binaries to /usr/bin folder
 #    - name: Install PBM
