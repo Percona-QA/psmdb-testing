@@ -133,11 +133,11 @@
 
     - name: Show source IP (debug)
       debug:
-        var: "{{source_ip}}"
+        var: source_ip.stdout
 
     - name: Show destination IP (debug)
       debug:
-        var: "{{destination_ip}}"
+        var: destination_ip.stdout
 #
 #    # Outputs the IP address if the current host is the primary group
 #    - name: debug primary ip adress
