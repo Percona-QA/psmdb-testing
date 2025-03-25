@@ -61,7 +61,7 @@
     - name: Install Go from official tarball
       become: yes
       vars:
-        go_version: "1.22.1"
+        go_version: "1.24"
         go_tarball: "go{{ go_version }}.linux-amd64.tar.gz"
         go_url: "https://go.dev/dl/{{ go_tarball }}"
         go_install_dir: "/usr/local"
@@ -108,40 +108,6 @@
     #        chmod +x /tmp/percona-backup-mongodb/packaging/scripts/mongodb-backup_builder.sh
     #        mkdir -p /tmp/builddir
     #        /tmp/percona-backup-mongodb/packaging/scripts/mongodb-backup_builder.sh --builddir=/tmp/builddir --install_deps=1
-
-    - name: Install Go from official tarball
-      become: yes
-      vars:
-        go_version: "1.22.1"
-        go_tarball: "go{{ go_version }}.linux-amd64.tar.gz"
-        go_url: "https://go.dev/dl/{{ go_tarball }}"
-        go_install_dir: "/usr/local"
-      block:
-        - name: Download Go {{ go_version }}
-          get_url:
-            url: "{{ go_url }}"
-            dest: "/tmp/{{ go_tarball }}"
-            mode: '0644'
-
-        - name: Remove any existing Go installation
-          file:
-            path: "{{ go_install_dir }}/go"
-            state: absent
-
-        - name: Extract Go
-          unarchive:
-            src: "/tmp/{{ go_tarball }}"
-            dest: "{{ go_install_dir }}"
-            remote_src: yes
-
-        - name: Set Go environment
-          copy:
-            dest: /etc/profile.d/go.sh
-            mode: '0755'
-            content: |
-              export GOROOT={{ go_install_dir }}/go
-              export GOPATH=$HOME/go
-              export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
     
     # Runs make file which exists in /tmp/percona-backup-mongodb
     # Creates /tmp/percona-backup-mongodb/bin
