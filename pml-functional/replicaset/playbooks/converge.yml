@@ -76,7 +76,7 @@
     # Creates /tmp/percona-backup-mongodb/bin
     # Sets environment variables
     - name: Build PML
-      command: make build
+      command: cd /tmp/percona-mongolink && make build
       environment:
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
