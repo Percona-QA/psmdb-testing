@@ -39,7 +39,6 @@
         packages:
         - wget
         - git
-      when: ansible_os_family == "RedHat"
 
     # Install all the packages in package variable if ansible_os_family is Debian
     - name: Install deps
