@@ -96,7 +96,7 @@
     - name: Check go availability
       command: go version
       environment:
-        PATH: "/usr/lib/go/bin:{{ ansible_env.PATH }}"
+        PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
       register: go_version_output
       ignore_errors: true
 
@@ -129,9 +129,9 @@
       args:
         chdir: /tmp/percona-mongolink
       environment:
-        PATH: /usr/lib/go/bin:{{ ansible_env.PATH }}
-        GOROOT: /usr/lib/go/
-        GOBINPATH: /usr/lib/go/bin
+        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
+        GOROOT: /usr/local/go/
+        GOBINPATH: /usr/local/go/bin
 
 #    # Copies pbm and pbm-agent binaries to /usr/bin folder
 #    - name: Install PBM
