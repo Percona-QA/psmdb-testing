@@ -42,6 +42,7 @@
       vars:
         packages:
         - make
+        - go
         - gcc
         - wget
         - git
@@ -54,6 +55,7 @@
       vars:
         packages:
         - make
+        - go
         - gcc
         - wget
         - git
