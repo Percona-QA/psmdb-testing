@@ -251,7 +251,7 @@
 
     - name: stop mongod service
       service: name=mongod state=stopped
-      when: inventory_hostname in groups['source'] inventory_hostname in groups['destination']
+      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
 
     - name: create data directory for mongod
       file:
