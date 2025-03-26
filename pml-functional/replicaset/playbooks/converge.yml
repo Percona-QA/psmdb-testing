@@ -58,7 +58,7 @@
         - git
       when: ansible_os_family == "Debian"
 
-    - name: Install Go from official tarball
+    - name: Install Go from official tarball on PML host
       become: yes
       vars:
         go_version: "1.24.1"
@@ -72,25 +72,20 @@
             dest: "/tmp/{{ go_tarball }}"
             mode: '0644'
 
-        - name: Remove any existing Go installation
-          file:
-            path: "{{ go_install_dir }}/go"
-            state: absent
-
         - name: Extract Go
           unarchive:
             src: "/tmp/{{ go_tarball }}"
             dest: "{{ go_install_dir }}"
             remote_src: yes
 
-        - name: Set Go environment
-          copy:
-            dest: /etc/profile.d/go.sh
-            mode: '0755'
-            content: |
-              export GOROOT={{ go_install_dir }}/go
-              export GOPATH=$HOME/go
-              export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+    #        - name: Set Go environment
+    #          copy:
+    #            dest: /etc/profile.d/go.sh
+    #            mode: '0755'
+    #            content: |
+    #              export GOROOT={{ go_install_dir }}/go
+    #              export GOPATH=$HOME/go
+    #              export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
       when: inventory_hostname in groups["pml"]
 
     - name: Check go availability
@@ -107,7 +102,6 @@
         repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
         dest: /tmp/percona-mongolink
         version: "{{ branch }}"
-      when: inventory_hostname == "pml"
       when: inventory_hostname in groups["pml"]
 
     # Sets environment variables
@@ -140,22 +134,8 @@
       debug:
         var: destination_ip
       when: destination_ip is defined
-#
-#    # Outputs the IP address if the current host is the primary group
-#    - name: debug primary ip adress
-#      debug:
-#        msg: "{{rs_primary_ip}}"
-#      when: inventory_hostname in groups['primary']
-#
-#    # Gets IP addresses of secondaries and stores them in rs_secondary_ips
-#    - name: get secondaries ip adresses
-#      set_fact:
-#        rs_secondary_ips: "{% for host in groups['secondary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
-#
-#    # Outputs the secondary IPs as debug
-#    - name: debug secondaries ip adresses
-#      debug:
-#        msg: "{{rs_secondary_ips}}"
+
+
 #
 #    # Checks if key exists and specifies the URl of the key
 #    # This step is necessary because EPEL packages are signed, and without this key, yum or dnf might fail with signature verification errors.
