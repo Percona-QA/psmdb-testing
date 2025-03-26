@@ -134,10 +134,12 @@
     - name: Show source IP (debug)
       debug:
         var: source_ip
+      when: source_ip is defined
 
     - name: Show destination IP (debug)
       debug:
         var: destination_ip
+      when: destination_ip is defined
 #
 #    # Outputs the IP address if the current host is the primary group
 #    - name: debug primary ip adress
