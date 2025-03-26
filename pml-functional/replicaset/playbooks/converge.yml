@@ -132,135 +132,183 @@
         var: destination_ip
       when: destination_ip is defined
 
-    # Checks if key exists and specifies the URl of the key
-    # This step is necessary because EPEL packages are signed, and without this key, yum or dnf might fail with signature verification errors.
-    - name: install GPG key for epel 8
-      rpm_key:
-        state: present
-        key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+    - name: remove the Percona apt main repository
+      apt_repository: repo='deb http://repo.percona.com/apt {{ ansible_distribution_release }} main' state=absent update_cache=yes
+      when: ansible_os_family == "Debian" and (inventory_hostname in groups['destination'] or inventory_hostname in groups['source'])
 
-    # Installs the Percona repository GPG key needed to install Percona Server, Percona XtraDB, and Percona Backup for MongoDB (PBM)
-    - name: install GPG key for Percona repos
-      rpm_key:
-        state: present
-        key: https://repo.percona.com/yum/RPM-GPG-KEY-Percona
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+    - name: remove the Percona apt testing repositories
+      apt_repository: repo='deb http://repo.percona.com/apt {{ ansible_distribution_release }} testing' state=absent update_cache=yes
+      when: ansible_os_family == "Debian" and (inventory_hostname in groups['destination'] or inventory_hostname in groups['source'])
 
-    # Installs percona repo package on Debian
-    - name: Install percona repository package
-      apt:
-        deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
-      when: ansible_os_family == "Debian" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+    - name: remove the Percona yum repositories
+      yum: name=percona-release state=absent
+      when: ansible_os_family == "RedHat" and (inventory_hostname in groups['destination'] or inventory_hostname in groups['source'])
 
-    # Installs percona repo package on Redhat
-    - name: Install latest percona release RHEL
-      command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
-      when: ansible_os_family == "RedHat" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+    - name: remove saved repo files in yum
+      file: path={{ item }} state=absent
+      with_items:
+        - /etc/yum.repos.d/percona-release.repo
+        - /etc/yum.repos.d/percona-release.repo.rpmsave
+      when: ansible_os_family == "RedHat" and (inventory_hostname in groups['destination'] or inventory_hostname in groups['source'])
 
-    # Enables repo branch
-    - name: setup psmdb repo with percona-release
-      command: percona-release enable {{ psmdb_to_test }} release
+    - name: Install percona release package
+      include_tasks: ../../../tasks/install_percona_release.yml
 
-    # Installs latest packages listed for debian
-    - name: install psmdb deb packages
-      apt:
-        name: "{{ packages }}"
-        update_cache: yes
-        state: latest
+    - name: enable psmdb repo
+      command: percona-release enable psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }} {{ repo }}
       vars:
-        packages:
-        - percona-server-mongodb
-        - percona-server-mongodb-server
-        - percona-server-mongodb-mongos
-        - percona-server-mongodb-tools
-      when: ansible_os_family == "Debian" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+        repo: "{{ lookup('env', 'REPO') }}"
+        version: "{{ lookup('env', 'PSMDB_VERSION') }}"
+      when: pro_build != true and (inventory_hostname in groups['destination'] or inventory_hostname in groups['source'])
 
-    # Installs latest packages listed for RedHat
-    - name: install psmdb rpm packages
-      yum:
-        name: "{{ packages }}"
-        update_cache: yes
-        state: latest
+    - name: Create yum repo for PRO build
+      blockinfile:
+        path: /etc/yum.repos.d/percona-pro.repo
+        mode: '0640'
+        create: true
+        block: |
+          [percona-pro]
+          name=[psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro-{{ repo }}-{{ ansible_architecture }}]
+          baseurl=http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/{{ ansible_architecture }}
+          enabled=1
+          gpgcheck=0
+          sslverify=0
       vars:
-        packages:
-        - percona-server-mongodb
-        - percona-server-mongodb-server
-        - percona-server-mongodb-mongos
-        - percona-server-mongodb-tools
-      when: ansible_os_family == "RedHat" and psmdb_version == "latest" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+        client_id: "{{ lookup('env', 'USERNAME') }}"
+        client_token: "{{ lookup('env', 'PASSWORD') }}"
+        repo: "{{ lookup('env', 'REPO') }}"
+        version: "{{ lookup('env', 'PSMDB_VERSION') }}"
+      when: ansible_os_family == "RedHat" and pro_build == true and (inventory_hostname in groups['destination'] or inventory_hostname in groups['source'])
 
-    # Installs packages on Redhat on versions not latest
-    - name: install psmdb rpm packages
-      yum:
-        name: "{{ packages }}"
-        update_cache: yes
-        state: latest
-      vars:
-        packages:
-        - percona-server-mongodb-{{ psmdb_version }}
-        - percona-server-mongodb-server-{{ psmdb_version }}
-        - percona-server-mongodb-mongos-{{ psmdb_version }}
-        - percona-server-mongodb-tools-{{ psmdb_version }}
-      when: ansible_os_family == "RedHat" and psmdb_version != "latest" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
-
-    # Install mongo shell on debian if psmdb mongosh is less tha 6
-    - name: install mongo shell deb package
-      apt:
-        name: "{{ packages }}"
-        update_cache: yes
-      vars:
-        packages:
-        - percona-server-mongodb-shell
-      when: ansible_os_family == "Debian" and psmdb_mongosh < "6" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
-
-    # Install mongosh on debian if psmdb mongosh is greater than 6
-    - name: install mongosh deb package
-      apt:
-        name: "{{ packages }}"
-        update_cache: yes
-      vars:
-        packages:
-        - percona-mongodb-mongosh
-      when: ansible_os_family == "Debian" and psmdb_mongosh >= "6" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
-
-    - name: install mongo shell rpm package
-      yum:
-        name: "{{ packages }}"
-        state: latest
-      vars:
-        packages:
-        - percona-server-mongodb-shell
-      when: ansible_os_family == "RedHat" and psmdb_mongosh < "6"
-
-    - name: install mongosh rpm package
-      yum:
-        name: "{{ packages }}"
-        state: latest
-      vars:
-        packages:
-        - percona-mongodb-mongosh
-      when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
-
-    - name: copy mongosh binary to mongo path for test scripts
-      file:
-        src: /usr/bin/mongosh
-        dest: /usr/bin/mongo
-        state: link
-      when: psmdb_mongosh >= "6" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
-
-    - name: stop mongod service
-      service: name=mongod state=stopped
-      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
-
-    - name: create data directory for mongod
-      file:
-        path: /mnt/data/db
-        state: directory
-        mode: '0755'
-        owner: mongod
-        group: mongod
-      when: inventory_hostname in groups['source'] inventory_hostname in groups['destination']
+#    # Checks if key exists and specifies the URl of the key
+#    # This step is necessary because EPEL packages are signed, and without this key, yum or dnf might fail with signature verification errors.
+#    - name: install GPG key for epel 8
+#      rpm_key:
+#        state: present
+#        key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
+#      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+#
+#    # Installs the Percona repository GPG key needed to install Percona Server, Percona XtraDB, and Percona Backup for MongoDB (PBM)
+#    - name: install GPG key for Percona repos
+#      rpm_key:
+#        state: present
+#        key: https://repo.percona.com/yum/RPM-GPG-KEY-Percona
+#      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+#
+#    # Installs percona repo package on Debian
+#    - name: Install percona repository package
+#      apt:
+#        deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+#      when: ansible_os_family == "Debian" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+#
+#    # Installs percona repo package on Redhat
+#    - name: Install latest percona release RHEL
+#      command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+#      when: ansible_os_family == "RedHat" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+#
+#    # Enables repo branch
+#    - name: setup psmdb repo with percona-release
+#      command: percona-release enable {{ psmdb_to_test }} release
+#
+#    # Installs latest packages listed for debian
+#    - name: install psmdb deb packages
+#      apt:
+#        name: "{{ packages }}"
+#        update_cache: yes
+#        state: latest
+#      vars:
+#        packages:
+#        - percona-server-mongodb
+#        - percona-server-mongodb-server
+#        - percona-server-mongodb-mongos
+#        - percona-server-mongodb-tools
+#      when: ansible_os_family == "Debian" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+#
+#    # Installs latest packages listed for RedHat
+#    - name: install latest psmdb rpm packages on redhat
+#      yum:
+#        name: "{{ packages }}"
+#        update_cache: yes
+#        state: latest
+#      vars:
+#        packages:
+#        - percona-server-mongodb
+#        - percona-server-mongodb-server
+#        - percona-server-mongodb-mongos
+#        - percona-server-mongodb-tools
+#      when: ansible_os_family == "RedHat" and psmdb_version == "latest" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+#
+#    # Installs packages on Redhat on versions not latest
+#    - name: install less than latest psmdb rpm packages on redhat
+#      yum:
+#        name: "{{ packages }}"
+#        update_cache: yes
+#        state: latest
+#      vars:
+#        packages:
+#        - percona-server-mongodb-{{ psmdb_version }}
+#        - percona-server-mongodb-server-{{ psmdb_version }}
+#        - percona-server-mongodb-mongos-{{ psmdb_version }}
+#        - percona-server-mongodb-tools-{{ psmdb_version }}
+#      when: ansible_os_family == "RedHat" and psmdb_version != "latest" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+#
+#    # Install mongo shell on debian if psmdb mongosh is less tha 6
+#    - name: install mongo shell deb package
+#      apt:
+#        name: "{{ packages }}"
+#        update_cache: yes
+#      vars:
+#        packages:
+#        - percona-server-mongodb-shell
+#      when: ansible_os_family == "Debian" and psmdb_mongosh < "6" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+#
+#    # Install mongosh on debian if psmdb mongosh is greater than 6
+#    - name: install mongosh deb package
+#      apt:
+#        name: "{{ packages }}"
+#        update_cache: yes
+#      vars:
+#        packages:
+#        - percona-mongodb-mongosh
+#      when: ansible_os_family == "Debian" and psmdb_mongosh >= "6" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+#
+#    - name: install mongo shell rpm package
+#      yum:
+#        name: "{{ packages }}"
+#        state: latest
+#      vars:
+#        packages:
+#        - percona-server-mongodb-shell
+#      when: ansible_os_family == "RedHat" and psmdb_mongosh < "6"
+#
+#    - name: install mongosh rpm package
+#      yum:
+#        name: "{{ packages }}"
+#        state: latest
+#      vars:
+#        packages:
+#        - percona-mongodb-mongosh
+#      when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+#
+#    - name: copy mongosh binary to mongo path for test scripts
+#      file:
+#        src: /usr/bin/mongosh
+#        dest: /usr/bin/mongo
+#        state: link
+#      when: psmdb_mongosh >= "6" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+#
+#    - name: stop mongod service
+#      service: name=mongod state=stopped
+#      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
+#
+#    - name: create data directory for mongod
+#      file:
+#        path: /mnt/data/db
+#        state: directory
+#        mode: '0755'
+#        owner: mongod
+#        group: mongod
+#      when: inventory_hostname in groups['source'] inventory_hostname in groups['destination']
 #
 #    - name: switch mongod to new dbPath
 #      replace:
