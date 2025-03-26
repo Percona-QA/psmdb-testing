@@ -242,26 +242,26 @@
         packages:
         - percona-mongodb-mongosh
       when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
-#
-#    - name: copy mongosh binary to mongo path for test scripts
-#      file:
-#        src: /usr/bin/mongosh
-#        dest: /usr/bin/mongo
-#        state: link
-#      when: psmdb_mongosh >= "6" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
-#
-#    - name: stop mongod service
-#      service: name=mongod state=stopped
-#      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
-#
-#    - name: create data directory for mongod
-#      file:
-#        path: /mnt/data/db
-#        state: directory
-#        mode: '0755'
-#        owner: mongod
-#        group: mongod
-#      when: inventory_hostname in groups['source'] inventory_hostname in groups['destination']
+
+    - name: copy mongosh binary to mongo path for test scripts
+      file:
+        src: /usr/bin/mongosh
+        dest: /usr/bin/mongo
+        state: link
+      when: psmdb_mongosh >= "6" and (inventory_hostname in groups['source'] or inventory_hostname in groups['destination'])
+
+    - name: stop mongod service
+      service: name=mongod state=stopped
+      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
+
+    - name: create data directory for mongod
+      file:
+        path: /mnt/data/db
+        state: directory
+        mode: '0755'
+        owner: mongod
+        group: mongod
+      when: inventory_hostname in groups['source'] inventory_hostname in groups['destination']
 #
 #    - name: switch mongod to new dbPath
 #      replace:
