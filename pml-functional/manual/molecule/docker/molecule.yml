@@ -29,8 +29,6 @@ platforms:
     networks:
        - name: test
   - name: pml
-    groups:
-      - pml
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
