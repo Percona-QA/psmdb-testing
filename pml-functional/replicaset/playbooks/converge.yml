@@ -298,8 +298,9 @@
         replica_set: rs
         login_host: "{{ source_ip }}"
         members:
-        - host: "{{ source_ip }}:27017"
-          priority: 1
+          - host: "{{ source_ip }}:27017"
+            priority: 1
+        validate: no
       when: inventory_hostname in groups['source']
 
     - name: Create a replicaset rs
@@ -309,6 +310,7 @@
         members:
           - host: "{{ destination_ip }}:27017"
             priority: 1
+        validate: no
       when: inventory_hostname in groups['destination']
 
     - name: reload systemd
