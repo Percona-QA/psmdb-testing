@@ -6,7 +6,7 @@ driver:
 platforms:
   - name: source
     groups:
-      - source
+      - psmdb
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
@@ -18,7 +18,7 @@ platforms:
       - name: test
   - name: destination
     groups:
-      - destination
+      - psmdb
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
