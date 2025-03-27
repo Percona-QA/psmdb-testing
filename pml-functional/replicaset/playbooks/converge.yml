@@ -111,7 +111,7 @@
       when: inventory_hostname in groups["pml"]
 
     # Sets environment variables
-    - name: Build PML
+    - name: Build Mgodatagen
       command: go build
       args:
         chdir: /tmp/mgodatagen
@@ -120,6 +120,13 @@
         GOROOT: /usr/local/go/
         GOBINPATH: /usr/local/go/bin
       when: inventory_hostname in groups["pml"]
+
+    - name: Move mgodatagen to /usr/local/bin
+      copy:
+        src: /tmp/mgodatagen
+        dest: /usr/local/bin/mgodatagen
+        mode: '0755'
+        remote_src: true
 
     - name: get source ip address
       set_fact:
