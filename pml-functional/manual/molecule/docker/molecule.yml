@@ -7,7 +7,8 @@ platforms:
   - name: source
     groups:
       - source
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    image: "${MOLECULE_DISTRO:-geerlingguy/geerlingguy/docker-centos8-ansible:latest}"
+    cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
@@ -18,7 +19,8 @@ platforms:
   - name: destination
     groups:
       - destination
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    image: "${MOLECULE_DISTRO:-geerlingguy/geerlingguy/docker-centos8-ansible:latest}"
+    cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
@@ -29,7 +31,8 @@ platforms:
   - name: pml
     groups:
       - pml
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    image: "${MOLECULE_DISTRO:-geerlingguy/geerlingguy/docker-centos8-ansible:latest}"
+    cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
