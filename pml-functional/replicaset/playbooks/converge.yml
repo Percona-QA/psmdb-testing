@@ -127,7 +127,8 @@
         dest: /usr/local/bin/
         mode: '0755'
         remote_src: true
-
+      when: inventory_hostname in groups["pml"]
+      
     - name: get source ip address
       set_fact:
           source_ip: "{{ hostvars['source']['ansible_facts']['default_ipv4']['address'] }}"
