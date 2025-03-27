@@ -293,27 +293,27 @@
       pip:
         name: pymongo
 
-#    - name: Create a replicaset rs
-#      community.mongodb.mongodb_replicaset:
-#        replica_set: rs
-#        login_host: "{{ source_ip }}"
-#        members:
-#        - host: "{{ source_ip }}:27017"
-#          priority: 1
-#      when: inventory_hostname in groups['source']
-#
-#    - name: Create a replicaset rs
-#      community.mongodb.mongodb_replicaset:
-#        replica_set: rs
-#        login_host: "{{ destination_ip }}"
-#        members:
-#          - host: "{{ destination_ip }}:27017"
-#            priority: 1
-#      when: inventory_hostname in groups['destination']
-#
-#    - name: reload systemd
-#      systemd:
-#        daemon_reload: yes
+    - name: Create a replicaset rs
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs
+        login_host: "{{ source_ip }}"
+        members:
+        - host: "{{ source_ip }}:27017"
+          priority: 1
+      when: inventory_hostname in groups['source']
+
+    - name: Create a replicaset rs
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs
+        login_host: "{{ destination_ip }}"
+        members:
+          - host: "{{ destination_ip }}:27017"
+            priority: 1
+      when: inventory_hostname in groups['destination']
+
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
 #
 #    - name: add AWS storage for pbm-agent
 #      blockinfile:
