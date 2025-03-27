@@ -263,88 +263,56 @@
         owner: mongod
         group: mongod
       when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
-#
-#    - name: switch mongod to new dbPath
-#      replace:
-#        path: /etc/mongod.conf
-#        regexp: '^  dbPath: /var/lib/mongo'
-#        replace: '  dbPath: /mnt/data/db'
-#
-#    - name: add replica set name into mongod config
-#      replace:
-#        path: /etc/mongod.conf
-#        regexp: '^#replication:'
-#        replace: 'replication:\n  replSetName: "rs"'
-#
-#    - name: bind mongod to 0.0.0.0
-#      replace:
-#        path: /etc/mongod.conf
-#        regexp: '^  bindIp: 127.0.0.1'
-#        replace: '  bindIp: 0.0.0.0'
-#
-#    - name: start mongod service
-#      service: name=mongod state=started
-#
-#    - name: install pymongo
-#      pip:
-#        name: pymongo
-#
-#    - name: Create a replicaset rs
-#      community.mongodb.mongodb_replicaset:
-#        replica_set: rs
-#        login_host: "{{ rs_primary_ip }}"
-#        members:
-#        - host: "{{ rs_primary_ip }}:27017"
-#          priority: 1
-#        - host: "{{ rs_secondary_ips.split(',')[0] }}:27017"
-#          priority: 0.5
-#        - host: "{{ rs_secondary_ips.split(',')[1] }}:27017"
-#          priority: 0.5
-#      when: inventory_hostname in groups['primary']
-#
-#    - name: Create systemd unit-file
-#      blockinfile:
-#        path: /usr/lib/systemd/system/pbm-agent.service
-#        mode: '0644'
-#        create: true
-#        block: |
-#          [Unit]
-#          Description=pbm-agent
-#          After=time-sync.target network.target
-#
-#          [Service]
-#          EnvironmentFile=-/etc/sysconfig/pbm-agent
-#          Type=simple
-#          User=mongod
-#          Group=mongod
-#          PermissionsStartOnly=true
-#          ExecStart=/usr/bin/pbm-agent
-#
-#          [Install]
-#          WantedBy=multi-user.target
-#      when: ansible_os_family == "RedHat"
-#
-#    - name: edit pbm-agent service config for deb
-#      blockinfile:
-#        path: /etc/default/pbm-agent
-#        mode: '0644'
-#        create: true
-#        block: |
-#          PBM_MONGODB_URI="mongodb://localhost:27017/"
-#      when: ansible_os_family == "Debian"
-#
-#    - name: edit pbm-agent service config for rhel
-#      blockinfile:
-#        path: /etc/sysconfig/pbm-agent
-#        mode: '0644'
-#        create: true
-#        block: |
-#          PBM_MONGODB_URI="mongodb://localhost:27017/"
-#      when: ansible_os_family == "RedHat"
-#
-#    - name: reload systemd
-#      systemd:
-#        daemon_reload: yes
+
+    - name: switch mongod to new dbPath
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  dbPath: /var/lib/mongo'
+        replace: '  dbPath: /mnt/data/db'
+
+    - name: add replica set name into mongod config
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#replication:'
+        replace: 'replication:\n  replSetName: "rs"'
+      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
+
+    - name: bind mongod to 0.0.0.0
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  bindIp: 127.0.0.1'
+        replace: '  bindIp: 0.0.0.0'
+      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
+
+    - name: start mongod service
+      service: name=mongod state=started
+      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
+
+    - name: install pymongo
+      pip:
+        name: pymongo
+
+    - name: Create a replicaset rs
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs
+        login_host: "{{ source_ip }}"
+        members:
+        - host: "{{ source_ip }}:27017"
+          priority: 1
+      when: inventory_hostname in groups['source']
+
+    - name: Create a replicaset rs
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs
+        login_host: "{{ destination_ip }}"
+        members:
+          - host: "{{ destination_ip }}:27017"
+            priority: 1
+      when: inventory_hostname in groups['destination']
+
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
 #
 #    - name: add AWS storage for pbm-agent
 #      blockinfile:
