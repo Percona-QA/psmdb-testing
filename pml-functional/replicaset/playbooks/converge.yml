@@ -110,16 +110,16 @@
         version: "master"
       when: inventory_hostname == "source"
 
-#    # Sets environment variables
-#    - name: Build Mgodatagen
-#      command: go build
-#      args:
-#        chdir: /tmp/mgodatagen
-#      environment:
-#        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
-#        GOROOT: /usr/local/go/
-#        GOBINPATH: /usr/local/go/bin
-#      when: inventory_hostname == "source"
+    # Sets environment variables
+    - name: Build Mgodatagen
+      command: go build
+      args:
+        chdir: /tmp/mgodatagen
+      environment:
+        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
+        GOROOT: /usr/local/go/
+        GOBINPATH: /usr/local/go/bin
+      when: inventory_hostname == "source"
 #
 #    - name: Move mgodatagen to /usr/local/bin
 #      copy:
