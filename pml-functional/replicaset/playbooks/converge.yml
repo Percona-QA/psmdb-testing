@@ -108,7 +108,7 @@
         repo: 'https://github.com/feliixx/mgodatagen.git'
         dest: /tmp/mgodatagen
         version: "master"
-      when: inventory_hostname == "pml"
+      when: inventory_hostname == "source"
 
 #    # Sets environment variables
 #    - name: Build Mgodatagen
