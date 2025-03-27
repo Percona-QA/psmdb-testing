@@ -138,6 +138,7 @@
           {{ source_ip }}    source
           {{ destination_ip }}    destination
         create: false
+        unsafe_writes: true
       when: inventory_hostname == "pml"
 
     # Checks if key exists and specifies the URl of the key
