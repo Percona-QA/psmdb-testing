@@ -264,34 +264,34 @@
         group: mongod
       when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
 
-#    - name: switch mongod to new dbPath
-#      replace:
-#        path: /etc/mongod.conf
-#        regexp: '^  dbPath: /var/lib/mongo'
-#        replace: '  dbPath: /mnt/data/db'
-#      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
-#
-#    - name: add replica set name into mongod config
-#      replace:
-#        path: /etc/mongod.conf
-#        regexp: '^#replication:'
-#        replace: 'replication:\n  replSetName: "rs"'
-#      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
-#
-#    - name: bind mongod to 0.0.0.0
-#      replace:
-#        path: /etc/mongod.conf
-#        regexp: '^  bindIp: 127.0.0.1'
-#        replace: '  bindIp: 0.0.0.0'
-#      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
-#
-#    - name: start mongod service
-#      service: name=mongod state=started
-#      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
-#
-#    - name: install pymongo
-#      pip:
-#        name: pymongo
+    - name: switch mongod to new dbPath
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  dbPath: /var/lib/mongo(?:db)?'
+        replace: '  dbPath: /mnt/data/db'
+      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
+
+    - name: add replica set name into mongod config
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#replication:'
+        replace: 'replication:\n  replSetName: "rs"'
+      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
+
+    - name: bind mongod to 0.0.0.0
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  bindIp: 127.0.0.1'
+        replace: '  bindIp: 0.0.0.0'
+      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
+
+    - name: start mongod service
+      service: name=mongod state=started
+      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
+
+    - name: install pymongo
+      pip:
+        name: pymongo
 
 #    - name: Create a replicaset rs
 #      community.mongodb.mongodb_replicaset:
