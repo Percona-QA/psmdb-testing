@@ -133,6 +133,18 @@
         var: destination_ip
       when: destination_ip is defined
 
+    - name: Add source and destination to /etc/hosts in pml
+      blockinfile:
+        path: /etc/hosts
+        block: |
+          {{ source_ip }}    source
+          {{ destination_ip }}    destination
+        create: false
+      loop:
+        - "SOURCE_IP={{ source_ip }}"
+        - "DESTINATION_IP={{ destination_ip }}"
+      when: inventory_hostname == "pml"
+
     # Checks if key exists and specifies the URl of the key
     # This step is necessary because EPEL packages are signed, and without this key, yum or dnf might fail with signature verification errors.
     - name: install GPG key for epel 8
