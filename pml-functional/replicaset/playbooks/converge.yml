@@ -140,9 +140,9 @@
           {{ source_ip }}    source
           {{ destination_ip }}    destination
         create: false
-      loop:
-        - "SOURCE_IP={{ source_ip }}"
-        - "DESTINATION_IP={{ destination_ip }}"
+#      loop:
+#        - "SOURCE_IP={{ source_ip }}"
+#        - "DESTINATION_IP={{ destination_ip }}"
       when: inventory_hostname == "pml"
 
     # Checks if key exists and specifies the URl of the key
