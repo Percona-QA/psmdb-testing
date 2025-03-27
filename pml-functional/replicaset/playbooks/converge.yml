@@ -262,7 +262,7 @@
         mode: '0755'
         owner: mongod
         group: mongod
-      when: inventory_hostname in groups['source'] inventory_hostname in groups['destination']
+      when: inventory_hostname in groups['source'] or inventory_hostname in groups['destination']
 #
 #    - name: switch mongod to new dbPath
 #      replace:
