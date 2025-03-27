@@ -115,13 +115,11 @@
 
     - name: get source ip address
       set_fact:
-          source_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
-      when: inventory_hostname in groups['source']
+          source_ip: "{{ hostvars['source']['ansible_facts']['default_ipv4']['address'] }}"
 
     - name: get destination ip address
       set_fact:
-        destination_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
-      when: inventory_hostname in groups['destination']
+        destination_ip: "{{ hostvars['destination']['ansible_facts']['default_ipv4']['address'] }}"
 
     - name: Show source IP (debug)
       debug:
@@ -140,9 +138,6 @@
           {{ source_ip }}    source
           {{ destination_ip }}    destination
         create: false
-#      loop:
-#        - "SOURCE_IP={{ source_ip }}"
-#        - "DESTINATION_IP={{ destination_ip }}"
       when: inventory_hostname == "pml"
 
     # Checks if key exists and specifies the URl of the key
