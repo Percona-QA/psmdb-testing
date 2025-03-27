@@ -23,16 +23,6 @@
         # Set variable
         branch: "{{ lookup('env', 'BRANCH') | default('main', true) }}"
 
-    - set_fact:
-        # Set variable
-        storage: "{{ lookup('env', 'STORAGE') }}"
-
-    - set_fact:
-        toolkit: "{{ lookup('env', 'ENABLE_TOOLKIT') | default('false', true) }}"
-
-    - set_fact:
-        pro_build: "{{ lookup('env', 'GATED_BUILD') | default('false', true) }}"
-
     # Installs iproute2 on deb 11 using apt
     # Runs only when ansible_distribution_major_version >= "11" and ansible_distribution == "Debian"
     - name: prerequisite for debian 11
@@ -51,7 +41,6 @@
         - wget
         - git
       when: ansible_os_family == "RedHat"
-
 
     # Install all the packages in package variable if ansible_os_family is Debian
     - name: Install deps
@@ -107,6 +96,25 @@
       command: make build
       args:
         chdir: /tmp/percona-mongolink
+      environment:
+        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
+        GOROOT: /usr/local/go/
+        GOBINPATH: /usr/local/go/bin
+      when: inventory_hostname in groups["pml"]
+
+    # Clones down specified repo to branch specified
+    - name: Clone Mgodatagen repo
+      git:
+        repo: 'https://github.com/feliixx/mgodatagen.git'
+        dest: /tmp/mgodatagen
+        version: "master"
+      when: inventory_hostname in groups["pml"]
+
+    # Sets environment variables
+    - name: Build PML
+      command: go build
+      args:
+        chdir: /tmp/mgodatagen
       environment:
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
@@ -324,91 +332,3 @@
     - name: reload systemd
       systemd:
         daemon_reload: yes
-#
-#    - name: add AWS storage for pbm-agent
-#      blockinfile:
-#        path: /etc/pbm-agent-storage-aws.conf
-#        mode: '0666'
-#        create: true
-#        block: |
-#          storage:
-#            type: s3
-#            s3:
-#               region: us-west-2
-#               bucket: pbm-testing-west
-#               prefix: replicaset
-#               credentials:
-#                 access-key-id: {{ access_key }}
-#                 secret-access-key: {{ access_secret }}
-#          restore:
-#            batchSize: 50
-#            numInsertionWorkers: 10
-#      vars:
-#        access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
-#        access_secret: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
-#
-#    - name: add GCP storage for pbm-agent
-#      copy:
-#        src: /tmp/pbm-agent-storage-gcp.conf
-#        dest: /etc/pbm-agent-storage-gcp.conf
-#        mode: '0666'
-#
-#    - name: add AZURE storage for pbm-agent
-#      copy:
-#        src: /tmp/pbm-agent-storage-azure.conf
-#        dest: /etc/pbm-agent-storage-azure.conf
-#        mode: '0666'
-#
-#    - name: Download and install mc
-#      get_url:
-#        url: 'https://dl.min.io/client/mc/release/linux-amd64/mc'
-#        dest: /usr/bin/mc
-#        mode: '0755'
-#      when: inventory_hostname in groups['mc']
-#
-#    - name: Download mgodatagen
-#      get_url:
-#        url: 'https://github.com/feliixx/mgodatagen/releases/download/v0.9.2/mgodatagen_0.9.2_Linux_x86_64.tar.gz'
-#        dest: /tmp/mgodatagen.tar.gz
-#        mode: '0644'
-#
-#    - name: Unpack mgodatagen
-#      unarchive:
-#        src: /tmp/mgodatagen.tar.gz
-#        dest: /usr/bin/
-#        remote_src: yes
-#
-#    - name: configure minio
-#      command: /usr/bin/mc config host add myminio http://minio:9000 minio1234 minio1234
-#      when: inventory_hostname in groups['mc'] and storage == "minio"
-#
-#    # Bucket stores objects, like a folder in Monio, unit of storage
-#    - name: create bucket on minio
-#      command: /usr/bin/mc mb myminio/bcp
-#      when: inventory_hostname in groups['mc'] and storage == "minio"
-#
-#
-#    - name: add minio storage for pbm-agent
-#      blockinfile:
-#        path: /etc/pbm-agent-storage-minio.conf
-#        mode: '0666'
-#        create: true
-#        block: |
-#          storage:
-#              type: s3
-#              s3:
-#                 endpointUrl: http://minio:9000
-#                 bucket: bcp
-#                 prefix: pbme2etest
-#                 credentials:
-#                   access-key-id: "minio1234"
-#                   secret-access-key: "minio1234"
-#
-#    - name: start pbm-agent service
-#      service:
-#        name: pbm-agent
-#        state: started
-#        enabled: yes
-#
-#    - name: Install PMM
-#      include_tasks: ../../../tasks/install_pmm.yml
