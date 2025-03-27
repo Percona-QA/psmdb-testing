@@ -123,7 +123,7 @@
 
     - name: Move mgodatagen to /usr/local/bin
       copy:
-        src: /tmp/mgodatagen/mgodatagen
+        src: /tmp/mgodatagen/
         dest: /usr/local/bin/
         mode: '0755'
         remote_src: true
