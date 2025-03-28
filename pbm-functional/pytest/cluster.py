@@ -462,8 +462,10 @@ class Cluster:
         timeout=kwargs.get('timeout', 240)
         result = n.run('timeout ' + str(timeout) + ' pbm restore ' + name + ' --wait')
 
-        if result.rc == 0:
+        if result.rc == 0 and "Error" not in result.stdout:
             Cluster.log(result.stdout)
+        elif result.rc == 0 and "Error" in result.stdout:
+            assert False, result.stdout
         else:
             # try to catch possible failures if timeout exceeded
             error=''
