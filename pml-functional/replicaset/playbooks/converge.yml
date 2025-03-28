@@ -4,24 +4,28 @@
   become_method: sudo
   tasks:
     - set_fact:
-        # Set variable
+        # Version of psmdb (psmdb-70)
         psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-44', true) }}"
 
     - set_fact:
-        # Set variable
+        # Github token to access mongolink
         token: "{{ lookup('env', 'TOKEN') }}"
 
     - set_fact:
-        # Set variable
+        # Version of psmdb (v7.0, latest)
         psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
 
     - set_fact:
-        # Set variable
+        # Version of mongosh
         psmdb_mongosh: "{{ psmdb_to_test.split('-')[1].split('.')[0] }}"
 
     - set_fact:
-        # Set variable
+        # Branch of psmdb to test
         branch: "{{ lookup('env', 'BRANCH') | default('main', true) }}"
+
+    - set_fact:
+        # Branch of pml branch to test
+        pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('main', true) }}"
 
     # Installs iproute2 on deb 11 using apt
     # Runs only when ansible_distribution_major_version >= "11" and ansible_distribution == "Debian"
@@ -40,6 +44,7 @@
         - make
         - wget
         - git
+        - iputils-ping
       when: ansible_os_family == "RedHat"
 
     # Install all the packages in package variable if ansible_os_family is Debian
@@ -52,6 +57,7 @@
         - make
         - wget
         - git
+        - iputils-ping
       when: ansible_os_family == "Debian"
 
     - name: Install Go from official tarball on PML host
@@ -88,7 +94,7 @@
       git:
         repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
         dest: /tmp/percona-mongolink
-        version: "{{ branch }}"
+        version: "{{ pml_branch }}"
       when: inventory_hostname == "pml"
 
     # Sets environment variables
@@ -100,6 +106,14 @@
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
         GOBINPATH: /usr/local/go/bin
+      when: inventory_hostname == "pml"
+
+    - name: Move mongolink binary to /usr/local/bin
+      copy:
+        src: /tmp/percona-mongolink/bin
+        dest: /usr/local/bin/
+        mode: '0755'
+        remote_src: true
       when: inventory_hostname == "pml"
 
     # Clones down specified repo to branch specified
@@ -140,12 +154,12 @@
     - name: Show source IP (debug)
       debug:
         var: source_ip
-      when: source_ip is defined
+      when: destination_ip is defined and inventory_hostname == "source"
 
     - name: Show destination IP (debug)
       debug:
         var: destination_ip
-      when: destination_ip is defined
+      when: destination_ip is defined and inventory_hostname == "destination"
 
     - name: Add source and destination to /etc/hosts in pml
       blockinfile:
