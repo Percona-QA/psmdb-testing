@@ -143,12 +143,12 @@
       set_fact:
         destination_ip: "{{ hostvars['destination']['ansible_facts']['default_ipv4']['address'] }}"
 
-    - name: Show source IP (debug)
+    - name: Show source IP
       debug:
         var: source_ip
       when: destination_ip is defined and inventory_hostname == "source"
 
-    - name: Show destination IP (debug)
+    - name: Show destination IP
       debug:
         var: destination_ip
       when: destination_ip is defined and inventory_hostname == "destination"
