@@ -55,5 +55,5 @@ def test_incremental_PBM_T293(start_cluster,cluster):
     try:
         cluster.make_restore(base_backup,timeout=900, restart_cluster=True, check_pbm_status=True)
     except AssertionError as e:
-        rs101_logs = docker.from_env().containers.get('rs101').logs(stdout=False).decode("utf-8", errors="replace")
+        rs101_logs = docker.from_env().containers.get('rs101').logs(tail=10,stdout=False).decode("utf-8", errors="replace")
         assert False, str(e) + "\n Logs from rs101:\n" + rs101_logs
