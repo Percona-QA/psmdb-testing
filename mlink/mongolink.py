@@ -24,7 +24,7 @@ class Mongolink:
         container = client.containers.get(self.name)
         return container
 
-    def create(self, log_level="debug", extra_args=""):
+    def create(self, log_level="debug", env_vars=None, extra_args=""):
         try:
             existing_container = self.container
             Cluster.log(f"Removing existing mlink container '{self.name}'...")
@@ -41,6 +41,7 @@ class Mongolink:
             name=self.name,
             detach=True,
             network="test",
+            environment=env_vars if env_vars is not None else {},
             command=cmd
         )
         Cluster.log(f"Mlink '{self.name}' started successfully")
@@ -148,15 +149,15 @@ class Mongolink:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
-    def logs(self):
+    def logs(self, tail=50):
         try:
             raw_logs = self.container.logs().decode("utf-8").strip()
             filtered_lines = [
                 line for line in raw_logs.splitlines()
                 if "GET /status" not in line
             ]
-            last_50_logs = "\n".join(filtered_lines[-50:])
-            return last_50_logs if last_50_logs else "No logs found"
+            last_logs = "\n".join(filtered_lines[-tail:])
+            return last_logs if last_logs else "No logs found"
 
         except docker.errors.NotFound:
             return "Error: mlink container not found."

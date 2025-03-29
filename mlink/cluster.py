@@ -5,9 +5,8 @@ import pymongo
 import json
 import copy
 import concurrent.futures
-import os
+import psutil
 from datetime import datetime
-import re
 
 # the structure of the cluster could be one of
 # 1. { _id: "rsname", members: [{host: "host", hidden: boolean, priority: int, arbiterOnly: bool}, ...]} for replicaset
@@ -194,10 +193,27 @@ class Cluster:
         else:
             return self.config['mongos']
 
+    @staticmethod
+    def calculate_mem_limits(config, layout):
+        total_mem = psutil.virtual_memory().total
+        mem_pool = int(total_mem * 0.5)
+        if layout == "replicaset":
+            num_containers = len(config['members'])
+        else:
+            num_containers = len(config['configserver']['members'])
+            num_containers += sum(len(shard['members']) for shard in config['shards'])
+            num_containers += 1  # for mongos
+        mem_per_container = mem_pool // num_containers
+        return mem_per_container // 2 # account for 2 clusters running in parallel during tests
+
     # configures and starts all docker-containers, creates necessary layout, setups athorization
     def create(self):
         start = time.time()
         Cluster.log("Creating cluster: " + str(self.config))
+
+        mem_limit = self.calculate_mem_limits(self.config, self.layout)
+        Cluster.log(f"Memory limit per container: {mem_limit // (1024 ** 2)} MB")
+
         if self.layout == "replicaset":
             for host in self.config['members']:
                 Cluster.log("Creating container " + host['host'])
@@ -208,6 +224,8 @@ class Cluster:
                     hostname=host['host'],
                     detach=True,
                     network='test',
+                    mem_limit=mem_limit,
+                    memswap_limit=mem_limit,
                     command=cmd
                 )
             time.sleep(5)
@@ -226,6 +244,8 @@ class Cluster:
                         hostname=host['host'],
                         detach=True,
                         network='test',
+                        mem_limit=mem_limit,
+                        memswap_limit=mem_limit,
                         command=cmd
                     )
                     conn = conn + host['host'] + ':27017,'
@@ -241,6 +261,8 @@ class Cluster:
                     hostname=host['host'],
                     detach=True,
                     network='test',
+                    mem_limit=mem_limit,
+                    memswap_limit=mem_limit,
                     command=cmd
                 )
                 conn = conn + host['host'] + ':27017,'
@@ -257,7 +279,9 @@ class Cluster:
                 hostname=self.config['mongos'],
                 command='mongos --keyFile=/etc/keyfile --configdb ' + configdb + ' --port 27017 --bind_ip 0.0.0.0',
                 detach=True,
-                network='test'
+                network='test',
+                mem_limit=mem_limit,
+                memswap_limit=mem_limit
             )
             time.sleep(1)
             Cluster.setup_authorization(self.config['mongos'])
