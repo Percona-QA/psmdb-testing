@@ -42,7 +42,6 @@
         - make
         - wget
         - git
-        - iputils-ping
       when: ansible_os_family == "RedHat"
 
     - name: Install deps
