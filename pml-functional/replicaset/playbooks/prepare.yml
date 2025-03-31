@@ -1,4 +1,5 @@
 - name: Prepare
+  hosts: all
   become: true
   become_method: sudo
   tasks:
