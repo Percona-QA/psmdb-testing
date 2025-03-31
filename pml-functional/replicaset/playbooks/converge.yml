@@ -382,6 +382,6 @@
     - name: Add PML pub key to ec2-user
       authorized_key:
         user: ec2-user
-        key: "{{ hostvars['pml']['pml_pubkey'] }}"
+        key: "{{ hostvars['jenkins-pml-mongolink']['pml_pubkey'] }}"
         state: present
       when: inventory_hostname in groups['psmdb']
