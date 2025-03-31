@@ -1,5 +1,5 @@
 - name: Prepare
-  hosts: all
+  hosts: mongo
   become: true
   become_method: sudo
   tasks:

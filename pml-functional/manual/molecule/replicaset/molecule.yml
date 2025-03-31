@@ -7,6 +7,7 @@ platforms:
   - name: jenkins-pml-source
     groups:
       - psmdb
+      - mongo
     region: us-west-2
     image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
     vpc_subnet_id: subnet-0dc7518100473f19d
@@ -18,6 +19,7 @@ platforms:
   - name: jenkins-pml-destination
     groups:
       - psmdb
+      - mongo
     region: us-west-2
     image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
     vpc_subnet_id: subnet-0dc7518100473f19d
@@ -27,6 +29,8 @@ platforms:
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
   - name: jenkins-pml-mongolink
+    groups:
+      - mongo
     region: us-west-2
     image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
     vpc_subnet_id: subnet-0dc7518100473f19d
