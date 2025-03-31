@@ -36,6 +36,7 @@
     - name: Install deps
       yum:
         name: "{{ packages }}"
+        state: present
         update_cache: yes
       vars:
         packages:
@@ -47,6 +48,7 @@
     - name: Install deps
       apt:
         name: "{{ packages }}"
+        state: present
         update_cache: yes
       vars:
         packages:
