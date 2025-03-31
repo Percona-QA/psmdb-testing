@@ -36,6 +36,7 @@
     - name: Install deps
       yum:
         name: "{{ packages }}"
+        update_cache: yes
       vars:
         packages:
         - make
