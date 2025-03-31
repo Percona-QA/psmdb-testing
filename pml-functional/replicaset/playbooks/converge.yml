@@ -77,7 +77,7 @@
             src: "/tmp/{{ go_tarball }}"
             dest: "{{ go_install_dir }}"
             remote_src: yes
-      when: inventory_hostname == "pml" or inventory_hostname == "source"
+      when: inventory_hostname == "pml" or inventory_hostname == "jenkins-pml-source"
 
     - name: Check go availability
       command: go version
@@ -117,7 +117,7 @@
         repo: 'https://github.com/feliixx/mgodatagen.git'
         dest: /tmp/mgodatagen
         version: "master"
-      when: inventory_hostname == "source"
+      when: inventory_hostname == "jenkins-pml-source"
 
     - name: Build Mgodatagen
       command: go build
@@ -127,7 +127,7 @@
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
         GOBIN: /usr/local/go/bin
-      when: inventory_hostname == "source"
+      when: inventory_hostname == "jenkins-pml-source"
 
     - name: Move mgodatagen binary to /usr/local/bin
       copy:
@@ -135,20 +135,20 @@
         dest: /usr/local/bin/
         mode: '0755'
         remote_src: true
-      when: inventory_hostname == "source"
+      when: inventory_hostname == "jenkins-pml-source"
 
     - name: get source ip address
       set_fact:
-          source_ip: "{{ hostvars['source']['ansible_facts']['default_ipv4']['address'] }}"
+          source_ip: "{{ hostvars['jenkins-pml-source']['ansible_facts']['default_ipv4']['address'] }}"
 
     - name: get destination ip address
       set_fact:
-        destination_ip: "{{ hostvars['destination']['ansible_facts']['default_ipv4']['address'] }}"
+        destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_facts']['default_ipv4']['address'] }}"
 
     - name: Show source IP
       debug:
         var: source_ip
-      when: destination_ip is defined and inventory_hostname == "source"
+      when: destination_ip is defined and inventory_hostname == "jenkins-pml-source"
 
     - name: Show destination IP
       debug:
@@ -322,7 +322,7 @@
           - host: "{{ source_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "source"
+      when: inventory_hostname == "jenkins-pml-source"
 
     - name: Create a replicaset rs
       community.mongodb.mongodb_replicaset:
@@ -332,7 +332,7 @@
           - host: "{{ destination_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "destination"
+      when: inventory_hostname == "jenkins-pml-destination"
 
     - name: reload systemd
       systemd:
