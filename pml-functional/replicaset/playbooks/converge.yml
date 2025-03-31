@@ -101,12 +101,12 @@
       environment:
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
-        GOBINPATH: /usr/local/go/bin
+        GOBIN: /usr/local/go/bin
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Move mongolink binary to /usr/local/bin
       copy:
-        src: /tmp/percona-mongolink/bin
+        src: /tmp/percona-mongolink/bin/percona-mongolink
         dest: /usr/local/bin/
         mode: '0755'
         remote_src: true
