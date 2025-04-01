@@ -9,7 +9,7 @@
 
     - set_fact:
         # Github token to access mongolink repo
-        token: "{{ lookup('env', 'TOKEN') }}"
+        token: "{{ lookup('env', 'MONGO_REPO_TOKEN') }}"
 
     - set_fact:
         # Version of psmdb (v7.0, latest)
