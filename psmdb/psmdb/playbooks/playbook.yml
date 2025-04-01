@@ -9,4 +9,3 @@
     - role: '../../../roles/vault'
     - role: '../../../roles/openldap'
     - role: '../../../roles/kerberos'
-      
