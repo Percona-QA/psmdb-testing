@@ -4,11 +4,11 @@
   become_method: sudo
   tasks:
     - set_fact:
-        # Version of psmdb (psmdb-70)
+        # Version of psmdb release to be enabled (psmdb-70)
         psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-44', true) }}"
 
     - set_fact:
-        # Github token to access mongolink
+        # Github token to access mongolink repo
         token: "{{ lookup('env', 'TOKEN') }}"
 
     - set_fact:
@@ -18,10 +18,6 @@
     - set_fact:
         # Version of mongosh
         psmdb_mongosh: "{{ psmdb_to_test.split('-')[1].split('.')[0] }}"
-
-    - set_fact:
-        # Branch of psmdb to test
-        branch: "{{ lookup('env', 'BRANCH') | default('main', true) }}"
 
     - set_fact:
         # Branch of pml branch to test
