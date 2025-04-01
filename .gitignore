@@ -7,4 +7,4 @@ docker-image-tests/pxc/.DS_Store
 **/report.xml
 **/*report.xml
 pbm-functional/pytest/example_cluster.py
-idea/*
+.idea/*
