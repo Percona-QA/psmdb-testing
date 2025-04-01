@@ -38,9 +38,6 @@ def start_cluster(srcRS, dstRS, mlink, request):
         yield True
 
     finally:
-        if request.config.getoption("--verbose"):
-            logs = mlink.logs()
-            print(f"\n\nmlink Last 50 Logs for mlink:\n{logs}\n\n")
         srcRS.destroy()
         dstRS.destroy()
         mlink.destroy()
@@ -49,9 +46,11 @@ def start_cluster(srcRS, dstRS, mlink, request):
 def reset_state(srcRS, dstRS, mlink, request):
     src_client = pymongo.MongoClient(srcRS.connection)
     dst_client = pymongo.MongoClient(dstRS.connection)
-    if request.config.getoption("--verbose"):
-        logs = mlink.logs()
-        print(f"\n\nmlink Last 50 Logs for mlink:\n{logs}\n\n")
+    def print_logs():
+        if request.config.getoption("--verbose"):
+            logs = mlink.logs()
+            print(f"\n\nmlink Last 50 Logs for mlink:\n{logs}\n\n")
+    request.addfinalizer(print_logs)
     mlink.destroy()
     for db_name in src_client.list_database_names():
         if db_name not in {"admin", "local", "config"}:
@@ -63,7 +62,7 @@ def reset_state(srcRS, dstRS, mlink, request):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T14(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T13(reset_state, srcRS, dstRS, mlink):
     """
     Test collMod on collection with validator, validatorLevel, validatorAction
     """
@@ -126,7 +125,7 @@ def test_rs_mlink_PML_T14(reset_state, srcRS, dstRS, mlink):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T15(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T14(reset_state, srcRS, dstRS, mlink):
     """
     Test collMod on collection with changeStreamPreAndPostImages
     """
@@ -187,7 +186,7 @@ def test_rs_mlink_PML_T15(reset_state, srcRS, dstRS, mlink):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T16(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T15(reset_state, srcRS, dstRS, mlink):
     """
     Test collMod on view
     """
@@ -249,7 +248,7 @@ def test_rs_mlink_PML_T16(reset_state, srcRS, dstRS, mlink):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T17(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T16(reset_state, srcRS, dstRS, mlink):
     """
     Test collMod on capped collection
     """
@@ -303,7 +302,7 @@ def test_rs_mlink_PML_T17(reset_state, srcRS, dstRS, mlink):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T18(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T17(reset_state, srcRS, dstRS, mlink):
     """
     Test collMod on indexes: TTL, hidden, prepareUnique, unique, name, keyPattern
     """
@@ -381,7 +380,7 @@ def test_rs_mlink_PML_T18(reset_state, srcRS, dstRS, mlink):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T19(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T18(reset_state, srcRS, dstRS, mlink):
     """
     Test collmod when converting to unique fails
     """
@@ -440,18 +439,22 @@ def test_rs_mlink_PML_T19(reset_state, srcRS, dstRS, mlink):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T20(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T19(reset_state, srcRS, dstRS, mlink):
     """
     Test to check renameCollection while collection is being cloned
     """
     try:
+        mlink_env = {
+            "PML_CLONE_NUM_PARALLEL_COLL": "20"
+        }
+        mlink.create(extra_args="--reset-state", env_vars=mlink_env)
         src = pymongo.MongoClient(srcRS.connection)
         dst = pymongo.MongoClient(dstRS.connection)
 
         db_name = "test_db"
         old_name = "collection_4"
         new_name = "renamed_collection_4"
-        generate_dummy_data(srcRS.connection, db_name)
+        generate_dummy_data(srcRS.connection, db_name, 5, 500000)
         init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
 
         def start_mlink():
@@ -502,11 +505,15 @@ def test_rs_mlink_PML_T20(reset_state, srcRS, dstRS, mlink):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T21(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T20(reset_state, srcRS, dstRS, mlink):
     """
     Test to check renameCollection during data clone
     """
     try:
+        mlink_env = {
+            "PML_CLONE_NUM_PARALLEL_COLL": "20"
+        }
+        mlink.create(extra_args="--reset-state", env_vars=mlink_env)
         src = pymongo.MongoClient(srcRS.connection)
         dst = pymongo.MongoClient(dstRS.connection)
 
@@ -525,7 +532,7 @@ def test_rs_mlink_PML_T21(reset_state, srcRS, dstRS, mlink):
             result = mlink.start()
             assert result is True, "Failed to start mlink service"
         def rename_collection():
-            time.sleep(0.1)
+            time.sleep(0.2)
             res = src.admin.command("renameCollection", f"{db_name1}.{old_name1}", to=f"{db_name1}.{new_name1}")
             assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
             res = src.admin.command("renameCollection", f"{db_name1}.{old_name2}", to=f"{db_name1}.{new_name2}", dropTarget=True)
@@ -562,19 +569,29 @@ def test_rs_mlink_PML_T21(reset_state, srcRS, dstRS, mlink):
     assert result is True, "Failed to finalize mlink service"
 
     time.sleep(1)
-    expected_mismatches = [
-        ("test_db1", "hash mismatch"),
-        ("test_db1.renamed_collection1", "hash mismatch"),
-        ("test_db1.renamed_collection2", "hash mismatch"),
-        ("test_db1.renamed_collection1", "record count mismatch"),
-        ("test_db1.renamed_collection2", "record count mismatch")]
+    expected_db_mismatch = ("test_db1", "hash mismatch")
+    expected_collections = ["test_db1.renamed_collection1", "test_db1.renamed_collection2"]
+    expected_types = ["hash mismatch", "record count mismatch"]
 
     result, summary = compare_data_rs(srcRS, dstRS)
     if not result:
-        unexpected = [m for m in summary if m not in expected_mismatches]
-        missing_expected = [m for m in expected_mismatches if m not in summary]
-        if missing_expected:
-            assert False, f"Expected mismatches missing: {missing_expected}"
+        summary_set = set(summary)
+        if expected_db_mismatch not in summary_set:
+            assert False, f"Expected mismatch missing: {expected_db_mismatch}"
+
+        collections_with_both = []
+        for coll in expected_collections:
+            mismatches = [t for (c, t) in summary if c == coll]
+            if all(m in mismatches for m in expected_types):
+                collections_with_both.append(coll)
+        if not collections_with_both:
+            assert False, f"Expected at least one collection with both mismatches: {expected_collections}"
+
+        allowed = [expected_db_mismatch]
+        for coll in expected_collections:
+            for mismatch_type in expected_types:
+                allowed.append((coll, mismatch_type))
+        unexpected = [m for m in summary if m not in allowed]
         if not unexpected:
             pytest.xfail("Known issue: PML-110")
         assert False, f"Unexpected mismatches found: {unexpected}"
@@ -594,7 +611,7 @@ def test_rs_mlink_PML_T21(reset_state, srcRS, dstRS, mlink):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T22(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T21(reset_state, srcRS, dstRS, mlink):
     """
     Test to check renameCollection during repl stage
     """

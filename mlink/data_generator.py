@@ -51,7 +51,8 @@ def stop_all_crud_operations():
     for db_name, stop_event in stop_operations_map.items():
         stop_event.set()
 
-def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, doc_size=150000, batch_size=10000, stop_event=None):
+def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, doc_size=150000,
+                        batch_size=10000, stop_event=None, sleep_between_batches=0):
     """
     With default parameters generates ~500MB of data within 10 seconds
     If stop_event is provided, it can be used to stop generation early.
@@ -84,4 +85,6 @@ def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, d
                 break
             docs = [{**template_doc, "_id": ObjectId()} for _ in range(batch_size)]
             collection.insert_many(docs, ordered=False, bypass_document_validation=True)
+            if sleep_between_batches > 0:
+                time.sleep(sleep_between_batches)
     Cluster.log("Dummy data generation is completed")

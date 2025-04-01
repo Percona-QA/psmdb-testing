@@ -37,9 +37,6 @@ def start_cluster(srcRS, dstRS, mlink, request):
         yield True
 
     finally:
-        if request.config.getoption("--verbose"):
-            logs = mlink.logs()
-            print(f"\n\nmlink Last 50 Logs for mlink:\n{logs}\n\n")
         srcRS.destroy()
         dstRS.destroy()
         mlink.destroy()
@@ -48,9 +45,11 @@ def start_cluster(srcRS, dstRS, mlink, request):
 def reset_state(srcRS, dstRS, mlink, request):
     src_client = pymongo.MongoClient(srcRS.connection)
     dst_client = pymongo.MongoClient(dstRS.connection)
-    if request.config.getoption("--verbose"):
-        logs = mlink.logs()
-        print(f"\n\nmlink Last 50 Logs for mlink:\n{logs}\n\n")
+    def print_logs():
+        if request.config.getoption("--verbose"):
+            logs = mlink.logs()
+            print(f"\n\nmlink Last 50 Logs for mlink:\n{logs}\n\n")
+    request.addfinalizer(print_logs)
     mlink.destroy()
     for db_name in src_client.list_database_names():
         if db_name not in {"admin", "local", "config"}:
@@ -75,8 +74,9 @@ def perform_transaction(src, session, db_name, coll_name, docs, commit=False, ab
             session.abort_transaction()
         raise e
 
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T8(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T22(reset_state, srcRS, dstRS, mlink):
     """
     Test to verify transaction replication if transactions are started and committed during different stages of synchronization
     """
@@ -177,8 +177,9 @@ def test_rs_mlink_PML_T8(reset_state, srcRS, dstRS, mlink):
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
 
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T9(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T23(reset_state, srcRS, dstRS, mlink):
     """
     Test for two concurrent transactions modifying the same document
     """
@@ -216,8 +217,9 @@ def test_rs_mlink_PML_T9(reset_state, srcRS, dstRS, mlink):
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
 
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T10(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T24(reset_state, srcRS, dstRS, mlink):
     """
     MongoDB creates as many oplog entries as necessary to the encapsulate all write operations in a transaction,
     instead of a single entry for all write operations in the transaction. This removes the 16MB total size limit
@@ -257,8 +259,9 @@ def test_rs_mlink_PML_T10(reset_state, srcRS, dstRS, mlink):
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
 
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T11(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T25(reset_state, srcRS, dstRS, mlink):
     """
     Test for transaction with multiple collections
     """
@@ -301,9 +304,9 @@ def test_rs_mlink_PML_T11(reset_state, srcRS, dstRS, mlink):
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
 
-
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T12(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T26(reset_state, srcRS, dstRS, mlink):
     """
     Test to verify transaction replication if mlink service is restarted
     """
@@ -346,8 +349,9 @@ def test_rs_mlink_PML_T12(reset_state, srcRS, dstRS, mlink):
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
 
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T13(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T27(reset_state, srcRS, dstRS, mlink):
     """
     Test to simulate oplog rollover during transaction
     """
@@ -364,7 +368,7 @@ def test_rs_mlink_PML_T13(reset_state, srcRS, dstRS, mlink):
 
     stop_generation = threading.Event()
     try:
-        dummy_thread = threading.Thread(target=generate_dummy_data,args=(srcRS.connection, "dummy", 20, 150000, 50, stop_generation))
+        dummy_thread = threading.Thread(target=generate_dummy_data,args=(srcRS.connection, "dummy", 20, 150000, 500, stop_generation, 0.05))
         dummy_thread.start()
         def keep_transaction_alive(session, db_name, coll_name):
             coll = src[db_name][coll_name]
