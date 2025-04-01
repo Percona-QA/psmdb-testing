@@ -27,6 +27,22 @@
         # Branch of pml branch to test
         pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('main', true) }}"
 
+    - name: Add MongoDB port access from PML to SOURCE and DESTINATION
+      ec2_group:
+        name: "molecule-{{ subnet_dict[item.vpc_subnet_id] }}"
+        description: "Allow MongoDB (27017) access from PML"
+        rules:
+          - proto: tcp
+            from_port: 27017
+            to_port: 27017
+            cidr_ip: "{{ hostvars['pml']['ansible_default_ipv4']['address'] }}/32"
+        rules_egress: [ ]
+        vpc_id: "{{ subnet_dict[item.vpc_subnet_id] }}"
+        region: "{{ item.region|default(default_region) }}"
+        state: present
+      with_items: "{{ molecule_yml.platforms }}"
+      when: item.name != "pml"
+
     - name: prerequisite for debian 11
       apt:
         name: iproute2
@@ -338,50 +354,50 @@
       systemd:
         daemon_reload: yes
 
-    - name: Ensure .ssh directory exists
-      file:
-        path: /home/ec2-user/.ssh
-        state: directory
-        mode: '0700'
-        owner: ec2-user
-        group: ec2-user
-      when: inventory_hostname == "jenkins-pml-mongolink"
-
-    - name: Generate keypair (if not already exists)
-      openssh_keypair:
-        path: /home/ec2-user/.ssh/id_rsa
-        type: rsa
-        size: 4096
-        mode: '0600'
-        force: false
-      become_user: ec2-user
-      when: inventory_hostname == "jenkins-pml-mongolink"
-
-    - name: Read public key
-      slurp:
-        src: /home/ec2-user/.ssh/id_rsa.pub
-      register: pml_pubkey_raw
-      when: inventory_hostname == "jenkins-pml-mongolink"
-
-    - name: Set fact with decoded key
-      set_fact:
-        pml_pubkey: "{{ pml_pubkey_raw.content | b64decode }}"
-      when: inventory_hostname == "jenkins-pml-mongolink"
-
-    - name: Read public key
-      slurp:
-        src: /home/ec2-user/.ssh/id_rsa.pub
-      register: pml_pubkey_raw
-      when: inventory_hostname == "jenkins-pml-mongolink"
-
-    - name: Set fact with decoded key
-      set_fact:
-        pml_pubkey: "{{ pml_pubkey_raw.content | b64decode }}"
-      when: inventory_hostname == "jenkins-pml-mongolink"
-
-    - name: Add PML pub key to ec2-user
-      authorized_key:
-        user: ec2-user
-        key: "{{ hostvars['jenkins-pml-mongolink']['pml_pubkey'] }}"
-        state: present
-      when: inventory_hostname in groups['psmdb']
+#    - name: Ensure .ssh directory exists
+#      file:
+#        path: /home/ec2-user/.ssh
+#        state: directory
+#        mode: '0700'
+#        owner: ec2-user
+#        group: ec2-user
+#      when: inventory_hostname == "jenkins-pml-mongolink"
+#
+#    - name: Generate keypair (if not already exists)
+#      openssh_keypair:
+#        path: /home/ec2-user/.ssh/id_rsa
+#        type: rsa
+#        size: 4096
+#        mode: '0600'
+#        force: false
+#      become_user: ec2-user
+#      when: inventory_hostname == "jenkins-pml-mongolink"
+#
+#    - name: Read public key
+#      slurp:
+#        src: /home/ec2-user/.ssh/id_rsa.pub
+#      register: pml_pubkey_raw
+#      when: inventory_hostname == "jenkins-pml-mongolink"
+#
+#    - name: Set fact with decoded key
+#      set_fact:
+#        pml_pubkey: "{{ pml_pubkey_raw.content | b64decode }}"
+#      when: inventory_hostname == "jenkins-pml-mongolink"
+#
+#    - name: Read public key
+#      slurp:
+#        src: /home/ec2-user/.ssh/id_rsa.pub
+#      register: pml_pubkey_raw
+#      when: inventory_hostname == "jenkins-pml-mongolink"
+#
+#    - name: Set fact with decoded key
+#      set_fact:
+#        pml_pubkey: "{{ pml_pubkey_raw.content | b64decode }}"
+#      when: inventory_hostname == "jenkins-pml-mongolink"
+#
+#    - name: Add PML pub key to ec2-user
+#      authorized_key:
+#        user: ec2-user
+#        key: "{{ hostvars['jenkins-pml-mongolink']['pml_pubkey'] }}"
+#        state: present
+#      when: inventory_hostname in groups['psmdb']
