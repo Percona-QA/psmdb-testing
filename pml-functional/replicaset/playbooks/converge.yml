@@ -334,10 +334,3 @@
     - name: reload systemd
       systemd:
         daemon_reload: yes
-
-    - name: Add local public key to remote ec2-user
-      authorized_key:
-        user: ec2-user
-        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
-        state: present
-      when: inventory_hostname in groups['mongo'] and ansible_connection == 'ssh'
