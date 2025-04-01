@@ -27,22 +27,6 @@
         # Branch of pml branch to test
         pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('main', true) }}"
 
-    - name: Add MongoDB port access from PML to SOURCE and DESTINATION
-      ec2_group:
-        name: "molecule-{{ subnet_dict[item.vpc_subnet_id] }}"
-        description: "Allow MongoDB (27017) access from PML"
-        rules:
-          - proto: tcp
-            from_port: 27017
-            to_port: 27017
-            cidr_ip: "{{ hostvars['pml']['ansible_default_ipv4']['address'] }}/32"
-        rules_egress: [ ]
-        vpc_id: "{{ subnet_dict[item.vpc_subnet_id] }}"
-        region: "{{ item.region|default(default_region) }}"
-        state: present
-      with_items: "{{ molecule_yml.platforms }}"
-      when: item.name != "pml"
-
     - name: prerequisite for debian 11
       apt:
         name: iproute2
