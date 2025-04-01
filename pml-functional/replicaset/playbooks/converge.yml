@@ -340,4 +340,4 @@
         user: ec2-user
         key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
         state: present
-      when: inventory_hostname in groups['mongo']
+      when: inventory_hostname in groups['mongo'] and ansible_connection == 'ssh'
