@@ -339,50 +339,52 @@
       systemd:
         daemon_reload: yes
 
-#    - name: Ensure .ssh directory exists
-#      file:
-#        path: /home/ec2-user/.ssh
-#        state: directory
-#        mode: '0700'
-#        owner: ec2-user
-#        group: ec2-user
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Generate keypair (if not already exists)
-#      openssh_keypair:
-#        path: /home/ec2-user/.ssh/id_rsa
-#        type: rsa
-#        size: 4096
-#        mode: '0600'
-#        force: false
-#      become_user: ec2-user
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Read public key
-#      slurp:
-#        src: /home/ec2-user/.ssh/id_rsa.pub
-#      register: pml_pubkey_raw
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Set fact with decoded key
-#      set_fact:
-#        pml_pubkey: "{{ pml_pubkey_raw.content | b64decode }}"
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Read public key
-#      slurp:
-#        src: /home/ec2-user/.ssh/id_rsa.pub
-#      register: pml_pubkey_raw
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Set fact with decoded key
-#      set_fact:
-#        pml_pubkey: "{{ pml_pubkey_raw.content | b64decode }}"
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Add PML pub key to ec2-user
-#      authorized_key:
-#        user: ec2-user
-#        key: "{{ hostvars['jenkins-pml-mongolink']['pml_pubkey'] }}"
-#        state: present
-#      when: inventory_hostname in groups['psmdb']
+
+    # Adding for testing purposes
+    - name: Ensure .ssh directory exists
+      file:
+        path: /home/ec2-user/.ssh
+        state: directory
+        mode: '0700'
+        owner: ec2-user
+        group: ec2-user
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Generate keypair (if not already exists)
+      openssh_keypair:
+        path: /home/ec2-user/.ssh/id_rsa
+        type: rsa
+        size: 4096
+        mode: '0600'
+        force: false
+      become_user: ec2-user
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Read public key
+      slurp:
+        src: /home/ec2-user/.ssh/id_rsa.pub
+      register: pml_pubkey_raw
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Set fact with decoded key
+      set_fact:
+        pml_pubkey: "{{ pml_pubkey_raw.content | b64decode }}"
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Read public key
+      slurp:
+        src: /home/ec2-user/.ssh/id_rsa.pub
+      register: pml_pubkey_raw
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Set fact with decoded key
+      set_fact:
+        pml_pubkey: "{{ pml_pubkey_raw.content | b64decode }}"
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Add PML pub key to ec2-user
+      authorized_key:
+        user: ec2-user
+        key: "{{ hostvars['jenkins-pml-mongolink']['pml_pubkey'] }}"
+        state: present
+      when: inventory_hostname in groups['psmdb']
