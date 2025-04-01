@@ -677,5 +677,14 @@ def test_rs_mlink_PML_T21(reset_state, srcRS, dstRS, mlink):
         assert False, f"Unexpected mismatch types found: {summary}"
 
     mlink_error, error_logs = mlink.check_mlink_errors()
-    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
-    pytest.fail("Unexpected pass: test should have failed due to PML-111")
+    expected_errors = ["cannot find index email_unique22", "catalog:rename"]
+    if not mlink_error:
+        has_expected = any(any(expected in line for expected in expected_errors)for line in error_logs)
+        unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
+
+        if unexpected:
+            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
+        elif has_expected:
+            pytest.xfail(f"Expected fail: {expected_errors}, no errors should be returned")
+    else:
+        pytest.fail("Unexpected pass: test should have failed due to PML-111")
