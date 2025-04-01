@@ -13,6 +13,8 @@ platforms:
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ssh_user: ec2-user
+    key_file: ~/.ssh/id_rsa
     privileged: true
     pre_build_image: true
     networks:
