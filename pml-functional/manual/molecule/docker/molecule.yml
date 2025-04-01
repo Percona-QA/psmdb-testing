@@ -4,9 +4,10 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: source
+  - name: jenkins-pml-source
     groups:
       - psmdb
+      - mongo
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
@@ -16,9 +17,10 @@ platforms:
     pre_build_image: true
     networks:
       - name: test
-  - name: destination
+  - name: jenkins-pml-destination
     groups:
       - psmdb
+      - mongo
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
@@ -28,7 +30,9 @@ platforms:
     pre_build_image: true
     networks:
        - name: test
-  - name: pml
+  - name: jenkins-pml-mongolink
+    groups:
+      - mongo
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}

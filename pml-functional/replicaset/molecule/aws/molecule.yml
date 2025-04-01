@@ -4,40 +4,41 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: primary-rs
+  - name: jenkins-pml-source
     groups:
+      - psmdb
       - mongo
-      - primary
-      - mc
     region: us-west-2
     image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-0dc7518100473f19d
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ec2-user
+    key_file: ~/.ssh/id_rsa
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: secondary1-rs                        
+  - name: jenkins-pml-destination
     groups:
+      - psmdb
       - mongo
-      - secondary
     region: us-west-2
     image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-0dc7518100473f19d
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ec2-user
+    key_file: ~/.ssh/id_rsa
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: secondary2-rs
+  - name: jenkins-pml-mongolink
     groups:
       - mongo
-      - secondary
     region: us-west-2
     image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-0dc7518100473f19d
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ec2-user
+    key_file: ~/.ssh/id_rsa
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
@@ -46,21 +47,21 @@ provisioner:
   log: true
   playbooks:
     create: ../../../../playbooks/create.yml
-    prepare: ../../playbooks/prepare.yml
-    converge: ../../playbooks/converge.yml
-    cleanup: ../../playbooks/cleanup.yml
+    prepare: ../../../replicaset/playbooks/prepare.yml
+    converge: ../../../replicaset/playbooks/converge.yml
+    cleanup: ../../../replicaset/playbooks/cleanup.yml
     destroy: ../../../../playbooks/destroy.yml
 verifier:
   name: testinfra
   directory: ../../tests/
   options:
     verbose: true
-    capture: sys
-    o: junit_logging=system-out
-#    s: true
+#    capture: sys
+#    o: junit_logging=system-out
+    s: true
     junitxml: report.xml
 scenario:
-  name: aws
+  name: replicaset
   test_sequence:
     - create
 #    - prepare
