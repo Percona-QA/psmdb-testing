@@ -641,3 +641,29 @@ def test_rs_mlink_PML_T8(reset_state, srcRS, dstRS, mlink):
     assert result is True, "Data mismatch after synchronization"
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
+
+@pytest.mark.usefixtures("start_cluster")
+@pytest.mark.timeout(600,func_only=True)
+def test_rs_mlink_PML_T31(reset_state, srcRS, dstRS, mlink):
+    """
+    Test how pml deals with huge number of namespaces on the clone phase
+    """
+    databases = 1000
+    collections = 10
+    Cluster.log("Creating " + str(databases) + " databases with " + str(collections) + " collections")
+    client=pymongo.MongoClient(srcRS.connection)
+    for i in range(databases):
+        db = 'test' + str(i)
+        for j in range(collections):
+            coll = 'test' + str(j)
+            client[db][coll].insert_one({})
+        Cluster.log("Created " + db)
+    mlink.start()
+    result = mlink.wait_for_repl_stage(120)
+    assert result is True, "Failed to catch up on replication"
+    result = mlink.finalize()
+    assert result is True, "Failed to finalize mlink service"
+    result, _ = compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after synchronization"
+    mlink_error, error_logs = mlink.check_mlink_errors()
+    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
