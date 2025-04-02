@@ -77,7 +77,7 @@
             src: "/tmp/{{ go_tarball }}"
             dest: "{{ go_install_dir }}"
             remote_src: yes
-      when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Check go availability
       command: go version

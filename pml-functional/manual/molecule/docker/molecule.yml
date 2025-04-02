@@ -7,7 +7,6 @@ platforms:
   - name: jenkins-pml-source
     groups:
       - psmdb
-      - mongo
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
@@ -21,7 +20,6 @@ platforms:
   - name: jenkins-pml-destination
     groups:
       - psmdb
-      - mongo
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
@@ -33,8 +31,6 @@ platforms:
     networks:
        - name: test
   - name: jenkins-pml-mongolink
-    groups:
-      - mongo
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
