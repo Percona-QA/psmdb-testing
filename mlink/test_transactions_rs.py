@@ -37,18 +37,19 @@ def start_cluster(srcRS, dstRS, mlink, request):
         yield True
 
     finally:
-        if request.config.getoption("--verbose"):
-            logs = mlink.logs()
-            print(f"\n\nmlink Last 50 Logs for mlink:\n{logs}\n\n")
         srcRS.destroy()
         dstRS.destroy()
         mlink.destroy()
 
 @pytest.fixture(scope="function")
-def reset_state(srcRS, dstRS, mlink):
+def reset_state(srcRS, dstRS, mlink, request):
     src_client = pymongo.MongoClient(srcRS.connection)
     dst_client = pymongo.MongoClient(dstRS.connection)
-
+    def print_logs():
+        if request.config.getoption("--verbose"):
+            logs = mlink.logs()
+            print(f"\n\nmlink Last 50 Logs for mlink:\n{logs}\n\n")
+    request.addfinalizer(print_logs)
     mlink.destroy()
     for db_name in src_client.list_database_names():
         if db_name not in {"admin", "local", "config"}:
@@ -73,8 +74,9 @@ def perform_transaction(src, session, db_name, coll_name, docs, commit=False, ab
             session.abort_transaction()
         raise e
 
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T8(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T22(reset_state, srcRS, dstRS, mlink):
     """
     Test to verify transaction replication if transactions are started and committed during different stages of synchronization
     """
@@ -175,8 +177,181 @@ def test_rs_mlink_PML_T8(reset_state, srcRS, dstRS, mlink):
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
 
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T9(reset_state, srcRS, dstRS, mlink):
+def test_rs_mlink_PML_T23(reset_state, srcRS, dstRS, mlink):
+    """
+    Test for two concurrent transactions modifying the same document
+    """
+    src = pymongo.MongoClient(srcRS.connection)
+    dst = pymongo.MongoClient(dstRS.connection)
+
+    result = mlink.start()
+    assert result is True, "Failed to start mlink service"
+
+    with src.start_session() as session1, src.start_session() as session2:
+        perform_transaction(src, session1, "conflict_db", "test_coll", [{"_id": 1, "value": "txn1"}], commit=False)
+        perform_transaction(src, session2, "conflict_db", "test_coll", [{"_id": 1, "value": "txn2"}], commit=False)
+
+        session1.commit_transaction()
+        try:
+            session2.commit_transaction()
+            assert False, "Write conflict transaction should not have committed"
+        except OperationFailure:
+            pass
+
+    result = mlink.wait_for_zero_lag()
+    assert result is True, "Failed to catch up on replication"
+
+    result = mlink.finalize()
+    assert result is True, "Failed to finalize mlink service"
+
+    actual_doc = dst["conflict_db"]["test_coll"].find_one({"_id": 1})
+    expected_doc = {"_id": 1, "value": "txn1"}
+
+    assert actual_doc is not None, "Expected document is missing from destination"
+    assert actual_doc == expected_doc, f"Document in destination does not match expected: {actual_doc}"
+
+    result, _ = compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after synchronization"
+    mlink_error, error_logs = mlink.check_mlink_errors()
+    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
+
+@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.usefixtures("start_cluster")
+def test_rs_mlink_PML_T24(reset_state, srcRS, dstRS, mlink):
+    """
+    MongoDB creates as many oplog entries as necessary to the encapsulate all write operations in a transaction,
+    instead of a single entry for all write operations in the transaction. This removes the 16MB total size limit
+    for a transaction imposed by the single oplog entry for all its write operations. Although the total size limit
+    is removed, each oplog entry still must be within the BSON document size limit of 16MB.
+    """
+    src = pymongo.MongoClient(srcRS.connection)
+    dst = pymongo.MongoClient(dstRS.connection)
+
+    result = mlink.start()
+    assert result is True, "Failed to start mlink service"
+    result = mlink.wait_for_repl_stage()
+    assert result is True, "Failed to start replication stage"
+
+    large_docs = [{"_id": i, "name": "Large Document Test", "value": "x" * 16777160} for i in range(10)]
+
+    with src.start_session() as session:
+        session.start_transaction()
+        src["large_txn_db"]["test_coll"].insert_many(large_docs, session=session)
+        session.commit_transaction()
+
+    result = mlink.wait_for_zero_lag()
+    assert result is True, "Failed to catch up on replication"
+
+    result = mlink.finalize()
+    assert result is True, "Failed to finalize mlink service"
+
+    docs_in_dst = {doc["_id"]: doc for doc in dst["large_txn_db"]["test_coll"].find({})}
+    missing_docs = [doc["_id"] for doc in large_docs if doc["_id"] not in docs_in_dst]
+    mismatched_docs = [doc["_id"] for doc in large_docs if docs_in_dst.get(doc["_id"]) != doc]
+
+    assert not missing_docs, f"Missing documents in destination: {missing_docs}"
+    assert not mismatched_docs, f"Document mismatch in destination: {mismatched_docs}"
+
+    result, _ = compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after synchronization"
+    mlink_error, error_logs = mlink.check_mlink_errors()
+    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
+
+@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.usefixtures("start_cluster")
+def test_rs_mlink_PML_T25(reset_state, srcRS, dstRS, mlink):
+    """
+    Test for transaction with multiple collections
+    """
+    src = pymongo.MongoClient(srcRS.connection)
+    dst = pymongo.MongoClient(dstRS.connection)
+
+    result = mlink.start()
+    assert result is True, "Failed to start mlink service"
+    result = mlink.wait_for_repl_stage()
+    assert result is True, "Failed to start replication stage"
+
+    large_docs = [{"_id": i, "value": f"doc_{i}"} for i in range(2000)]
+
+    with src.start_session() as session:
+        session.start_transaction()
+        src["large_txn_db1"]["test_coll1"].insert_many(large_docs, session=session)
+        src["large_txn_db2"]["test_coll2"].insert_many(large_docs, session=session)
+        src["large_txn_db3"]["test_coll3"].insert_many(large_docs, session=session)
+        session.commit_transaction()
+
+    result = mlink.wait_for_zero_lag()
+    assert result is True, "Failed to catch up on replication"
+
+    result = mlink.finalize()
+    assert result is True, "Failed to finalize mlink service"
+
+    dst_dbs = ["large_txn_db1", "large_txn_db2", "large_txn_db3"]
+    collections = ["test_coll1", "test_coll2", "test_coll3"]
+    for db_name, coll_name in zip(dst_dbs, collections):
+        dst_coll = dst[db_name][coll_name]
+        docs_in_dst = {doc["_id"]: doc for doc in dst_coll.find({})}
+        missing_docs = [doc for doc in large_docs if doc["_id"] not in docs_in_dst]
+        mismatched_docs = [doc for doc in large_docs if docs_in_dst.get(doc["_id"]) != doc]
+
+        assert not missing_docs, f"Missing documents in {db_name}.{coll_name}: {missing_docs}"
+        assert not mismatched_docs, f"Document mismatch in {db_name}.{coll_name}: {mismatched_docs}"
+
+    result, _ = compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after synchronization"
+    mlink_error, error_logs = mlink.check_mlink_errors()
+    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
+
+@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.usefixtures("start_cluster")
+def test_rs_mlink_PML_T26(reset_state, srcRS, dstRS, mlink):
+    """
+    Test to verify transaction replication if mlink service is restarted
+    """
+    src = pymongo.MongoClient(srcRS.connection)
+    dst = pymongo.MongoClient(dstRS.connection)
+
+    result = mlink.start()
+    assert result is True, "Failed to start mlink service"
+    result = mlink.wait_for_repl_stage()
+    assert result is True, "Failed to start replication stage"
+    result = mlink.wait_for_checkpoint()
+    assert result is True, "Mongolink failed to save checkpoint"
+
+    with src.start_session() as session1, src.start_session() as session2:
+        session1.start_transaction()
+        session2.start_transaction()
+
+        src["test_db"]["test_coll"].insert_one({"_id": 1, "value": "test1"}, session=session1)
+        src["test_db"]["test_coll"].insert_one({"_id": 2, "value": "test2"}, session=session2)
+
+        mlink.restart()
+
+        session1.commit_transaction()
+        session2.abort_transaction()
+
+    result = mlink.wait_for_zero_lag()
+    assert result is True, "Failed to catch up on replication"
+
+    result = mlink.finalize()
+    assert result is True, "Failed to finalize mlink service"
+
+    docs_in_dst = {doc["_id"]: doc for doc in dst["test_db"]["test_coll"].find({})}
+    expected_doc = {"_id": 1, "value": "test1"}
+    unexpected_doc_id = 2
+
+    assert expected_doc["_id"] in docs_in_dst, f"Expected document missing: {expected_doc}"
+    assert docs_in_dst.get(expected_doc["_id"]) == expected_doc, f"Mismatch in expected document: {docs_in_dst.get(expected_doc['_id'])}"
+    assert unexpected_doc_id not in docs_in_dst, f"Unexpected document found: {docs_in_dst.get(unexpected_doc_id)}"
+
+    result, _ = compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after synchronization"
+
+@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.usefixtures("start_cluster")
+def test_rs_mlink_PML_T27(reset_state, srcRS, dstRS, mlink):
     """
     Test to simulate oplog rollover during transaction
     """
@@ -193,14 +368,14 @@ def test_rs_mlink_PML_T9(reset_state, srcRS, dstRS, mlink):
 
     stop_generation = threading.Event()
     try:
-        dummy_thread = threading.Thread(target=generate_dummy_data,args=(srcRS.connection, "dummy", 20, 150000, 1000, stop_generation))
+        dummy_thread = threading.Thread(target=generate_dummy_data,args=(srcRS.connection, "dummy", 20, 150000, 500, stop_generation, 0.05))
         dummy_thread.start()
         def keep_transaction_alive(session, db_name, coll_name):
             coll = src[db_name][coll_name]
             while session.in_transaction:
                 try:
                     coll.update_one({"_id": "keep_alive"}, {"$set": {"ts": time.time()}}, upsert=True, session=session)
-                    time.sleep(10)
+                    time.sleep(0.1)
                 except pymongo.errors.PyMongoError:
                     break
         def commit_with_retries(session):
@@ -267,172 +442,3 @@ def test_rs_mlink_PML_T9(reset_state, srcRS, dstRS, mlink):
 
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
-
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T10(reset_state, srcRS, dstRS, mlink):
-    """
-    Test for two concurrent transactions modifying the same document
-    """
-    src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
-
-    result = mlink.start()
-    assert result is True, "Failed to start mlink service"
-
-    with src.start_session() as session1, src.start_session() as session2:
-        perform_transaction(src, session1, "conflict_db", "test_coll", [{"_id": 1, "value": "txn1"}], commit=False)
-        perform_transaction(src, session2, "conflict_db", "test_coll", [{"_id": 1, "value": "txn2"}], commit=False)
-
-        session1.commit_transaction()
-        try:
-            session2.commit_transaction()
-            assert False, "Write conflict transaction should not have committed"
-        except OperationFailure:
-            pass
-
-    result = mlink.wait_for_zero_lag()
-    assert result is True, "Failed to catch up on replication"
-
-    result = mlink.finalize()
-    assert result is True, "Failed to finalize mlink service"
-
-    actual_doc = dst["conflict_db"]["test_coll"].find_one({"_id": 1})
-    expected_doc = {"_id": 1, "value": "txn1"}
-
-    assert actual_doc is not None, "Expected document is missing from destination"
-    assert actual_doc == expected_doc, f"Document in destination does not match expected: {actual_doc}"
-
-    result, _ = compare_data_rs(srcRS, dstRS)
-    assert result is True, "Data mismatch after synchronization"
-    mlink_error, error_logs = mlink.check_mlink_errors()
-    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
-
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T11(reset_state, srcRS, dstRS, mlink):
-    """
-    MongoDB creates as many oplog entries as necessary to the encapsulate all write operations in a transaction,
-    instead of a single entry for all write operations in the transaction. This removes the 16MB total size limit
-    for a transaction imposed by the single oplog entry for all its write operations. Although the total size limit
-    is removed, each oplog entry still must be within the BSON document size limit of 16MB.
-    """
-    src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
-
-    result = mlink.start()
-    assert result is True, "Failed to start mlink service"
-    result = mlink.wait_for_repl_stage()
-    assert result is True, "Failed to start replication stage"
-
-    large_docs = [{"_id": i, "name": "Large Document Test", "value": "x" * 16777160} for i in range(10)]
-
-    with src.start_session() as session:
-        session.start_transaction()
-        src["large_txn_db"]["test_coll"].insert_many(large_docs, session=session)
-        session.commit_transaction()
-
-    result = mlink.wait_for_zero_lag()
-    assert result is True, "Failed to catch up on replication"
-
-    result = mlink.finalize()
-    assert result is True, "Failed to finalize mlink service"
-
-    docs_in_dst = {doc["_id"]: doc for doc in dst["large_txn_db"]["test_coll"].find({})}
-    missing_docs = [doc["_id"] for doc in large_docs if doc["_id"] not in docs_in_dst]
-    mismatched_docs = [doc["_id"] for doc in large_docs if docs_in_dst.get(doc["_id"]) != doc]
-
-    assert not missing_docs, f"Missing documents in destination: {missing_docs}"
-    assert not mismatched_docs, f"Document mismatch in destination: {mismatched_docs}"
-
-    result, _ = compare_data_rs(srcRS, dstRS)
-    assert result is True, "Data mismatch after synchronization"
-    mlink_error, error_logs = mlink.check_mlink_errors()
-    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
-
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T12(reset_state, srcRS, dstRS, mlink):
-    """
-    Test for transaction with multiple collections
-    """
-    src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
-
-    result = mlink.start()
-    assert result is True, "Failed to start mlink service"
-    result = mlink.wait_for_repl_stage()
-    assert result is True, "Failed to start replication stage"
-
-    large_docs = [{"_id": i, "value": f"doc_{i}"} for i in range(2000)]
-
-    with src.start_session() as session:
-        session.start_transaction()
-        src["large_txn_db1"]["test_coll1"].insert_many(large_docs, session=session)
-        src["large_txn_db2"]["test_coll2"].insert_many(large_docs, session=session)
-        src["large_txn_db3"]["test_coll3"].insert_many(large_docs, session=session)
-        session.commit_transaction()
-
-    result = mlink.wait_for_zero_lag()
-    assert result is True, "Failed to catch up on replication"
-
-    result = mlink.finalize()
-    assert result is True, "Failed to finalize mlink service"
-
-    dst_dbs = ["large_txn_db1", "large_txn_db2", "large_txn_db3"]
-    collections = ["test_coll1", "test_coll2", "test_coll3"]
-    for db_name, coll_name in zip(dst_dbs, collections):
-        dst_coll = dst[db_name][coll_name]
-        docs_in_dst = {doc["_id"]: doc for doc in dst_coll.find({})}
-        missing_docs = [doc for doc in large_docs if doc["_id"] not in docs_in_dst]
-        mismatched_docs = [doc for doc in large_docs if docs_in_dst.get(doc["_id"]) != doc]
-
-        assert not missing_docs, f"Missing documents in {db_name}.{coll_name}: {missing_docs}"
-        assert not mismatched_docs, f"Document mismatch in {db_name}.{coll_name}: {mismatched_docs}"
-
-    result, _ = compare_data_rs(srcRS, dstRS)
-    assert result is True, "Data mismatch after synchronization"
-    mlink_error, error_logs = mlink.check_mlink_errors()
-    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
-
-
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T13(reset_state, srcRS, dstRS, mlink):
-    """
-    Test to verify transaction replication if mlink service is restarted
-    """
-    src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
-
-    result = mlink.start()
-    assert result is True, "Failed to start mlink service"
-    result = mlink.wait_for_repl_stage()
-    assert result is True, "Failed to start replication stage"
-    result = mlink.wait_for_checkpoint()
-    assert result is True, "Mongolink failed to save checkpoint"
-
-    with src.start_session() as session1, src.start_session() as session2:
-        session1.start_transaction()
-        session2.start_transaction()
-
-        src["test_db"]["test_coll"].insert_one({"_id": 1, "value": "test1"}, session=session1)
-        src["test_db"]["test_coll"].insert_one({"_id": 2, "value": "test2"}, session=session2)
-
-        mlink.restart()
-
-        session1.commit_transaction()
-        session2.abort_transaction()
-
-    result = mlink.wait_for_zero_lag()
-    assert result is True, "Failed to catch up on replication"
-
-    result = mlink.finalize()
-    assert result is True, "Failed to finalize mlink service"
-
-    docs_in_dst = {doc["_id"]: doc for doc in dst["test_db"]["test_coll"].find({})}
-    expected_doc = {"_id": 1, "value": "test1"}
-    unexpected_doc_id = 2
-
-    assert expected_doc["_id"] in docs_in_dst, f"Expected document missing: {expected_doc}"
-    assert docs_in_dst.get(expected_doc["_id"]) == expected_doc, f"Mismatch in expected document: {docs_in_dst.get(expected_doc['_id'])}"
-    assert unexpected_doc_id not in docs_in_dst, f"Unexpected document found: {docs_in_dst.get(unexpected_doc_id)}"
-
-    result, _ = compare_data_rs(srcRS, dstRS)
-    assert result is True, "Data mismatch after synchronization"

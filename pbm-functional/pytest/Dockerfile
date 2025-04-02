@@ -29,6 +29,7 @@ ARG PR_NUMBER
 ARG MAKE_TARGET=build
 WORKDIR /
 RUN mkdir -p /pbm-old && mkdir -p /pbm-new && \
+    echo 'Acquire::Retries "20";' > /etc/apt/apt.conf.d/80-retries && \
     apt update && apt -y install gcc libgssapi-krb5-2 libkrb5-dev libsasl2-modules-gssapi-mit && \
     git clone https://github.com/percona/percona-backup-mongodb.git && cd percona-backup-mongodb && \
     if [ -n "$PR_NUMBER" ]; then git fetch origin pull/$PR_NUMBER/head:CURRENT_PR; PBM_BRANCH=CURRENT_PR; fi && \

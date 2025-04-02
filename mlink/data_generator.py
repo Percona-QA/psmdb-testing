@@ -51,9 +51,10 @@ def stop_all_crud_operations():
     for db_name, stop_event in stop_operations_map.items():
         stop_event.set()
 
-def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, doc_size=150000, batch_size=1000, stop_event=None):
+def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, doc_size=150000,
+                        batch_size=10000, stop_event=None, sleep_between_batches=0):
     """
-    With default parameters generates ~500MB of data within 1 minute.
+    With default parameters generates ~500MB of data within 10 seconds
     If stop_event is provided, it can be used to stop generation early.
     """
 
@@ -65,19 +66,14 @@ def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, d
 
     collections = [f"collection_{i}" for i in range(num_collections)]
 
-    def random_document():
-        return {
-            "_id": ObjectId(),
-            "int": random.randint(0, 10**6),
-            "float": random.uniform(0, 10**6),
-            "string": "".join(random.choices(string.ascii_letters + string.digits, k=200)),
-            "uuid": uuid.uuid4().hex,
-            "binary": Binary(random.randbytes(200)),
-            "decimal": Decimal128(str(random.uniform(0, 10**6))),
-            "timestamp": datetime.datetime.now(datetime.timezone.utc),
-            "array": [random.randint(0, 100) for _ in range(20)],
-            "object": {"nested_key": "".join(random.choices(string.ascii_letters, k=50))},
-        }
+    template_doc = {
+        "int": 42,
+        "float": 3.14159,
+        "string": "x" * 100,
+        "padding1": "a" * 500,
+        "padding2": "b" * 200,
+        "array": [1] * 40,
+    }
 
     for coll_name in collections:
         if stop_event and stop_event.is_set():
@@ -87,5 +83,8 @@ def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, d
         for _ in range(doc_size // batch_size):
             if stop_event and stop_event.is_set():
                 break
-            collection.insert_many([random_document() for _ in range(batch_size)])
+            docs = [{**template_doc, "_id": ObjectId()} for _ in range(batch_size)]
+            collection.insert_many(docs, ordered=False, bypass_document_validation=True)
+            if sleep_between_batches > 0:
+                time.sleep(sleep_between_batches)
     Cluster.log("Dummy data generation is completed")

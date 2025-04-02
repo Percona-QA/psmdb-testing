@@ -24,7 +24,7 @@ class Mongolink:
         container = client.containers.get(self.name)
         return container
 
-    def create(self):
+    def create(self, log_level="debug", env_vars=None, extra_args=""):
         try:
             existing_container = self.container
             Cluster.log(f"Removing existing mlink container '{self.name}'...")
@@ -34,12 +34,15 @@ class Mongolink:
 
         Cluster.log(f"Starting mlink to sync from '{self.src}' → '{self.dst}'...")
         client = docker.from_env()
+
+        cmd = f"percona-mongolink --source {self.src} --target {self.dst} --log-level={log_level} --no-color {extra_args}".strip()
         container = client.containers.run(
             image=self.mlink_image,
             name=self.name,
             detach=True,
             network="test",
-            command=f"percona-mongolink --source {self.src} --target {self.dst} --log-level=trace --no-color"
+            environment=env_vars if env_vars is not None else {},
+            command=cmd
         )
         Cluster.log(f"Mlink '{self.name}' started successfully")
 
@@ -146,10 +149,15 @@ class Mongolink:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
-    def logs(self):
+    def logs(self, tail=50):
         try:
-            logs = self.container.logs(tail=50).decode("utf-8").strip()
-            return logs if logs else "No logs found."
+            raw_logs = self.container.logs().decode("utf-8").strip()
+            filtered_lines = [
+                line for line in raw_logs.splitlines()
+                if "GET /status" not in line
+            ]
+            last_logs = "\n".join(filtered_lines[-tail:])
+            return last_logs if last_logs else "No logs found"
 
         except docker.errors.NotFound:
             return "Error: mlink container not found."
@@ -165,12 +173,14 @@ class Mongolink:
         except Exception as e:
             return f"Error fetching logs: {e}"
 
+        ansi_escape_re = re.compile(r"\x1b\[[0-9;]*m")
         error_pattern = re.compile(r"\b(ERROR|error|ERR|err)\b")
-        errors_found = [line for line in logs.split("\n") if error_pattern.search(line)]
+        clean_lines = [ansi_escape_re.sub("", line) for line in logs.split("\n")]
+        errors_found = [line for line in clean_lines if error_pattern.search(line)]
 
         return not bool(errors_found), errors_found
 
-    def wait_for_zero_lag(self, timeout=200, interval=1):
+    def wait_for_zero_lag(self, timeout=120, interval=1):
         start_time = time.time()
 
         try:
@@ -212,7 +222,7 @@ class Mongolink:
                 return False
 
             if last_ts >= cluster_time:
-                Cluster.log(f"Src and dst clusters are in sync, last replicated TS {last_ts} >= current cluster time {cluster_time}")
+                Cluster.log(f"Src and dst are in sync: last repl TS {last_ts} >= cluster time {cluster_time}")
                 return True
 
             time.sleep(interval)
@@ -220,7 +230,7 @@ class Mongolink:
         Cluster.log("Error: Timeout reached while waiting for replication to catch up")
         return False
 
-    def wait_for_repl_stage(self, timeout=200, interval=1):
+    def wait_for_repl_stage(self, timeout=60, interval=1, stable_duration=2):
         start_time = time.time()
 
         while time.time() - start_time < timeout:
@@ -238,6 +248,17 @@ class Mongolink:
                 time.sleep(interval)
                 continue
             if initial_sync["completed"]:
+                stable_start = time.time()
+                while time.time() - stable_start < stable_duration:
+                    stable_status = self.status()
+                    if not stable_status["success"]:
+                        Cluster.log(f"Error: Impossible to retrieve status, {stable_status['error']}")
+                        return False
+
+                    state = stable_status["data"].get("state")
+                    if state != "running":
+                        return False
+                    time.sleep(0.5)
                 Cluster.log("Initial sync is completed")
                 return True
             time.sleep(interval)
