@@ -138,30 +138,38 @@
         remote_src: true
       when: inventory_hostname == "jenkins-pml-source"
 
-    - name: get source ip address
+    - name: get public source ip address
       set_fact:
-          source_ip: "{{ hostvars['jenkins-pml-source']['ansible_facts']['default_ipv4']['address'] }}"
+          public_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_facts']['default_ipv4']['address'] }}"
 
-    - name: get destination ip address
+    - name: get public destination ip address
       set_fact:
-        destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_facts']['default_ipv4']['address'] }}"
+        public_destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_facts']['default_ipv4']['address'] }}"
+
+    - name: get private source ip address
+      set_fact:
+        private_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_facts']['interfaces']['eth0']['ipv4']['address'] }}"
+
+    - name: get private destination ip address
+      set_fact:
+        private_destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_facts']['interfaces']['eth0']['ipv4']['address'] }}"
 
     - name: Show source IP
       debug:
-        var: source_ip
-      when: destination_ip is defined and inventory_hostname == "jenkins-pml-source"
+        var: public_source_ip
+      when: public_source_ip is defined and inventory_hostname == "jenkins-pml-source"
 
     - name: Show destination IP
       debug:
-        var: destination_ip
-      when: destination_ip is defined and inventory_hostname == "destination"
+        var: public_destination_ip
+      when: public_destination_ip is defined and inventory_hostname == "destination"
 
     - name: Add source and destination to /etc/hosts in pml
       blockinfile:
         path: /etc/hosts
         block: |
-          {{ source_ip }}    source
-          {{ destination_ip }}    destination
+          {{ public_source_ip }}    source
+          {{ public_destination_ip }}    destination
         create: false
         unsafe_writes: true
       when: inventory_hostname == "jenkins-pml-mongolink"
@@ -318,9 +326,9 @@
     - name: Create a replicaset rs
       community.mongodb.mongodb_replicaset:
         replica_set: rs
-        login_host: "{{ source_ip }}"
+        login_host: "{{ public_source_ip }}"
         members:
-          - host: "{{ source_ip }}:27017"
+          - host: "{{ public_source_ip }}:27017"
             priority: 1
         validate: no
       when: inventory_hostname == "jenkins-pml-source"
@@ -328,9 +336,9 @@
     - name: Create a replicaset rs
       community.mongodb.mongodb_replicaset:
         replica_set: rs
-        login_host: "{{ destination_ip }}"
+        login_host: "{{ public_destination_ip }}"
         members:
-          - host: "{{ destination_ip }}:27017"
+          - host: "{{ public_destination_ip }}:27017"
             priority: 1
         validate: no
       when: inventory_hostname == "jenkins-pml-destination"
@@ -338,3 +346,32 @@
     - name: reload systemd
       systemd:
         daemon_reload: yes
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Create PML system unit file
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/pml.service
+        content: |
+          [Unit]
+          Description=Percona MongoLink Service
+          After=network.target
+          
+          [Service]
+          ExecStart=/usr/local/bin/percona-mongolink --source mongodb://{{ private_source_ip }}:27017 --target mongodb://{{ private_destination_ip }}:27017
+          Restart=on-failure
+          User=ec2-user
+
+          [Install]
+          WantedBy=multi-user.target
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Reload systemd
+      ansible.builtin.command: systemctl daemon-reload
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Starting PML service
+      ansible.builtin.command: systemctl daemon-reload && systemctl start pml.service
+      when: inventory_hostname == "jenkins-pml-mongolink"
