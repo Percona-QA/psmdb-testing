@@ -327,6 +327,7 @@ def test_rs_mlink_PML_T5(reset_state, srcRS, dstRS, mlink):
 
         result = mlink.start()
         assert result is True, "Failed to start mlink service"
+        time.sleep(1)
 
         def wait_for_collection(client, db_name, collection_name, timeout_sec=10, poll_interval=0.5):
             timeout = time.time() + timeout_sec
@@ -425,6 +426,7 @@ def test_rs_mlink_PML_T6(reset_state, srcRS, dstRS, mlink):
 
         result = mlink.start()
         assert result is True, "Failed to start mlink service"
+        time.sleep(1)
 
         index_spec = [("array", 1), ("padding1", 1), ("padding2", 1)]
         collection = src["dummy"]["collection_0"]
@@ -641,6 +643,51 @@ def test_rs_mlink_PML_T8(reset_state, srcRS, dstRS, mlink):
     assert result is True, "Data mismatch after synchronization"
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
+
+@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.usefixtures("start_cluster")
+def test_rs_mlink_PML_T30(reset_state, srcRS, dstRS, mlink):
+    """
+    Test to validate handling of concurrent data clone and index build failure
+    """
+
+    src = pymongo.MongoClient(srcRS.connection)
+    dst = pymongo.MongoClient(dstRS.connection)
+
+    src["init_test_db"].failed_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
+
+    def start_mlink():
+        result = mlink.start()
+        assert result is True, "Failed to start mlink service"
+    def failed_index_creation():
+        try:
+            src["init_test_db"].failed_text_collection1.create_index([("a.b", 1), ("words", "text")])
+            assert False, "Index build should fail due array in doc for text index"
+        except pymongo.errors.OperationFailure as e:
+            assert "text index contains an array" in str(e), f"Unexpected error: {e}"
+    t1 = threading.Thread(target=start_mlink)
+    t2 = threading.Thread(target=failed_index_creation)
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    result = mlink.wait_for_repl_stage(timeout=30)
+    if not result:
+        if "text index contains an array in document" in mlink.logs():
+            pytest.xfail("Known issue: PML-118")
+        else:
+            assert False, "Failed to start replication stage"
+    result = mlink.wait_for_zero_lag()
+    assert result is True, "Failed to catch up on replication"
+    result = mlink.finalize()
+    assert result is True, "Failed to finalize mlink service"
+
+    result, _ = compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after synchronization"
+    mlink_error, error_logs = mlink.check_mlink_errors()
+    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
+    pytest.fail("Unexpected pass: test should have failed due to PML-118")
 
 @pytest.mark.usefixtures("start_cluster")
 @pytest.mark.timeout(600,func_only=True)

@@ -81,9 +81,9 @@ class Mongolink:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
-    def status(self):
+    def status(self, timeout=45):
         try:
-            exec_result = self.container.exec_run("curl -s -X GET http://localhost:2242/status -d '{}'")
+            exec_result = self.container.exec_run("curl -m {timeout} -s -X GET http://localhost:2242/status -d '{}'")
             response = exec_result.output.decode("utf-8", errors="ignore").strip()
             status_code = exec_result.exit_code
 
