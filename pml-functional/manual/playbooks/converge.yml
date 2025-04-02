@@ -5,7 +5,7 @@
   tasks:
     - set_fact:
         # Version of psmdb release to be enabled (psmdb-70)
-        psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-44', true) }}"
+        psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('main', true) }}"
 
     - set_fact:
         # Github token to access mongolink repo
@@ -22,6 +22,10 @@
     - set_fact:
         # Branch of pml branch to test
         pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('main', true) }}"
+
+    - set_fact:
+        # Branch of pml branch to test
+        golang_version: "{{ lookup('env', 'GO_VERSION') | default('main', true) }}"
 
     - name: prerequisite for debian 11
       apt:
@@ -57,7 +61,7 @@
     - name: Install Go from official tarball on PML host
       become: yes
       vars:
-        go_version: "1.24.1"
+        go_version: "{{ golang_version }}"
         go_tarball: "go{{ go_version }}.linux-amd64.tar.gz"
         go_url: "https://go.dev/dl/{{ go_tarball }}"
         go_install_dir: "/usr/local"
