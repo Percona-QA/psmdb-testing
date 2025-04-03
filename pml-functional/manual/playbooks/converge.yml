@@ -148,11 +148,11 @@
 
     - name: get private source ip address
       set_fact:
-        private_source_ip: ansible_default_ipv4.address
+        private_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_default_ipv4']['address'] }}"
 
     - name: get private destination ip address
       set_fact:
-        private_destination_ip: ansible_default_ipv4.address
+        private_destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_default_ipv4']['address'] }}"
 
     - name: Show source IP
       debug:
@@ -373,5 +373,5 @@
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Starting PML service
-      ansible.builtin.command: systemctl daemon-reload && systemctl start pml.service
+      ansible.builtin.command: systemctl start pml.service
       when: inventory_hostname == "jenkins-pml-mongolink"
