@@ -3,8 +3,6 @@
   become: true
   become_method: sudo
   tasks:
-    - debug: var=ansible_all_ipv4_addresses
-    - debug: var=ansible_default_ipv4.address
     - set_fact:
         # Version of psmdb release to be enabled (psmdb-70)
         psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('main', true) }}"
@@ -150,11 +148,13 @@
 
     - name: get private source ip address
       set_fact:
-        private_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_facts']['interfaces']['eth0']['ipv4']['address'] }}"
+        private_source_ip: ansible_default_ipv4.address
+      when: inventory_hostname == "jenkins-pml-source"
 
     - name: get private destination ip address
       set_fact:
-        private_destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_facts']['interfaces']['eth0']['ipv4']['address'] }}"
+        private_destination_ip: ansible_default_ipv4.address
+      when: inventory_hostname == "jenkins-pml-destination"
 
     - name: Show source IP
       debug:
