@@ -79,7 +79,7 @@
             remote_src: yes
       when: inventory_hostname == "jenkins-pml-mongolink"
 
-    - name: Check go availability
+    - name: Check Go is available
       command: go version
       environment:
         PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
@@ -149,12 +149,10 @@
     - name: get private source ip address
       set_fact:
         private_source_ip: ansible_default_ipv4.address
-      when: inventory_hostname == "jenkins-pml-source"
 
     - name: get private destination ip address
       set_fact:
         private_destination_ip: ansible_default_ipv4.address
-      when: inventory_hostname == "jenkins-pml-destination"
 
     - name: Show source IP
       debug:
