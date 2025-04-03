@@ -368,7 +368,7 @@
         mode: '0644'
       when: inventory_hostname == "jenkins-pml-mongolink"
 
-    - name: Reload systemd
+    - name: Reload systemd and start pml service
       ansible.builtin.service:
         daemon_reload: yes
         name: pml.service
