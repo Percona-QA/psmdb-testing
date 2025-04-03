@@ -27,7 +27,7 @@
         # Branch of pml branch to test
         golang_version: "{{ lookup('env', 'GO_VERSION') | default('main', true) }}"
 
-    - name: prerequisite for debian 11
+    - name: Prerequisite for debian 11
       apt:
         name: iproute2
         update_cache: yes
@@ -138,19 +138,19 @@
         remote_src: true
       when: inventory_hostname == "jenkins-pml-source"
 
-    - name: get public source ip address
+    - name: Get public source ip address
       set_fact:
           public_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_facts']['default_ipv4']['address'] }}"
 
-    - name: get public destination ip address
+    - name: Get public destination ip address
       set_fact:
         public_destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_facts']['default_ipv4']['address'] }}"
 
-    - name: get private source ip address
+    - name: Get private source ip address
       set_fact:
         private_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_default_ipv4']['address'] }}"
 
-    - name: get private destination ip address
+    - name: Get private destination ip address
       set_fact:
         private_destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_default_ipv4']['address'] }}"
 
@@ -174,13 +174,13 @@
         unsafe_writes: true
       when: inventory_hostname == "jenkins-pml-mongolink"
 
-    - name: install GPG key for epel 8
+    - name: Install GPG key for epel 8
       rpm_key:
         state: present
         key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
       when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and inventory_hostname in groups['psmdb']
 
-    - name: install GPG key for Percona repos
+    - name: Install GPG key for Percona repos
       rpm_key:
         state: present
         key: https://repo.percona.com/yum/RPM-GPG-KEY-Percona
@@ -199,7 +199,7 @@
       command: percona-release enable {{ psmdb_to_test }} release
       when: inventory_hostname in groups['psmdb']
 
-    - name: install psmdb deb packages
+    - name: Install psmdb deb packages
       apt:
         name: "{{ packages }}"
         update_cache: yes
@@ -212,7 +212,7 @@
         - percona-server-mongodb-tools
       when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
 
-    - name: install latest psmdb rpm packages on redhat
+    - name: Install latest psmdb rpm packages on redhat
       yum:
         name: "{{ packages }}"
         update_cache: yes
@@ -225,7 +225,7 @@
         - percona-server-mongodb-tools
       when: ansible_os_family == "RedHat" and psmdb_version == "latest" and inventory_hostname in groups['psmdb']
 
-    - name: install less than latest psmdb rpm packages on redhat
+    - name: Install less than latest psmdb rpm packages on redhat
       yum:
         name: "{{ packages }}"
         update_cache: yes
@@ -238,7 +238,7 @@
         - percona-server-mongodb-tools-{{ psmdb_version }}
       when: ansible_os_family == "RedHat" and psmdb_version != "latest" and inventory_hostname in groups['psmdb']
 
-    - name: install mongo shell deb package
+    - name: Install mongo shell deb package
       apt:
         name: "{{ packages }}"
         update_cache: yes
@@ -247,7 +247,7 @@
         - percona-server-mongodb-shell
       when: ansible_os_family == "Debian" and psmdb_mongosh < "6" and inventory_hostname in groups['psmdb']
 
-    - name: install mongosh deb package
+    - name: Install mongosh deb package
       apt:
         name: "{{ packages }}"
         update_cache: yes
@@ -265,7 +265,7 @@
         - percona-server-mongodb-shell
       when: ansible_os_family == "RedHat" and psmdb_mongosh < "6"
 
-    - name: install mongosh rpm package
+    - name: Install mongosh rpm package
       yum:
         name: "{{ packages }}"
         state: latest
@@ -274,7 +274,7 @@
         - percona-mongodb-mongosh
       when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6" and inventory_hostname in groups['psmdb']
 
-    - name: copy mongosh binary to mongo path for test scripts
+    - name: Copy mongosh binary to mongo path for test scripts
       file:
         src: /usr/bin/mongosh
         dest: /usr/bin/mongo
@@ -285,7 +285,7 @@
       service: name=mongod state=stopped
       when: inventory_hostname in groups['psmdb']
 
-    - name: create data directory for mongod
+    - name: Create data directory for mongod
       file:
         path: /mnt/data/db
         state: directory
@@ -294,21 +294,21 @@
         group: mongod
       when: inventory_hostname in groups['psmdb']
 
-    - name: switch mongod to new dbPath
+    - name: Switch mongod to new dbPath
       replace:
         path: /etc/mongod.conf
         regexp: '^  dbPath: /var/lib/mongo(?:db)?'
         replace: '  dbPath: /mnt/data/db'
       when: inventory_hostname in groups['psmdb']
 
-    - name: add replica set name into mongod config
+    - name: Add replica set name into mongod config
       replace:
         path: /etc/mongod.conf
         regexp: '^#replication:'
         replace: 'replication:\n  replSetName: "rs"'
       when: inventory_hostname in groups['psmdb']
 
-    - name: bind mongod to 0.0.0.0
+    - name: Bind mongod to 0.0.0.0
       replace:
         path: /etc/mongod.conf
         regexp: '^  bindIp: 127.0.0.1'
@@ -319,7 +319,7 @@
       service: name=mongod state=started
       when: inventory_hostname in groups['psmdb']
 
-    - name: install pymongo
+    - name: Install pymongo
       pip:
         name: pymongo
 
@@ -343,7 +343,7 @@
         validate: no
       when: inventory_hostname == "jenkins-pml-destination"
 
-    - name: reload systemd
+    - name: Reload systemd
       systemd:
         daemon_reload: yes
       when: inventory_hostname in groups['psmdb']
@@ -368,7 +368,7 @@
         mode: '0644'
       when: inventory_hostname == "jenkins-pml-mongolink"
 
-    - name: Reload systemd and start pml service
+    - name: Reload systemd and start PML service
       ansible.builtin.service:
         daemon_reload: yes
         name: pml.service
