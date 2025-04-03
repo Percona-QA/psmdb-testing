@@ -370,12 +370,12 @@
 
     - name: Reload systemd
       ansible.builtin.service:
-        name: systemctl daemon-reload
+        name: daemon-reload
         state: restarted
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Reload systemd
       ansible.builtin.service:
-        name: systemctl pml.service
+        name: pml.service
         state: start
       when: inventory_hostname == "jenkins-pml-mongolink"
