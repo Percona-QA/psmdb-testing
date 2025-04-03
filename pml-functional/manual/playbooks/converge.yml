@@ -372,5 +372,5 @@
       ansible.builtin.service:
         daemon_reload: yes
         name: pml.service
-        state: start
+        state: started
       when: inventory_hostname == "jenkins-pml-mongolink"
