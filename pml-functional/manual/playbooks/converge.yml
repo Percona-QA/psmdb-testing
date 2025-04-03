@@ -359,7 +359,7 @@
           [Service]
           ExecStart=/usr/local/bin/percona-mongolink --source mongodb://{{ private_source_ip }}:27017 --target mongodb://{{ private_destination_ip }}:27017
           Restart=on-failure
-          User=ec2-user
+          User=root
 
           [Install]
           WantedBy=multi-user.target
