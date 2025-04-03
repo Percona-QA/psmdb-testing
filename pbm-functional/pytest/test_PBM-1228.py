@@ -68,6 +68,12 @@ def test_pitr_PBM_T256(start_cluster,cluster,backup_type,base_snapshot):
     assert profile.rc==0, profile.stderr
     assert "OK" in profile.stdout, profile.stdout
     Cluster.log(profile.stdout)
+    Cluster.log("Sync filesystem profile, see PBM-1502")
+    profile=cluster.exec_pbm_cli("profile sync filesystem")
+    assert profile.rc==0, profile.stderr
+    assert "OK" in profile.stdout, profile.stdout
+    Cluster.log(profile.stdout)
+    time.sleep(5)
     Cluster.log("Perform backup on fs profile")
     fs_backup=cluster.make_backup(backup_type + " --profile filesystem")
     Cluster.log("Check if the backup actually was created on the filesystem storage")
