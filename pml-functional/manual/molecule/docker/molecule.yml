@@ -4,54 +4,40 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: primary-rs
+  - name: jenkins-pml-source
     groups:
-      - mongo
-      - primary
-      - mc
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+      - psmdb
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ssh_user: test-user
     privileged: true
     pre_build_image: true
     networks:
       - name: test
-  - name: secondary1-rs
+  - name: jenkins-pml-destination
     groups:
-      - mongo
-      - secondary
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+      - psmdb
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ssh_user: test-user
     privileged: true
     pre_build_image: true
     networks:
        - name: test
-  - name: secondary2-rs
-    groups:
-      - mongo
-      - secondary
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+  - name: jenkins-pml-mongolink
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ssh_user: test-user
     privileged: true
-    pre_build_image: true
-    networks:
-      - name: test
-  - name: minio
-    groups:
-      - minio
-    image: "minio/minio"
-    exposed_ports:
-      - 9000
-    env: "MINIO_ACCESS_KEY=minio1234 MINIO_SECRET_KEY=minio1234"
-    command: "server /backup"
     pre_build_image: true
     networks:
       - name: test
@@ -59,9 +45,9 @@ provisioner:
   name: ansible
   log: true
   playbooks:
-    converge: ../../../replicaset/playbooks/converge.yml
-    cleanup: ../../../replicaset/playbooks/cleanup.yml
-    side_effect: ../../../replicaset/playbooks/side-effect.yml
+    converge: ../../playbooks/converge.yml
+    cleanup: ../../playbooks/cleanup.yml
+    side_effect: ../../playbooks/side-effect.yml
 verifier:
   name: testinfra
   directory: ../../tests/
