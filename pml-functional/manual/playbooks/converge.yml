@@ -5,7 +5,7 @@
   tasks:
     - set_fact:
         # Version of psmdb release to be enabled (psmdb-70)
-        psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('main', true) }}"
+        psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-80', true) }}"
 
     - set_fact:
         # Github token to access mongolink repo
@@ -25,7 +25,7 @@
 
     - set_fact:
         # Branch of pml branch to test
-        golang_version: "{{ lookup('env', 'GO_VERSION') | default('main', true) }}"
+        golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.2', true) }}"
 
     - name: Prerequisite for debian 11
       apt:
