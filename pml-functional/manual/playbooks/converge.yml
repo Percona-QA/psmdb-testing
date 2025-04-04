@@ -138,14 +138,6 @@
         remote_src: true
       when: inventory_hostname == "jenkins-pml-source"
 
-    - name: Get public source ip address
-      set_fact:
-          public_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_facts']['default_ipv4']['address'] }}"
-
-    - name: Get public destination ip address
-      set_fact:
-        public_destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_facts']['default_ipv4']['address'] }}"
-
     - name: Get private source ip address
       set_fact:
         private_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_default_ipv4']['address'] }}"
@@ -154,15 +146,15 @@
       set_fact:
         private_destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_default_ipv4']['address'] }}"
 
-    - name: Show source IP
+    - name: Show source IP (Debug)
       debug:
         var: public_source_ip
       when: public_source_ip is defined and inventory_hostname == "jenkins-pml-source"
 
-    - name: Show destination IP
+    - name: Show destination IP (Debug)
       debug:
         var: public_destination_ip
-      when: public_destination_ip is defined and inventory_hostname == "destination"
+      when: public_destination_ip is defined and inventory_hostname == "jenkins-pml-destination"
 
     - name: Add source and destination to /etc/hosts in pml
       blockinfile:
@@ -191,7 +183,7 @@
         deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
       when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
 
-    - name: Install latest percona release RHEL
+    - name: Install latest percona-release RHEL
       command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
       when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
