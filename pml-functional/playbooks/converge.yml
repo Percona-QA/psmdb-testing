@@ -138,6 +138,14 @@
         remote_src: true
       when: inventory_hostname == "jenkins-pml-source"
 
+    - name: Get public source ip address
+      set_fact:
+        public_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_facts']['default_ipv4']['address'] }}"
+
+    - name: Get public destination ip address
+      set_fact:
+        public_destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_facts']['default_ipv4']['address'] }}"
+
     - name: Get private source ip address
       set_fact:
         private_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_default_ipv4']['address'] }}"
