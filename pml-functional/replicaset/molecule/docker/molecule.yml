@@ -1,0 +1,71 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: jenkins-pml-source
+    groups:
+      - psmdb
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    cgroupns_mode: host
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ssh_user: test-user
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: test
+  - name: jenkins-pml-destination
+    groups:
+      - psmdb
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    cgroupns_mode: host
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ssh_user: test-user
+    privileged: true
+    pre_build_image: true
+    networks:
+       - name: test
+  - name: jenkins-pml-mongolink
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    cgroupns_mode: host
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ssh_user: test-user
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: test
+provisioner:
+  name: ansible
+  log: true
+  playbooks:
+    converge: ../../../replicaset/playbooks/converge.yml
+    cleanup: ../../../replicaset/playbooks/cleanup.yml
+    side_effect: ../../../replicaset/playbooks/side-effect.yml
+verifier:
+  name: testinfra
+  directory: ../../tests/
+  options:
+    verbose: true
+#    capture: sys
+#    o: junit_logging=system-out
+    s: true
+    junitxml: report.xml
+scenario:
+  name: docker
+  test_sequence:
+    - create
+    - converge
+    - verify
+    - cleanup
+    - destroy
+  destroy_sequence:
+    - destroy
+  cleanup_sequence:
+    - cleanup
