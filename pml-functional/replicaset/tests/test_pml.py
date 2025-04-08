@@ -30,15 +30,16 @@ def create_config(documentCount, collections):
         string.append(string2)
     return string
 
-def distribute_create_config(documentCount, collections):
+def distribute_create_config(dataSize, collections):
     string = []
-    chunks = split_datasize(collections)
+    distribution_chunks = split_datasize(collections)
 
-    print("KEITH TEST: " + str(chunks))
-    print("KEITH TEST: " + str(documentCount))
+
+
+    print("KEITH TEST: " + str(distribution_chunks))
 
     for x in range(collections):
-        distribution = documentCount / 100 * chunks[x]
+        distribution = documentCount / 100 * distribution_chunks[x]
         print("KEITH TEST: " + str(int(distribution)))
         collectionName = f"collection{x}"
         string2 = {'database': 'test','collection': collectionName,'count': documentCount,'content': {'binary': {'type': 'binary','minLength': 10485760, 'maxLength': 10485760}}}
@@ -84,7 +85,7 @@ def load_data(node,port):
     if distribute == "true":
         config = distribute_create_config(documentCount, collections)
     else:
-        config = create_config(documentCount, collections)
+        config = create_config(datasize, collections)
     config_json = json.dumps(config, indent=4)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
     node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
