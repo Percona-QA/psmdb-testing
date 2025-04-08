@@ -216,8 +216,8 @@ def test_3_prepare_data():
     count = check_count_data(source,"27017")
     assert int(count) == SIZE
 
-def test_1_print():
-    print("\nThe infrastructure is ready, waiting " + str(TIMEOUT) + " seconds")
-
-def test_2_sleep():
-    time.sleep(TIMEOUT)
+# def test_1_print():
+#     print("\nThe infrastructure is ready, waiting " + str(TIMEOUT) + " seconds")
+# 
+# def test_2_sleep():
+#     time.sleep(TIMEOUT)
