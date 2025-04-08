@@ -212,10 +212,10 @@ def setup_pitr(node,port):
     print(store_out)
 
 def test_3_prepare_data():
-    print(source)
-    # load_data(source,"27017",SIZE)
-    # count = check_count_data(source,"27017")
-    # assert int(count) == SIZE
+    # print(source)
+    load_data(source,"27017",SIZE)
+    count = check_count_data(source,"27017")
+    assert int(count) == SIZE
 
 # def test_1_print():
 #     print("\nThe infrastructure is ready, waiting " + str(TIMEOUT) + " seconds")
