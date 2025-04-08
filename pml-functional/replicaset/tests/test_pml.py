@@ -52,7 +52,7 @@ def restart_mongod(node):
     print('restarting mongod on ' + hostname)
 
 def load_data(node,port):
-    config = create_config(documentcount, documentsize, collections)
+    config = create_config(documentCount, collections)
     config_json = json.dumps(config, indent=4)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
     node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
