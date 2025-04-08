@@ -201,7 +201,7 @@ def make_pitr_replay(node,port,start,end):
 
 def load_data(node,port,count):
     config = test(collectionCount)
-    print("KEITH TEST " + config)
+    print("KEITH TEST " + str(config))
     config[0]["count"] = count
     config_json = json.dumps(config, indent=4)
     print(config_json)
