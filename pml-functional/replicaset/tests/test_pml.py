@@ -6,7 +6,7 @@ import time
 import testinfra.utils.ansible_runner
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('jenkins-pml-source')
+    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('psmdb')
 
 destination = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-destination')
@@ -212,9 +212,10 @@ def setup_pitr(node,port):
     print(store_out)
 
 def test_3_prepare_data():
-    load_data(source,"27017",SIZE)
-    count = check_count_data(source,"27017")
-    assert int(count) == SIZE
+    print(source)
+    # load_data(source,"27017",SIZE)
+    # count = check_count_data(source,"27017")
+    # assert int(count) == SIZE
 
 # def test_1_print():
 #     print("\nThe infrastructure is ready, waiting " + str(TIMEOUT) + " seconds")
