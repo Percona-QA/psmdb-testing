@@ -39,8 +39,9 @@ def distribute_create_config(dataSize, collections):
     print("KEITH TEST: " + str(distribution_chunks))
 
     for x in range(collections):
-        test1 = dataSize / 100
-        print("1: " + str(test1))
+        dataSize = dataSize
+        print("dataSize: " + str(dataSize))
+        print("distribution_chunks: " + str(distribution_chunks[x]))
         # print("1: " + str(test1))
         # distribution = dataSize / 100 * distribution_chunks[x]
     #     print("KEITH TEST SPLIT: " + str(int(distribution)))
