@@ -14,6 +14,7 @@ destination = testinfra.utils.ansible_runner.AnsibleRunner(
 pml = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-mongolink')
 
+COLLECTIONS = int(os.getenv("COLLECTIONS",default = 1))
 SIZE = int(os.getenv("SIZE",default = 10))
 TIMEOUT = int(os.getenv("TIMEOUT",default = 300))
 STORAGE = os.getenv("STORAGE")
@@ -23,6 +24,15 @@ CHECK_PITR = os.getenv("CHECK_PITR",default = "yes")
 numDownloadWorkers = os.getenv("RESTORE_NUMDOWNLOADWORKERS",default = '0')
 maxDownloadBufferMb = os.getenv("RESTORE_NUMDOWNLOADBUFFERMB",default = '0')
 downloadChunkMb = os.getenv("RESTORE_DOWNLOADCHUNKMB",default = '0')
+collectionCount = 5
+
+def test(count):
+    string = []
+    for x in range(count):
+        collectionName = f"collection{x}"
+        string2 = {'database': 'test','collection': collectionName,'count': 1,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}
+        string.append(string2)
+    return string
 
 def pytest_configure():
     pytest.backup_name = ''
@@ -190,7 +200,8 @@ def make_pitr_replay(node,port,start,end):
             time.sleep(1)
 
 def load_data(node,port,count):
-    config = [{'database': 'test','collection': 'binary','count': 1,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}]
+    config = test(collectionCount)
+    print("KEITH TEST " + config)
     config[0]["count"] = count
     config_json = json.dumps(config, indent=4)
     print(config_json)
