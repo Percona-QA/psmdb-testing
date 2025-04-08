@@ -6,7 +6,7 @@ import time
 import testinfra.utils.ansible_runner
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('psmdb')
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-source')
 
 destination = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-destination')
