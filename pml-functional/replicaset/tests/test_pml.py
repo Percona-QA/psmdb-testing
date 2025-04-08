@@ -16,8 +16,8 @@ pml = testinfra.utils.ansible_runner.AnsibleRunner(
 
 collections = int(os.getenv("COLLECTIONS", default = 5))
 datasize = int(os.getenv("DATASIZE", default = 100))
-documentCount = datasize / collections
-print("KEITH TEST" + documentCount)
+documentCount = int(datasize / collections)
+print("KEITH TEST" + str(documentCount))
 TIMEOUT = int(os.getenv("TIMEOUT",default = 300))
 
 def create_config(documentCount, collections):
