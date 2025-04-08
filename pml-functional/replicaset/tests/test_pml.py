@@ -39,7 +39,7 @@ def distribute_create_config(dataSize, collections):
     print("KEITH TEST: " + str(distribution_chunks))
 
     for x in range(collections):
-        distribution = documentCount / 100 * distribution_chunks[x]
+        distribution = dataSize / 100 * distribution_chunks[x]
         print("KEITH TEST: " + str(int(distribution)))
         collectionName = f"collection{x}"
         string2 = {'database': 'test','collection': collectionName,'count': documentCount,'content': {'binary': {'type': 'binary','minLength': 10485760, 'maxLength': 10485760}}}
