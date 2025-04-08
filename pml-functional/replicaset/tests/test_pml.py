@@ -1,4 +1,6 @@
 import os
+import random
+
 import pytest
 import testinfra
 import json
@@ -17,6 +19,7 @@ pml = testinfra.utils.ansible_runner.AnsibleRunner(
 collections = int(os.getenv("COLLECTIONS", default = 5))
 datasize = int(os.getenv("DATASIZE", default = 100))
 documentCount = int(datasize / 10 / collections)
+distribute = os.getenv("DISTRIBUTE", default = "false")
 TIMEOUT = int(os.getenv("TIMEOUT",default = 300))
 
 def create_config(documentCount, collections):
@@ -26,6 +29,31 @@ def create_config(documentCount, collections):
         string2 = {'database': 'test','collection': collectionName,'count': documentCount,'content': {'binary': {'type': 'binary','minLength': 10485760, 'maxLength': 10485760}}}
         string.append(string2)
     return string
+
+def distribute_create_config(documentCount, collections):
+    string = []
+    chunks = split_datasize(collections)
+
+
+
+    for x in range(collections):
+        distribution = documentCount / 100 * chunks[x]
+        print("KEITH TEST: " + distribution)
+        collectionName = f"collection{x}"
+        string2 = {'database': 'test','collection': collectionName,'count': documentCount,'content': {'binary': {'type': 'binary','minLength': 10485760, 'maxLength': 10485760}}}
+        string.append(string2)
+    return string
+
+def split_datasize(chunks):
+    parts = []
+    remaining = 100
+    for x in range(chunks - 1):
+        max_number = remaining - (chunks - len(parts) - 1)
+        n = random.randint(1, max_number)
+        parts.append(n)
+        remaining -= n
+    parts.append(remaining)
+    return parts
 
 def pytest_configure():
     pytest.backup_name = ''
@@ -52,7 +80,10 @@ def restart_mongod(node):
     print('restarting mongod on ' + hostname)
 
 def load_data(node,port):
-    config = create_config(documentCount, collections)
+    if distribute == "true":
+        config = distribute_create_config(documentCount, collections)
+    else:
+        config = create_config(documentCount, collections)
     config_json = json.dumps(config, indent=4)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
     node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
