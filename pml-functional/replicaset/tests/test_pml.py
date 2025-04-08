@@ -43,11 +43,11 @@ def distribute_create_config(dataSize, collections):
         print("1: " + str(test1))
         # print("1: " + str(test1))
         # distribution = dataSize / 100 * distribution_chunks[x]
-        print("KEITH TEST SPLIT: " + str(int(distribution)))
-        collectionName = f"collection{x}"
-        string2 = {'database': 'test','collection': collectionName,'count': documentCount,'content': {'binary': {'type': 'binary','minLength': 10485760, 'maxLength': 10485760}}}
-        string.append(string2)
-    return string
+    #     print("KEITH TEST SPLIT: " + str(int(distribution)))
+    #     collectionName = f"collection{x}"
+    #     string2 = {'database': 'test','collection': collectionName,'count': documentCount,'content': {'binary': {'type': 'binary','minLength': 10485760, 'maxLength': 10485760}}}
+    #     string.append(string2)
+    # return string
 
 def split_datasize(chunks):
     parts = []
