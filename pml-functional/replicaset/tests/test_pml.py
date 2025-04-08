@@ -24,14 +24,14 @@ CHECK_PITR = os.getenv("CHECK_PITR",default = "yes")
 numDownloadWorkers = os.getenv("RESTORE_NUMDOWNLOADWORKERS",default = '0')
 maxDownloadBufferMb = os.getenv("RESTORE_NUMDOWNLOADBUFFERMB",default = '0')
 downloadChunkMb = os.getenv("RESTORE_DOWNLOADCHUNKMB",default = '0')
-collectionCount = 5
 
-def test(count):
+def create_config():
     string = []
-    for x in range(count):
+    for x in range(COLLECTIONS):
         collectionName = f"collection{x}"
-        string2 = {'database': 'test','collection': collectionName,'count': 1,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}
+        string2 = {'database': 'test','collection': collectionName,'count': SIZE,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}
         string.append(string2)
+
     return string
 
 def pytest_configure():
@@ -199,14 +199,11 @@ def make_pitr_replay(node,port,start,end):
             print(running)
             time.sleep(1)
 
-def load_data(node,port,count):
-    config = test(collectionCount)
-    print("KEITH TEST " + str(config))
-    config[0]["count"] = count
+def load_data(node,port):
+    config = create_config()
     config_json = json.dumps(config, indent=4)
-    print(config_json)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
-    result = node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
+    node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
 
 def check_count_data(node,port):
     result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.binary.count()' --quiet | tail -1")
@@ -224,7 +221,7 @@ def setup_pitr(node,port):
 
 def test_3_prepare_data():
     # print(source)
-    load_data(source,"27017",SIZE)
+    load_data(source,"27017")
     count = check_count_data(source,"27017")
     assert int(count) == SIZE
 
