@@ -34,7 +34,7 @@ def distribute_create_config(documentCount, collections):
     string = []
     chunks = split_datasize(collections)
 
-
+    print("KEITH TEST: " + str(chunks))
 
     for x in range(collections):
         distribution = documentCount / 100 * chunks[x]
