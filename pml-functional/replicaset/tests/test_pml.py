@@ -39,7 +39,6 @@ def distribute_create_config(dataSize, collections):
     print("KEITH TEST: " + str(distribution_chunks))
 
     for x in range(collections):
-        dataSize = dataSize
         print("dataSize: " + str(dataSize))
         print("distribution_chunks: " + str(distribution_chunks[x]))
         # print("1: " + str(test1))
@@ -87,9 +86,9 @@ def restart_mongod(node):
 
 def load_data(node,port):
     if distribute == "true":
-        config = distribute_create_config(documentCount, collections)
+        config = distribute_create_config(datasize, collections)
     else:
-        config = create_config(datasize, collections)
+        config = create_config(documentCount, collections)
     config_json = json.dumps(config, indent=4)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
     node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
