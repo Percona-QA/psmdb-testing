@@ -1,10 +1,7 @@
 import os
 import random
 
-import pytest
-import testinfra
 import json
-import time
 import testinfra.utils.ansible_runner
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -17,26 +14,24 @@ pml = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-mongolink')
 
 collections = int(os.getenv("COLLECTIONS", default = 5))
-datasize = int(os.getenv("DATASIZE", default = 100))
-documentCount = int(datasize / 10 / collections)
+datasize = int(os.getenv("DATASIZE", default = 1000))
 distribute = os.getenv("DISTRIBUTE", default = "false")
 TIMEOUT = int(os.getenv("TIMEOUT",default = 300))
 
-def create_config(documentCount, collections):
+def create_config(datasize, collections):
     string = []
+    documentCount = int(datasize / 10 / collections)
     for x in range(collections):
         collectionName = f"collection{x}"
-        string2 = {'database': 'test','collection': collectionName,'count': documentCount,'content': {'binary': {'type': 'binary','minLength': 10485760, 'maxLength': 10485760}}}
+        string2 = {'database': 'test','collection': collectionName,'count': documentCount,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}
         string.append(string2)
     return string
 
 def distribute_create_config(dataSize, collections):
     string = []
     distribution_chunks = split_datasize(collections)
-
     for x in range(collections):
         distribution = int(dataSize / 100 * distribution_chunks[x])
-        print("KEITH TEST SPLIT: " + str(int(distribution)))
         collectionName = f"collection{x}"
         string2 = {'database': 'test','collection': collectionName,'count': distribution,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}
         string.append(string2)
@@ -53,19 +48,6 @@ def split_datasize(chunks):
     parts.append(remaining)
     return parts
 
-def pytest_configure():
-    pytest.backup_name = ''
-    pytest.pitr_start = ''
-    pytest.pitr_end = ''
-
-def find_event_msg(node,port,event,msg):
-    command = "pbm logs --mongodb-uri=mongodb://localhost:" + port + "/ --tail=100 --out=json --event=" + event
-    logs = node.check_output(command)
-    for log in json.loads(logs):
-        if log['msg'] == msg:
-             return log
-             break
-
 def check_mongod_service(node):
     with node.sudo():
         service = node.service("mongod")
@@ -81,7 +63,7 @@ def load_data(node,port):
     if distribute == "true":
         config = distribute_create_config(datasize, collections)
     else:
-        config = create_config(documentCount, collections)
+        config = create_config(datasize, collections)
     config_json = json.dumps(config, indent=4)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
     node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
@@ -101,7 +83,6 @@ def setup_pitr(node,port):
     print(store_out)
 
 def test_3_prepare_data():
-    # print(source)
     load_data(source,"27017")
     count = check_count_data(source,"27017")
     assert 1 == 1
