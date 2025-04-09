@@ -96,7 +96,7 @@ def drop_database(node,port):
 
 def test_3_prepare_data():
     load_data(source,"27017")
-    assert confirm_collection_size("27017", source, collections, datasize)
+    assert confirm_collection_size(source, "27017", collections, datasize)
 
 # def test_1_print():
 #     print("\nThe infrastructure is ready, waiting " + str(TIMEOUT) + " seconds")
