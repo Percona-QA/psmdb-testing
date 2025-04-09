@@ -16,6 +16,7 @@ pml = testinfra.utils.ansible_runner.AnsibleRunner(
 collections = int(os.getenv("COLLECTIONS", default = 5))
 datasize = int(os.getenv("DATASIZE", default = 1000))
 distribute = os.getenv("DISTRIBUTE", default = "false")
+extraEnvVars = os.getenv("EXTRA_ENV_VARS", default = "")
 TIMEOUT = int(os.getenv("TIMEOUT",default = 300))
 
 def create_config(datasize, collections):
@@ -37,11 +38,11 @@ def distribute_create_config(dataSize, collections):
         string.append(string2)
     return string
 
-def split_datasize(chunks):
+def split_datasize(numberOfChunks):
     parts = []
     remaining = 100
-    for x in range(chunks - 1):
-        max_number = remaining - (chunks - len(parts) - 1)
+    for x in range(numberOfChunks - 1):
+        max_number = remaining - (numberOfChunks - len(parts) - 1)
         n = random.randint(1, max_number)
         parts.append(n)
         remaining -= n
@@ -73,19 +74,29 @@ def check_count_data(node,port):
     print('count objects in collection: ' + result)
     return result
 
+def confirm_collection_size(node, port, amountOfCollections, datasize):
+    sizes = []
+    total = 0
+    for collection in range(amountOfCollections):
+        result = node.check_output(
+        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.collection" + collection + ".dataSize() / (1024 * 1024)' --quiet")
+        sizes.append(float(result))
+    for size in sizes:
+        total += size
+    if total > datasize and total < datasize+100:
+        return True
+    else:
+        return False
+
+
+
 def drop_database(node,port):
     result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.dropDatabase()' --quiet")
     print(result)
 
-def setup_pitr(node,port):
-    result = node.check_output('pbm config --mongodb-uri=mongodb://localhost:' + port + '/ --set pitr.enabled=true --out=json')
-    store_out = json.loads(result)
-    print(store_out)
-
 def test_3_prepare_data():
     load_data(source,"27017")
-    count = check_count_data(source,"27017")
-    assert 1 == 1
+    assert confirm_collection_size("27017", source, collections, datasize)
 
 # def test_1_print():
 #     print("\nThe infrastructure is ready, waiting " + str(TIMEOUT) + " seconds")
