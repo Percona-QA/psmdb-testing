@@ -83,7 +83,7 @@ def confirm_collection_size(node, port, amountOfCollections, datasize):
         sizes.append(float(result))
     for size in sizes:
         total += size
-    if total > datasize and total < datasize+100:
+    if total == datasize:
         return True
     else:
         return False
