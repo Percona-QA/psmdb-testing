@@ -79,7 +79,7 @@ def confirm_collection_size(node, port, amountOfCollections, datasize):
     total = 0
     for collection in range(amountOfCollections):
         result = node.check_output(
-        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.collection" + collection + ".dataSize() / (1024 * 1024)' --quiet")
+        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.collection" + str(collection) + ".dataSize() / (1024 * 1024)' --quiet")
         sizes.append(float(result))
     for size in sizes:
         total += size
