@@ -8,6 +8,8 @@ RUN apk add --no-cache libffi-dev build-base bash git openssl && cd ~ && \
     ./easyrsa --batch build-server-full pykmip nopass && \
     ./easyrsa --batch build-client-full mongod nopass && \
     cat pki/issued/mongod.crt pki/private/mongod.key > /etc/mongod.pem && \
+    pip install --upgrade --no-cache-dir --break-system-packages pip && \
+    pip install --upgrade --no-cache-dir --break-system-packages setuptools && \
     pip install --no-cache-dir --break-system-packages pykmip && cd ~ && \
     git clone https://github.com/OpenKMIP/PyKMIP && \
     cd PyKMIP && \
