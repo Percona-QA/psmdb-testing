@@ -271,6 +271,8 @@ def get_indexes(db, collection_name, port):
     try:
         indexes = json.loads(response)
 
+        print("KEITH TEST: " + str(indexes))
+
         def normalize_key(index_key):
             if isinstance(index_key, dict):
                 return {k: normalize_key(v) for k, v in index_key.items()}
