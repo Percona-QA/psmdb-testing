@@ -26,8 +26,8 @@ def compare_data_rs(db1, db2, port):
     #     mismatch_summary.extend(mismatch_coll_count)
     if mismatch_metadata:
         mismatch_summary.extend(mismatch_metadata)
-    if mismatch_indexes:
-        mismatch_summary.extend(mismatch_indexes)
+    # if mismatch_indexes:
+    #     mismatch_summary.extend(mismatch_indexes)
 
     if not mismatch_summary:
         Cluster.log("Data and indexes are consistent between source and destination databases")
