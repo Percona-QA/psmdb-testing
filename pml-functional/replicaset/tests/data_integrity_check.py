@@ -9,25 +9,25 @@ from mlink.cluster import Cluster
 
 def compare_data_rs(db1, db2, port):
 
-    all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port)
-    all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port)
-    # mismatch_metadata = compare_collection_metadata(db1, db2)
+    # all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port)
+    # all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port)
+    mismatch_metadata = compare_collection_metadata(db1, db2, port)
     # mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash)
 
     mismatch_summary = []
 
-    if mismatch_dbs_hash:
-        mismatch_summary.extend(mismatch_dbs_hash)
-    if mismatch_coll_hash:
-        mismatch_summary.extend(mismatch_coll_hash)
-    if mismatch_dbs_count:
-        mismatch_summary.extend(mismatch_dbs_count)
-    if mismatch_coll_count:
-        mismatch_summary.extend(mismatch_coll_count)
-    # if mismatch_metadata:
-    #     mismatch_summary.extend(mismatch_metadata)
-    # if mismatch_indexes:
-    #     mismatch_summary.extend(mismatch_indexes)
+    # if mismatch_dbs_hash:
+    #     mismatch_summary.extend(mismatch_dbs_hash)
+    # if mismatch_coll_hash:
+    #     mismatch_summary.extend(mismatch_coll_hash)
+    # if mismatch_dbs_count:
+    #     mismatch_summary.extend(mismatch_dbs_count)
+    # if mismatch_coll_count:
+    #     mismatch_summary.extend(mismatch_coll_count)
+    if mismatch_metadata:
+        mismatch_summary.extend(mismatch_metadata)
+    if mismatch_indexes:
+        mismatch_summary.extend(mismatch_indexes)
 
     if not mismatch_summary:
         Cluster.log("Data and indexes are consistent between source and destination databases")
@@ -160,12 +160,12 @@ def compare_entries_number(db1, db2, port):
 
     return db1_counts.keys() | db2_counts.keys(), mismatched_dbs, mismatched_collections
 
-def compare_collection_metadata(db1_container, db2_container):
+def compare_collection_metadata(db1, db2, port):
     Cluster.log("Comparing collection metadata...")
     mismatched_metadata = []
 
-    db1_metadata = get_all_collection_metadata(db1_container)
-    db2_metadata = get_all_collection_metadata(db2_container)
+    db1_metadata = get_all_collection_metadata(db1, port)
+    db2_metadata = get_all_collection_metadata(db2, port)
 
     db1_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db1_metadata}
     db2_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db2_metadata}
@@ -192,7 +192,7 @@ def compare_collection_metadata(db1_container, db2_container):
 
     return mismatched_metadata
 
-def get_all_collection_metadata(container):
+def get_all_collection_metadata(db, port):
     query = (
         'db.getMongo().getDBNames().forEach(function(i) { '
         'if (!["admin", "local", "config", "percona_mongolink"].includes(i)) { '
@@ -201,8 +201,8 @@ def get_all_collection_metadata(container):
         'print(JSON.stringify(collections)); }});'
     )
 
-    exec_result = container.exec_run(f"mongosh -u root -p root --quiet --json --eval '{query}'")
-    response = exec_result.output.decode("utf-8").strip()
+    response = db.check_output(
+        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
 
     try:
         metadata_list = []
