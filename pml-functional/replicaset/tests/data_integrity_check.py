@@ -260,6 +260,8 @@ def compare_collection_indexes(db1, db2, all_collections, port):
 def get_indexes(db, collection_name, port):
     db_name, coll_name = collection_name.split(".", 1)
 
+    print("KEITH TEST: " + db_name + ":" + coll_name)
+
     query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
     response = db.check_output(
         "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
