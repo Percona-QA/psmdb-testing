@@ -257,7 +257,7 @@ def compare_collection_indexes(db1, db2, all_collections, port):
 
     return mismatched_indexes
 
-def get_indexes(container, collection_name, port):
+def get_indexes(db, collection_name, port):
     db_name, coll_name = collection_name.split(".", 1)
 
     query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
