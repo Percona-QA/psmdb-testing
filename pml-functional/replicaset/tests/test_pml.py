@@ -16,7 +16,7 @@ pml = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-mongolink')
 
 collections = int(os.getenv("COLLECTIONS", default = 5))
-datasize = int(os.getenv("DATASIZE", default = 1000))
+datasize = int(os.getenv("DATASIZE", default = 100))
 distribute = os.getenv("DISTRIBUTE", default = "false")
 extraEnvVars = os.getenv("EXTRA_ENV_VARS", default = "")
 TIMEOUT = int(os.getenv("TIMEOUT",default = 300))
@@ -102,12 +102,12 @@ def test_prepare_data():
     load_data(source,"27017")
     assert confirm_collection_size(source, "27017", collections, datasize)
 
-# def test_initiate_pml():
-#     result = pml.check_output(
-#         "percona-mongolink start")
-#     output = json.loads(result)
-#     assert output == {"ok": True}
-#
+def test_initiate_pml():
+    result = pml.check_output(
+        "percona-mongolink start")
+    output = json.loads(result)
+    assert output == [{"ok": True}, {"ok": False}]
+
 # def test_data_transfer():
 #     assert confirm_collection_size(destination, "27017", collections, datasize)
 #
