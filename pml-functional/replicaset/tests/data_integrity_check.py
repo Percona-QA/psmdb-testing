@@ -3,13 +3,9 @@ import sys
 
 import docker
 import json
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../')))
+# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../')))
 
-from mlink.cluster import Cluster
-
-print("Current working dir:", os.getcwd())
-print("Resolved path added to sys.path:", os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../')))
-print("Directory listing:", os.listdir(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../'))))
+# from mlink.cluster import Cluster
 
 def compare_data_rs(db1, db2):
 
