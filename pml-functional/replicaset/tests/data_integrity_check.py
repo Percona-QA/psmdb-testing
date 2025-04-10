@@ -9,10 +9,10 @@ from mlink.cluster import Cluster
 
 def compare_data_rs(db1, db2, port):
 
-    # all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port)
+    all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port)
     # all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port)
-    mismatch_metadata = compare_collection_metadata(db1, db2, port)
-    # mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash)
+    # mismatch_metadata = compare_collection_metadata(db1, db2, port)
+    mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port)
 
     mismatch_summary = []
 
@@ -214,13 +214,13 @@ def get_all_collection_metadata(db, port):
         Cluster.log(f"Raw response: {response}")
         return []
 
-def compare_collection_indexes(db1_container, db2_container, all_collections):
+def compare_collection_indexes(db1, db2, all_collections, port):
     Cluster.log("Comparing collection indexes...")
     mismatched_indexes = []
 
     for coll_name in all_collections:
-        db1_indexes = get_indexes(db1_container, coll_name)
-        db2_indexes = get_indexes(db2_container, coll_name)
+        db1_indexes = get_indexes(db1, coll_name, port)
+        db2_indexes = get_indexes(db2, coll_name, port)
 
         db1_index_dict = {index["name"]: index for index in db1_indexes if "name" in index}
         db2_index_dict = {index["name"]: index for index in db2_indexes if "name" in index}
@@ -257,12 +257,12 @@ def compare_collection_indexes(db1_container, db2_container, all_collections):
 
     return mismatched_indexes
 
-def get_indexes(container, collection_name):
+def get_indexes(container, collection_name, port):
     db_name, coll_name = collection_name.split(".", 1)
 
     query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
-    exec_result = container.exec_run(f"mongosh -u root -p root --quiet --json --eval '{query}'")
-    response = exec_result.output.decode("utf-8").strip()
+    response = db.check_output(
+        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
 
     try:
         indexes = json.loads(response)
