@@ -37,35 +37,30 @@ def compare_data_rs(db1, db2, port):
     return False, mismatch_summary
 
 def compare_database_hashes(db1, db2, port):
-    query = """
-            db.getMongo().getDBNames().forEach(function(dbName) {
-                if (!["admin", "local", "config", "percona_mongolink"].includes(dbName)) {
-                    var collections = [];
-                    db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) {
-                        if (!coll.type || coll.type !== "view") {
-                            collections.push(coll.name);
-                        }
-                    });
-                    if (collections.length > 0) {
-                        var result = db.getSiblingDB(dbName).runCommand({ dbHash: 1, collections: collections });
-                        print(JSON.stringify({
-                            db: dbName,
-                            md5: result.md5,
-                            collections: result.collections
-                        }));
-                    } else {
-                        print(JSON.stringify({
-                            db: dbName,
-                            md5: null,
-                            collections: {}
-                        }));
-                    }
-                }
-            });
-            """
+    query = (
+        'db.getMongo().getDBNames().forEach(function(dbName) { '
+        'if (!["admin", "local", "config", "percona_mongolink"].includes(dbName)) { '
+        'var collections = []; '
+        'db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
+        'if (!coll.type || coll.type !== "view") { collections.push(coll.name); } '
+        '}); '
+        'if (collections.length > 0) { '
+        'var result = db.getSiblingDB(dbName).runCommand({ dbHash: 1, collections: collections }); '
+        'print(JSON.stringify({db: dbName, md5: result.md5, collections: result.collections})); '
+        '} else { '
+        'print(JSON.stringify({db: dbName, md5: null, collections: {}})); '
+        '} '
+        '} '
+        '});'
+    )
 
     def get_db_hashes_and_collections(db):
-        exec_result = db.check_output(f"mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval " + query + " --quiet'")
+        cmd = (
+            f'mongo mongodb://127.0.0.1:{port}/test?replicaSet=rs --eval "{query}" --quiet'
+        )
+        exec_result = db.check_output(cmd)
+
+
         response = exec_result.output.decode("utf-8").strip()
 
         db_hashes = {}
