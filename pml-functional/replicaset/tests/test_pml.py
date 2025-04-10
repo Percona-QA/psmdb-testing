@@ -112,7 +112,7 @@ def drop_database(node,port):
 #     assert confirm_collection_size(destination, "27017", collections, datasize)
 
 def test_data_integrity():
-    assert compare_data_rs(source, destination)
+    assert compare_data_rs(source, destination, "27017")
 
 
 # def test_1_print():

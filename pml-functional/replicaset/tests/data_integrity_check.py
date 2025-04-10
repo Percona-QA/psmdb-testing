@@ -7,9 +7,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 from mlink.cluster import Cluster
 
-def compare_data_rs(db1, db2):
+def compare_data_rs(db1, db2, port):
 
-    all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2)
+    all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port)
     all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2)
     mismatch_metadata = compare_collection_metadata(db1, db2)
     mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash)
@@ -52,8 +52,8 @@ def compare_database_hashes(db1, db2):
         '}}});'
         )
 
-    def get_db_hashes_and_collections(db):
-        exec_result = db.check_output(f"mongosh -u root -p root --quiet --eval '{query}'")
+    def get_db_hashes_and_collections(db, port):
+        exec_result = db.check_output(f"mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval " + query + " --quiet'")
         response = exec_result.output.decode("utf-8").strip()
 
         db_hashes = {}
