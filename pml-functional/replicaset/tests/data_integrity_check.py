@@ -266,6 +266,8 @@ def get_indexes(db, collection_name, port):
     response = db.check_output(
         "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
 
+    print("KEITH TEST: " + str(response))
+
     try:
         indexes = json.loads(response)
 
