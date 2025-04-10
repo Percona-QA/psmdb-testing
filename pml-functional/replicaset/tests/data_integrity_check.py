@@ -53,7 +53,7 @@ def compare_database_hashes(db1, db2, port):
         )
 
     def get_db_hashes_and_collections(db):
-        exec_result = db.check_output(f"mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval " + query + " --quiet'")
+        exec_result = db.check_output(f"mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet'")
         response = exec_result.output.decode("utf-8").strip()
 
         db_hashes = {}
