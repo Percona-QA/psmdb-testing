@@ -106,7 +106,7 @@ def test_initiate_pml():
     result = pml.check_output(
         "percona-mongolink start")
     output = json.loads(result)
-    assert output == [{"ok": True}, {"ok": False}]
+    assert output in [{"ok": True}, {'error': 'already running', 'ok': False}]
 
 # def test_data_transfer():
 #     assert confirm_collection_size(destination, "27017", collections, datasize)
