@@ -264,7 +264,7 @@ def get_indexes(db, collection_name, port):
 
     query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
     response = db.check_output(
-        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
+        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --json --eval '" + query + "' --quiet")
 
     print("KEITH TEST: " + str(response))
 
