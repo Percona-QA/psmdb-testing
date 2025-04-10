@@ -274,12 +274,14 @@ def get_indexes(db, collection_name, port):
         print("KEITH TEST: " + str(indexes))
 
         def normalize_key(index_key):
+            print("KEITH TEST: 123")
             if isinstance(index_key, dict):
                 return {k: normalize_key(v) for k, v in index_key.items()}
             elif isinstance(index_key, list):
                 return [normalize_key(v) for v in index_key]
             elif isinstance(index_key, dict) and "$numberInt" in index_key:
                 return int(index_key["$numberInt"])
+            print("KEITH TEST: 124")
             return index_key
 
         return sorted([
