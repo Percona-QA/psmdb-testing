@@ -5,10 +5,6 @@ import json
 import testinfra.utils.ansible_runner
 from data_integrity_check import compare_data_rs
 
-print("Current working dir:", os.getcwd())
-print("Resolved path added to sys.path:", os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../')))
-print("Directory listing:", os.listdir(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))))
-
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-source')
