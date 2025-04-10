@@ -1,7 +1,7 @@
 import docker
 import json
 
-from cluster import Cluster
+from mlink.cluster import Cluster
 
 def compare_data_rs(db1, db2):
 
