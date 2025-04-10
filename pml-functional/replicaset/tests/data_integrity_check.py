@@ -10,7 +10,7 @@ from mlink.cluster import Cluster
 def compare_data_rs(db1, db2, port):
 
     # all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port)
-    all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2)
+    all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port)
     # mismatch_metadata = compare_collection_metadata(db1, db2)
     # mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash)
 
@@ -108,7 +108,7 @@ def compare_database_hashes(db1, db2, port):
 
     return db1_collections.keys() | db2_collections.keys(), mismatched_dbs, mismatched_collections
 
-def compare_entries_number(db1_container, db2_container):
+def compare_entries_number(db1, db2, port):
     query = (
         'db.getMongo().getDBNames().forEach(function(i) { '
         'if (!["admin", "local", "config", "percona_mongolink"].includes(i)) { '
@@ -123,9 +123,8 @@ def compare_entries_number(db1_container, db2_container):
         '});}});'
     )
 
-    def get_collection_counts(container):
-        exec_result = container.exec_run(f"mongosh -u root -p root --quiet --eval '{query}'")
-        response = exec_result.output.decode("utf-8").strip()
+    def get_collection_counts(db):
+        response = db.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
 
         collection_counts = {}
 
@@ -139,8 +138,8 @@ def compare_entries_number(db1_container, db2_container):
 
         return collection_counts
 
-    db1_counts = get_collection_counts(db1_container)
-    db2_counts = get_collection_counts(db2_container)
+    db1_counts = get_collection_counts(db1)
+    db2_counts = get_collection_counts(db2)
 
     Cluster.log("Comparing collection record counts...")
     mismatched_dbs = []
