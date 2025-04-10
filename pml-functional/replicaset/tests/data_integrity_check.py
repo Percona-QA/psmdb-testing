@@ -16,14 +16,14 @@ def compare_data_rs(db1, db2, port):
 
     mismatch_summary = []
 
-    # if mismatch_dbs_hash:
-    #     mismatch_summary.extend(mismatch_dbs_hash)
-    # if mismatch_coll_hash:
-    #     mismatch_summary.extend(mismatch_coll_hash)
-    # if mismatch_dbs_count:
-    #     mismatch_summary.extend(mismatch_dbs_count)
-    # if mismatch_coll_count:
-    #     mismatch_summary.extend(mismatch_coll_count)
+    if mismatch_dbs_hash:
+        mismatch_summary.extend(mismatch_dbs_hash)
+    if mismatch_coll_hash:
+        mismatch_summary.extend(mismatch_coll_hash)
+    if mismatch_dbs_count:
+        mismatch_summary.extend(mismatch_dbs_count)
+    if mismatch_coll_count:
+        mismatch_summary.extend(mismatch_coll_count)
     if mismatch_metadata:
         mismatch_summary.extend(mismatch_metadata)
     if mismatch_indexes:
@@ -260,28 +260,20 @@ def compare_collection_indexes(db1, db2, all_collections, port):
 def get_indexes(db, collection_name, port):
     db_name, coll_name = collection_name.split(".", 1)
 
-    print("KEITH TEST: " + db_name + ":" + coll_name)
-
     query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
     response = db.check_output(
         "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --json --eval '" + query + "' --quiet")
 
-    print("KEITH TEST: " + str(response))
-
     try:
         indexes = json.loads(response)
 
-        print("KEITH TEST: " + str(indexes))
-
         def normalize_key(index_key):
-            print("KEITH TEST: 123")
             if isinstance(index_key, dict):
                 return {k: normalize_key(v) for k, v in index_key.items()}
             elif isinstance(index_key, list):
                 return [normalize_key(v) for v in index_key]
             elif isinstance(index_key, dict) and "$numberInt" in index_key:
                 return int(index_key["$numberInt"])
-            print("KEITH TEST: 124")
             return index_key
 
         return sorted([
