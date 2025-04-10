@@ -3,9 +3,9 @@ import sys
 
 import docker
 import json
-# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-#
-# from mlink.cluster import Cluster
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+
+from mlink.cluster import Cluster
 
 def compare_data_rs(db1, db2):
 
