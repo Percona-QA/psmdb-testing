@@ -7,6 +7,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 from mlink.cluster import Cluster
 
+print("Current working dir:", os.getcwd())
+print("Resolved path added to sys.path:", os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../')))
+print("Directory listing:", os.listdir(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../'))))
+
 def compare_data_rs(db1, db2):
 
     all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2)
