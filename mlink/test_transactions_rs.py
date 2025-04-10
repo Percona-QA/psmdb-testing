@@ -312,6 +312,8 @@ def test_rs_mlink_PML_T26(reset_state, srcRS, dstRS, mlink):
     """
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
+    result = src.admin.command("setParameter", 1, transactionLifetimeLimitSeconds=120)
+    assert result.get("ok") == 1.0, f"Failed to set transaction lifetime: {result}"
 
     result = mlink.start()
     assert result is True, "Failed to start mlink service"

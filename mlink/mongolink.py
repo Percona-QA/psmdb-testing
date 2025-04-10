@@ -83,7 +83,7 @@ class Mongolink:
 
     def status(self, timeout=45):
         try:
-            exec_result = self.container.exec_run("curl -m " + str(timeout) + " -s -X GET http://localhost:2242/status -d '{}'")
+            exec_result = self.container.exec_run(f"curl -m {timeout} -s -X GET http://localhost:2242/status -d '{{}}'")
             response = exec_result.output.decode("utf-8", errors="ignore").strip()
             Cluster.log(response)
             status_code = exec_result.exit_code
@@ -111,7 +111,7 @@ class Mongolink:
                 start_time = time.time()
                 for line in log_stream:
                     log_line = line.decode('utf-8').strip()
-                    if "Starting server" in log_line:
+                    if "Checking Recovery Data" in log_line:
                         Cluster.log("Mlink restarted successfully")
                         return
                     if time.time() - start_time > timeout:

@@ -1,14 +1,19 @@
 import docker
 import json
+import subprocess
 from datetime import datetime
 
 from cluster import Cluster
 
 def compare_data_rs(db1, db2):
-    client = docker.from_env()
+    def resolve_container_or_uri(db):
+        if hasattr(db, "connection"):
+            return db.connection
+        elif isinstance(db, str) and (db.startswith("mongodb://") or db.startswith("mongodb+srv://")):
+            return db
 
-    db1_container = client.containers.get(db1.entrypoint)
-    db2_container = client.containers.get(db2.entrypoint)
+    db1_container = resolve_container_or_uri(db1)
+    db2_container = resolve_container_or_uri(db2)
 
     all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1_container, db2_container)
     all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1_container, db2_container)
@@ -70,10 +75,13 @@ def compare_database_hashes(db1_container, db2_container):
         '}}});'
         )
 
-    def get_db_hashes_and_collections(container):
-        exec_result = container.exec_run(f"mongosh -u root -p root --quiet --eval '{query}'")
-        response = exec_result.output.decode("utf-8").strip()
-
+    def get_db_hashes_and_collections(uri):
+        cmd = ["mongosh", uri, "--quiet", "--eval", query]
+        try:
+            result = subprocess.run(cmd, capture_output=True, check=True, text=True)
+            response = result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            return []
         db_hashes = {}
         collection_hashes = {}
 
@@ -140,10 +148,13 @@ def compare_entries_number(db1_container, db2_container):
         '});}});'
     )
 
-    def get_collection_counts(container):
-        exec_result = container.exec_run(f"mongosh -u root -p root --quiet --eval '{query}'")
-        response = exec_result.output.decode("utf-8").strip()
-
+    def get_collection_counts(uri):
+        cmd = ["mongosh", uri, "--quiet", "--eval", query]
+        try:
+            result = subprocess.run(cmd, capture_output=True, check=True, text=True)
+            response = result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            return []
         collection_counts = {}
 
         for line in response.split("\n"):
@@ -210,7 +221,7 @@ def compare_collection_metadata(db1_container, db2_container):
 
     return mismatched_metadata
 
-def get_all_collection_metadata(container):
+def get_all_collection_metadata(uri):
     query = (
         'db.getMongo().getDBNames().forEach(function(i) { '
         'if (!["admin", "local", "config", "percona_mongolink"].includes(i)) { '
@@ -219,9 +230,12 @@ def get_all_collection_metadata(container):
         'print(JSON.stringify(collections)); }});'
     )
 
-    exec_result = container.exec_run(f"mongosh -u root -p root --quiet --json --eval '{query}'")
-    response = exec_result.output.decode("utf-8").strip()
-
+    cmd = ["mongosh", uri, "--quiet", "--json", "--eval", query]
+    try:
+        result = subprocess.run(cmd, capture_output=True, check=True, text=True)
+        response = result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        return []
     try:
         metadata_list = []
         for line in response.splitlines():
@@ -275,13 +289,16 @@ def compare_collection_indexes(db1_container, db2_container, all_collections):
 
     return mismatched_indexes
 
-def get_indexes(container, collection_name):
+def get_indexes(uri, collection_name):
     db_name, coll_name = collection_name.split(".", 1)
 
     query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
-    exec_result = container.exec_run(f"mongosh -u root -p root --quiet --json --eval '{query}'")
-    response = exec_result.output.decode("utf-8").strip()
-
+    cmd = ["mongosh", uri, "--quiet", "--json", "--eval", query]
+    try:
+        result = subprocess.run(cmd, capture_output=True, check=True, text=True)
+        response = result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        return []
     try:
         indexes = json.loads(response)
 
