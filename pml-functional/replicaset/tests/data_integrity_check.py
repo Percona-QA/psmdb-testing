@@ -18,8 +18,8 @@ def compare_data_rs(db1, db2, port):
 
     if mismatch_dbs_hash:
         mismatch_summary.extend(mismatch_dbs_hash)
-    # if mismatch_coll_hash:
-    #     mismatch_summary.extend(mismatch_coll_hash)
+    if mismatch_coll_hash:
+        mismatch_summary.extend(mismatch_coll_hash)
     # if mismatch_dbs_count:
     #     mismatch_summary.extend(mismatch_dbs_count)
     # if mismatch_coll_count:
