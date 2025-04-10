@@ -23,7 +23,7 @@ TIMEOUT = int(os.getenv("TIMEOUT",default = 300))
 
 def create_config(datasize, collections):
     string = []
-    documentCount = int(datasize / 10 / collections)
+    documentCount = int(datasize / collections)
     for x in range(collections):
         collectionName = f"collection{x}"
         string2 = {'database': 'test','collection': collectionName,'count': documentCount,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}
