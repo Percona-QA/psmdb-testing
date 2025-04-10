@@ -36,7 +36,7 @@ def compare_data_rs(db1, db2, port):
     Cluster.log(f"Mismatched databases, collections, or indexes found: {mismatch_summary}")
     return False, mismatch_summary
 
-def compare_database_hashes(db1, db2):
+def compare_database_hashes(db1, db2, port):
     query = (
         'db.getMongo().getDBNames().forEach(function(i) { '
         'if (!["admin", "local", "config", "percona_mongolink"].includes(i)) { '
@@ -52,7 +52,7 @@ def compare_database_hashes(db1, db2):
         '}}});'
         )
 
-    def get_db_hashes_and_collections(db, port):
+    def get_db_hashes_and_collections(db):
         exec_result = db.check_output(f"mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval " + query + " --quiet'")
         response = exec_result.output.decode("utf-8").strip()
 
