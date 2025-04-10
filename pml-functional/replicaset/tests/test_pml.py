@@ -3,6 +3,8 @@ import random
 
 import json
 import testinfra.utils.ansible_runner
+from data_integrity_check import compare_data_rs
+
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-source')
@@ -94,9 +96,22 @@ def drop_database(node,port):
     result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.dropDatabase()' --quiet")
     print(result)
 
-def test_3_prepare_data():
+def test_prepare_data():
     load_data(source,"27017")
     assert confirm_collection_size(source, "27017", collections, datasize)
+
+def test_initiate_pml():
+    result = pml.check_output(
+        "percona-mongolink start")
+    output = json.loads(result)
+    assert output == {"ok": True}
+
+def test_data_transfer():
+    assert confirm_collection_size(destination, "27017", collections, datasize)
+
+def test_data_integrity():
+    assert compare_data_rs(destination, "27017", collections, datasize)
+
 
 # def test_1_print():
 #     print("\nThe infrastructure is ready, waiting " + str(TIMEOUT) + " seconds")
