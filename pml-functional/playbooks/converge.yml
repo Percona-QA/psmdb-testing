@@ -44,6 +44,7 @@
       vars:
         packages:
         - python3.12
+        - python3-pip
         - make
         - wget
         - git
@@ -57,6 +58,7 @@
       vars:
         packages:
         - python3.12
+        - python3-pip
         - make
         - wget
         - git
@@ -92,19 +94,12 @@
       ignore_errors: true
       when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
 
-    - name: Install Pip for installing Python packages
-      apt:
-        name: python3-pip
-        state: present
-      when: ansible_facts['os_family'] == "Debian"
-
-    - name: Install required Python packages for PMM
-      pip:
+    - name: Install multi python packages with version specifiers
+      ansible.builtin.pip:
         name:
           - requests
           - urllib3
           - matplotlib
-        executable: pip3
 
     - name: Clone PML repo
       timeout: 180
