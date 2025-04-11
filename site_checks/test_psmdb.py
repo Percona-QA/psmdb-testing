@@ -7,6 +7,7 @@ from packaging import version
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
 MAJ_VER = PSMDB_VER.split("-")[0]
+FCV_VER = MAJ_VER.split(".")[0] + "." + MAJ_VER.split(".")[1]
 if version.parse(PSMDB_VER) > version.parse("8.0.0"):
     SOFTWARE_FILES = ['bookworm','binary','redhat/9','redhat/8','source','jammy','focal','noble','redhat/2023']
 elif version.parse(PSMDB_VER) > version.parse("7.0.0") and version.parse(PSMDB_VER) < version.parse("8.0.0"):
@@ -25,7 +26,7 @@ else:
 def get_package_tuples():
     list = []
     for software_files in SOFTWARE_FILES:
-        data = 'version_files=percona-server-mongodb-' + PSMDB_VER + '&software_files=' + software_files
+        data = 'version_files=percona-server-mongodb-' + PSMDB_VER + '|percona-server-mongodb-' + FCV_VER + '&software_files=' + software_files
         req = requests.post("https://www.percona.com/products-api.php",data=data,headers = {"content-type": "application/x-www-form-urlencoded; charset=UTF-8"})
         assert req.status_code == 200
         assert req.text != '[]', software_files
