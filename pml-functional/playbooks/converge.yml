@@ -85,9 +85,6 @@
         name: pmm2-client
       when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
-    - set_fact:
-        pmm_host: "{{ lookup('env', 'PMM_HOST') | default('none', true) }}"
-
     - name: Configure pmm
       with_items:
         - pmm-admin config --server-insecure-tls --server-url={{ pmm_host }} --force
