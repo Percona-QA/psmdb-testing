@@ -43,6 +43,7 @@
         update_cache: yes
       vars:
         packages:
+        - python3.12
         - make
         - wget
         - git
@@ -55,6 +56,7 @@
         update_cache: yes
       vars:
         packages:
+        - python3.12
         - make
         - wget
         - git
@@ -89,6 +91,20 @@
       register: go_version_output
       ignore_errors: true
       when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
+
+    - name: Install Pip for installing Python packages
+      apt:
+        name: python3-pip
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Install required Python packages for PMM
+      pip:
+        name:
+          - requests
+          - urllib3
+          - matplotlib
+        executable: pip3
 
     - name: Clone PML repo
       timeout: 180
