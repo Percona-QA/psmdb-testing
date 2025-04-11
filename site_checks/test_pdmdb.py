@@ -8,6 +8,7 @@ from packaging import version
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
 PDMDB_VER = PSMDB_VER.split("-")[0]
+FCV_VER = PDMDB_VER.split(".")[0] + "." + PDMDB_VER.split(".")[1]
 PBM_VER = os.environ.get("PBM_VERSION")
 
 if version.parse(PSMDB_VER) > version.parse("7.0.0"):
@@ -26,7 +27,7 @@ else:
 def get_package_tuples():
     list = []
     for software_files in SOFTWARE_FILES:
-        data = 'version_files=percona-distribution-mongodb-' + PDMDB_VER + '&software_files=' + software_files
+        data = 'version_files=percona-distribution-mongodb-' + PDMDB_VER + '|percona-distribution-mongodb-' + FCV_VER + '&software_files=' + software_files
         req = requests.post("https://www.percona.com/products-api.php",data=data,headers = {"content-type": "application/x-www-form-urlencoded; charset=UTF-8"})
         assert req.status_code == 200
         assert req.text != '[]', software_files
