@@ -1,5 +1,6 @@
 import time
 import urllib3
+import requests
 
 # Disable HTTPS warnings (self-signed certs)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

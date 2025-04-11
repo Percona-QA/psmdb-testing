@@ -75,6 +75,11 @@
         - iputils-ping
       when: ansible_os_family == "Debian"
 
+    - name: Install pmm package on Mongodb hosts
+      apt:
+        name: pmm2-client
+      when: inventory_hostname in groups['psmdb']
+
     - name: Install Go from official tarball on PML host
       become: yes
       vars:
@@ -405,3 +410,4 @@
         src: ../replicaset/tests/gather_performance_stats.py
         dest: /home/{{ ssh_user }}/gather_performance_stats.py
         mode: '0644'
+
