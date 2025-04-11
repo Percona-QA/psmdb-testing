@@ -85,10 +85,12 @@
         name: pmm2-client
       when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
-    - name: Configure pmm
-      with_items:
-        - pmm-admin config --server-insecure-tls --server-url={{ pmm_host }} --force
-        - pmm-admin add mongodb {{ ansible_hostname }} 127.0.0.1:27017
+    - name: Configure PMM on psmdb nodes
+      shell: pmm-admin config --server-insecure-tls --server-url={{ pmm_host }} --force
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Add MongoDB to PMM monitoring
+      shell: pmm-admin add mongodb {{ ansible_hostname }} 127.0.0.1:27017
       when: inventory_hostname in groups['psmdb']
 
     - name: Install Go from official tarball on PML host
