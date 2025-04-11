@@ -95,6 +95,7 @@
       when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
 
     - name: Install multi python packages with version specifiers
+      become: true
       ansible.builtin.pip:
         name:
           - requests
