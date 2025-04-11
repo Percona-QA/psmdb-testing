@@ -374,3 +374,9 @@
         name: pml.service
         state: started
       when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Copy performance script all instances
+      copy:
+        src: cpu_mem_usage.png
+        dest: ../replicaset/tests/gather_performance_stats.py
+        mode: '0644'
