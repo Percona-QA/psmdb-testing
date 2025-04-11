@@ -78,12 +78,12 @@
     - name: Install pmm package Debian
       apt:
         name: pmm2-client
-      when: ansible_os_family == "Debian" inventory_hostname in groups['psmdb']
+      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
 
     - name: Install pmm package RHEL
       yum:
         name: pmm2-client
-      when: ansible_os_family == "RedHat" inventory_hostname in groups['psmdb']
+      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
     - set_fact:
         pmm_host: "{{ lookup('env', 'PMM_HOST') | default('none', true) }}"
