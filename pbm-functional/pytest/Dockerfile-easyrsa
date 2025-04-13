@@ -1,0 +1,35 @@
+FROM alpine
+USER root
+ENV EASYRSA_DN=org
+ENV EASYRSA_REQ_COUNTRY=US
+ENV EASYRSA_REQ_PROVINCE=California
+ENV EASYRSA_REQ_CITY=SanFrancisco
+ENV EASYRSA_REQ_ORG=Percona
+ENV EASYRSA_REQ_EMAIL=pbm@percona.com
+RUN apk add --no-cache bash git openssl && cd ~ && \
+    git clone https://github.com/OpenVPN/easy-rsa.git && \
+    cd easy-rsa/easyrsa3/ && \
+    ./easyrsa init-pki && \
+    ./easyrsa --req-cn=Percona --batch build-ca nopass 
+WORKDIR /root/easy-rsa/easyrsa3
+#For X509 authorization
+RUN ./easyrsa --req-ou=server --subject-alt-name=DNS:localhost,DNS:rscfg01,DNS:rs101,IP:127.0.0.1 --batch build-server-full psmdb nopass && \
+    ./easyrsa --req-ou=client --batch build-client-full pbm nopass && \
+    mkdir -p /etc/x509 && \
+    cp pki/ca.crt /etc/x509/ && \
+    cat pki/issued/psmdb.crt pki/private/psmdb.key > /etc/x509/psmdb.pem && \
+    cat pki/issued/pbm.crt pki/private/pbm.key > /etc/x509/pbm.pem
+#For pykmip server
+RUN ./easyrsa --batch build-server-full pykmip nopass && \
+    ./easyrsa --batch build-client-full mongod nopass && \
+    mkdir -p /etc/pykmip && \
+    cp pki/ca.crt /etc/pykmip/ && \
+    cat pki/issued/mongod.crt pki/private/mongod.key > /etc/pykmip/mongod.pem && \
+    cp pki/issued/pykmip.crt /etc/pykmip/ && \
+    cp pki/private/pykmip.key /etc/pykmip/
+#For nginx proxy to minio 
+RUN ./easyrsa --req-ou=server --subject-alt-name=DNS:nginx-minio --batch build-server-full nginx-minio nopass && \
+    mkdir -p /etc/nginx-minio && \
+    cp pki/ca.crt /etc/nginx-minio/ && \
+    cp pki/issued/nginx-minio.crt /etc/nginx-minio/ && \
+    cp pki/private/nginx-minio.key /etc/nginx-minio/
