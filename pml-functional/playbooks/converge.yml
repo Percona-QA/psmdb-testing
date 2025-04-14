@@ -181,7 +181,7 @@
 
     - name: Get private pml ip address
       set_fact:
-        private_destination_ip: "{{ hostvars['jenkins-pml-mongolink']['ansible_default_ipv4']['address'] }}"
+        private_mongolink_ip: "{{ hostvars['jenkins-pml-mongolink']['ansible_default_ipv4']['address'] }}"
 
     - name: Show source IP (Debug)
       debug:
@@ -481,12 +481,8 @@
       when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
     - name: Configure PMM on source psmdb node
-      shell: pmm-admin config --server-insecure-tls --server-url={{ private_source_ip }} --force
-      when: inventory_hostname == "jenkins-pml-source"
-
-    - name: Configure PMM on destination psmdb node
-      shell: pmm-admin config --server-insecure-tls --server-url={{ private_destination_ip }} --force
-      when: inventory_hostname == "jenkins-pml-destination"
+      shell: pmm-admin config --server-insecure-tls --server-url={{ private_mongolink_ip }} --force
+      when: inventory_hostname in groups['psmdb']
 
 #    - name: Add MongoDB to PMM monitoring
 #      shell: pmm-admin add mongodb {{ ansible_hostname }} 127.0.0.1:27017
