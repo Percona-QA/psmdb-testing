@@ -2,6 +2,8 @@
   hosts: all
   become: true
   become_method: sudo
+  collections:
+    - community.mongodb
   tasks:
     - set_fact:
         # Version of psmdb release to be enabled (psmdb-70)
@@ -76,7 +78,6 @@
 #      when: ansible_os_family == "Debian"
 #
 #    - name: Install Go from official tarball on PML host
-#      become: yes
 #      vars:
 #        go_version: "{{ golang_version }}"
 #        go_tarball: "go{{ go_version }}.linux-amd64.tar.gz"
@@ -105,7 +106,6 @@
 #      when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
 #
 #    - name: Install multi python packages with version specifiers
-#      become: true
 #      pip:
 #        name:
 #          - requests
@@ -483,10 +483,9 @@
 #      until: "pmm_config_result.rc == 0"
 #      retries: 3
 #      delay: 5
-#      become: yes
 #      when: inventory_hostname in groups['psmdb']
 
-    - name: Create MongoDB pmmMonitor role (no auth)
+    - name: Create MongoDB pmmMonitor role
       community.mongodb.mongodb_shell:
         script: |
           db.getSiblingDB("admin").createRole({
