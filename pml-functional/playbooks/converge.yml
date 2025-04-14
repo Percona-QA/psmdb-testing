@@ -454,7 +454,6 @@
         executable: /bin/bash
       when: inventory_hostname == "jenkins-pml-mongolink"
 
-
     - name: Install pmm package Debian
       apt:
         name: pmm3-client
@@ -478,7 +477,12 @@
       when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
     - name: Configure PMM on source psmdb node
-      shell: pmm-admin config --server-insecure-tls --server-url=https://admin:admin@{{ private_mongolink_ip }}:443 --force --retry=1
+      shell: >
+        pmm-admin config --server-insecure-tls --server-url=https://admin:admin@{{ private_mongolink_ip }}:443 --force
+      register: pmm_config_result
+      until: "pmm_config_result.rc == 0"
+      retries: 3
+      delay: 5
       become: yes
       when: inventory_hostname in groups['psmdb']
 
