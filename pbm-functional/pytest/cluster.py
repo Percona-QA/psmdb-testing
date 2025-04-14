@@ -373,10 +373,10 @@ class Cluster:
         Cluster.log("The cluster was prepared in {} seconds".format(duration))
 
     # setups pbm from default config-file, minio as storage
-    def setup_pbm(self):
+    def setup_pbm(self,file="/etc/pbm.conf"):
         host = self.pbm_cli
         n = testinfra.get_host("docker://" + host)
-        result = n.check_output('pbm config --file=/etc/pbm.conf --out=json')
+        result = n.check_output('pbm config --file=' + file + ' --out=json')
         Cluster.log("Setup PBM:\n" + result)
         time.sleep(5)
 
@@ -460,7 +460,7 @@ class Cluster:
             time.sleep(1)
         Cluster.log("Restore started")
         timeout=kwargs.get('timeout', 240)
-        result = n.run('timeout ' + str(timeout) + ' pbm restore ' + name + ' --wait')
+        result = n.run('SSL_CERT_FILE=/etc/nginx-minio/ca.crt timeout ' + str(timeout) + ' pbm restore ' + name + ' --wait')
 
         if result.rc == 0 and "Error" not in result.stdout:
             Cluster.log(result.stdout)
