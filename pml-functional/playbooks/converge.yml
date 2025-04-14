@@ -421,6 +421,6 @@
     - name: Copy performance script all instance
       copy:
         src: ../replicaset/tests/gather_performance_stats.py
-        dest: /home/{{ ssh_user }}/gather_performance_stats.py
+        dest: /home/keith/gather_performance_stats.py
         mode: '0644'
 
