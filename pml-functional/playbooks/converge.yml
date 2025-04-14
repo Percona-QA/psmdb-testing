@@ -406,34 +406,49 @@
         url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
         dest: /usr/local/bin/runc
         mode: '0755'
-      when: inventory_hostname == "jenkins-pml-source"
-
-    - name: Move runc to /usr/bin
-      ansible.builtin.command:
-        cmd: mv /usr/local/bin/runc /usr/bin/runc
+      when: inventory_hostname == "jenkins-pml-mongolink"
       args:
-        creates: /usr/bin/runc
-      when: inventory_hostname == "jenkins-pml-source"
+        creates: /usr/local/bin/runc
+
+    - name: Move runc to /usr/bin (force overwrite)
+      ansible.builtin.copy:
+        src: /usr/local/bin/runc
+        dest: /usr/bin/runc
+        remote_src: yes
+        mode: '0755'
+        force: yes
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Check runc version
+      ansible.builtin.command: runc --version
+      register: runc_version
+      changed_when: false
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Show runc version
+      ansible.builtin.debug:
+        msg: "runc version: {{ runc_version.stdout }}"
+      when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Ensure docker group exists
       ansible.builtin.group:
         name: docker
         state: present
-      when: inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Add user ssh-user to docker group
       ansible.builtin.user:
         name: keith
         groups: docker
         append: yes
-      when: inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Install PMM Server
       ansible.builtin.shell: |
         curl -fsSL https://www.percona.com/get/pmm | /bin/bash
       args:
         executable: /bin/bash
-      when: inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-pml-mongolink"
 
 
 #    - name: Install pmm package Debian
