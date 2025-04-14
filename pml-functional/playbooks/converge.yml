@@ -491,8 +491,6 @@
       register: pmm_role_check
       failed_when: false
       changed_when: false
-      debug:
-        msg: "Role check output: {{ pmm_role_check.stdout }}"
       when: inventory_hostname in groups['psmdb']
 
     - name: Create MongoDB pmmMonitor role (no auth)
