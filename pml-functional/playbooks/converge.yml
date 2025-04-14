@@ -442,7 +442,7 @@
 
     - name: Add user ssh-user to docker group
       ansible.builtin.user:
-        name: keith
+        name: { { ssh_user } }
         groups: docker
         append: yes
       when: inventory_hostname == "jenkins-pml-mongolink"
@@ -478,7 +478,7 @@
       when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
     - name: Configure PMM on source psmdb node
-      shell: pmm-admin config --server-insecure-tls --server-url=https://admin:admin@{{ private_mongolink_ip }}:443 --force
+      shell: pmm-admin config --server-insecure-tls --server-url=https://admin:admin@{{ private_mongolink_ip }}:443 --force --retry=1
       become: yes
       when: inventory_hostname in groups['psmdb']
 
