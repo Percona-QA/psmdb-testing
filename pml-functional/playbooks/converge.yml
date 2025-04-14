@@ -352,9 +352,9 @@
     - name: Create a replicaset rs
       community.mongodb.mongodb_replicaset:
         replica_set: rs
-        login_host: "{{ public_source_ip }}"
+        login_host: "{{ private_source_ip }}"
         members:
-          - host: "{{ public_source_ip }}:27017"
+          - host: "{{ private_source_ip }}:27017"
             priority: 1
         validate: no
       when: inventory_hostname == "jenkins-pml-source"
@@ -362,9 +362,9 @@
     - name: Create a replicaset rs
       community.mongodb.mongodb_replicaset:
         replica_set: rs
-        login_host: "{{ public_destination_ip }}"
+        login_host: "{{ private_destination_ip }}"
         members:
-          - host: "{{ public_destination_ip }}:27017"
+          - host: "{{ private_destination_ip }}:27017"
             priority: 1
         validate: no
       when: inventory_hostname == "jenkins-pml-destination"
