@@ -463,7 +463,7 @@
       yum:
         name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
         state: present
-      when: ansible_os_family == "RedHat" and
+      when: ansible_os_family == "RedHat"
 
     - name: Enable pmm3-client repository
       ansible.builtin.command: percona-release enable pmm3-client
