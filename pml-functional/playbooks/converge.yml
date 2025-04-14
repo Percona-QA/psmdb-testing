@@ -89,6 +89,11 @@
         creates: /usr/bin/runc
       when: inventory_hostname in groups['psmdb']
 
+    - name: Ensure docker group exists
+      ansible.builtin.group:
+        name: docker
+        state: present
+
     - name: Add user ssh-user to docker group
       ansible.builtin.user:
         name: keith
