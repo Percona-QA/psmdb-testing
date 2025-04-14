@@ -194,8 +194,8 @@
       blockinfile:
         path: /etc/hosts
         block: |
-          {{ public_source_ip }}    source
-          {{ public_destination_ip }}    destination
+          {{ private_source_ip }}    source
+          {{ private_mongolink_ip }}    destination
         create: false
         unsafe_writes: true
       when: inventory_hostname == "jenkins-pml-mongolink"
@@ -478,16 +478,7 @@
       when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
     - name: Configure PMM on source psmdb node
-      shell: pmm-admin config --server-insecure-tls --server-url={{ private_mongolink_ip }} --force
+      shell: pmm-admin config --server-insecure-tls --server-url=https://admin:admin@{{ private_mongolink_ip }}:443 --force
+      become: yes
       when: inventory_hostname in groups['psmdb']
-
-#    - name: Add MongoDB to PMM monitoring
-#      shell: pmm-admin add mongodb {{ ansible_hostname }} 127.0.0.1:27017
-#      when: inventory_hostname == "jenkins-pml-source"
-#
-#    - name: Copy performance script all instance
-#      copy:
-#        src: ../replicaset/tests/gather_performance_stats.py
-#        dest: /home/keith/gather_performance_stats.py
-#        mode: '0644'
 
