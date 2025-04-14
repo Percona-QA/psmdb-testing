@@ -559,7 +559,14 @@
         - pmm_user_check.stdout == "null"
         - psmdb_version.stdout.split('.')[0] | int < 8
 
-    - name: Configure PMM on source psmdb node
+    - name: Check if MongoDB is already registered in PMM
+      shell: pmm-admin list | grep mongodb
+      register: mongodb_service_check
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Configure PMM on psmdb nodes
       shell: >
         pmm-admin add mongodb \
         --username=pmm \
@@ -568,4 +575,6 @@
       until: "pmm_config_result.rc == 0"
       retries: 3
       delay: 5
-      when: inventory_hostname in groups['psmdb']
+      when:
+      - inventory_hostname in groups['psmdb']
+      - mongodb_service_check.stdout == ""
