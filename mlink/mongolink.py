@@ -85,6 +85,7 @@ class Mongolink:
         try:
             exec_result = self.container.exec_run(f"curl -m {timeout} -s -X GET http://localhost:2242/status -d '{{}}'")
             response = exec_result.output.decode("utf-8", errors="ignore").strip()
+            Cluster.log(response)
             status_code = exec_result.exit_code
 
             if status_code != 0 or not response:
