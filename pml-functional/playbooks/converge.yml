@@ -400,6 +400,11 @@
         state: started
       when: inventory_hostname == "jenkins-pml-mongolink"
 
+    - name: Import Percona GPG key
+      rpm_key:
+        key: https://www.percona.com/downloads/RPM-GPG-KEY-percona
+        state: present
+      when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Download runc binary
       ansible.builtin.get_url:
