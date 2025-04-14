@@ -13,9 +13,9 @@
 #        # Github token to access mongolink repo
 #        token: "{{ lookup('env', 'MONGO_REPO_TOKEN') }}"
 #
-#    - set_fact:
-#        # Version of psmdb (v7.0, latest)
-#        psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
+    - set_fact:
+        # Version of psmdb (v7.0, latest)
+        psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
 #
 #    - set_fact:
 #        # Version of mongosh
@@ -524,7 +524,7 @@
       changed_when: false
       when: inventory_hostname in groups['psmdb']
 
-    - name: Create MongoDB pmmMonitor role (no auth)
+    - name: Create MongoDB PMM User role on psmdb >= 8
       community.mongodb.mongodb_shell:
         eval: |
           db.getSiblingDB("admin").createUser({
@@ -537,4 +537,35 @@
                   { "db": "admin", "role": "directShardOperations" }
               ]
           })
-      when: inventory_hostname in groups['psmdb'] and pmm_user_check.stdout == "null"
+      when:
+        - inventory_hostname in groups['psmdb']
+        - pmm_user_check.stdout == "null"
+        - psmdb_version.stdout.split('.')[0] | int >= 8'
+
+    - name: Create MongoDB PMM User role on psmdb < 7
+      community.mongodb.mongodb_shell:
+        eval: |
+          db.getSiblingDB("admin").({
+              "user": "pmm",
+              "pwd": "password123",
+              "roles": [
+                  { "db": "admin", "role": "pmmMonitor" },
+                  { "db": "local", "role": "read" },
+                  { "db": "admin", "role": "clusterMonitor" }
+              ]
+          })
+      when:
+        - inventory_hostname in groups['psmdb']
+        - pmm_user_check.stdout == "null"
+        - psmdb_version.stdout.split('.')[0] | int < 8
+
+    - name: Configure PMM on source psmdb node
+      shell: >
+        pmm-admin add mongodb \
+        --username=pmm \
+        --password=password123
+      register: pmm_config_result
+      until: "pmm_config_result.rc == 0"
+      retries: 3
+      delay: 5
+      when: inventory_hostname in groups['psmdb']
