@@ -516,3 +516,25 @@
           })
       when: inventory_hostname in groups['psmdb'] and pmm_role_check.stdout == "null"
 
+    - name: Check if pmm user exists
+      shell: |
+        mongo --quiet --eval 'db.getSiblingDB("admin").getUser("pmm")'
+      register: pmm_user_check
+      failed_when: false
+      changed_when: false
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Create MongoDB pmmMonitor role (no auth)
+      community.mongodb.mongodb_shell:
+        eval: |
+          db.getSiblingDB("admin").createUser({
+              "user": "pmm",
+              "pwd": "password123",
+              "roles": [
+                  { "db": "admin", "role": "pmmMonitor" },
+                  { "db": "local", "role": "read" },
+                  { "db": "admin", "role": "clusterMonitor" },
+                  { "db": "admin", "role": "directShardOperations" }
+              ]
+          })
+      when: inventory_hostname in groups['psmdb'] and pmm_user_check.stdout == "null
