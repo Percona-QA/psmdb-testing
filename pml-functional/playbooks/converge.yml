@@ -442,7 +442,7 @@
 
     - name: Add user ssh-user to docker group
       ansible.builtin.user:
-        name: {{ ssh_user }}
+        name: "{{ ssh_user }}"
         groups: docker
         append: yes
       when: inventory_hostname == "jenkins-pml-mongolink"
