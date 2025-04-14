@@ -485,6 +485,14 @@
 #      delay: 5
 #      when: inventory_hostname in groups['psmdb']
 
+    - name: Check if pmmMonitor role exists
+      shell: |
+        mongo --quiet --eval 'db.getSiblingDB("admin").getRole("pmmMonitor")'
+      register: pmm_role_check
+      failed_when: false
+      changed_when: false
+      when: inventory_hostname in groups['psmdb']
+
     - name: Create MongoDB pmmMonitor role (no auth)
       community.mongodb.mongodb_shell:
         eval: |
