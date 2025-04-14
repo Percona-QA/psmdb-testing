@@ -5,32 +5,32 @@
   collections:
     - community.mongodb
   tasks:
-    - set_fact:
-        # Version of psmdb release to be enabled (psmdb-70)
-        psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-80', true) }}"
-
-    - set_fact:
-        # Github token to access mongolink repo
-        token: "{{ lookup('env', 'MONGO_REPO_TOKEN') }}"
-
-    - set_fact:
-        # Version of psmdb (v7.0, latest)
-        psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
-
-    - set_fact:
-        # Version of mongosh
-        psmdb_mongosh: "{{ psmdb_to_test.split('-')[1].split('.')[0] }}"
-
-    - set_fact:
-        # Branch of pml branch to test
-        pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('main', true) }}"
-
-    - set_fact:
-        # Branch of pml branch to test
-        golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.2', true) }}"
-
-    - set_fact:
-        ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
+#    - set_fact:
+#        # Version of psmdb release to be enabled (psmdb-70)
+#        psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-80', true) }}"
+#
+#    - set_fact:
+#        # Github token to access mongolink repo
+#        token: "{{ lookup('env', 'MONGO_REPO_TOKEN') }}"
+#
+#    - set_fact:
+#        # Version of psmdb (v7.0, latest)
+#        psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
+#
+#    - set_fact:
+#        # Version of mongosh
+#        psmdb_mongosh: "{{ psmdb_to_test.split('-')[1].split('.')[0] }}"
+#
+#    - set_fact:
+#        # Branch of pml branch to test
+#        pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('main', true) }}"
+#
+#    - set_fact:
+#        # Branch of pml branch to test
+#        golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.2', true) }}"
+#
+#    - set_fact:
+#        ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
 
 #    - name: Prerequisite for debian 11
 #      apt:
@@ -491,6 +491,8 @@
       register: pmm_role_check
       failed_when: false
       changed_when: false
+      debug:
+        msg: "Role check output: {{ pmm_role_check.stdout }}"
       when: inventory_hostname in groups['psmdb']
 
     - name: Create MongoDB pmmMonitor role (no auth)
@@ -514,5 +516,5 @@
             ],
             "roles": []
           })
-      when: inventory_hostname in groups['psmdb']
+      when: inventory_hostname in groups['psmdb'] and pmm_role_check.stdout == "null"
 
