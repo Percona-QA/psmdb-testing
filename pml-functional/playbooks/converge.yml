@@ -463,12 +463,13 @@
       yum:
         name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
         state: present
-      when: ansible_os_family == "RedHat"
+      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
     - name: Enable pmm3-client repository
       ansible.builtin.command: percona-release enable pmm3-client
       register: enable_output
       changed_when: "'Enabled' in enable_output.stdout"
+      when: inventory_hostname in groups['psmdb']
 
     - name: Install pmm package RHEL
       yum:
