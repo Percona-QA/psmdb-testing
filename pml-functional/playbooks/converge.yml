@@ -75,15 +75,29 @@
         - iputils-ping
       when: ansible_os_family == "Debian"
 
-    - name: Install pmm package Debian
-      apt:
-        name: pmm2-client
-      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
+    - name: Download runc binary
+      ansible.builtin.get_url:
+        url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
+        dest: /usr/local/bin/runc
+        mode: '0755'
 
-    - name: Install pmm package RHEL
-      yum:
-        name: pmm2-client
-      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
+    - name: Move runc to /usr/bin
+      ansible.builtin.command:
+        cmd: mv /usr/local/bin/runc /usr/bin/runc
+      args:
+        creates: /usr/bin/runc
+
+    - name: Add user ssh-user to docker group
+      ansible.builtin.user:
+        name: keith
+        groups: docker
+        append: yes
+
+    - name: Install PMM Server
+      ansible.builtin.shell: |
+        curl -fsSL https://www.percona.com/get/pmm | /bin/bash
+      args:
+        executable: /bin/bash
 
     - name: Configure PMM on psmdb nodes
       shell: pmm-admin config --server-insecure-tls --server-url={{ pmm_host }} --force
