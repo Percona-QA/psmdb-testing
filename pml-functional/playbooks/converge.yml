@@ -506,5 +506,5 @@
             ],
             "roles": []
           })
-      when: inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname in groups['psmdb']
 
