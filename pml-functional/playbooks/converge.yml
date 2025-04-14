@@ -75,47 +75,6 @@
         - iputils-ping
       when: ansible_os_family == "Debian"
 
-    - name: Download runc binary
-      ansible.builtin.get_url:
-        url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
-        dest: /usr/local/bin/runc
-        mode: '0755'
-      when: inventory_hostname in groups['psmdb']
-
-    - name: Move runc to /usr/bin
-      ansible.builtin.command:
-        cmd: mv /usr/local/bin/runc /usr/bin/runc
-      args:
-        creates: /usr/bin/runc
-      when: inventory_hostname in groups['psmdb']
-
-    - name: Ensure docker group exists
-      ansible.builtin.group:
-        name: docker
-        state: present
-
-    - name: Add user ssh-user to docker group
-      ansible.builtin.user:
-        name: keith
-        groups: docker
-        append: yes
-      when: inventory_hostname in groups['psmdb']
-
-    - name: Install PMM Server
-      ansible.builtin.shell: |
-        curl -fsSL https://www.percona.com/get/pmm | /bin/bash
-      args:
-        executable: /bin/bash
-      when: inventory_hostname in groups['psmdb']
-
-    - name: Configure PMM on psmdb nodes
-      shell: pmm-admin config --server-insecure-tls --server-url={{ pmm_host }} --force
-      when: inventory_hostname in groups['psmdb']
-
-    - name: Add MongoDB to PMM monitoring
-      shell: pmm-admin add mongodb {{ ansible_hostname }} 127.0.0.1:27017
-      when: inventory_hostname in groups['psmdb']
-
     - name: Install Go from official tarball on PML host
       become: yes
       vars:
@@ -441,9 +400,78 @@
         state: started
       when: inventory_hostname == "jenkins-pml-mongolink"
 
-    - name: Copy performance script all instance
-      copy:
-        src: ../replicaset/tests/gather_performance_stats.py
-        dest: /home/keith/gather_performance_stats.py
-        mode: '0644'
+
+    - name: Download runc binary
+      ansible.builtin.get_url:
+        url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
+        dest: /usr/local/bin/runc
+        mode: '0755'
+      when: inventory_hostname == "jenkins-pml-source"
+
+    - name: Move runc to /usr/bin
+      ansible.builtin.command:
+        cmd: mv /usr/local/bin/runc /usr/bin/runc
+      args:
+        creates: /usr/bin/runc
+      when: inventory_hostname == "jenkins-pml-source"
+
+    - name: Ensure docker group exists
+      ansible.builtin.group:
+        name: docker
+        state: present
+      when: inventory_hostname == "jenkins-pml-source"
+
+    - name: Add user ssh-user to docker group
+      ansible.builtin.user:
+        name: keith
+        groups: docker
+        append: yes
+      when: inventory_hostname == "jenkins-pml-source"
+
+    - name: Install PMM Server
+      ansible.builtin.shell: |
+        curl -fsSL https://www.percona.com/get/pmm | /bin/bash
+      args:
+        executable: /bin/bash
+      when: inventory_hostname == "jenkins-pml-source"
+
+
+#    - name: Install pmm package Debian
+#      apt:
+#        name: pmm3-client
+#      when: ansible_os_family == "Debian"
+
+    - name: Configure RHEL Percona repositories
+      yum:
+        name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Enable pmm3-client repository
+      ansible.builtin.command: percona-release enable pmm3-client
+      register: enable_output
+      changed_when: "'Enabled' in enable_output.stdout"
+
+    - name: Install pmm package RHEL
+      yum:
+        name: pmm-client
+      when: ansible_os_family == "RedHat"
+
+#    - name: Configure PMM on source psmdb node
+#      shell: pmm-admin config --server-insecure-tls --server-url={{ private_source_ip }} --force
+#      when: inventory_hostname == "jenkins-pml-source"
+#
+#    - name: Configure PMM on destination psmdb node
+#      shell: pmm-admin config --server-insecure-tls --server-url={{ private_destination_ip }} --force
+#      when: inventory_hostname == "jenkins-pml-destination"
+
+#    - name: Add MongoDB to PMM monitoring
+#      shell: pmm-admin add mongodb {{ ansible_hostname }} 127.0.0.1:27017
+#      when: inventory_hostname == "jenkins-pml-source"
+#
+#    - name: Copy performance script all instance
+#      copy:
+#        src: ../replicaset/tests/gather_performance_stats.py
+#        dest: /home/keith/gather_performance_stats.py
+#        mode: '0644'
 
