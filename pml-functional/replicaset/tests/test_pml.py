@@ -104,7 +104,7 @@ def obtain_pml_address(node):
 def collect_cpu_useage(node, ipaddress):
     pmmexporterid = node.check_output("pmm-admin list | awk '/node_exporter/ {print $4}'")
     print("KEITH TEST: " + pmmexporterid )
-    print("KEITH TEST 2: " + node.check_output('sudo curl -sk -u admin:admin "https://${ipaddress}/prometheus/api/v1/query?query=100%20-%20(rate(node_cpu_seconds_total%7Bmode%3D%22idle%22%2C%20instance%3D%22' + pmmexporterid + '%22%7D%5B10m%5D)%20*%20100)"'))
+    print("KEITH TEST 2: " + node.check_output('sudo curl -sk -u admin:admin "https://' + ipaddress + '/prometheus/api/v1/query?query=100%20-%20(rate(node_cpu_seconds_total%7Bmode%3D%22idle%22%2C%20instance%3D%22' + pmmexporterid + '%22%7D%5B10m%5D)%20*%20100)"'))
 
 
 # def test_prepare_data():
@@ -126,5 +126,5 @@ def collect_cpu_useage(node, ipaddress):
 def test_collect_performance_info():
     pmlAddress = obtain_pml_address(pml)
     collect_cpu_useage(source, pmlAddress)
-    collect_cpu_useage(destination, pmlAddress)
+    # collect_cpu_useage(destination, pmlAddress)
     assert 1 == 2
