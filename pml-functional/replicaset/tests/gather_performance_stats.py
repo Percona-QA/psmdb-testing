@@ -1,57 +1,51 @@
-import time
-import urllib3
-import requests
-
-# Disable HTTPS warnings (self-signed certs)
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-URL = "https://localhost/prometheus/api/v1/query"
-AUTH = ('admin', 'admin')
-VERIFY_SSL = False
-
-CPU_QUERY = '100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[1m])) * 100)'
-MEM_QUERY = '((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) * 100'
-
-timestamps = []
-cpu_usages = []
-mem_usages = []
-
-print("Collecting CPU and Memory usage for 1 minute...")
-
-for _ in range(60):  # run for 60 seconds
-    timestamp = int(time.time())
-
-    # Get CPU usage
-    cpu_resp = requests.get(URL, params={'query': CPU_QUERY}, auth=AUTH, verify=VERIFY_SSL)
-    cpu_val = float(cpu_resp.json()['data']['result'][0]['value'][1])
-
-    # Get Memory usage
-    mem_resp = requests.get(URL, params={'query': MEM_QUERY}, auth=AUTH, verify=VERIFY_SSL)
-    mem_val = float(mem_resp.json()['data']['result'][0]['value'][1])
-
-    # Store
-    timestamps.append(timestamp)
-    cpu_usages.append(cpu_val)
-    mem_usages.append(mem_val)
-
-    time.sleep(1)
-
-# Convert timestamps to readable format (optional)
+import json
+import matplotlib.pyplot as plt
 from datetime import datetime
-readable_times = [datetime.fromtimestamp(ts).strftime('%H:%M:%S') for ts in timestamps]
+import argparse
 
-# Plot both lines
-plt.figure(figsize=(12, 6))
-plt.plot(readable_times, cpu_usages, label="CPU Usage (%)", linewidth=2)
-plt.plot(readable_times, mem_usages, label="Memory Usage (%)", linewidth=2)
+def load_data(json_path):
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+    return data
 
-plt.title("CPU and Memory Usage Over 1 Minute")
-plt.xlabel("Time")
-plt.ylabel("Usage (%)")
-plt.legend()
-plt.grid(True)
-plt.xticks(rotation=45)
-plt.tight_layout()
+def plot_cpu_usage(data, output_file=None, show=False):
+    results = data.get("data", {}).get("result", [])
+    if not results:
+        print("No CPU usage data found.")
+        return
 
-plt.savefig("cpu_mem_usage.png")
-print("✅ Saved chart as cpu_mem_usage.png")
+    plt.figure(figsize=(14, 7))
+
+    for instance_data in results:
+        instance = instance_data["metric"].get("instance", "unknown")
+        timestamps = [datetime.utcfromtimestamp(point[0]) for point in instance_data["values"]]
+        values = [float(point[1]) for point in instance_data["values"]]
+
+        plt.plot(timestamps, values, marker='o', linestyle='-', label=instance)
+
+    plt.title("CPU Usage Over Time")
+    plt.xlabel("Time (UTC)")
+    plt.ylabel("CPU Usage (%)")
+    plt.grid(True)
+    plt.legend(title="Instance")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    if output_file:
+        plt.savefig(output_file)
+        print(f"✅ Graph saved to: {output_file}")
+
+    if show:
+        plt.show()
+
+    plt.close()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Plot CPU usage from a Prometheus JSON export.")
+    parser.add_argument("json_file", help="Path to the Prometheus CPU usage JSON file")
+    parser.add_argument("-o", "--output", help="Output file path (e.g. cpu_graph.png)", default="cpu_usage.png")
+    parser.add_argument("--show", action="store_true", help="Show graph window as well as saving it")
+    args = parser.parse_args()
+
+    cpu_data = load_data(args.json_file)
+    plot_cpu_usage(cpu_data, output_file=args.output, show=args.show)
