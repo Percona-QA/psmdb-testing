@@ -586,5 +586,5 @@
       debug:
         msg: "PMM client is connected to the server."
       when:
-      - "'Connected        : true' in pmm_connection_check.stdout"
+      - 'Connected        : true' in pmm_connection_check.stdout
       - inventory_hostname in groups['psmdb']
