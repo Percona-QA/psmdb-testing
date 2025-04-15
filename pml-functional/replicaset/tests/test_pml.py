@@ -98,7 +98,7 @@ def drop_database(node,port):
 
 def obtain_pml_address(node):
     ipaddress = node.check_output(
-        "ip -4 addr show scope global | grep inet | awk '{print $2}' | cut -d/ -f1")
+        "ip -4 addr show scope global | grep inet | awk '{print $2}' | cut -d/ -f1 | head -n 1")
     return ipaddress
 
 def collect_cpu_useage(node, ipaddress):
