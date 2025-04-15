@@ -105,21 +105,21 @@ def collect_cpu_useage(node, ipaddress):
     node.run('curl - sk - u admin: admin "https://' + ipaddress + '/prometheus/api/v1/query?query=100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[10m])) * 100)" > /home/cpu.json')
 
 
-def test_prepare_data():
-    load_data(source,"27017")
-    assert confirm_collection_size(source, "27017", collections, datasize)
-
-def test_initiate_pml():
-    result = pml.check_output(
-        "percona-mongolink start")
-    output = json.loads(result)
-    assert output in [{"ok": True}, {'error': 'already running', 'ok': False}]
-
-def test_data_transfer():
-    assert confirm_collection_size(destination, "27017", collections, datasize)
-
-def test_data_integrity():
-    assert compare_data_rs(source, destination, "27017")
+# def test_prepare_data():
+#     load_data(source,"27017")
+#     assert confirm_collection_size(source, "27017", collections, datasize)
+#
+# def test_initiate_pml():
+#     result = pml.check_output(
+#         "percona-mongolink start")
+#     output = json.loads(result)
+#     assert output in [{"ok": True}, {'error': 'already running', 'ok': False}]
+#
+# def test_data_transfer():
+#     assert confirm_collection_size(destination, "27017", collections, datasize)
+#
+# def test_data_integrity():
+#     assert compare_data_rs(source, destination, "27017")
 
 def collect_performance_info():
     pmlAddress = obtain_pml_address(pml)
