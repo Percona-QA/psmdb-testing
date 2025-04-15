@@ -577,7 +577,7 @@
 #      - mongodb_service_check.stdout == ""
 
     - name: Check PMM client connection to PMM server
-      shell: pmm-admin status | grep "Connected:"
+      shell: pmm-admin status | grep "Connected        :"
       register: pmm_connection_check
       changed_when: false
       failed_when: false
