@@ -589,8 +589,9 @@
 #      - "'Connected        : true' in pmm_connection_check.stdout"
 #      - inventory_hostname in groups['psmdb']
 
-      - name: Copy graph image to node
+      - name: Transfer graph creating script to nodes
         copy:
           src: ../replicaset/tests/gather_performance_stats.py
           dest: /home/keith/gather_performance_stats.py
           mode: '0644'
+        when: inventory_hostname in groups['psmdb']
