@@ -111,6 +111,7 @@
           - requests
           - urllib3
           - matplotlib
+          - pymongo
 
     - name: Clone PML repo
       timeout: 180
@@ -344,10 +345,6 @@
     - name: start mongod service
       service: name=mongod state=started
       when: inventory_hostname in groups['psmdb']
-
-    - name: Install pymongo
-      pip:
-        name: pymongo
 
     - name: Create a replicaset rs
       community.mongodb.mongodb_replicaset:
