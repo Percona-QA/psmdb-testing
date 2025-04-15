@@ -103,7 +103,7 @@ def obtain_pml_address(node):
 
 def collect_cpu_useage(node, ipaddress):
     print("KEITH TEST: " + ipaddress)
-    node.run('curl -sk -u admin:admin "https://' + ipaddress + '/prometheus/api/v1/query?query=100%20-%20(avg%20by%20(instance)%20(rate(node_cpu_seconds_total%7Bmode%3D%22idle%22%7D%5B10m%5D))%20*%20100)" > /home/keith/cpu.json')
+    print("KEITH TEST 2: " + node.check_output('curl -sk -u admin:admin "https://' + ipaddress + '/prometheus/api/v1/query?query=100%20-%20(avg%20by%20(instance)%20(rate(node_cpu_seconds_total%7Bmode%3D%22idle%22%7D%5B10m%5D))%20*%20100)" > /home/keith/cpu.json'))
 
 
 # def test_prepare_data():
