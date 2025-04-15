@@ -529,7 +529,7 @@
       debug:
         msg: "{{ psmdb_version.split('.')[0] }}"
 
-    - name: Create MongoDB PMM User role on psmdb >= 8
+    - name: Create MongoDB PMM User role on psmdb >= "8"
       community.mongodb.mongodb_shell:
         eval: |
           db.getSiblingDB("admin").createUser({
@@ -547,7 +547,7 @@
         - pmm_user_check == "null"
         - psmdb_version.split('.')[0] | int >= 8
 
-    - name: Create MongoDB PMM User role on psmdb < 8
+    - name: Create MongoDB PMM User role on psmdb < "8"
       community.mongodb.mongodb_shell:
         eval: |
           db.getSiblingDB("admin").({
