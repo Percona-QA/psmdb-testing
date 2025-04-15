@@ -546,23 +546,23 @@
         - inventory_hostname in groups['psmdb']
         - pmm_user_check == "null"
         - psmdb_version.split('.')[0] | int >= 8
-#
-#    - name: Create MongoDB PMM User role on psmdb < 8
-#      community.mongodb.mongodb_shell:
-#        eval: |
-#          db.getSiblingDB("admin").({
-#              "user": "pmm",
-#              "pwd": "password123",
-#              "roles": [
-#                  { "db": "admin", "role": "pmmMonitor" },
-#                  { "db": "local", "role": "read" },
-#                  { "db": "admin", "role": "clusterMonitor" }
-#              ]
-#          })
-#      when:
-#        - inventory_hostname in groups['psmdb']
-#        - pmm_user_check == "null"
-#        - psmdb_version.split('.')[0] | int < 8
+
+    - name: Create MongoDB PMM User role on psmdb < 8
+      community.mongodb.mongodb_shell:
+        eval: |
+          db.getSiblingDB("admin").({
+              "user": "pmm",
+              "pwd": "password123",
+              "roles": [
+                  { "db": "admin", "role": "pmmMonitor" },
+                  { "db": "local", "role": "read" },
+                  { "db": "admin", "role": "clusterMonitor" }
+              ]
+          })
+      when:
+        - inventory_hostname in groups['psmdb']
+        - pmm_user_check == "null"
+        - psmdb_version.split('.')[0] | int < 8
 #
 #    - name: Check if MongoDB is already registered in PMM
 #      shell: pmm-admin list | grep mongodb
