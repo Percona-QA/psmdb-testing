@@ -581,4 +581,4 @@
       delay: 5
       when:
       - inventory_hostname in groups['psmdb']
-      - mongodb_service_check == ""
+      - mongodb_service_check.stdout == ""
