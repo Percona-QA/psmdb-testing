@@ -1,5 +1,7 @@
 import os
 import random
+import requests
+import urllib3
 
 import json
 import testinfra.utils.ansible_runner
@@ -62,6 +64,20 @@ def restart_mongod(node):
         result = node.check_output('systemctl restart mongod')
     print('restarting mongod on ' + hostname)
 
+def collect_cpu_useage():
+    urllib3.disable_warnings()
+
+    url = "https://<PMM_SERVER>/prometheus/api/v1/query"
+    query = '100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[10m])) * 100)'
+    resp = requests.get(url, params={"query": query}, auth=("admin", "admin"), verify=False)
+
+    data = resp.json()["data"]["result"]
+    for node in data:
+        instance = node["metric"]["instance"]
+        cpu_usage = float(node["value"][1])
+        print(f"{instance}: {cpu_usage:.2f}% CPU usage (last 10 min)")
+
+
 def load_data(node,port):
     if distribute == "true":
         config = distribute_create_config(datasize, collections)
@@ -76,25 +92,18 @@ def check_count_data(node,port):
     print('count objects in collection: ' + result)
     return result
 
-def confirm_collection_size(node, port, amountOfCollections, datasize):
-    sizes = []
-    total = 0
-    for collection in range(amountOfCollections):
-        result = node.check_output(
-        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.collection" + str(collection) + ".dataSize() / (1024 * 1024)' --quiet")
-        sizes.append(int(float(result.strip())))
-    for size in sizes:
-        total += size
-    if total == datasize:
-        return True
-    else:
-        return False
-
-
-
 def drop_database(node,port):
     result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.dropDatabase()' --quiet")
     print(result)
+
+def obtain_pml_address(node):
+    ipaddress = node.check_output(
+        "ip -4 addr show scope global | grep inet | awk '{print $2}' | cut -d/ -f1")
+    return ipaddress[0]
+
+def collect_cpu_useage(node, ipaddress):
+    node.run('curl - sk - u admin: admin "https://' + ipaddress + '/prometheus/api/v1/query?query=100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[10m])) * 100)" > /home/cpu.json')
+
 
 def test_prepare_data():
     load_data(source,"27017")
@@ -111,3 +120,8 @@ def test_data_transfer():
 
 def test_data_integrity():
     assert compare_data_rs(source, destination, "27017")
+
+def collect_performance_info():
+    pmlAddress = obtain_pml_address(pml)
+    collect_cpu_useage(source, pmlAddress)
+    collect_cpu_useage(destination, pmlAddress)
