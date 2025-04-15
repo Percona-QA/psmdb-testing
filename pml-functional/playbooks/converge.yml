@@ -13,9 +13,9 @@
 #        # Github token to access mongolink repo
 #        token: "{{ lookup('env', 'MONGO_REPO_TOKEN') }}"
 #
-#    - set_fact:
-#        # Version of psmdb (v7.0, latest)
-#        psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
+    - set_fact:
+        # Version of psmdb (v7.0, latest)
+        psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
 #
 #    - set_fact:
 #        # Version of mongosh
