@@ -121,7 +121,7 @@ def collect_cpu_useage(node, ipaddress):
 # def test_data_integrity():
 #     assert compare_data_rs(source, destination, "27017")
 
-def collect_performance_info():
+def test_collect_performance_info():
     pmlAddress = obtain_pml_address(pml)
     collect_cpu_useage(source, pmlAddress)
     collect_cpu_useage(destination, pmlAddress)
