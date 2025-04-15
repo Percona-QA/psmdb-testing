@@ -5,485 +5,485 @@
   collections:
     - community.mongodb
   tasks:
-#    - set_fact:
-#        # Version of psmdb release to be enabled (psmdb-70)
-#        psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-80', true) }}"
-#
-#    - set_fact:
-#        # Github token to access mongolink repo
-#        token: "{{ lookup('env', 'MONGO_REPO_TOKEN') }}"
-#
+    - set_fact:
+        # Version of psmdb release to be enabled (psmdb-70)
+        psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-80', true) }}"
+
+    - set_fact:
+        # Github token to access mongolink repo
+        token: "{{ lookup('env', 'MONGO_REPO_TOKEN') }}"
+
     - set_fact:
         # Version of psmdb (v7.0, latest)
         psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
-#
-#    - set_fact:
-#        # Version of mongosh
-#        psmdb_mongosh: "{{ psmdb_to_test.split('-')[1].split('.')[0] }}"
-#
-#    - set_fact:
-#        # Branch of pml branch to test
-#        pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('main', true) }}"
-#
-#    - set_fact:
-#        # Branch of pml branch to test
-#        golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.2', true) }}"
-#
-#    - set_fact:
-#        ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
 
-#    - name: Prerequisite for debian 11
-#      apt:
-#        name: iproute2
-#        update_cache: yes
-#      when: ansible_distribution == "Debian" and ansible_distribution_major_version >= "11"
-#
-#    - name: Install deps
-#      yum:
-#        name: "{{ packages }}"
-#        state: present
-#        update_cache: yes
-#      vars:
-#        packages:
-#        - zlib-devel
-#        - libjpeg-devel
-#        - freetype-devel
-#        - gcc
-#        - python3-devel
-#        - python3.12
-#        - python3-pip
-#        - make
-#        - wget
-#        - git
-#      when: ansible_os_family == "RedHat"
-#
-#    - name: Install deps
-#      apt:
-#        name: "{{ packages }}"
-#        state: present
-#        update_cache: yes
-#      vars:
-#        packages:
-#        - zlib-devel
-#        - libjpeg-devel
-#        - freetype-devel
-#        - gcc
-#        - python3-devel
-#        - python3.12
-#        - python3-pip
-#        - make
-#        - wget
-#        - git
-#        - iputils-ping
-#      when: ansible_os_family == "Debian"
-#
-#    - name: Install Go from official tarball on PML host
-#      vars:
-#        go_version: "{{ golang_version }}"
-#        go_tarball: "go{{ go_version }}.linux-amd64.tar.gz"
-#        go_url: "https://go.dev/dl/{{ go_tarball }}"
-#        go_install_dir: "/usr/local"
-#      block:
-#        - name: Download Go {{ go_version }}
-#          get_url:
-#            url: "{{ go_url }}"
-#            dest: "/tmp/{{ go_tarball }}"
-#            mode: '0644'
-#
-#        - name: Extract Go
-#          unarchive:
-#            src: "/tmp/{{ go_tarball }}"
-#            dest: "{{ go_install_dir }}"
-#            remote_src: yes
-#      when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
-#
-#    - name: Check Go is available
-#      command: go version
-#      environment:
-#        PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
-#      register: go_version_output
-#      ignore_errors: true
-#      when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
-#
-#    - name: Install multi python packages with version specifiers
-#      pip:
-#        name:
-#          - requests
-#          - urllib3
-#          - matplotlib
-#
-#    - name: Clone PML repo
-#      timeout: 180
-#      git:
-#        repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
-#        dest: /tmp/percona-mongolink
-#        version: "{{ pml_branch }}"
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Build PML
-#      command: make build
-#      args:
-#        chdir: /tmp/percona-mongolink
-#      environment:
-#        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
-#        GOROOT: /usr/local/go/
-#        GOBIN: /usr/local/go/bin
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Move mongolink binary to /usr/local/bin
-#      copy:
-#        src: /tmp/percona-mongolink/bin/percona-mongolink
-#        dest: /usr/local/bin/
-#        mode: '0755'
-#        remote_src: true
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Clone Mgodatagen repo
-#      git:
-#        repo: 'https://github.com/feliixx/mgodatagen.git'
-#        dest: /tmp/mgodatagen
-#        version: "master"
-#      when: inventory_hostname == "jenkins-pml-source"
-#
-#    - name: Build Mgodatagen
-#      command: go build
-#      args:
-#        chdir: /tmp/mgodatagen
-#      environment:
-#        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
-#        GOROOT: /usr/local/go/
-#        GOBIN: /usr/local/go/bin
-#      when: inventory_hostname == "jenkins-pml-source"
-#
-#    - name: Move mgodatagen binary to /usr/local/bin
-#      copy:
-#        src: /tmp/mgodatagen/
-#        dest: /usr/local/bin/
-#        mode: '0755'
-#        remote_src: true
-#      when: inventory_hostname == "jenkins-pml-source"
-#
-#    - name: Get private source ip address
-#      set_fact:
-#        private_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_default_ipv4']['address'] }}"
-#
-#    - name: Get private destination ip address
-#      set_fact:
-#        private_destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_default_ipv4']['address'] }}"
-#
-#    - name: Get private pml ip address
-#      set_fact:
-#        private_mongolink_ip: "{{ hostvars['jenkins-pml-mongolink']['ansible_default_ipv4']['address'] }}"
-#
-#    - name: Show source IP (Debug)
-#      debug:
-#        var: private_source_ip
-#      when: private_source_ip is defined and inventory_hostname == "jenkins-pml-source"
-#
-#    - name: Show destination IP (Debug)
-#      debug:
-#        var: private_destination_ip
-#      when: private_destination_ip is defined and inventory_hostname == "jenkins-pml-destination"
-#
-#    - name: Show Monglink IP (Debug)
-#      debug:
-#        var: private_mongolink_ip
-#      when: private_mongolink_ip is defined and inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Add source and destination to /etc/hosts in pml
-#      blockinfile:
-#        path: /etc/hosts
-#        block: |
-#          {{ private_source_ip }}    source
-#          {{ private_mongolink_ip }}    destination
-#        create: false
-#        unsafe_writes: true
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Install GPG key for epel 8
-#      rpm_key:
-#        state: present
-#        key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
-#      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
-#
-#    - name: Install GPG key for Percona repos
-#      rpm_key:
-#        state: present
-#        key: https://repo.percona.com/yum/RPM-GPG-KEY-Percona
-#      when: ansible_os_family == "RedHat"
-#
-#    - name: Install percona repository package
-#      apt:
-#        deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
-#      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
-#
-#    - name: Install latest percona-release RHEL
-#      command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
-#      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
-#
-#    - name: setup psmdb repo with percona-release
-#      command: percona-release enable {{ psmdb_to_test }} release
-#      when: inventory_hostname in groups['psmdb']
-#
-#    - name: Install psmdb deb packages
-#      apt:
-#        name: "{{ packages }}"
-#        update_cache: yes
-#        state: latest
-#      vars:
-#        packages:
-#        - percona-server-mongodb
-#        - percona-server-mongodb-server
-#        - percona-server-mongodb-mongos
-#        - percona-server-mongodb-tools
-#      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
-#
-#    - name: Install latest psmdb rpm packages on redhat
-#      yum:
-#        name: "{{ packages }}"
-#        update_cache: yes
-#        state: latest
-#      vars:
-#        packages:
-#        - percona-server-mongodb
-#        - percona-server-mongodb-server
-#        - percona-server-mongodb-mongos
-#        - percona-server-mongodb-tools
-#      when: ansible_os_family == "RedHat" and psmdb_version == "latest" and inventory_hostname in groups['psmdb']
-#
-#    - name: Install less than latest psmdb rpm packages on redhat
-#      yum:
-#        name: "{{ packages }}"
-#        update_cache: yes
-#        state: latest
-#      vars:
-#        packages:
-#        - percona-server-mongodb-{{ psmdb_version }}
-#        - percona-server-mongodb-server-{{ psmdb_version }}
-#        - percona-server-mongodb-mongos-{{ psmdb_version }}
-#        - percona-server-mongodb-tools-{{ psmdb_version }}
-#      when: ansible_os_family == "RedHat" and psmdb_version != "latest" and inventory_hostname in groups['psmdb']
-#
-#    - name: Install mongo shell deb package
-#      apt:
-#        name: "{{ packages }}"
-#        update_cache: yes
-#      vars:
-#        packages:
-#        - percona-server-mongodb-shell
-#      when: ansible_os_family == "Debian" and psmdb_mongosh < "6" and inventory_hostname in groups['psmdb']
-#
-#    - name: Install mongosh deb package
-#      apt:
-#        name: "{{ packages }}"
-#        update_cache: yes
-#      vars:
-#        packages:
-#        - percona-mongodb-mongosh
-#      when: ansible_os_family == "Debian" and psmdb_mongosh >= "6" and inventory_hostname in groups['psmdb']
-#
-#    - name: install mongo shell rpm package
-#      yum:
-#        name: "{{ packages }}"
-#        state: latest
-#      vars:
-#        packages:
-#        - percona-server-mongodb-shell
-#      when: ansible_os_family == "RedHat" and psmdb_mongosh < "6"
-#
-#    - name: Install mongosh rpm package
-#      yum:
-#        name: "{{ packages }}"
-#        state: latest
-#      vars:
-#        packages:
-#        - percona-mongodb-mongosh
-#      when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6" and inventory_hostname in groups['psmdb']
-#
-#    - name: Copy mongosh binary to mongo path for test scripts
-#      file:
-#        src: /usr/bin/mongosh
-#        dest: /usr/bin/mongo
-#        state: link
-#      when: psmdb_mongosh >= "6" and inventory_hostname in groups['psmdb']
-#
-#    - name: stop mongod service
-#      service: name=mongod state=stopped
-#      when: inventory_hostname in groups['psmdb']
-#
-#    - name: Create data directory for mongod
-#      file:
-#        path: /mnt/data/db
-#        state: directory
-#        mode: '0755'
-#        owner: mongod
-#        group: mongod
-#      when: inventory_hostname in groups['psmdb']
-#
-#    - name: Switch mongod to new dbPath
-#      replace:
-#        path: /etc/mongod.conf
-#        regexp: '^  dbPath: /var/lib/mongo(?:db)?'
-#        replace: '  dbPath: /mnt/data/db'
-#      when: inventory_hostname in groups['psmdb']
-#
-#    - name: Add replica set name into mongod config
-#      replace:
-#        path: /etc/mongod.conf
-#        regexp: '^#replication:'
-#        replace: 'replication:\n  replSetName: "rs"'
-#      when: inventory_hostname in groups['psmdb']
-#
-#    - name: Bind mongod to 0.0.0.0
-#      replace:
-#        path: /etc/mongod.conf
-#        regexp: '^  bindIp: 127.0.0.1'
-#        replace: '  bindIp: 0.0.0.0'
-#      when: inventory_hostname in groups['psmdb']
-#
-#    - name: start mongod service
-#      service: name=mongod state=started
-#      when: inventory_hostname in groups['psmdb']
-#
-#    - name: Install pymongo
-#      pip:
-#        name: pymongo
-#
-#    - name: Create a replicaset rs
-#      community.mongodb.mongodb_replicaset:
-#        replica_set: rs
-#        login_host: "{{ private_source_ip }}"
-#        members:
-#          - host: "{{ private_source_ip }}:27017"
-#            priority: 1
-#        validate: no
-#      when: inventory_hostname == "jenkins-pml-source"
-#
-#    - name: Create a replicaset rs
-#      community.mongodb.mongodb_replicaset:
-#        replica_set: rs
-#        login_host: "{{ private_destination_ip }}"
-#        members:
-#          - host: "{{ private_destination_ip }}:27017"
-#            priority: 1
-#        validate: no
-#      when: inventory_hostname == "jenkins-pml-destination"
-#
-#    - name: Reload systemd
-#      systemd:
-#        daemon_reload: yes
-#      when: inventory_hostname in groups['psmdb']
-#
-#    - name: Create PML system unit file
-#      ansible.builtin.copy:
-#        dest: /etc/systemd/system/pml.service
-#        content: |
-#          [Unit]
-#          Description=Percona MongoLink Service
-#          After=network.target
-#
-#          [Service]
-#          ExecStart=/usr/local/bin/percona-mongolink --source mongodb://{{ private_source_ip }}:27017 --target mongodb://{{ private_destination_ip }}:27017
-#          Restart=on-failure
-#          User=root
-#
-#          [Install]
-#          WantedBy=multi-user.target
-#        owner: root
-#        group: root
-#        mode: '0644'
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Reload systemd and start PML service
-#      ansible.builtin.service:
-#        daemon_reload: yes
-#        name: pml.service
-#        state: started
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Import Percona GPG key
-#      rpm_key:
-#        key: https://www.percona.com/downloads/RPM-GPG-KEY-percona
-#        state: present
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Download runc binary
-#      ansible.builtin.get_url:
-#        url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
-#        dest: /usr/local/bin/runc
-#        mode: '0755'
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Move runc to /usr/bin (force overwrite)
-#      ansible.builtin.copy:
-#        src: /usr/local/bin/runc
-#        dest: /usr/bin/runc
-#        remote_src: yes
-#        mode: '0755'
-#        force: yes
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Check runc version
-#      ansible.builtin.command: runc --version
-#      register: runc_version
-#      changed_when: false
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Show runc version
-#      ansible.builtin.debug:
-#        msg: "runc version: {{ runc_version.stdout }}"
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Ensure docker group exists
-#      ansible.builtin.group:
-#        name: docker
-#        state: present
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Add user ssh-user to docker group
-#      ansible.builtin.user:
-#        name: "{{ ssh_user }}"
-#        groups: docker
-#        append: yes
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Install PMM Server
-#      ansible.builtin.shell: |
-#        curl -fsSL https://www.percona.com/get/pmm | /bin/bash
-#      args:
-#        executable: /bin/bash
-#      when: inventory_hostname == "jenkins-pml-mongolink"
-#
-#    - name: Install pmm package Debian
-#      apt:
-#        name: pmm3-client
-#      when: ansible_os_family == "Debian"
-#
-#    - name: Configure RHEL Percona repositories
-#      yum:
-#        name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
-#        state: present
-#      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
-#
-#    - name: Enable pmm3-client repository
-#      ansible.builtin.command: percona-release enable pmm3-client
-#      register: enable_output
-#      changed_when: "'Enabled' in enable_output.stdout"
-#      when: inventory_hostname in groups['psmdb']
-#
-#    - name: Install pmm package RHEL
-#      yum:
-#        name: pmm-client
-#      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
-#
-#    - name: Configure PMM on source psmdb node
-#      shell: >
-#        pmm-admin config --server-insecure-tls --server-url=https://admin:admin@{{ private_mongolink_ip }}:443 --force
-#      register: pmm_config_result
-#      until: "pmm_config_result.rc == 0"
-#      retries: 3
-#      delay: 5
-#      when: inventory_hostname in groups['psmdb']
+    - set_fact:
+        # Version of mongosh
+        psmdb_mongosh: "{{ psmdb_to_test.split('-')[1].split('.')[0] }}"
+
+    - set_fact:
+        # Branch of pml branch to test
+        pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('main', true) }}"
+
+    - set_fact:
+        # Branch of pml branch to test
+        golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.2', true) }}"
+
+    - set_fact:
+        ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
+
+    - name: Prerequisite for debian 11
+      apt:
+        name: iproute2
+        update_cache: yes
+      when: ansible_distribution == "Debian" and ansible_distribution_major_version >= "11"
+
+    - name: Install deps
+      yum:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+        - zlib-devel
+        - libjpeg-devel
+        - freetype-devel
+        - gcc
+        - python3-devel
+        - python3.12
+        - python3-pip
+        - make
+        - wget
+        - git
+      when: ansible_os_family == "RedHat"
+
+    - name: Install deps
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+        - zlib-devel
+        - libjpeg-devel
+        - freetype-devel
+        - gcc
+        - python3-devel
+        - python3.12
+        - python3-pip
+        - make
+        - wget
+        - git
+        - iputils-ping
+      when: ansible_os_family == "Debian"
+
+    - name: Install Go from official tarball on PML host
+      vars:
+        go_version: "{{ golang_version }}"
+        go_tarball: "go{{ go_version }}.linux-amd64.tar.gz"
+        go_url: "https://go.dev/dl/{{ go_tarball }}"
+        go_install_dir: "/usr/local"
+      block:
+        - name: Download Go {{ go_version }}
+          get_url:
+            url: "{{ go_url }}"
+            dest: "/tmp/{{ go_tarball }}"
+            mode: '0644'
+
+        - name: Extract Go
+          unarchive:
+            src: "/tmp/{{ go_tarball }}"
+            dest: "{{ go_install_dir }}"
+            remote_src: yes
+      when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
+
+    - name: Check Go is available
+      command: go version
+      environment:
+        PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
+      register: go_version_output
+      ignore_errors: true
+      when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
+
+    - name: Install multi python packages with version specifiers
+      pip:
+        name:
+          - requests
+          - urllib3
+          - matplotlib
+
+    - name: Clone PML repo
+      timeout: 180
+      git:
+        repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
+        dest: /tmp/percona-mongolink
+        version: "{{ pml_branch }}"
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Build PML
+      command: make build
+      args:
+        chdir: /tmp/percona-mongolink
+      environment:
+        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
+        GOROOT: /usr/local/go/
+        GOBIN: /usr/local/go/bin
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Move mongolink binary to /usr/local/bin
+      copy:
+        src: /tmp/percona-mongolink/bin/percona-mongolink
+        dest: /usr/local/bin/
+        mode: '0755'
+        remote_src: true
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Clone Mgodatagen repo
+      git:
+        repo: 'https://github.com/feliixx/mgodatagen.git'
+        dest: /tmp/mgodatagen
+        version: "master"
+      when: inventory_hostname == "jenkins-pml-source"
+
+    - name: Build Mgodatagen
+      command: go build
+      args:
+        chdir: /tmp/mgodatagen
+      environment:
+        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
+        GOROOT: /usr/local/go/
+        GOBIN: /usr/local/go/bin
+      when: inventory_hostname == "jenkins-pml-source"
+
+    - name: Move mgodatagen binary to /usr/local/bin
+      copy:
+        src: /tmp/mgodatagen/
+        dest: /usr/local/bin/
+        mode: '0755'
+        remote_src: true
+      when: inventory_hostname == "jenkins-pml-source"
+
+    - name: Get private source ip address
+      set_fact:
+        private_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_default_ipv4']['address'] }}"
+
+    - name: Get private destination ip address
+      set_fact:
+        private_destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_default_ipv4']['address'] }}"
+
+    - name: Get private pml ip address
+      set_fact:
+        private_mongolink_ip: "{{ hostvars['jenkins-pml-mongolink']['ansible_default_ipv4']['address'] }}"
+
+    - name: Show source IP (Debug)
+      debug:
+        var: private_source_ip
+      when: private_source_ip is defined and inventory_hostname == "jenkins-pml-source"
+
+    - name: Show destination IP (Debug)
+      debug:
+        var: private_destination_ip
+      when: private_destination_ip is defined and inventory_hostname == "jenkins-pml-destination"
+
+    - name: Show Monglink IP (Debug)
+      debug:
+        var: private_mongolink_ip
+      when: private_mongolink_ip is defined and inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Add source and destination to /etc/hosts in pml
+      blockinfile:
+        path: /etc/hosts
+        block: |
+          {{ private_source_ip }}    source
+          {{ private_mongolink_ip }}    destination
+        create: false
+        unsafe_writes: true
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Install GPG key for epel 8
+      rpm_key:
+        state: present
+        key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
+      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+    - name: Install GPG key for Percona repos
+      rpm_key:
+        state: present
+        key: https://repo.percona.com/yum/RPM-GPG-KEY-Percona
+      when: ansible_os_family == "RedHat"
+
+    - name: Install percona repository package
+      apt:
+        deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
+
+    - name: Install latest percona-release RHEL
+      command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
+
+    - name: setup psmdb repo with percona-release
+      command: percona-release enable {{ psmdb_to_test }} release
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Install psmdb deb packages
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-tools
+      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
+
+    - name: Install latest psmdb rpm packages on redhat
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-tools
+      when: ansible_os_family == "RedHat" and psmdb_version == "latest" and inventory_hostname in groups['psmdb']
+
+    - name: Install less than latest psmdb rpm packages on redhat
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb-{{ psmdb_version }}
+        - percona-server-mongodb-server-{{ psmdb_version }}
+        - percona-server-mongodb-mongos-{{ psmdb_version }}
+        - percona-server-mongodb-tools-{{ psmdb_version }}
+      when: ansible_os_family == "RedHat" and psmdb_version != "latest" and inventory_hostname in groups['psmdb']
+
+    - name: Install mongo shell deb package
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+      vars:
+        packages:
+        - percona-server-mongodb-shell
+      when: ansible_os_family == "Debian" and psmdb_mongosh < "6" and inventory_hostname in groups['psmdb']
+
+    - name: Install mongosh deb package
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+      vars:
+        packages:
+        - percona-mongodb-mongosh
+      when: ansible_os_family == "Debian" and psmdb_mongosh >= "6" and inventory_hostname in groups['psmdb']
+
+    - name: install mongo shell rpm package
+      yum:
+        name: "{{ packages }}"
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb-shell
+      when: ansible_os_family == "RedHat" and psmdb_mongosh < "6"
+
+    - name: Install mongosh rpm package
+      yum:
+        name: "{{ packages }}"
+        state: latest
+      vars:
+        packages:
+        - percona-mongodb-mongosh
+      when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6" and inventory_hostname in groups['psmdb']
+
+    - name: Copy mongosh binary to mongo path for test scripts
+      file:
+        src: /usr/bin/mongosh
+        dest: /usr/bin/mongo
+        state: link
+      when: psmdb_mongosh >= "6" and inventory_hostname in groups['psmdb']
+
+    - name: stop mongod service
+      service: name=mongod state=stopped
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Create data directory for mongod
+      file:
+        path: /mnt/data/db
+        state: directory
+        mode: '0755'
+        owner: mongod
+        group: mongod
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Switch mongod to new dbPath
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  dbPath: /var/lib/mongo(?:db)?'
+        replace: '  dbPath: /mnt/data/db'
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Add replica set name into mongod config
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#replication:'
+        replace: 'replication:\n  replSetName: "rs"'
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Bind mongod to 0.0.0.0
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  bindIp: 127.0.0.1'
+        replace: '  bindIp: 0.0.0.0'
+      when: inventory_hostname in groups['psmdb']
+
+    - name: start mongod service
+      service: name=mongod state=started
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Install pymongo
+      pip:
+        name: pymongo
+
+    - name: Create a replicaset rs
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs
+        login_host: "{{ private_source_ip }}"
+        members:
+          - host: "{{ private_source_ip }}:27017"
+            priority: 1
+        validate: no
+      when: inventory_hostname == "jenkins-pml-source"
+
+    - name: Create a replicaset rs
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs
+        login_host: "{{ private_destination_ip }}"
+        members:
+          - host: "{{ private_destination_ip }}:27017"
+            priority: 1
+        validate: no
+      when: inventory_hostname == "jenkins-pml-destination"
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Create PML system unit file
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/pml.service
+        content: |
+          [Unit]
+          Description=Percona MongoLink Service
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/bin/percona-mongolink --source mongodb://{{ private_source_ip }}:27017 --target mongodb://{{ private_destination_ip }}:27017
+          Restart=on-failure
+          User=root
+
+          [Install]
+          WantedBy=multi-user.target
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Reload systemd and start PML service
+      ansible.builtin.service:
+        daemon_reload: yes
+        name: pml.service
+        state: started
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Import Percona GPG key
+      rpm_key:
+        key: https://www.percona.com/downloads/RPM-GPG-KEY-percona
+        state: present
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Download runc binary
+      ansible.builtin.get_url:
+        url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
+        dest: /usr/local/bin/runc
+        mode: '0755'
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Move runc to /usr/bin (force overwrite)
+      ansible.builtin.copy:
+        src: /usr/local/bin/runc
+        dest: /usr/bin/runc
+        remote_src: yes
+        mode: '0755'
+        force: yes
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Check runc version
+      ansible.builtin.command: runc --version
+      register: runc_version
+      changed_when: false
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Show runc version
+      ansible.builtin.debug:
+        msg: "runc version: {{ runc_version.stdout }}"
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Ensure docker group exists
+      ansible.builtin.group:
+        name: docker
+        state: present
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Add user ssh-user to docker group
+      ansible.builtin.user:
+        name: "{{ ssh_user }}"
+        groups: docker
+        append: yes
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Install PMM Server
+      ansible.builtin.shell: |
+        curl -fsSL https://www.percona.com/get/pmm | /bin/bash
+      args:
+        executable: /bin/bash
+      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Install pmm package Debian
+      apt:
+        name: pmm3-client
+      when: ansible_os_family == "Debian"
+
+    - name: Configure RHEL Percona repositories
+      yum:
+        name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+        state: present
+      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
+
+    - name: Enable pmm3-client repository
+      ansible.builtin.command: percona-release enable pmm3-client
+      register: enable_output
+      changed_when: "'Enabled' in enable_output.stdout"
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Install pmm package RHEL
+      yum:
+        name: pmm-client
+      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
+
+    - name: Configure PMM on source psmdb node
+      shell: >
+        pmm-admin config --server-insecure-tls --server-url=https://admin:admin@{{ private_mongolink_ip }}:443 --force
+      register: pmm_config_result
+      until: "pmm_config_result.rc == 0"
+      retries: 3
+      delay: 5
+      when: inventory_hostname in groups['psmdb']
 
     - name: Check if pmmMonitor role exists
       shell: |
