@@ -523,11 +523,11 @@
       failed_when: false
       changed_when: false
       when: inventory_hostname in groups['psmdb']
-#
-#
-#    - name: Show source IP (Debug)
-#      debug:
-#        var: pmm_user_check.stdout
+
+
+    - name: Show source IP (Debug)
+      debug:
+        msg: "{{ psmdb_version.split('.')[0] | int < 8 }}"
 
     - name: Create MongoDB PMM User role on psmdb >= 8
       community.mongodb.mongodb_shell:
