@@ -527,7 +527,7 @@
 
     - name: Show source IP (Debug)
       debug:
-        var: pmm_user_check
+        var: pmm_user_check.stout
 
 #    - name: Create MongoDB PMM User role on psmdb >= 8
 #      community.mongodb.mongodb_shell:
