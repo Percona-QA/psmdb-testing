@@ -540,7 +540,7 @@
       when:
         - inventory_hostname in groups['psmdb']
         - pmm_user_check.stdout == "null"
-        - psmdb_version.stdout.split('.')[0] | int >= 8'
+        - psmdb_version.stdout.split('.')[0] | int >= 8
 
     - name: Create MongoDB PMM User role on psmdb < 7
       community.mongodb.mongodb_shell:
