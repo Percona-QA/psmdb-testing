@@ -563,10 +563,6 @@
       failed_when: false
       when: inventory_hostname in groups['psmdb']
 
-    - name: Show source IP (Debug)
-      debug:
-        var: mongodb_service_check
-
     - name: Configure PMM on psmdb nodes
       shell: >
         pmm-admin add mongodb \
