@@ -524,11 +524,6 @@
       changed_when: false
       when: inventory_hostname in groups['psmdb']
 
-
-    - name: Show source IP (Debug)
-      debug:
-        msg: "{{ psmdb_version.split('.')[0] }}"
-
     - name: Create MongoDB PMM User role on psmdb >= 8
       community.mongodb.mongodb_shell:
         eval: |
@@ -563,13 +558,17 @@
         - inventory_hostname in groups['psmdb']
         - pmm_user_check.stdout == "null"
         - psmdb_version.split('.')[0] | int < 8
-#
-#    - name: Check if MongoDB is already registered in PMM
-#      shell: pmm-admin list | grep mongodb
-#      register: mongodb_service_check
-#      changed_when: false
-#      failed_when: false
-#      when: inventory_hostname in groups['psmdb']
+
+    - name: Check if MongoDB is already registered in PMM
+      shell: pmm-admin list | grep mongodb
+      register: mongodb_service_check
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Show source IP (Debug)
+      debug:
+        var: mongodb_service_check
 #
 #    - name: Configure PMM on psmdb nodes
 #      shell: >
