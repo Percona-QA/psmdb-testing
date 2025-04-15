@@ -550,7 +550,7 @@
     - name: Create MongoDB PMM User role on psmdb < 8
       community.mongodb.mongodb_shell:
         eval: |
-          db.getSiblingDB("admin").({
+          db.getSiblingDB("admin").createUser({
               "user": "pmm",
               "pwd": "password123",
               "roles": [
