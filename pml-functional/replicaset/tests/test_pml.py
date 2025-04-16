@@ -125,6 +125,6 @@ def collect_cpu_useage(node, ipaddress):
 def test_collect_performance_info():
     pmlAddress = obtain_pml_address(pml)
     cpu = collect_cpu_useage(destination, pmlAddress)
-    data = load_data(json.loads(cpu))
+    data = load_data(cpu)
     plot_performance_usage(data, output_file="cpu_graph.png", show=True)
     assert 1 == 2
