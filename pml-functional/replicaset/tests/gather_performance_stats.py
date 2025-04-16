@@ -12,7 +12,7 @@ def plot_performance_usage(name, data, output_file=None, show=False):
     plt.figure(figsize=(14, 7))
 
     for instance_data in results:
-        instance = instance_data["metric"].get("instance", "unknown")
+        instance = instance_data["metric"].get("node_name") or instance_data["metric"].get("instance", "unknown")
         timestamps = [datetime.utcfromtimestamp(point[0]) for point in instance_data["values"]]
         values = [float(point[1]) for point in instance_data["values"]]
         plt.plot(timestamps, values, marker='o', linestyle='-', label=instance)
