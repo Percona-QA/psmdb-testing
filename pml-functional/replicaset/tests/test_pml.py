@@ -142,11 +142,10 @@ def collect_memory_useage(node):
 #     assert compare_data_rs(source, destination, "27017")
 #
 # def test_collect_cpu_performance_info():
-#     pmlAddress = obtain_pml_address(pml)
-#     cpudata = json.loads(collect_cpu_useage(source, pmlAddress))
+#     cpudata = json.loads(collect_cpu_useage(source))
 #     plot_performance_usage("CPU", cpudata, output_file="cpu_useage.png", show=True)
 
 def test_collect_memory_performance_info():
     pmlAddress = obtain_pml_address(pml)
-    memorydata = json.loads(collect_memory_useage(source, pmlAddress))
+    memorydata = json.loads(collect_memory_useage(source))
     plot_performance_usage("Memory", memorydata, output_file="memory_useage.png", show=True)
