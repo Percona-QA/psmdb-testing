@@ -103,6 +103,7 @@ def obtain_pml_address(node):
 
 def collect_cpu_useage(node, ipaddress):
     cpu_useage = node.check_output('sudo curl -sk -u admin:admin "https://' + ipaddress + '/prometheus/api/v1/query_range?query=100%20-%20(avg%20by(instance)%20(rate(node_cpu_seconds_total%7Bmode%3D%22idle%22%7D%5B2m%5D))%20*%20100)&start=$(date -u -d \'10 minutes ago\' +%s)&end=$(date -u +%s)&step=15" | sudo tee /home/keith/cpu_timeseries.json')
+    print("KEITH TEST: " + cpu_useage)
 
 
 # def test_prepare_data():
