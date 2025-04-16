@@ -65,20 +65,6 @@ def restart_mongod(node):
         result = node.check_output('systemctl restart mongod')
     print('restarting mongod on ' + hostname)
 
-def collect_cpu_useage():
-    urllib3.disable_warnings()
-
-    url = "https://<PMM_SERVER>/prometheus/api/v1/query"
-    query = '100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[10m])) * 100)'
-    resp = requests.get(url, params={"query": query}, auth=("admin", "admin"), verify=False)
-
-    data = resp.json()["data"]["result"]
-    for node in data:
-        instance = node["metric"]["instance"]
-        cpu_usage = float(node["value"][1])
-        print(f"{instance}: {cpu_usage:.2f}% CPU usage (last 10 min)")
-
-
 def load_data(node,port):
     if distribute == "true":
         config = distribute_create_config(datasize, collections)
@@ -92,10 +78,6 @@ def check_count_data(node,port):
     result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.binary.count()' --quiet | tail -1")
     print('count objects in collection: ' + result)
     return result
-
-def drop_database(node,port):
-    result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.dropDatabase()' --quiet")
-    print(result)
 
 def obtain_pml_address(node):
     ipaddress = node.check_output(
@@ -118,7 +100,7 @@ def confirm_collection_size(node, port, amountOfCollections, datasize):
 
 def collect_cpu_useage(node):
     pmlAddress = obtain_pml_address(pml)
-    return node.check_output('sudo curl -sk -u admin:admin "https://' + pmlAddress + '/prometheus/api/v1/query_range?query=100%20-%20(avg%20by(instance)%20(rate(node_cpu_seconds_total%7Bmode%3D%22idle%22%7D%5B2m%5D))%20*%20100)&start=$(date -u -d \'10 minutes ago\' +%s)&end=$(date -u +%s)&step=15"')
+    return node.check_output('sudo curl -sk -u admin:admin "https://' + pmlAddress + '/prometheus/api/v1/query_range?query=100%20-%20(avg%20by(node_name)%20(rate(node_cpu_seconds_total%7Bmode%3D%22idle%22%7D%5B2m%5D))%20*%20100)&start=$(date -u -d \'10 minutes ago\' +%s)&end=$(date -u +%s)&step=15"')
 
 def collect_memory_useage(node):
     pmlAddress = obtain_pml_address(pml)
@@ -146,6 +128,7 @@ def test_collect_cpu_performance_info():
     plot_performance_usage("CPU", cpudata, output_file="cpu_useage.png", show=True)
 
 def test_collect_memory_performance_info():
-    pmlAddress = obtain_pml_address(pml)
     memorydata = json.loads(collect_memory_useage(source))
     plot_performance_usage("Memory", memorydata, output_file="memory_useage.png", show=True)
+
+
