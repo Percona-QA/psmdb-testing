@@ -102,6 +102,20 @@ def obtain_pml_address(node):
         "ip -4 addr show scope global | grep inet | awk '{print $2}' | cut -d/ -f1 | head -n 1")
     return ipaddress
 
+def confirm_collection_size(node, port, amountOfCollections, datasize):
+    sizes = []
+    total = 0
+    for collection in range(amountOfCollections):
+        result = node.check_output(
+        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.collection" + str(collection) + ".dataSize() / (1024 * 1024)' --quiet")
+        sizes.append(int(float(result.strip())))
+    for size in sizes:
+        total += size
+    if total == datasize:
+        return True
+    else:
+        return False
+
 def collect_cpu_useage(node, ipaddress):
     return node.check_output('sudo curl -sk -u admin:admin "https://' + ipaddress + '/prometheus/api/v1/query_range?query=100%20-%20(avg%20by(instance)%20(rate(node_cpu_seconds_total%7Bmode%3D%22idle%22%7D%5B2m%5D))%20*%20100)&start=$(date -u -d \'10 minutes ago\' +%s)&end=$(date -u +%s)&step=15"')
 
@@ -125,6 +139,5 @@ def test_data_integrity():
 def test_collect_performance_info():
     pmlAddress = obtain_pml_address(pml)
     cpu = json.loads(collect_cpu_useage(destination, pmlAddress))
-    print("KEITH TEST: \n\n" + str(cpu))
     plot_performance_usage(cpu, output_file="cpu_graph.png", show=True)
     assert 1 == 2
