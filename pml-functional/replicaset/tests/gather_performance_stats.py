@@ -9,8 +9,7 @@ def load_performance_data(json_path):
 
 def plot_performance_usage(data, output_file=None, show=False):
     """Plot CPU or performance usage from a Prometheus-style JSON dict."""
-    loaded_data = json.load(data)
-    results = loaded_data.get("data", {}).get("result", [])
+    results = data.get("data", {}).get("result", [])
     if not results:
         print("No performance usage data found.")
         return
