@@ -5,7 +5,7 @@ import urllib3
 
 import json
 import testinfra.utils.ansible_runner
-from gather_performance_stats import load_performance_data, plot_performance_usage
+from gather_performance_stats import plot_performance_usage
 from data_integrity_check import compare_data_rs
 
 
