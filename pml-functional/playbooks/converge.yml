@@ -387,7 +387,7 @@
       when: inventory_hostname in groups['psmdb']
 
     - name: Create PML system unit file
-      ansible.builtin.copy:
+      copy:
         dest: /etc/systemd/system/pml.service
         content: |
           [Unit]
@@ -407,7 +407,7 @@
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Reload systemd and start PML service
-      ansible.builtin.service:
+      service:
         daemon_reload: yes
         name: pml.service
         state: started
@@ -420,14 +420,14 @@
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Download runc binary
-      ansible.builtin.get_url:
+      get_url:
         url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
         dest: /usr/local/bin/runc
         mode: '0755'
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Move runc to /usr/bin (force overwrite)
-      ansible.builtin.copy:
+      copy:
         src: /usr/local/bin/runc
         dest: /usr/bin/runc
         remote_src: yes
@@ -436,31 +436,31 @@
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Check runc version
-      ansible.builtin.command: runc --version
+      command: runc --version
       register: runc_version
       changed_when: false
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Show runc version
-      ansible.builtin.debug:
+      debug:
         msg: "runc version: {{ runc_version.stdout }}"
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Ensure docker group exists
-      ansible.builtin.group:
+      group:
         name: docker
         state: present
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Add user ssh-user to docker group
-      ansible.builtin.user:
+      user:
         name: "{{ ssh_user }}"
         groups: docker
         append: yes
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Install PMM Server
-      ansible.builtin.shell: |
+      shell: |
         curl -fsSL https://www.percona.com/get/pmm | /bin/bash
       args:
         executable: /bin/bash
@@ -478,7 +478,7 @@
       when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
     - name: Enable pmm3-client repository
-      ansible.builtin.command: percona-release enable pmm3-client
+      command: percona-release enable pmm3-client
       register: enable_output
       changed_when: "'Enabled' in enable_output.stdout"
       when: inventory_hostname in groups['psmdb']

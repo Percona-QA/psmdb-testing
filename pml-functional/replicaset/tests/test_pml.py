@@ -1,5 +1,8 @@
 import os
 import random
+import subprocess
+from time import sleep
+
 import requests
 import urllib3
 
@@ -106,6 +109,17 @@ def collect_memory_useage(node):
     pmlAddress = obtain_pml_address(pml)
     return node.check_output('curl -sk -u admin:admin "https://' + pmlAddress + '/prometheus/api/v1/query_range?query=100%20*%20(1%20-%20(node_memory_MemAvailable_bytes%20%2F%20node_memory_MemTotal_bytes))&start=$(date -u -d \'10 minutes ago\' +%s)&end=$(date -u +%s)&step=15"')
 
+def wait_for_pml_replication(timeout=120):
+    for _ in range(timeout):
+        try:
+            if "Data Clone completed" in pml.check_output('journalctl | grep "Data Clone completed"'):
+                return True
+        except subprocess.CalledProcessError:
+            pass
+        sleep(1)
+
+    print("Timeout waiting for PML replication.")
+    return False
 
 def test_prepare_data():
     load_data(source,"27017")
@@ -116,6 +130,7 @@ def test_initiate_pml():
         "percona-mongolink start")
     output = json.loads(result)
     assert output in [{"ok": True}, {'error': 'already running', 'ok': False}]
+    assert wait_for_pml_replication()
 
 def test_data_transfer():
     assert confirm_collection_size(destination, "27017", collections, datasize)
