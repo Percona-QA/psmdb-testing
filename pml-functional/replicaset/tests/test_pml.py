@@ -5,7 +5,7 @@ import urllib3
 
 import json
 import testinfra.utils.ansible_runner
-from gather_performance_stats import load_data, plot_performance_usage
+from gather_performance_stats import load_performance_data, plot_performance_usage
 from data_integrity_check import compare_data_rs
 
 
@@ -125,6 +125,5 @@ def collect_cpu_useage(node, ipaddress):
 def test_collect_performance_info():
     pmlAddress = obtain_pml_address(pml)
     cpu = collect_cpu_useage(destination, pmlAddress)
-    data = load_data(cpu)
-    plot_performance_usage(data, output_file="cpu_graph.png", show=True)
+    plot_performance_usage(cpu, output_file="cpu_graph.png", show=True)
     assert 1 == 2

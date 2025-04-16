@@ -2,14 +2,15 @@ import json
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-def load_data(json_path):
+def load_performance_data(json_path):
     """Load JSON data from a file path."""
     with open(json_path, 'r') as f:
         return json.load(f)
 
 def plot_performance_usage(data, output_file=None, show=False):
     """Plot CPU or performance usage from a Prometheus-style JSON dict."""
-    results = data.get("data", {}).get("result", [])
+    loaded_data = json.load(data)
+    results = loaded_data.get("data", {}).get("result", [])
     if not results:
         print("No performance usage data found.")
         return
