@@ -150,8 +150,10 @@ class Mongolink:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
-    def logs(self, tail=50):
+    def logs(self, tail=50, stream=False):
         try:
+            if stream:
+                return self.container.logs(stream=True, follow=True)
             raw_logs = self.container.logs().decode("utf-8").strip()
             filtered_lines = [
                 line for line in raw_logs.splitlines()
@@ -183,6 +185,8 @@ class Mongolink:
 
     def wait_for_zero_lag(self, timeout=120, interval=1):
         start_time = time.time()
+        last_events_processed = None
+        counter = 0
 
         try:
             src_client = pymongo.MongoClient(self.src)
@@ -207,7 +211,10 @@ class Mongolink:
                 Cluster.log(f"Error: Impossible to retrieve status, {status_response['error']}")
                 return False
 
-            last_repl_op = status_response["data"].get("lastReplicatedOpTime")
+            status_data = status_response["data"]
+            last_repl_op = status_data.get("lastReplicatedOpTime")
+            current_events_processed = status_data.get("eventsProcessed")
+
             if last_repl_op is None:
                 Cluster.log("Error: No 'lastReplicatedOpTime' field found in status response")
                 return False
@@ -226,6 +233,19 @@ class Mongolink:
                 Cluster.log(f"Src and dst are in sync: last repl TS {last_ts} >= cluster time {cluster_time}")
                 return True
 
+            if cluster_time.time == last_ts.time + 1:
+                if last_events_processed is not None and current_events_processed == last_events_processed:
+                    counter += 1
+                    if counter >= 2:
+                        Cluster.log(f"Src and dst are in sync: 1s lag detected but no new events, "
+                                f"last repl TS {last_ts}, cluster time {cluster_time}, "
+                                f"eventsProcessed={current_events_processed}, last_eventsProcessed={last_events_processed}")
+                        return True
+                else:
+                    counter = 0
+            else:
+                counter = 0
+            last_events_processed = current_events_processed
             time.sleep(interval)
 
         Cluster.log("Error: Timeout reached while waiting for replication to catch up")

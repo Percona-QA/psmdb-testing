@@ -63,19 +63,22 @@ def reset_state(srcRS, dstRS, mlink, request):
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_mlink_PML_T32(reset_state, srcRS, dstRS, mlink):
+    """
+    Test case with various edge cases IDs
+    """
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
 
     db = src["stress_test_db"]
     collections_meta = [
         {"name": "regular_coll", "options": {}, "capped": False, "collation": False},
-        {"name": "capped_coll", "options": {"capped": True, "size": 2147483647}, "capped": True, "collation": False}]
+        {"name": "capped_coll", "options": {"capped": True, "size": 2147483648}, "capped": True, "collation": False}]
     for meta in collections_meta:
         db.create_collection(meta["name"], **meta["options"])
         meta["collection"] = db[meta["name"]]
     weird_ids = [
-        Decimal128("9999999999999999999999999999.9999"), "", " " * 100, True, False, None,
-        "🤞", 0, -1, 2**63 - 1, float("inf"), float("-inf"), float("nan"), ObjectId(),
+        Decimal128("9999999999999999999999999999.9999"), "", " " * 100, True, False,
+        "🤞", 0, -1, 2**63 - 1, float("inf"), float("-inf"), None, ObjectId(),
         ObjectId("000000000000000000000000"), Decimal128("0.00000000000000000000000001"),
         datetime.datetime(1970, 1, 1), datetime.datetime(9999, 12, 31), Timestamp(2**31 - 1, 1),
         Binary.from_uuid(uuid.uuid4(), UUID_SUBTYPE), Binary(b"\x00"), Binary(b"\x00" * 16),
@@ -146,6 +149,73 @@ def test_rs_mlink_PML_T32(reset_state, srcRS, dstRS, mlink):
 
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
+
+    mlink_error, error_logs = mlink.check_mlink_errors()
+    assert mlink_error is True, f"Mlink reported errors: {error_logs}"
+
+@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.usefixtures("start_cluster")
+@pytest.mark.parametrize("id_type", ["float", "decimal"])
+def test_rs_mlink_PML_T34(reset_state, srcRS, dstRS, mlink, id_type):
+    """
+    Test case with NaN ID
+    """
+    src = pymongo.MongoClient(srcRS.connection)
+    dst = pymongo.MongoClient(dstRS.connection)
+
+    db = src["stress_test_db"]
+    collections_meta = [
+        {"name": "regular_coll", "options": {}, "capped": False, "collation": False},
+        {"name": "capped_coll", "options": {"capped": True, "size": 2147483648}, "capped": True, "collation": False}]
+    for meta in collections_meta:
+        db.create_collection(meta["name"], **meta["options"])
+        meta["collection"] = db[meta["name"]]
+
+    batch_size = 5000
+    num_batches = 80
+    for meta in collections_meta:
+        collection = meta["collection"]
+        nan_id = float("nan") if id_type == "float" else Decimal128("NaN")
+        collection.insert_one({"_id": nan_id, "payload": "x" * 5000})
+        for _ in range(num_batches):
+            docs = []
+            for _ in range(batch_size):
+                _id = (
+                    random.uniform(1e5, 1e10)
+                    if id_type == "float"
+                    else Decimal128(str(random.uniform(1e5, 1e10))))
+                doc = {
+                    "_id": _id,
+                    "payload": "x" * 5000,
+                    "timestamp": datetime.datetime.now(datetime.timezone.utc),
+                    "rand": random.random()}
+                docs.append(doc)
+            try:
+                collection.insert_many(docs, ordered=False, bypass_document_validation=True)
+            except pymongo.errors.BulkWriteError as e:
+                Cluster.log(f"Insert failed in {meta['name']}: {e.details}")
+
+    assert mlink.start(), "Failed to start mlink service"
+    assert mlink.wait_for_repl_stage(), "Failed to start replication stage"
+    assert mlink.wait_for_zero_lag(), "Failed to catch up on replication"
+    assert mlink.finalize(), "Failed to finalize mlink service"
+
+    expected_mismatches = [
+        ("stress_test_db", "hash mismatch"),
+        ("stress_test_db.regular_coll", "hash mismatch"),
+        ("stress_test_db.regular_coll", "record count mismatch")]
+
+    result, summary = compare_data_rs(srcRS, dstRS)
+    if not result:
+        unexpected = [m for m in summary if m not in expected_mismatches]
+        missing_expected = [m for m in expected_mismatches if m not in summary]
+
+        if unexpected:
+            assert False, f"Unexpected mismatches found: {unexpected}"
+        if not unexpected and not missing_expected:
+            pytest.xfail("Known issue: PML-126")
+        if missing_expected:
+            assert False, f"Expected mismatches missing: {missing_expected}"
 
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors: {error_logs}"

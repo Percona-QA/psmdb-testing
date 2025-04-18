@@ -64,45 +64,27 @@ def test_rs_mlink_PML_T9(reset_state, srcRS, dstRS, mlink):
     """
     Test to verify collection drop and re-creation during clone phase
     """
-    try:
-        src = pymongo.MongoClient(srcRS.connection)
-        dst = pymongo.MongoClient(dstRS.connection)
+    src = pymongo.MongoClient(srcRS.connection)
+    dst = pymongo.MongoClient(dstRS.connection)
 
-        generate_dummy_data(srcRS.connection)
-        init_test_db, _ = create_all_types_db(srcRS.connection, "init_test_db", create_ts=True)
+    generate_dummy_data(srcRS.connection, 'dummy', 5, 500000)
+    for i in range(5):
+        src["dummy"][f"collection_{i}"].create_index([("array", 1)])
 
-        operation_threads_1 = []
-        def start_mlink():
-            result = mlink.start()
-            assert result is True, "Failed to start mlink service"
-        def recreate_data_thread():
-            init_test_db, new_thread = create_all_types_db(srcRS.connection, "init_test_db",
-                                                                    drop_before_creation=True, start_crud=True)
-            operation_threads_1.extend(new_thread)
+    result = mlink.start()
+    assert result is True, "Failed to start mlink service"
 
-        t1 = threading.Thread(target=start_mlink)
-        t2 = threading.Thread(target=recreate_data_thread)
-        t1.start()
-        t2.start()
-        t1.join()
-        t2.join()
+    for i in range(5):
+        src["dummy"][f"collection_{i}"].drop_indexes()
+    for i in range(5):
+        src["dummy"].drop_collection(f"collection_{i}")
 
-        result = mlink.wait_for_repl_stage(timeout=30)
-        if not result:
-            if "ns not found" in mlink.logs():
-                pytest.xfail("Known issue: PML-95")
-            else:
-                assert False, "Failed to start replication stage"
-
-    except Exception as e:
-        raise
-    finally:
-        stop_all_crud_operations()
-        all_threads = []
-        if "operation_threads_1" in locals():
-            all_threads += operation_threads_1
-        for thread in all_threads:
-            thread.join()
+    result = mlink.wait_for_repl_stage(timeout=30)
+    if not result:
+        if "ns not found" in mlink.logs():
+            pytest.xfail("Known issue: PML-95")
+        else:
+            assert False, "Failed to start replication stage"
 
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
@@ -125,7 +107,7 @@ def test_rs_mlink_PML_T10(reset_state, srcRS, dstRS, mlink):
         src = pymongo.MongoClient(srcRS.connection)
         dst = pymongo.MongoClient(dstRS.connection)
 
-        init_test_db, _ = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
+        init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
 
         result = mlink.start()
         assert result is True, "Failed to start mlink service"
@@ -136,7 +118,7 @@ def test_rs_mlink_PML_T10(reset_state, srcRS, dstRS, mlink):
         repl_test_db, _ = create_all_types_db(srcRS.connection, "repl_test_db", create_ts=True)
 
         # Re-create data during replication phase by dropping and re-creating the collections
-        repl_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "repl_test_db",
+        repl_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db",
                                                                 drop_before_creation=True, start_crud=True)
         time.sleep(5)
 
@@ -147,6 +129,8 @@ def test_rs_mlink_PML_T10(reset_state, srcRS, dstRS, mlink):
         all_threads = []
         if "operation_threads_1" in locals():
             all_threads += operation_threads_1
+        if "operation_threads_2" in locals():
+            all_threads += operation_threads_2
         for thread in all_threads:
             thread.join()
 
