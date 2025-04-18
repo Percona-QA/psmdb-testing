@@ -8,7 +8,6 @@ import urllib3
 
 import json
 import testinfra.utils.ansible_runner
-from gather_performance_graphs import plot_performance_usage
 from data_integrity_check import compare_data_rs
 
 
