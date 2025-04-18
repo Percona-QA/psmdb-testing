@@ -59,8 +59,9 @@ def insert_docs(connection,duration):
         if time.time() > timeout:
             break
 
+@pytest.mark.parametrize('restore_to',['same_cluster','same_cluster_with_drop','new_cluster'])
 @pytest.mark.timeout(360,func_only=True)
-def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster):
+def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster,restore_to):
     cluster.check_pbm_status()
     cluster.make_backup('logical')
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
@@ -86,6 +87,20 @@ def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster):
     time.sleep(5)
     cluster.disable_pitr()
 
+    if restore_to == 'same_cluster_with_drop':
+        Cluster.log('Drop sharded database before the restore')
+        result = pymongo.MongoClient(cluster.connection).drop_database('test')
+        Cluster.log(result)
+
+    if restore_to == 'new_cluster':
+        Cluster.log('Re-create cluster before the restore')
+        cluster.destroy()
+        cluster.create()
+        cluster.setup_pbm()
+        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none --out json")
+        assert result.rc == 0
+        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
+
     time.sleep(5)
     cluster.make_restore(backup,make_resync=False,check_pbm_status=True)
 
@@ -99,8 +114,9 @@ def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster):
     Cluster.log("Finished successfully")
 
 
+@pytest.mark.parametrize('restore_to',['same_cluster','same_cluster_with_drop','new_cluster'])
 @pytest.mark.timeout(180,func_only=True)
-def test_load_chunks_migration_base_PBM_T285(start_cluster,cluster):
+def test_load_chunks_migration_base_PBM_T285(start_cluster,cluster,restore_to):
     threads = 100
     Cluster.log("Start inserting docs in the background with " + str(threads) + " threads ")
     background_insert = [None] * threads
@@ -119,6 +135,20 @@ def test_load_chunks_migration_base_PBM_T285(start_cluster,cluster):
     for i in range(threads):
         background_insert[i].join()
     Cluster.log("Background threads are finished")
+
+    if restore_to == 'same_cluster_with_drop':
+        Cluster.log('Drop sharded database before the restore')
+        result = pymongo.MongoClient(cluster.connection).drop_database('test')
+        Cluster.log(result)
+
+    if restore_to == 'new_cluster':
+        Cluster.log('Re-create cluster before the restore')
+        cluster.destroy()
+        cluster.create()
+        cluster.setup_pbm()
+        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none --out json")
+        assert result.rc == 0
+        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
 
     time.sleep(5)
     cluster.make_restore(backup,make_resync=False,check_pbm_status=True)
