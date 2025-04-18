@@ -364,7 +364,7 @@
     - name: Enabling Operation Profiling for PMM QAN
       replace:
         path: /etc/mongod.conf
-        regexp: '^#operationProfiling'
+        regexp: '^#operationProfiling:'
         replace: |
           operationProfiling:
             mode: all
