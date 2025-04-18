@@ -12,6 +12,7 @@ def create_collection_types(db, create_ts=False, drop_before_creation=False):
         db.drop_collection("regular_collection")
         db.drop_collection("fr_collation_collection")
         db.drop_collection("capped_logs")
+        db.drop_collection("capped_logs2")
         db.drop_collection("timeseries_data")
 
     # Regular Collection
@@ -56,6 +57,15 @@ def create_collection_types(db, create_ts=False, drop_before_creation=False):
     # Capped Collection
     db.create_collection("capped_logs", capped=True, size=1024 * 1024, max=20)
     capped_collection = db.capped_logs
+    capped_collection.insert_many([
+        {"timestamp": datetime.datetime.now(datetime.timezone.utc), "log": "Test log 1"},
+        {"timestamp": datetime.datetime.now(datetime.timezone.utc), "log": "Test log 2"}
+    ])
+    collections_metadata.append({"collection": capped_collection, "capped": True, "timeseries": False})
+
+    # PML-120
+    db.create_collection("capped_logs2", capped=True, size=2147483648, max=20000)
+    capped_collection = db.capped_logs2
     capped_collection.insert_many([
         {"timestamp": datetime.datetime.now(datetime.timezone.utc), "log": "Test log 1"},
         {"timestamp": datetime.datetime.now(datetime.timezone.utc), "log": "Test log 2"}
