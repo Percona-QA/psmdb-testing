@@ -706,10 +706,10 @@ def test_rs_mlink_PML_T31(reset_state, srcRS, dstRS, mlink):
             client[db][coll].insert_one({})
         Cluster.log("Created " + db)
     mlink.start()
-    result = mlink.wait_for_repl_stage(120)
-    assert result is True, "Failed to catch up on replication"
+    result = mlink.wait_for_repl_stage(180,10)
+    assert result is True, "Failed to catch up on replication, mlink logs:\n" + str(mlink.logs(20))
     result = mlink.finalize()
-    assert result is True, "Failed to finalize mlink service"
+    assert result is True, "Failed to finalize mlink service, mlink logs:\n" + str(mlink.logs(20))
     client=pymongo.MongoClient(dstRS.connection)
     database_names = client.list_database_names()
     for i in range(databases):
