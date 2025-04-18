@@ -111,7 +111,7 @@ def collect_memory_useage(node):
 def wait_for_pml_replication(timeout=120):
     for _ in range(timeout):
         try:
-            if "Data Clone completed" in pml.check_output('journalctl | grep "Data Clone completed"'):
+            if "Data Clone completed" in pml.check_output('journalctl --grep="Data Clone completed"'):
                 return True
         except subprocess.CalledProcessError:
             pass
