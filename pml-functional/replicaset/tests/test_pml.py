@@ -8,7 +8,7 @@ import urllib3
 
 import json
 import testinfra.utils.ansible_runner
-from gather_performance_stats import plot_performance_usage
+from gather_performance_graphs import plot_performance_usage
 from data_integrity_check import compare_data_rs
 
 
@@ -137,13 +137,4 @@ def test_data_transfer():
 
 def test_data_integrity():
     assert compare_data_rs(source, destination, "27017")
-
-def test_collect_cpu_performance_info():
-    cpudata = json.loads(collect_cpu_useage(source))
-    plot_performance_usage("CPU", cpudata, output_file="cpu_useage.png", show=True)
-
-def test_collect_memory_performance_info():
-    memorydata = json.loads(collect_memory_useage(source))
-    plot_performance_usage("Memory", memorydata, output_file="memory_useage.png", show=True)
-
 

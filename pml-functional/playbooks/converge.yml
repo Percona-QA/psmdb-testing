@@ -60,6 +60,8 @@
         update_cache: yes
       vars:
         packages:
+        - jq
+        - vim
         - zlib-devel
         - libjpeg-devel
         - freetype-devel
@@ -79,6 +81,8 @@
         update_cache: yes
       vars:
         packages:
+        - jq
+        - vim
         - zlib-devel
         - libjpeg-devel
         - freetype-devel
@@ -357,6 +361,21 @@
         replace: '  bindIp: 0.0.0.0'
       when: inventory_hostname in groups['psmdb']
 
+    - name: Enabling Operation Profiling for PMM QAN
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#operationProfiling'
+        replace: |
+          operationProfiling:
+            mode: all
+            slowOpThresholdMs: 1
+            rateLimit: 100
+      when: inventory_hostname in groups['psmdb']
+
+    - name: start pmm-agent service
+      service: name=pmm-agent state=started
+      when: inventory_hostname in groups['psmdb']
+
     - name: start mongod service
       service: name=mongod state=started
       when: inventory_hostname in groups['psmdb']
@@ -582,7 +601,7 @@
       shell: >
         pmm-admin add mongodb \
         --username=pmm \
-        --password=password123
+        --password=password123 \
       register: pmm_config_result
       until: "pmm_config_result.rc == 0"
       retries: 3
@@ -603,10 +622,3 @@
       when:
       - "'Connected        : true' in pmm_connection_check.stdout"
       - inventory_hostname in groups['psmdb']
-
-      - name: Transfer graph creating script to nodes
-        copy:
-          src: ../replicaset/tests/gather_performance_stats.py
-          dest: /home/keith/gather_performance_stats.py
-          mode: '0644'
-        when: inventory_hostname in groups['psmdb']
