@@ -232,10 +232,14 @@
         key: https://repo.percona.com/yum/RPM-GPG-KEY-Percona
       when: ansible_os_family == "RedHat"
 
-    - name: Install percona repository package
+    - name: Download Percona Release package on Debian
       apt:
         deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
       when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
+
+    - name: Install Percona release package on Debian
+      ansible.builtin.command: dpkg -i percona-release_latest.generic_all.deb
+      when: ansible_facts['os_family'] == 'Debian'
 
     - name: Install latest percona-release RHEL
       command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
@@ -428,12 +432,6 @@
         state: started
       when: inventory_hostname == "jenkins-pml-mongolink"
 
-    - name: Import Percona GPG key
-      rpm_key:
-        key: https://www.percona.com/downloads/RPM-GPG-KEY-percona
-        state: present
-      when: inventory_hostname == "jenkins-pml-mongolink"
-
     - name: Download runc binary
       get_url:
         url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
@@ -441,7 +439,7 @@
         mode: '0755'
       when: inventory_hostname == "jenkins-pml-mongolink"
 
-    - name: Move runc to /usr/bin (force overwrite)
+    - name: Move runc to /usr/bin
       copy:
         src: /usr/local/bin/runc
         dest: /usr/bin/runc
@@ -450,13 +448,13 @@
         force: yes
       when: inventory_hostname == "jenkins-pml-mongolink"
 
-    - name: Check runc version
+    - name: Check runc installed correctly
       command: runc --version
       register: runc_version
       changed_when: false
       when: inventory_hostname == "jenkins-pml-mongolink"
 
-    - name: Show runc version
+    - name: Check runc installed correctly
       debug:
         msg: "runc version: {{ runc_version.stdout }}"
       when: inventory_hostname == "jenkins-pml-mongolink"
@@ -494,14 +492,22 @@
 
     - name: Enable pmm3-client repository
       command: percona-release enable pmm3-client
-      register: enable_output
-      changed_when: "'Enabled' in enable_output.stdout"
       when: inventory_hostname in groups['psmdb']
 
     - name: Install pmm package RHEL
       yum:
         name: pmm-client
       when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
+
+    - name: Install deps
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+          - pmm-client
+      when: ansible_os_family == "Debian"
 
     - name: Configure PMM on source psmdb node
       shell: >
