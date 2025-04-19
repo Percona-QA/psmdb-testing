@@ -8,7 +8,7 @@ import urllib3
 
 import json
 import testinfra.utils.ansible_runner
-from data_integrity_check import compare_data_rs
+from mlink.data_integrity_check import compare_data_rs
 
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -146,5 +146,5 @@ def pml_finalize(timeout=120):
 #     assert confirm_collection_size(destination, "27017", collections, datasize)
 
 def test_data_integrity():
-    assert compare_data_rs(source, destination, "27017")
+    assert compare_data_rs(source, destination)
 
