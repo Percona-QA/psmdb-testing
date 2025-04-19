@@ -108,16 +108,15 @@ def collect_memory_useage(node):
     pmlAddress = obtain_pml_address(pml)
     return node.check_output('curl -sk -u admin:admin "https://' + pmlAddress + '/prometheus/api/v1/query_range?query=100%20*%20(1%20-%20(node_memory_MemAvailable_bytes%20%2F%20node_memory_MemTotal_bytes))&start=$(date -u -d \'10 minutes ago\' +%s)&end=$(date -u +%s)&step=15"')
 
-def wait_for_pml_replication(timeout=120):
+def pml_start(timeout=120):
+    result = json.loads(pml.check_output(
+        "percona-mongolink start"))
     for _ in range(timeout):
-        try:
-            if "Data Clone completed" in pml.check_output('journalctl --grep="Data Clone completed"'):
-                return True
-        except subprocess.CalledProcessError:
-            pass
+        status = json.loads(pml.check_output('percona-mongolink status'))
+        if status["cloneCompleted"] == "true":
+            return True
         sleep(1)
-
-    print("Timeout waiting for PML replication after " + str(timeout) + " seconds.")
+    print("PML did not start after " + str(timeout) + " seconds.")
     return False
 
 def pml_finalize(timeout=120):
@@ -136,11 +135,10 @@ def test_prepare_data():
     assert confirm_collection_size(source, "27017", collections, datasize)
 
 def test_initiate_pml():
-    result = pml.check_output(
-        "percona-mongolink start")
-    output = json.loads(result)
-    assert output in [{"ok": True}, {'error': 'already running', 'ok': False}]
-    assert wait_for_pml_replication()
+    result = json.loads(pml.check_output(
+        "percona-mongolink start"))
+    assert result in [{"ok": True}, {'error': 'already running', 'ok': False}]
+    assert pml_start()
     assert pml_finalize()
 
 
