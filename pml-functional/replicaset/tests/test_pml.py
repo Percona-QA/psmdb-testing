@@ -142,9 +142,9 @@ def pml_finalize(timeout=120):
 #     assert pml_finalize()
 
 
-def test_data_transfer():
-    assert confirm_collection_size(destination, "27017", collections, datasize)
+# def test_data_transfer():
+#     assert confirm_collection_size(destination, "27017", collections, datasize)
 
-# def test_data_integrity():
-#     assert compare_data_rs(source, destination, "27017")
+def test_data_integrity():
+    assert compare_data_rs(source, destination, "27017")
 
