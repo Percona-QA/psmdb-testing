@@ -22,39 +22,14 @@ distribute = os.getenv("DISTRIBUTE", default = "false")
 extraEnvVars = os.getenv("EXTRA_ENV_VARS", default = "")
 TIMEOUT = int(os.getenv("TIMEOUT",default = 300))
 
-# def create_config(datasize, collections):
-#     string = []
-#     documentCount = int(datasize / collections)
-#     for x in range(collections):
-#         collectionName = f"collection{x}"
-#         string2 = {'database': 'test','collection': collectionName,'count': documentCount,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}
-#         string.append(string2)
-#     return string
-
 def create_config(datasize, collections):
-    config = []
-    total_bytes = datasize * 1024 * 1024  # Convert MB to bytes
-    bytes_per_collection = total_bytes // collections
-
+    string = []
+    documentCount = int(datasize / collections)
     for x in range(collections):
-        collection_name = f"collection{x}"
-        doc_size = random.randint(1 * 1024 * 1024, 16 * 1024 * 1024)  # NEW: randomize per collection
-        doc_count = bytes_per_collection // doc_size
-
-        config.append({
-            'database': 'test',
-            'collection': collection_name,
-            'count': doc_count,
-            'content': {
-                'binary': {
-                    'type': 'binary',
-                    'minLength': doc_size,
-                    'maxLength': doc_size
-                }
-            }
-        })
-
-    return config
+        collectionName = f"collection{x}"
+        string2 = {'database': 'test','collection': collectionName,'count': documentCount,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}
+        string.append(string2)
+    return string
 
 def distribute_create_config(dataSize, collections):
     string = []
@@ -148,16 +123,16 @@ def test_prepare_data():
     load_data(source,"27017")
     assert confirm_collection_size(source, "27017", collections, datasize)
 
-# def test_initiate_pml():
-#     result = json.loads(pml.check_output(
-#         "percona-mongolink start"))
-#     assert result in [{"ok": True}, {'error': 'already running', 'ok': False}]
-#     assert pml_start()
-#     assert pml_finalize()
-#
-# def test_data_transfer():
-#     assert confirm_collection_size(destination, "27017", collections, datasize)
-#
-# def test_data_integrity():
-#     assert compare_data_rs(source, destination)
+def test_initiate_pml():
+    result = json.loads(pml.check_output(
+        "percona-mongolink start"))
+    assert result in [{"ok": True}, {'error': 'already running', 'ok': False}]
+    assert pml_start()
+    assert pml_finalize()
+
+def test_data_transfer():
+    assert confirm_collection_size(destination, "27017", collections, datasize)
+
+def test_data_integrity():
+    assert compare_data_rs(source, destination)
 
