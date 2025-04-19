@@ -113,7 +113,7 @@ def pml_start(timeout=120):
         "percona-mongolink start"))
     for _ in range(timeout):
         status = json.loads(pml.check_output('percona-mongolink status'))
-        if status["cloneCompleted"] == "true":
+        if status["initialSync"]["cloneCompleted"] == "true":
             return True
         sleep(1)
     print("PML did not start after " + str(timeout) + " seconds.")
