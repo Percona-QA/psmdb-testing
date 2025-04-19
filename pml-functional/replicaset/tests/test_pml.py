@@ -9,6 +9,7 @@ import urllib3
 
 import json
 import testinfra.utils.ansible_runner
+from mlink.data_integrity_check import compare_data_rs
 sys.path.append('../')
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
