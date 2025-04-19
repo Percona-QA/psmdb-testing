@@ -33,13 +33,15 @@ TIMEOUT = int(os.getenv("TIMEOUT",default = 300))
 
 def create_config(datasize, collections):
     config = []
-    doc_size = random.randint(1 * 1024 * 1024, 16 * 1024 * 1024)  # Random doc size
+    total_bytes = datasize * 1024 * 1024  # Convert MB to bytes
+    bytes_per_collection = total_bytes // collections
+
     for x in range(collections):
         collection_name = f"collection{x}"
-        total_bytes = (datasize * 1024 * 1024) // collections
-        doc_count = total_bytes // doc_size
+        doc_size = random.randint(1 * 1024 * 1024, 16 * 1024 * 1024)  # NEW: randomize per collection
+        doc_count = bytes_per_collection // doc_size
 
-        string = {
+        config.append({
             'database': 'test',
             'collection': collection_name,
             'count': doc_count,
@@ -50,8 +52,7 @@ def create_config(datasize, collections):
                     'maxLength': doc_size
                 }
             }
-        }
-        config.append(string)
+        })
 
     return config
 
