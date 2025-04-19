@@ -10,7 +10,7 @@ import urllib3
 import json
 import testinfra.utils.ansible_runner
 
-from mlink.example_cluster import mlink
+# from mlink.example_cluster import mlink
 
 # Adjust path to project root
 print("🔍 Added to sys.path:", os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
