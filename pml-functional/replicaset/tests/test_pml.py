@@ -13,7 +13,7 @@ import testinfra.utils.ansible_runner
 from mlink.example_cluster import mlink
 
 # Adjust path to project root
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+print("🔍 Added to sys.path:", os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 
 # Now this import should work
 from mlink.data_integrity_check import compare_data_rs
