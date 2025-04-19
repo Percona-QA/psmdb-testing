@@ -414,7 +414,7 @@
           After=network.target
 
           [Service]
-          ExecStart=/usr/local/bin/percona-mongolink --source mongodb://{{ private_source_ip }}:27017 --target mongodb://{{ private_destination_ip }}:27017
+          ExecStart=/usr/local/bin/percona-mongolink --source mongodb://{{ private_source_ip }}:27017 --target mongodb://{{ private_destination_ip }}:27017 --log-level debug --log-json
           Restart=on-failure
           User=root
 
@@ -573,7 +573,7 @@
       when:
         - inventory_hostname in groups['psmdb']
         - pmm_user_check.stdout == "null"
-        - psmdb_version.split('.')[0] | int >= 8
+        - psmdb_version.split('.')[0] | int >= 8 or psmdb_version == "latest"
 
     - name: Create MongoDB PMM User role on psmdb < 8
       community.mongodb.mongodb_shell:

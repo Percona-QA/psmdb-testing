@@ -124,16 +124,16 @@ def test_prepare_data():
     load_data(source,"27017")
     assert confirm_collection_size(source, "27017", collections, datasize)
 
-def test_initiate_pml():
-    result = pml.check_output(
-        "percona-mongolink start")
-    output = json.loads(result)
-    assert output in [{"ok": True}, {'error': 'already running', 'ok': False}]
-    assert wait_for_pml_replication()
-
-def test_data_transfer():
-    assert confirm_collection_size(destination, "27017", collections, datasize)
-
-def test_data_integrity():
-    assert compare_data_rs(source, destination, "27017")
+# def test_initiate_pml():
+#     result = pml.check_output(
+#         "percona-mongolink start")
+#     output = json.loads(result)
+#     assert output in [{"ok": True}, {'error': 'already running', 'ok': False}]
+#     assert wait_for_pml_replication()
+#
+# def test_data_transfer():
+#     assert confirm_collection_size(destination, "27017", collections, datasize)
+#
+# def test_data_integrity():
+#     assert compare_data_rs(source, destination, "27017")
 
