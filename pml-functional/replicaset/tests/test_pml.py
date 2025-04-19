@@ -135,20 +135,19 @@ def pml_finalize(timeout=120):
     print("PML did not finalize after " + str(timeout) + " seconds.")
     return False
 
-# def test_prepare_data():
-#     load_data(source,"27017")
-#     assert confirm_collection_size(source, "27017", collections, datasize)
-#
-# def test_initiate_pml():
-#     result = json.loads(pml.check_output(
-#         "percona-mongolink start"))
-#     assert result in [{"ok": True}, {'error': 'already running', 'ok': False}]
-#     assert pml_start()
-#     assert pml_finalize()
+def test_prepare_data():
+    load_data(source,"27017")
+    assert confirm_collection_size(source, "27017", collections, datasize)
 
+def test_initiate_pml():
+    result = json.loads(pml.check_output(
+        "percona-mongolink start"))
+    assert result in [{"ok": True}, {'error': 'already running', 'ok': False}]
+    assert pml_start()
+    assert pml_finalize()
 
-# def test_data_transfer():
-#     assert confirm_collection_size(destination, "27017", collections, datasize)
+def test_data_transfer():
+    assert confirm_collection_size(destination, "27017", collections, datasize)
 
 def test_data_integrity():
     assert compare_data_rs(source, destination)
