@@ -526,7 +526,7 @@
       changed_when: false
       when: inventory_hostname in groups['psmdb']
 
-    - name: Create MongoDB pmmMonitor role (no auth)
+    - name: Create MongoDB pmmMonitor role
       community.mongodb.mongodb_shell:
         eval: |
           db.getSiblingDB("admin").createRole({
@@ -612,7 +612,7 @@
       - inventory_hostname in groups['psmdb']
       - mongodb_service_check.stdout == ""
 
-    - name: start pmm-agent service
+    - name: Restart pmm-agent service
       service: name=pmm-agent state=started
       when: inventory_hostname in groups['psmdb']
 

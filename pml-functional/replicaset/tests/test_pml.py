@@ -117,20 +117,33 @@ def wait_for_pml_replication(timeout=120):
             pass
         sleep(1)
 
-    print("Timeout waiting for PML replication.")
+    print("Timeout waiting for PML replication after " + str(timeout) + " seconds.")
+    return False
+
+def pml_finalize(timeout=120):
+    pml.check_output(
+        "percona-mongolink finalize")
+    for _ in range(timeout):
+        status = json.loads(pml.check_output('percona-mongolink status'))
+        if status["state"] == "finalized":
+            return True
+        sleep(1)
+    print("PML did not finalize after " + str(timeout) + " seconds.")
     return False
 
 def test_prepare_data():
     load_data(source,"27017")
     assert confirm_collection_size(source, "27017", collections, datasize)
 
-# def test_initiate_pml():
-#     result = pml.check_output(
-#         "percona-mongolink start")
-#     output = json.loads(result)
-#     assert output in [{"ok": True}, {'error': 'already running', 'ok': False}]
-#     assert wait_for_pml_replication()
-#
+def test_initiate_pml():
+    result = pml.check_output(
+        "percona-mongolink start")
+    output = json.loads(result)
+    assert output in [{"ok": True}, {'error': 'already running', 'ok': False}]
+    assert wait_for_pml_replication()
+    assert pml_finalize()
+
+
 # def test_data_transfer():
 #     assert confirm_collection_size(destination, "27017", collections, datasize)
 #
