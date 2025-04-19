@@ -16,7 +16,7 @@ from mlink.example_cluster import mlink
 print("🔍 Added to sys.path:", os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 
 # Now this import should work
-from mlink.data_integrity_check import compare_data_rs
+# from mlink.data_integrity_check import compare_data_rs
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-source')
