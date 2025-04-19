@@ -299,7 +299,7 @@ class Cluster:
         for host in self.all_hosts:
             try:
                 container = docker.from_env().containers.get(host)
-                container.remove(force=True)
+                container.remove(v=True,force=True)
                 Cluster.log("Container {} was removed".format(host))
             except docker.errors.NotFound:
                 pass

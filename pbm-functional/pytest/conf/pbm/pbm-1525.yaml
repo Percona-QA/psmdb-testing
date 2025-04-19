@@ -1,0 +1,9 @@
+storage:
+    type: s3
+    s3:
+      endpointUrl: https://nginx-minio:15250
+      bucket: bcp
+      prefix: pbme2etest
+      credentials:
+        access-key-id: "minio1234"
+        secret-access-key: "minio1234"

@@ -23,7 +23,7 @@ aggregation_tde_gcm|wiredTiger
 aggregation_unsplittable_collections_on_random_shard_passthrough|wiredTiger
 aggregation_unsplittable_collections_on_random_shard_passthrough_with_config_transitions|wiredTiger
 analyze_shard_key_jscore_passthrough|wiredTiger
-audit|wiredTiger
+audit --jobs=1|wiredTiger
 auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 auth_audit|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 backup|wiredTiger
@@ -504,7 +504,7 @@ aggregation_sharded_collections_passthrough|inMemory
 aggregation_unsplittable_collections_on_random_shard_passthrough|inMemory
 aggregation_unsplittable_collections_on_random_shard_passthrough_with_config_transitions|inMemory
 analyze_shard_key_jscore_passthrough|inMemory
-audit|inMemory
+audit --jobs=1|inMemory
 auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 auth_audit|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
  backup|inMemory
