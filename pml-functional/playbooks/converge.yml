@@ -377,7 +377,7 @@
       service: name=mongod state=started
       when: inventory_hostname in groups['psmdb']
 
-    - name: Create a replicaset rs for Source
+    - name: Create a replicaset rs for Source\
       community.mongodb.mongodb_replicaset:
         replica_set: rs
         login_host: "{{ private_source_ip }}"
