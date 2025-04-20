@@ -124,6 +124,11 @@
       ignore_errors: true
       when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
 
+    - name: Install Python package
+      pip:
+        name:
+          - pymongo
+
     - name: Clone PML repo
       timeout: 180
       git:
@@ -372,7 +377,7 @@
       service: name=mongod state=started
       when: inventory_hostname in groups['psmdb']
 
-    - name: Create a replicaset rs
+    - name: Create a replicaset rs for Source
       community.mongodb.mongodb_replicaset:
         replica_set: rs
         login_host: "{{ private_source_ip }}"
@@ -382,7 +387,7 @@
         validate: no
       when: inventory_hostname == "jenkins-pml-source"
 
-    - name: Create a replicaset rs
+    - name: Create a replicaset rs for Destination
       community.mongodb.mongodb_replicaset:
         replica_set: rs
         login_host: "{{ private_destination_ip }}"
