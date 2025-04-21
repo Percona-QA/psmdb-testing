@@ -7,6 +7,7 @@ import random
 from cluster import Cluster
 from mongolink import Mongolink
 from metrics_collector import metrics_collector
+from data_generator import generate_dummy_data
 
 @pytest.fixture(scope="package")
 def dstRS():
@@ -69,31 +70,20 @@ def test_rs_mlink_PML_T33(start_cluster, srcRS, dstRS, mlink):
     Test insufficient oplog for replication
     Configured delay on the destination cluster for bulkInsert command for 10 sec
     Configured oplogSize on the source 20 Mb
-    Configured load with 2 threads each inserts 2Mb documents inside the loop
+    Configured load - 5 million records, ~5.5 GB
     """
 
     configure_failpoint_delay(dstRS.connection,['bulkWrite'],'alwaysOn',10000)
-
-    def insert_docs(connection,db,coll,duration):
-        client=pymongo.MongoClient(connection)
-        timeout = time.time() + duration
-        while insert:
-            data = random.randbytes(2*1024*1024)
-            client[db][coll].insert_one({ 'data': data})
-            if time.time() > timeout:
-                break
-
-    insert = True
-    background_insert1 = threading.Thread(target=insert_docs,args=(srcRS.connection,'test1','test',60,))
-    background_insert2 = threading.Thread(target=insert_docs,args=(srcRS.connection,'test2','test',60,))
-    background_insert1.start()
-    background_insert2.start()
     mlink.start()
-    background_insert1.join()
-    background_insert2.join()
-    mlink.wait_for_repl_stage(120)
-    status = mlink.status()
-    Cluster.log(status)
+    generate_dummy_data(srcRS.connection, "dummy", 5, 1000000, 10000)
+    mlink.wait_for_zero_lag(120)
+    for _ in range(30):
+        status = mlink.status()
+        Cluster.log(status)
+        if not status['data']['ok'] and status['data']['state'] == 'failed':
+            break
+        time.sleep(1)
+
     assert status['data']['ok'] == False
     assert status['data']['state'] != 'running'
 
