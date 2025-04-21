@@ -52,9 +52,15 @@ class Mongolink:
         except docker.errors.NotFound:
             pass
 
-    def start(self):
+    def start(self, include_namespaces=None, exclude_namespaces=None):
         try:
-            exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/start -d '{}'")
+            payload = {}
+            if include_namespaces:
+                payload["includeNamespaces"] = include_namespaces
+            if exclude_namespaces:
+                payload["excludeNamespaces"] = exclude_namespaces
+            json_data = json.dumps(payload)
+            exec_result = self.container.exec_run(f"curl -s -X POST http://localhost:2242/start -d '{json_data}'")
 
             response = exec_result.output.decode("utf-8").strip()
             status_code = exec_result.exit_code
@@ -113,14 +119,62 @@ class Mongolink:
                     log_line = line.decode('utf-8').strip()
                     if "Checking Recovery Data" in log_line:
                         Cluster.log("Mlink restarted successfully")
-                        return
+                        return True
                     if time.time() - start_time > timeout:
                         Cluster.log(f"Timeout exceeded {timeout} seconds while waiting for mlink to start")
-                        return
+                        return False
             except docker.errors.APIError as e:
                 Cluster.log(f"Failed to restart container '{self.container.name}': {e}")
+                return False
         else:
             Cluster.log("No container to restart")
+            return False
+
+    def pause(self):
+        try:
+            exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/pause")
+            response = exec_result.output.decode("utf-8").strip()
+            status_code = exec_result.exit_code
+            if status_code == 0 and response:
+                try:
+                    json_response = json.loads(response)
+                    if json_response.get("ok") is True:
+                        Cluster.log("Sync paused successfully")
+                        return True
+                    elif json_response.get("ok") is False:
+                        error_msg = json_response.get("error", "Unknown error")
+                        Cluster.log(f"Failed to pause sync: {error_msg}")
+                        return False
+                except json.JSONDecodeError:
+                    Cluster.log("Received invalid JSON response.")
+            Cluster.log("Failed to pause sync")
+            return False
+        except Exception as e:
+            Cluster.log(f"Unexpected error: {e}")
+            return False
+
+    def resume(self):
+        try:
+            exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/resume")
+            response = exec_result.output.decode("utf-8").strip()
+            status_code = exec_result.exit_code
+            if status_code == 0 and response:
+                try:
+                    json_response = json.loads(response)
+                    if json_response.get("ok") is True:
+                        Cluster.log("Sync resumed successfully")
+                        return True
+                    elif json_response.get("ok") is False:
+                        error_msg = json_response.get("error", "Unknown error")
+                        Cluster.log(f"Failed to resume sync: {error_msg}")
+                        return False
+                except json.JSONDecodeError:
+                    Cluster.log("Received invalid JSON response.")
+            Cluster.log("Failed to resume sync")
+            return False
+        except Exception as e:
+            Cluster.log(f"Unexpected error: {e}")
+            return False
 
     def finalize(self):
         try:
@@ -207,8 +261,9 @@ class Mongolink:
                 return False
 
             status_response = self.status()
-            if not status_response["success"]:
-                Cluster.log(f"Error: Impossible to retrieve status, {status_response['error']}")
+            if not status_response.get("success") or not status_response["data"].get("ok"):
+                error_msg = status_response["data"].get("error", "Unknown error")
+                Cluster.log(f"Error: replication failed, error: {error_msg}")
                 return False
 
             status_data = status_response["data"]
@@ -256,9 +311,9 @@ class Mongolink:
 
         while time.time() - start_time < timeout:
             status_response = self.status()
-
-            if not status_response["success"]:
-                Cluster.log(f"Error: Impossible to retrieve status, {status_response['error']}")
+            if not status_response.get("success") or not status_response["data"].get("ok"):
+                error_msg = status_response["data"].get("error", "Unknown error")
+                Cluster.log(f"Error: replication failed, error: {error_msg}")
                 return False
 
             initial_sync = status_response["data"].get("initialSync")
@@ -289,16 +344,19 @@ class Mongolink:
 
     def wait_for_checkpoint(self, timeout=120):
         try:
-            start_time = time.time()
-            log_stream = self.container.logs(stream=True, follow=True)
-
-            for line in log_stream:
-                log_line = line.decode('utf-8').strip()
-                if "Checkpoint saved" in log_line:
-                    return True
-                if time.time() - start_time > timeout:
-                    print(f"Timeout exceeded {timeout} seconds while waiting for checkpoint")
-                    return False
-        except docker.errors.APIError as e:
-            print(f"Failed to read logs from container '{self.name}': {e}")
+            dst_client = pymongo.MongoClient(self.dst)
+        except Exception as e:
+            Cluster.log(f"Error: Failed to connect to dst MongoDB URI: {e}")
             return False
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                collection_names = dst_client["percona_mongolink"].list_collection_names()
+                if "checkpoints" in collection_names:
+                    return True
+                time.sleep(1)
+            except Exception as e:
+                Cluster.log(f"Error: Failed while checking for checkpoints collection: {e}")
+                return False
+        Cluster.log(f"Error: Timeout exceeded {timeout} seconds while waiting for checkpoints collection to appear")
+        return False
