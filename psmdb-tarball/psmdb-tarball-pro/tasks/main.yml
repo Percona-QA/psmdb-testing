@@ -111,8 +111,7 @@
 - name: Install poetry for PSMDB 8.0
   pip:
     name:
-      - poetry==1.5.1
-      - pyproject-hooks==1.0.0
+      - poetry==2.0.0
     state: present
     virtualenv: /opt/venv
   when: repo_branch[0] | float >= 8.0
