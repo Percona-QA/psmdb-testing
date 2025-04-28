@@ -128,7 +128,7 @@ def pml_finalize():
 
         if output:
             try:
-
+                print(output)
                 if output.get("ok") is True:
                     Cluster.log("Sync finalized successfully")
                     return True
