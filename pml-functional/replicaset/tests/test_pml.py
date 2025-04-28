@@ -76,7 +76,6 @@ def load_data(node,port):
 
 def check_count_data(node,port):
     result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.binary.count()' --quiet | tail -1")
-    print('count objects in collection: ' + result)
     return result
 
 def obtain_pml_address(node):

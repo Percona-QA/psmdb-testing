@@ -58,6 +58,7 @@ def compare_data_sharded(db1, db2):
 
 def compare_database_hashes(db1_container, db2_container):
     def get_db_hashes_and_collections(uri):
+        print(f"Trying to connect to MongoDB at: {uri}")
         client = MongoClient(uri)
         db_hashes = {}
         collection_hashes = {}
