@@ -231,6 +231,7 @@ def test_initiate_pml():
         "percona-mongolink start"))
     assert result in [{"ok": True}, {'error': 'already running', 'ok': False}]
     assert pml_start()
+    assert wait_for_repl_stage()
     assert pml_finalize()
 #
 # def test_data_transfer():
