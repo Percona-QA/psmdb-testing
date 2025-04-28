@@ -150,15 +150,15 @@ def pml_finalize():
 def status(timeout=45):
     try:
         output = pml.check_output(f"curl -m {timeout} -s -X GET http://localhost:2242/status -d '{{}}'")
+        json_output = json.loads(output)
         Cluster.log(output)
 
-        if not output.get("ok", False):
+        if not json_output.get("ok", False):
             return {"success": False, "error": "mlink status command returned ok: false"}
 
         try:
-            cleaned_output = output.replace("\n", "").replace("\r", "").strip()
-            json_response = json.loads(cleaned_output)
-            return {"success": True, "data": json_response}
+            cleaned_output = json.loads(output.replace("\n", "").replace("\r", "").strip())
+            return {"success": True, "data": cleaned_output}
         except json.JSONDecodeError as e:
             return {"success": False, "error": "Invalid JSON response"}
 
