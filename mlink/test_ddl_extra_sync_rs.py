@@ -659,14 +659,8 @@ def test_rs_mlink_PML_T21(reset_state, srcRS, dstRS, mlink):
     assert result is True, "Data mismatch after synchronization"
 
     mlink_error, error_logs = mlink.check_mlink_errors()
-    expected_errors = ["ERR Catalog: add collection"]
+    expected_error = "ERR add collection"
     if not mlink_error:
-        has_expected = any(any(expected in line for expected in expected_errors)for line in error_logs)
-        unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
-
+        unexpected = [line for line in error_logs if expected_error not in line]
         if unexpected:
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
-        elif has_expected:
-            pytest.xfail(f"Expected fail: {expected_errors}, no errors should be returned")
-    else:
-        pytest.fail("Unexpected pass: test should have failed due to PML-111")

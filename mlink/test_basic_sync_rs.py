@@ -3,6 +3,7 @@ import pymongo
 import time
 import docker
 import threading
+import re
 import pymongo.errors
 
 from cluster import Cluster
@@ -136,19 +137,19 @@ def test_rs_mlink_PML_T3(reset_state, srcRS, dstRS, mlink):
 
         # Add data before sync
         init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
-        init_test_db.failed_index_collection.insert_many([
+        init_test_db.invalid_index_collection.insert_many([
             {"first_name": "Alice", "last_name": "Smith", "age": 30},
             {"first_name": "Bob", "last_name": "Brown", "age": 25}
         ])
-        init_test_db.failed_index_collection.create_index(
+        init_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
             name="compound_test_index"
         )
-        init_test_db.failed_index_collection.create_index(
+        init_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
             name="compound_test_unique_index", unique=True
         )
-        init_test_db.failed_index_collection.create_index(
+        init_test_db.invalid_index_collection.create_index(
         [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
         name="compound_test_sparse_index", sparse=True
         )
@@ -158,15 +159,15 @@ def test_rs_mlink_PML_T3(reset_state, srcRS, dstRS, mlink):
 
         # Add data during clone phase
         clone_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
-        clone_test_db.failed_index_collection.create_index(
+        clone_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
             name="compound_test_index"
         )
-        clone_test_db.failed_index_collection.create_index(
+        clone_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
             name="compound_test_unique_index", unique=True
         )
-        clone_test_db.failed_index_collection.create_index(
+        clone_test_db.invalid_index_collection.create_index(
         [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
         name="compound_test_sparse_index", sparse=True
         )
@@ -176,15 +177,15 @@ def test_rs_mlink_PML_T3(reset_state, srcRS, dstRS, mlink):
 
         # Add data during replication phase
         repl_test_db, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
-        repl_test_db.failed_index_collection.create_index(
+        repl_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
             name="compound_test_index"
         )
-        repl_test_db.failed_index_collection.create_index(
+        repl_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
             name="compound_test_unique_index", unique=True
         )
-        repl_test_db.failed_index_collection.create_index(
+        repl_test_db.invalid_index_collection.create_index(
         [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
         name="compound_test_sparse_index", sparse=True
         )
@@ -212,9 +213,9 @@ def test_rs_mlink_PML_T3(reset_state, srcRS, dstRS, mlink):
     assert result is True, "Failed to finalize mlink service"
 
     expected_mismatches = [
-        ("init_test_db.failed_index_collection", "compound_test_unique_index"),
-        ("clone_test_db.failed_index_collection", "compound_test_unique_index"),
-        ("repl_test_db.failed_index_collection", "compound_test_unique_index")
+        ("init_test_db.invalid_index_collection", "compound_test_unique_index"),
+        ("clone_test_db.invalid_index_collection", "compound_test_unique_index"),
+        ("repl_test_db.invalid_index_collection", "compound_test_unique_index")
     ]
 
     result, summary = compare_data_rs(srcRS, dstRS)
@@ -225,11 +226,14 @@ def test_rs_mlink_PML_T3(reset_state, srcRS, dstRS, mlink):
 
     assert not missing_mismatches, f"Expected mismatches missing: {missing_mismatches}"
     if unexpected_mismatches:
-        pytest.xfail("Known issue: PML-84")
+        pytest.fail("Unexpected mismatches:\n" + "\n".join(unexpected_mismatches))
 
     mlink_error, error_logs = mlink.check_mlink_errors()
-    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
-    pytest.fail("Unexpected pass: test should have failed due to PML-84")
+    expected_error = "ERR One or more indexes failed to create"
+    if not mlink_error:
+        unexpected = [line for line in error_logs if expected_error not in line]
+        if unexpected:
+            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -264,12 +268,8 @@ def test_rs_mlink_PML_T4(reset_state, srcRS, dstRS, mlink):
         dst["init_test_db"].duplicate_index_collection.create_index([("age", pymongo.ASCENDING)], name="conflict_index")
         src["init_test_db"].duplicate_index_collection.create_index([("name", pymongo.ASCENDING)], name="conflict_index")
 
-        result = mlink.wait_for_repl_stage(timeout=30)
-        if not result:
-            if "IndexKeySpecsConflict" in mlink.logs():
-                pytest.xfail("Known issue: PML-113")
-            else:
-                assert False, "Failed to start replication stage"
+        result = mlink.wait_for_repl_stage()
+        assert result is True, "Failed to start replication stage"
 
         repl_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         repl_test_db.duplicate_index_collection.insert_many([
@@ -302,11 +302,23 @@ def test_rs_mlink_PML_T4(reset_state, srcRS, dstRS, mlink):
     result = mlink.finalize()
     assert result is True, "Failed to finalize mlink service"
 
-    result, _ = compare_data_rs(srcRS, dstRS)
-    assert result is True, "Data mismatch after synchronization"
+    result, summary = compare_data_rs(srcRS, dstRS)
+    if not result:
+        expected_mismatches = [
+            ("init_test_db.duplicate_index_collection", "conflict_index"),
+            ("repl_test_db.duplicate_index_collection", "conflict_index")]
+        missing_mismatches = [index for index in expected_mismatches if index not in summary]
+        unexpected_mismatches = [mismatch for mismatch in summary if mismatch not in expected_mismatches]
+        assert not missing_mismatches, f"Expected mismatches missing: {missing_mismatches}"
+        if unexpected_mismatches:
+            pytest.fail("Unexpected mismatches:\n" + "\n".join(unexpected_mismatches))
+
     mlink_error, error_logs = mlink.check_mlink_errors()
-    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
-    pytest.fail("Unexpected pass: test should have failed due to PML-113")
+    expected_error = "ERR One or more indexes failed to create"
+    if not mlink_error:
+        unexpected = [line for line in error_logs if expected_error not in line]
+        if unexpected:
+            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -321,9 +333,9 @@ def test_rs_mlink_PML_T5(reset_state, srcRS, dstRS, mlink):
         dst = pymongo.MongoClient(dstRS.connection)
 
         init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
-        init_test_db.failed_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
-        init_test_db.failed_text_collection2.insert_one({"a": 1, "words": "omnibus"})
-        init_test_db.failed_unique_collection.insert_many([{"name": 1},{"x": 2},{"x": 3},{"x": 3}])
+        init_test_db.invalid_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
+        init_test_db.invalid_text_collection2.insert_one({"a": 1, "words": "omnibus"})
+        init_test_db.invalid_unique_collection.insert_many([{"name": 1},{"x": 2},{"x": 3},{"x": 3}])
 
         result = mlink.start()
         assert result is True, "Failed to start mlink service"
@@ -339,51 +351,47 @@ def test_rs_mlink_PML_T5(reset_state, srcRS, dstRS, mlink):
 
         # Check index build failure on src
         try:
-            init_test_db.failed_text_collection1.create_index([("a.b", 1), ("words", "text")])
+            init_test_db.invalid_text_collection1.create_index([("a.b", 1), ("words", "text")])
             assert False, "Index build should fail due array in doc for text index"
         except pymongo.errors.OperationFailure as e:
             assert "text index contains an array" in str(e), f"Unexpected error: {e}"
         try:
-            init_test_db.failed_unique_collection.create_index("x", unique=True)
+            init_test_db.invalid_unique_collection.create_index("x", unique=True)
             assert False, "Index build should fail due to duplicate values"
         except pymongo.errors.OperationFailure as e:
             assert e.code == 11000 or "duplicate" in str(e), f"Unexpected error: {e}"
 
         # Check index build failure on dst
-        assert wait_for_collection(dst, "init_test_db", "failed_text_collection2"), \
-            "Collection 'failed_text_collection2' was not replicated to dst in time"
-        dst["init_test_db"].failed_text_collection2.insert_one({"a": {"b": []}, "words": "omnibus_new"})
-        init_test_db.failed_text_collection2.create_index([("a.b", 1), ("words", "text")])
+        assert wait_for_collection(dst, "init_test_db", "invalid_text_collection2"), \
+            "Collection 'invalid_text_collection2' was not replicated to dst in time"
+        dst["init_test_db"].invalid_text_collection2.insert_one({"a": {"b": []}, "words": "omnibus_new"})
+        init_test_db.invalid_text_collection2.create_index([("a.b", 1), ("words", "text")])
 
         result = mlink.wait_for_repl_stage()
-        if not result:
-            if "CannotBuildIndexKeys" in mlink.logs():
-                pytest.xfail("Known issue: PML-114")
-            else:
-                assert False, "Failed to start replication stage"
+        assert result is True, "Failed to start replication stage"
 
         repl_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
-        repl_test_db.failed_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
-        repl_test_db.failed_text_collection2.insert_one({"a": 1, "words": "omnibus"})
-        repl_test_db.failed_unique_collection.insert_many([{"name": 1},{"x": 2},{"x": 3},{"x": 3}])
+        repl_test_db.invalid_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
+        repl_test_db.invalid_text_collection2.insert_one({"a": 1, "words": "omnibus"})
+        repl_test_db.invalid_unique_collection.insert_many([{"name": 1},{"x": 2},{"x": 3},{"x": 3}])
 
         # Check index build failure on src
         try:
-            repl_test_db.failed_text_collection1.create_index([("a.b", 1), ("words", "text")])
+            repl_test_db.invalid_text_collection1.create_index([("a.b", 1), ("words", "text")])
             assert False, "Index build should fail due array in doc for text index"
         except pymongo.errors.OperationFailure as e:
             assert "text index contains an array" in str(e), f"Unexpected error: {e}"
         try:
-            repl_test_db.failed_unique_collection.create_index("x", unique=True)
+            repl_test_db.invalid_unique_collection.create_index("x", unique=True)
             assert False, "Index build should fail due to duplicate values"
         except pymongo.errors.OperationFailure as e:
             assert e.code == 11000 or "duplicate" in str(e), f"Unexpected error: {e}"
 
         # Check index build failure on dst
-        assert wait_for_collection(dst, "repl_test_db", "failed_text_collection2"), \
-            "Collection 'failed_text_collection2' was not replicated to dst in time"
-        dst["repl_test_db"].failed_text_collection2.insert_one({"a": {"b": []}, "words": "omnibus_new"})
-        repl_test_db.failed_text_collection2.create_index([("a.b", 1), ("words", "text")])
+        assert wait_for_collection(dst, "repl_test_db", "invalid_text_collection2"), \
+            "Collection 'invalid_text_collection2' was not replicated to dst in time"
+        dst["repl_test_db"].invalid_text_collection2.insert_one({"a": {"b": []}, "words": "omnibus_new"})
+        repl_test_db.invalid_text_collection2.create_index([("a.b", 1), ("words", "text")])
 
         time.sleep(5)
 
@@ -402,14 +410,30 @@ def test_rs_mlink_PML_T5(reset_state, srcRS, dstRS, mlink):
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
 
+    # Remove manually added documents to dst collections
+    dst["init_test_db"].invalid_text_collection2.delete_one({"a": {"b": []}, "words": "omnibus_new"})
+    dst["repl_test_db"].invalid_text_collection2.delete_one({"a": {"b": []}, "words": "omnibus_new"})
+
     result = mlink.finalize()
     assert result is True, "Failed to finalize mlink service"
 
-    result, _ = compare_data_rs(srcRS, dstRS)
-    assert result is True, "Data mismatch after synchronization"
+    result, summary = compare_data_rs(srcRS, dstRS)
+    if not result:
+        expected_mismatches = [
+            ("init_test_db.invalid_text_collection2", "a.b_1_words_text"),
+            ("repl_test_db.invalid_text_collection2", "a.b_1_words_text")]
+        missing_mismatches = [index for index in expected_mismatches if index not in summary]
+        unexpected_mismatches = [mismatch for mismatch in summary if mismatch not in expected_mismatches]
+        assert not missing_mismatches, f"Expected mismatches missing: {missing_mismatches}"
+        if unexpected_mismatches:
+            pytest.fail("Unexpected mismatches:\n" + "\n".join(unexpected_mismatches))
+
     mlink_error, error_logs = mlink.check_mlink_errors()
-    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
-    pytest.fail("Unexpected pass: test should have failed due to PML-114")
+    expected_error = "ERR One or more indexes failed to create"
+    if not mlink_error:
+        unexpected = [line for line in error_logs if expected_error not in line]
+        if unexpected:
+            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -523,7 +547,7 @@ def test_rs_mlink_PML_T7(reset_state, srcRS, dstRS, mlink):
         src[db_name][coll_name1].create_index("x", unique=True)
         assert True, "Index creation should succeed"
         # Add duplicate record to dst to force failure on finalize stage
-        dst[db_name][coll_name1].insert_one({"x": 3})
+        res_doc = dst[db_name][coll_name1].insert_one({"x": 3})
         src[db_name][coll_name2].create_index("x", unique=True)
         assert True, "Index creation should succeed"
 
@@ -544,34 +568,24 @@ def test_rs_mlink_PML_T7(reset_state, srcRS, dstRS, mlink):
     result = mlink.finalize()
     assert result is True, "Failed to finalize mlink service"
 
-    expected_mismatches = [
-        ("test_db", "hash mismatch"),
-        ("test_db.test_collection1", "hash mismatch"),
-        ("test_db.test_collection1", "record count mismatch"),
-        ("test_db.test_collection1", "x_1")]
+    # Remove manually added documents to dst collections
+    dst[db_name][coll_name1].delete_one({"_id": res_doc.inserted_id})
 
+    expected_mismatches = [("test_db.test_collection1", "x_1")]
     result, summary = compare_data_rs(srcRS, dstRS)
     if not result:
-        unexpected = [m for m in summary if m not in expected_mismatches]
-        missing_expected = [m for m in expected_mismatches if m not in summary]
+        missing_mismatches = [index for index in expected_mismatches if index not in summary]
+        unexpected_mismatches = [mismatch for mismatch in summary if mismatch not in expected_mismatches]
+        assert not missing_mismatches, f"Expected mismatches missing: {missing_mismatches}"
+        if unexpected_mismatches:
+            pytest.fail("Unexpected mismatches:\n" + "\n".join(f"{m}" for m in unexpected_mismatches))
 
-        if missing_expected:
-            assert False, f"Expected mismatches missing: {missing_expected}"
-        if unexpected:
-            pytest.xfail("Known issue: PML-107")
-
-    no_mlink_error, error_logs = mlink.check_mlink_errors()
-    expected_error = "CannotConvertIndexToUnique"
-    if not no_mlink_error:
-        has_expected = any(expected_error in line for line in error_logs)
+    mlink_error, error_logs = mlink.check_mlink_errors()
+    expected_error = "convert to unique"
+    if not mlink_error:
         unexpected = [line for line in error_logs if expected_error not in line]
-
         if unexpected:
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
-        elif has_expected:
-            pytest.xfail(f"Expected fail: {expected_error}, mlink should provide summary of such errors")
-    else:
-        pytest.fail("Unexpected pass: test should have failed due to PML-107")
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -650,23 +664,30 @@ def test_rs_mlink_PML_T30(reset_state, srcRS, dstRS, mlink):
     """
     Test to validate handling of concurrent data clone and index build failure
     """
-
+    mlink_env = {"PML_CLONE_NUM_PARALLEL_COLLECTIONS": "5"}
+    mlink.create(log_level="trace", extra_args="--reset-state", env_vars=mlink_env)
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
 
-    src["init_test_db"].failed_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
+    src["init_test_db"].invalid_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
 
     def start_mlink():
         result = mlink.start()
         assert result is True, "Failed to start mlink service"
-    def failed_index_creation():
+    def invalid_index_creation():
         try:
-            src["init_test_db"].failed_text_collection1.create_index([("a.b", 1), ("words", "text")])
+            log_stream = mlink.logs(stream=True)
+            pattern = re.compile(r'Estimated Total Size')
+            for raw_line in log_stream:
+                line = raw_line.decode("utf-8").strip()
+                if pattern.search(line):
+                    break
+            src["init_test_db"].invalid_text_collection1.create_index([("a.b", 1), ("words", "text")])
             assert False, "Index build should fail due array in doc for text index"
         except pymongo.errors.OperationFailure as e:
             assert "text index contains an array" in str(e), f"Unexpected error: {e}"
     t1 = threading.Thread(target=start_mlink)
-    t2 = threading.Thread(target=failed_index_creation)
+    t2 = threading.Thread(target=invalid_index_creation)
     t1.start()
     t2.start()
     t1.join()
