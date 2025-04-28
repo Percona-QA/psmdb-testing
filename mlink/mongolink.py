@@ -176,7 +176,7 @@ class Mongolink:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
-    def finalize(self):
+    def finalize(self, timeout=60, interval=1):
         try:
             exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/finalize -d '{}'")
             response = exec_result.output.decode("utf-8").strip()
@@ -186,18 +186,25 @@ class Mongolink:
                 try:
                     json_response = json.loads(response)
 
-                    if json_response.get("ok") is True:
-                        Cluster.log("Sync finalized successfully")
-                        return True
-
-                    elif json_response.get("ok") is False:
+                    if json_response.get("ok") is False:
                         error_msg = json_response.get("error", "Unknown error")
                         Cluster.log(f"Failed to finalize sync between src and dst cluster: {error_msg}")
                         return False
 
+                    start_time = time.time()
+                    while time.time() - start_time < timeout:
+                        status_response = self.status()
+                        if status_response.get("success") and status_response["data"].get("ok") \
+                                                and status_response["data"].get("state") == "finalized":
+                            Cluster.log("Sync finalized successfully")
+                            return True
+                        time.sleep(interval)
+                    error_msg = status_response["data"].get("error", "Unknown error")
+                    Cluster.log(f"Error: finalization failed, error: {error_msg}")
+                    return False
                 except json.JSONDecodeError:
                     Cluster.log("Received invalid JSON response.")
-
+                    return False
             Cluster.log("Failed to finalize sync between src and dst cluster")
             return False
         except Exception as e:
