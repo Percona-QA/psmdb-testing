@@ -1,23 +1,18 @@
+import os
+import sys
+
+import docker
 import json
-from pymongo import MongoClient
-from pymongo.errors import PyMongoError
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 
-from cluster import Cluster
+from mlink.cluster import Cluster
 
-def compare_data_rs(db1, db2):
-    def resolve_container_or_uri(db):
-        if hasattr(db, "connection"):
-            return db.connection
-        elif isinstance(db, str) and (db.startswith("mongodb://") or db.startswith("mongodb+srv://")):
-            return db
+def compare_data_rs(db1, db2, port):
 
-    db1_container = resolve_container_or_uri(db1)
-    db2_container = resolve_container_or_uri(db2)
-
-    all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1_container, db2_container)
-    all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1_container, db2_container)
-    mismatch_metadata = compare_collection_metadata(db1_container, db2_container)
-    mismatch_indexes = compare_collection_indexes(db1_container, db2_container, all_coll_hash)
+    all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port)
+    all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port)
+    mismatch_metadata = compare_collection_metadata(db1, db2, port)
+    mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port)
 
     mismatch_summary = []
 
@@ -41,47 +36,45 @@ def compare_data_rs(db1, db2):
     Cluster.log(f"Mismatched databases, collections, or indexes found: {mismatch_summary}")
     return False, mismatch_summary
 
-def compare_data_sharded(db1, db2):
-    db1_container = db1.connection
-    db2_container = db2.connection
+def compare_database_hashes(db1, db2, port):
+    query = (
+        'db.getMongo().getDBNames().forEach(function(dbName) { '
+        'if (!["admin", "local", "config", "percona_mongolink"].includes(dbName)) { '
+        'var collections = []; '
+        'db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
+        'if (!coll.type || coll.type !== "view") { collections.push(coll.name); } '
+        '}); '
+        'if (collections.length > 0) { '
+        'var result = db.getSiblingDB(dbName).runCommand({ dbHash: 1, collections: collections }); '
+        'print(JSON.stringify({db: dbName, md5: result.md5, collections: result.collections})); '
+        '} else { '
+        'print(JSON.stringify({db: dbName, md5: null, collections: {}})); '
+        '} '
+        '} '
+        '});'
+    )
 
-    all_collections, mismatched_dbs, mismatched_collections = compare_entries_number(db1_container, db2_container)
+    def get_db_hashes_and_collections(db):
+        response = db.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
 
-    mismatched_indexes = compare_collection_indexes(db1_container, db2_container, all_collections)
-
-    if not mismatched_dbs and not mismatched_collections and not mismatched_indexes:
-        Cluster.log("Data and indexes are consistent between source and destination databases")
-        return True
-    else:
-        Cluster.log("Mismatched databases, collections, or indexes found")
-    return False
-
-def compare_database_hashes(db1_container, db2_container):
-    def get_db_hashes_and_collections(uri):
-        client = MongoClient(uri)
         db_hashes = {}
         collection_hashes = {}
 
-        for db_name in client.list_database_names():
-            if db_name in ["admin", "local", "config", "percona_mongolink"]:
-                continue
-            db = client[db_name]
-            collections = [name for name in db.list_collection_names()]
+        for line in response.split("\n"):
             try:
-                if collections:
-                    result = db.command("dbHash", collections=collections)
-                else:
-                    result = db.command("dbHash")
-                db_hashes[db_name] = result.get("md5")
-                for coll, coll_hash in result.get("collections", {}).items():
+                db_info = json.loads(line)
+                db_name = db_info["db"]
+                db_hashes[db_name] = db_info["md5"]
+
+                for coll, coll_hash in db_info["collections"].items():
                     collection_hashes[f"{db_name}.{coll}"] = coll_hash
-            except PyMongoError as e:
-                Cluster.log(f"Warning: could not run dbHash on {db_name}: {str(e)}")
-                db_hashes[db_name] = None
+            except json.JSONDecodeError:
+                Cluster.log(f"Warning: Skipping invalid JSON line: {line}")
+
         return db_hashes, collection_hashes
 
-    db1_hashes, db1_collections = get_db_hashes_and_collections(db1_container)
-    db2_hashes, db2_collections = get_db_hashes_and_collections(db2_container)
+    db1_hashes, db1_collections = get_db_hashes_and_collections(db1)
+    db2_hashes, db2_collections = get_db_hashes_and_collections(db2)
 
     Cluster.log("Comparing database hashes...")
     mismatched_dbs = []
@@ -115,26 +108,38 @@ def compare_database_hashes(db1_container, db2_container):
 
     return db1_collections.keys() | db2_collections.keys(), mismatched_dbs, mismatched_collections
 
-def compare_entries_number(db1_container, db2_container):
-    def get_collection_counts(uri):
-        client = MongoClient(uri)
+def compare_entries_number(db1, db2, port):
+    query = (
+        'db.getMongo().getDBNames().forEach(function(i) { '
+        'if (!["admin", "local", "config", "percona_mongolink"].includes(i)) { '
+        'var collections = db.getSiblingDB(i).runCommand({ listCollections: 1 }).cursor.firstBatch '
+        '.filter(function(coll) { return !coll.type || coll.type !== "view"; }) '
+        '.map(function(coll) { return coll.name; }); '
+        'collections.forEach(function(coll) { '
+        'try { '
+        'var count = db.getSiblingDB(i).getCollection(coll).countDocuments({}); '
+        'print(JSON.stringify({db: i, collection: coll, count: count})); '
+        '} catch (err) {} '
+        '});}});'
+    )
+
+    def get_collection_counts(db):
+        response = db.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
+
         collection_counts = {}
-        for db_name in client.list_database_names():
-            if db_name in ["admin", "local", "config", "percona_mongolink"]:
-                continue
-            db = client[db_name]
-            for coll_name in db.list_collection_names():
-                if coll_name.startswith("system."):
-                    continue
-                try:
-                    collection_counts[f"{db_name}.{coll_name}"] = db[coll_name].count_documents({})
-                except Exception as e:
-                    Cluster.log(f"Warning: Could not count documents in {db_name}.{coll_name}: {e}")
-                    continue
+
+        for line in response.split("\n"):
+            try:
+                count_info = json.loads(line)
+                collection_name = f"{count_info['db']}.{count_info['collection']}"
+                collection_counts[collection_name] = count_info["count"]
+            except json.JSONDecodeError:
+                Cluster.log(f"Warning: Skipping invalid JSON line: {line}")
+
         return collection_counts
 
-    db1_counts = get_collection_counts(db1_container)
-    db2_counts = get_collection_counts(db2_container)
+    db1_counts = get_collection_counts(db1)
+    db2_counts = get_collection_counts(db2)
 
     Cluster.log("Comparing collection record counts...")
     mismatched_dbs = []
@@ -155,12 +160,12 @@ def compare_entries_number(db1_container, db2_container):
 
     return db1_counts.keys() | db2_counts.keys(), mismatched_dbs, mismatched_collections
 
-def compare_collection_metadata(db1_container, db2_container):
+def compare_collection_metadata(db1, db2, port):
     Cluster.log("Comparing collection metadata...")
     mismatched_metadata = []
 
-    db1_metadata = get_all_collection_metadata(db1_container)
-    db2_metadata = get_all_collection_metadata(db2_container)
+    db1_metadata = get_all_collection_metadata(db1, port)
+    db2_metadata = get_all_collection_metadata(db2, port)
 
     db1_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db1_metadata}
     db2_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db2_metadata}
@@ -170,52 +175,52 @@ def compare_collection_metadata(db1_container, db2_container):
     for coll_name in all_collections:
         if coll_name not in db2_collections:
             mismatched_metadata.append((coll_name, "missing in dst DB"))
-            Cluster.log(f"Collection '{coll_name}' exists in source_DB but not in destination_DB")
+            Cluster.log(f"Collection '{coll_name}' exists in source DB but not in destination DB")
             continue
 
         if coll_name not in db1_collections:
             mismatched_metadata.append((coll_name, "missing in src DB"))
-            Cluster.log(f"Collection '{coll_name}' exists in destination_DB but not in source_DB")
+            Cluster.log(f"Collection '{coll_name}' exists in destination DB but not in source DB")
             continue
 
         for field in ["type", "options", "idIndex"]:
             if db1_collections[coll_name].get(field) != db2_collections[coll_name].get(field):
                 mismatched_metadata.append((coll_name, f"{field} mismatch"))
                 Cluster.log(f"Collection '{coll_name}' has different {field} in source and destination.")
-                Cluster.log(f"Source_DB: {json.dumps(db1_collections[coll_name].get(field), indent=2)}")
-                Cluster.log(f"Destination_DB: {json.dumps(db2_collections[coll_name].get(field), indent=2)}")
+                Cluster.log(f"Source DB: {json.dumps(db1_collections[coll_name].get(field), indent=2)}")
+                Cluster.log(f"Destination DB: {json.dumps(db2_collections[coll_name].get(field), indent=2)}")
 
     return mismatched_metadata
 
-def get_all_collection_metadata(uri):
-    client = MongoClient(uri)
-    metadata_list = []
+def get_all_collection_metadata(db, port):
+    query = (
+        'db.getMongo().getDBNames().forEach(function(i) { '
+        'if (!["admin", "local", "config", "percona_mongolink"].includes(i)) { '
+        'var collections = db.getSiblingDB(i).runCommand({ listCollections: 1 }).cursor.firstBatch '
+        '.map(function(coll) { return { db: i, name: coll.name, type: coll.type, options: coll.options }; }); '
+        'print(JSON.stringify(collections)); }});'
+    )
 
-    for db_name in client.list_database_names():
-        if db_name in ["admin", "local", "config", "percona_mongolink"]:
-            continue
-        db = client[db_name]
-        try:
-            for coll in db.list_collections():
-                metadata_list.append({
-                    "db": db_name,
-                    "name": coll["name"],
-                    "type": coll.get("type"),
-                    "options": coll.get("options"),
-                    "idIndex": coll.get("idIndex")
-                })
-        except PyMongoError as e:
-            Cluster.log(f"Warning: Could not access metadata for DB '{db_name}': {str(e)}")
-            return []
-    return metadata_list
+    response = db.check_output(
+        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
 
-def compare_collection_indexes(db1_container, db2_container, all_collections):
+    try:
+        metadata_list = []
+        for line in response.splitlines():
+            metadata_list.extend(json.loads(line))
+        return metadata_list
+    except json.JSONDecodeError:
+        Cluster.log(f"Error: Unable to parse JSON collection metadata response")
+        Cluster.log(f"Raw response: {response}")
+        return []
+
+def compare_collection_indexes(db1, db2, all_collections, port):
     Cluster.log("Comparing collection indexes...")
     mismatched_indexes = []
 
     for coll_name in all_collections:
-        db1_indexes = get_indexes(db1_container, coll_name)
-        db2_indexes = get_indexes(db2_container, coll_name)
+        db1_indexes = get_indexes(db1, coll_name, port)
+        db2_indexes = get_indexes(db2, coll_name, port)
 
         db1_index_dict = {index["name"]: index for index in db1_indexes if "name" in index}
         db2_index_dict = {index["name"]: index for index in db2_indexes if "name" in index}
@@ -252,16 +257,29 @@ def compare_collection_indexes(db1_container, db2_container, all_collections):
 
     return mismatched_indexes
 
-def get_indexes(uri, collection_name):
+def get_indexes(db, collection_name, port):
     db_name, coll_name = collection_name.split(".", 1)
 
-    client = MongoClient(uri)
+    query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
+    response = db.check_output(
+        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --json --eval '" + query + "' --quiet")
+
     try:
-        indexes = list(client[db_name][coll_name].list_indexes())
+        indexes = json.loads(response)
+
+        def normalize_key(index_key):
+            if isinstance(index_key, dict):
+                return {k: normalize_key(v) for k, v in index_key.items()}
+            elif isinstance(index_key, list):
+                return [normalize_key(v) for v in index_key]
+            elif isinstance(index_key, dict) and "$numberInt" in index_key:
+                return int(index_key["$numberInt"])
+            return index_key
+
         return sorted([
             {
                 "name": index.get("name"),
-                "key": index.get("key"),
+                "key": normalize_key(index.get("key")),
                 "unique": index.get("unique", False),
                 "sparse": index.get("sparse", False),
                 "hidden": index.get("hidden", False),
@@ -281,5 +299,8 @@ def get_indexes(uri, collection_name):
             }
             for index in indexes if "key" in index and "name" in index
         ], key=lambda x: x["name"])
-    except PyMongoError:
+
+    except json.JSONDecodeError:
+        Cluster.log(f"Error: Unable to parse JSON index response for {collection_name}")
+        Cluster.log(f"Raw response: {response}")
         return []
