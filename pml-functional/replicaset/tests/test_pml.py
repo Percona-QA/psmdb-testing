@@ -1,7 +1,7 @@
 import os
 import random
 import sys
-from time import sleep
+import time
 import json
 import testinfra.utils.ansible_runner
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
@@ -122,7 +122,6 @@ def pml_start():
         Cluster.log(f"Unexpected error: {e}")
         return False
 
-
 def pml_finalize():
     try:
         output = json.loads(pml.check_output("curl -s -X POST http://localhost:2242/finalize -d '{}'"))
@@ -147,6 +146,59 @@ def pml_finalize():
     except Exception as e:
         Cluster.log(f"Unexpected error: {e}")
         return False
+
+def status(timeout=45):
+    try:
+        output = pml.check_output(f"curl -m {timeout} -s -X GET http://localhost:2242/status -d '{{}}'")
+        Cluster.log(output)
+
+        if not output.get("ok", False):
+            return {"success": False, "error": "mlink status command returned ok: false"}
+
+        try:
+            json_response = json.loads(output.replace("\n", "").replace("\r", "").strip())
+            return {"success": True, "data": json_response}
+        except json.JSONDecodeError as e:
+            return {"success": False, "error": "Invalid JSON response"}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def wait_for_repl_stage(timeout=60, interval=1, stable_duration=2):
+    start_time = time.time()
+
+    while time.time() - start_time < timeout:
+        status_response = status()
+
+        if not status_response["success"]:
+            Cluster.log(f"Error: Impossible to retrieve status, {status_response['error']}")
+            return False
+
+        initial_sync = status_response["data"].get("initialSync")
+        if initial_sync is None:
+            time.sleep(interval)
+            continue
+        if "completed" not in initial_sync:
+            time.sleep(interval)
+            continue
+        if initial_sync["completed"]:
+            stable_start = time.time()
+            while time.time() - stable_start < stable_duration:
+                stable_status = self.status()
+                if not stable_status["success"]:
+                    Cluster.log(f"Error: Impossible to retrieve status, {stable_status['error']}")
+                    return False
+
+                state = stable_status["data"].get("state")
+                if state != "running":
+                    return False
+                time.sleep(0.5)
+            Cluster.log("Initial sync is completed")
+            return True
+        time.sleep(interval)
+
+    Cluster.log("Error: Timeout reached while waiting for initial sync to complete")
+    return False
 
 # def pml_start(timeout=120):
 #     result = json.loads(pml.check_output(
