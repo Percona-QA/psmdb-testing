@@ -170,7 +170,6 @@ def wait_for_repl_stage(timeout=60, interval=1, stable_duration=2):
 
     while time.time() - start_time < timeout:
         status_response = status()
-        print("KEITH TEST: " + str(status_response))
 
         if not status_response["success"]:
             Cluster.log(f"Error: Impossible to retrieve status, {status_response['error']}")
@@ -201,28 +200,6 @@ def wait_for_repl_stage(timeout=60, interval=1, stable_duration=2):
 
     Cluster.log("Error: Timeout reached while waiting for initial sync to complete")
     return False
-
-# def pml_start(timeout=120):
-#     result = json.loads(pml.check_output(
-#         "percona-mongolink start"))
-#     for _ in range(timeout):
-#         status = json.loads(pml.check_output('percona-mongolink status'))
-#         if status["initialSync"]["cloneCompleted"] == True:
-#             return True
-#         sleep(1)
-#     print("PML did not start after " + str(timeout) + " seconds.")
-#     return False
-
-# def pml_finalize(timeout=120):
-#     pml.check_output(
-#         "percona-mongolink finalize")
-#     for _ in range(timeout):
-#         status = json.loads(pml.check_output('percona-mongolink status'))
-#         if status["state"] == "finalized":
-#             return True
-#         sleep(1)
-#     print("PML did not finalize after " + str(timeout) + " seconds.")
-#     return False
 
 # def test_prepare_data():
 #     load_data(source,"27017")
