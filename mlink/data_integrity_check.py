@@ -1,6 +1,9 @@
 import json
+
+from ansible_collections.community.mongodb.plugins.module_utils.mongodb_common import ConnectionFailure
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
+from pymongo.errors import ConnectionFailure, ConfigurationError, OperationFailure
 
 from .cluster import Cluster
 
@@ -59,6 +62,16 @@ def compare_data_sharded(db1, db2):
 def compare_database_hashes(db1_container, db2_container):
     def get_db_hashes_and_collections(uri):
         print(f"Trying to connect to MongoDB at: {uri}")
+        try:
+            client = MongoClient(uri, serverSelectionTimeoutMS=5000)  # 5 sec timeout
+            client.admin.command('ping')  # Simple and lightweight command
+            print("✅ Successfully connected to MongoDB server!")
+        except ConnectionFailure as e:
+            print(f"❌ Could not connect to MongoDB: {e}")
+        except ConfigurationError as e:
+            print(f"❌ Invalid MongoDB URI configuration: {e}")
+        except OperationFailure as e:
+            print(f"❌ Authentication failed or operation error: {e}")
         client = MongoClient(uri)
         db_hashes = {}
         collection_hashes = {}
