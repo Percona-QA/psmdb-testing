@@ -122,12 +122,14 @@ def pml_start():
         Cluster.log(f"Unexpected error: {e}")
         return False
 
-def pml_finalize():
+
+def finalize(self):
     try:
-        output = json.loads(pml.check_output("curl -s -X POST http://localhost:2242/start -d '{}'"))
+        output = json.loads(pml.check_output("curl -s -X POST http://localhost:2242/finalize -d '{}'"))
 
         if output:
             try:
+
                 if output.get("ok") is True:
                     Cluster.log("Sync finalized successfully")
                     return True
