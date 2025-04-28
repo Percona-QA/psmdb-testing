@@ -102,9 +102,7 @@ def pml_start():
     try:
         output = json.loads(pml.check_output("curl -s -X POST http://localhost:2242/start -d '{}'"))
 
-        status_code = output.exit_code
-
-        if status_code == 0 and output:
+        if output:
             try:
 
                 if output.get("ok") is True:
