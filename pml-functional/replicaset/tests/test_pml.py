@@ -123,7 +123,7 @@ def pml_start():
         return False
 
 
-def finalize(self):
+def pml_finalize(self):
     try:
         output = json.loads(pml.check_output("curl -s -X POST http://localhost:2242/finalize -d '{}'"))
 
