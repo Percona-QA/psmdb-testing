@@ -98,7 +98,7 @@ def confirm_collection_size(node, port, amountOfCollections, datasize):
     else:
         return False
 
-def pml_start(self):
+def pml_start():
     try:
         output = json.loads(pml.check_output("curl -s -X POST http://localhost:2242/start -d '{}'"))
 
