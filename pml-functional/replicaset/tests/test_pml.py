@@ -104,12 +104,11 @@ def pml_start():
 
         if output:
             try:
-
-                if output.get("ok") is True:
+                if output.get("ok") is True or output.get("error") is "already running":
                     Cluster.log("Sync started successfully")
                     return True
 
-                elif output.get("ok") is False:
+                elif output.get("ok") is False and output.get("error") is not "already running":
                     error_msg = output.get("error", "Unknown error")
                     Cluster.log(f"Failed to start sync between src and dst cluster: {error_msg}")
                     return False
