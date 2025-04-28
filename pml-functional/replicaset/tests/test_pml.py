@@ -235,10 +235,10 @@ def test_initiate_pml():
     assert pml_start()
     assert wait_for_repl_stage()
     assert pml_finalize()
-#
-# def test_data_transfer():
-#     assert confirm_collection_size(destination, "27017", collections, datasize)
-#
-# def test_data_integrity():
-#     assert compare_data_rs(source, destination)
+
+def test_data_transfer():
+    assert confirm_collection_size(destination, "27017", collections, datasize)
+
+def test_data_integrity():
+    assert compare_data_rs(source, destination)
 
