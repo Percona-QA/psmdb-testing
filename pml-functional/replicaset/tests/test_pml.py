@@ -222,9 +222,9 @@ def wait_for_repl_stage(timeout=60, interval=1, stable_duration=2):
 #     print("PML did not finalize after " + str(timeout) + " seconds.")
 #     return False
 
-# def test_prepare_data():
-#     load_data(source,"27017")
-#     assert confirm_collection_size(source, "27017", collections, datasize)
+def test_prepare_data():
+    load_data(source,"27017")
+    assert confirm_collection_size(source, "27017", collections, datasize)
 
 def test_initiate_pml():
     result = json.loads(pml.check_output(
