@@ -6,6 +6,7 @@ import json
 import testinfra.utils.ansible_runner
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 from mlink.data_integrity_check import compare_data_rs
+from mlink.cluster import Cluster
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-source')
@@ -97,16 +98,43 @@ def confirm_collection_size(node, port, amountOfCollections, datasize):
     else:
         return False
 
-def pml_start(timeout=120):
-    result = json.loads(pml.check_output(
-        "percona-mongolink start"))
-    for _ in range(timeout):
-        status = json.loads(pml.check_output('percona-mongolink status'))
-        if status["initialSync"]["cloneCompleted"] == True:
-            return True
-        sleep(1)
-    print("PML did not start after " + str(timeout) + " seconds.")
-    return False
+def pml_start(self):
+    try:
+        output = json.loads(pml.check_output("curl -s -X POST http://localhost:2242/start -d '{}'"))
+
+        status_code = output.exit_code
+
+        if status_code == 0 and output:
+            try:
+
+                if output.get("ok") is True:
+                    Cluster.log("Sync started successfully")
+                    return True
+
+                elif output.get("ok") is False:
+                    error_msg = output.get("error", "Unknown error")
+                    Cluster.log(f"Failed to start sync between src and dst cluster: {error_msg}")
+                    return False
+
+            except json.JSONDecodeError:
+                Cluster.log("Received invalid JSON response.")
+
+        Cluster.log("Failed to start sync between src and dst cluster")
+        return False
+    except Exception as e:
+        Cluster.log(f"Unexpected error: {e}")
+        return False
+
+# def pml_start(timeout=120):
+#     result = json.loads(pml.check_output(
+#         "percona-mongolink start"))
+#     for _ in range(timeout):
+#         status = json.loads(pml.check_output('percona-mongolink status'))
+#         if status["initialSync"]["cloneCompleted"] == True:
+#             return True
+#         sleep(1)
+#     print("PML did not start after " + str(timeout) + " seconds.")
+#     return False
 
 def pml_finalize(timeout=120):
     pml.check_output(
