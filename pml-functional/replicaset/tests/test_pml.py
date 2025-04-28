@@ -122,7 +122,7 @@ def pml_start():
         Cluster.log(f"Unexpected error: {e}")
         return False
 
-def pml_finalize(self):
+def pml_finalize():
     try:
         output = json.loads(pml.check_output("curl -s -X POST http://localhost:2242/start -d '{}'"))
 
