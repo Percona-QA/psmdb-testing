@@ -216,5 +216,9 @@ def wait_for_repl_stage(timeout=60, interval=1, stable_duration=2):
 #     assert confirm_collection_size(destination, "27017", collections, datasize)
 
 def test_data_integrity():
-    assert compare_data_rs(source, destination)
+    srcIp = source.check_output("hostname -I | awk '{print $1}'")
+    dstIp = destination.check_output("hostname -I | awk '{print $1}'")
+    srcMongoString = f"mongodb://{srcIp}:27017"
+    dstMongoString = f"mongodb://{dstIp}:27017"
+    assert compare_data_rs(srcMongoString, dstMongoString)
 
