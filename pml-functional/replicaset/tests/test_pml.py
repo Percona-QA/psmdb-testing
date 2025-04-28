@@ -122,6 +122,30 @@ def pml_start():
         Cluster.log(f"Unexpected error: {e}")
         return False
 
+def pml_finalize(self):
+    try:
+        output = json.loads(pml.check_output("curl -s -X POST http://localhost:2242/start -d '{}'"))
+
+        if output:
+            try:
+                if output.get("ok") is True:
+                    Cluster.log("Sync finalized successfully")
+                    return True
+
+                elif output.get("ok") is False:
+                    error_msg = output.get("error", "Unknown error")
+                    Cluster.log(f"Failed to finalize sync between src and dst cluster: {error_msg}")
+                    return False
+
+            except json.JSONDecodeError:
+                Cluster.log("Received invalid JSON response.")
+
+        Cluster.log("Failed to finalize sync between src and dst cluster")
+        return False
+    except Exception as e:
+        Cluster.log(f"Unexpected error: {e}")
+        return False
+
 # def pml_start(timeout=120):
 #     result = json.loads(pml.check_output(
 #         "percona-mongolink start"))
@@ -133,16 +157,16 @@ def pml_start():
 #     print("PML did not start after " + str(timeout) + " seconds.")
 #     return False
 
-def pml_finalize(timeout=120):
-    pml.check_output(
-        "percona-mongolink finalize")
-    for _ in range(timeout):
-        status = json.loads(pml.check_output('percona-mongolink status'))
-        if status["state"] == "finalized":
-            return True
-        sleep(1)
-    print("PML did not finalize after " + str(timeout) + " seconds.")
-    return False
+# def pml_finalize(timeout=120):
+#     pml.check_output(
+#         "percona-mongolink finalize")
+#     for _ in range(timeout):
+#         status = json.loads(pml.check_output('percona-mongolink status'))
+#         if status["state"] == "finalized":
+#             return True
+#         sleep(1)
+#     print("PML did not finalize after " + str(timeout) + " seconds.")
+#     return False
 
 # def test_prepare_data():
 #     load_data(source,"27017")
@@ -153,7 +177,7 @@ def test_initiate_pml():
         "percona-mongolink start"))
     assert result in [{"ok": True}, {'error': 'already running', 'ok': False}]
     assert pml_start()
-#     assert pml_finalize()
+    assert pml_finalize()
 #
 # def test_data_transfer():
 #     assert confirm_collection_size(destination, "27017", collections, datasize)
