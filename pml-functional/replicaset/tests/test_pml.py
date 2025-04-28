@@ -169,7 +169,7 @@ def wait_for_repl_stage(timeout=60, interval=1, stable_duration=2):
 
     while time.time() - start_time < timeout:
         status_response = status()
-        print("KEITH TEST: " + status_response)
+        print("KEITH TEST: " + str(status_response))
 
         if not status_response["success"]:
             Cluster.log(f"Error: Impossible to retrieve status, {status_response['error']}")
