@@ -10,6 +10,25 @@
   set_fact:
     repo_branch: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+)', '\\1') }}"
 
+- name: Detect last-lts
+  set_fact:
+    last_lts: "{{ item }}"
+  loop:
+    - "4.4"
+    - "5.0"
+    - "6.0"
+    - "7.0"
+    - "8.0"
+  when:
+    - ( repo_branch[0] == "9.0" and item == "8.0" ) or
+      ( repo_branch[0] == "8.0" and item == "7.0" ) or
+      ( repo_branch[0] == "7.0" and item == "6.0" ) or
+      ( repo_branch[0] == "6.0" and item == "5.0" ) or
+      ( repo_branch[0] == "5.0" and item == "4.4" )
+
+- debug:
+    var: last_lts
+
 - name: Detect OS
   set_fact:
     os: "{{ item }}"
@@ -42,7 +61,13 @@
     dest: /tmp/percona-server-mongodb.tar.gz
     mode: '0644'
 
-- name: Unpack new tarball
+- name: Copy last-lts tarball
+  copy:
+    src: /tmp/percona-server-mongodb-{{ last_lts }}-{{ os }}.tar.gz
+    dest: /tmp/percona-server-mongodb-{{ last_lts }}.tar.gz
+    mode: '0644'
+
+- name: Unpack tarball
   unarchive:
     src: /tmp/percona-server-mongodb.tar.gz
     dest: /
@@ -50,6 +75,35 @@
     extra_opts:
     - --transform
     - 's,^/*[^/]*,/usr,S'
+
+- name: Create dirs for multiversion setup
+  shell: 
+    cmd: |
+      mkdir -p /data/install
+      mkdir -p /data/multiversion
+
+- name: Unpack last-lts tarball
+  unarchive:
+    src: /tmp/percona-server-mongodb-{{ last_lts }}.tar.gz
+    dest: /data/install
+    remote_src: yes
+    extra_opts:
+    - --transform
+    - 's,^/*[^/]*,,S'
+
+- name: Install mongod last-lts
+  file:
+    src: /data/install/bin/mongod
+    dest: /data/multiversion/mongod-{{ last_lts }}
+    state: link
+    force: yes
+
+- name: Install mongos last-lts
+  file:
+    src: /data/install/bin/mongos
+    dest: /data/multiversion/mongos-{{ last_lts }}
+    state: link
+    force: yes
 
 - name: Clone PSMDB repo
   git:
@@ -133,7 +187,7 @@
   register: result
   until: result.rc == 0
   args:
-    chdir: /percona-server-mongodb  
+    chdir: /percona-server-mongodb
   environment:
     POETRY_VIRTUALENVS_CREATE: false
     VIRTUAL_ENV: /opt/venv
@@ -173,24 +227,6 @@
     path: /percona-server-mongodb/.resmoke_mongo_version.yml
     line: "mongo_version: {{mongodb_ver[0]}}"
     create: yes
-
-- name: Setup multiversion
-  shell: /opt/venv/bin/python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu1804 --architecture x86_64 4.2 4.4 5.0 6.0 7.0
-  args:
-    chdir: /percona-server-mongodb
-  when: not (( ansible_distribution == "Ubuntu" and ansible_distribution_major_version >= "22" ) or (ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm'))
-
-- name: Setup multiversion
-  shell: /opt/venv/bin/python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 7.0
-  args:
-    chdir: /percona-server-mongodb
-  when: (ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "22") or (ansible_os_family == 'Debian' and ansible_distribution_release == 'bookworm')
-
-- name: Setup multiversion
-  shell: /opt/venv/bin/python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 4.4 5.0 6.0 7.0
-  args:
-    chdir: /percona-server-mongodb
-  when: ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24"
 
 - name: Fix test
   shell: sed -E 's/.+last-continuous.+//g' -i /percona-server-mongodb/jstests/multiVersion/genericSetFCVUsage/do_upgrade_downgrade.js
