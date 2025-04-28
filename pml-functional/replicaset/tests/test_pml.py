@@ -186,7 +186,7 @@ def wait_for_repl_stage(timeout=60, interval=1, stable_duration=2):
         if initial_sync["completed"]:
             stable_start = time.time()
             while time.time() - stable_start < stable_duration:
-                stable_status = self.status()
+                stable_status = status()
                 if not stable_status["success"]:
                     Cluster.log(f"Error: Impossible to retrieve status, {stable_status['error']}")
                     return False
