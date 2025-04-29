@@ -125,16 +125,6 @@
       ignore_errors: true
       when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
 
-    - name: Install Python package
-      pip:
-        name:
-          - pymongo
-      when: ansible_facts['os_family'] == 'Redhat'
-
-    - name: Install pymongo on Debian
-      command: python3 -m pip install --break-system-packages pymongo
-      when: ansible_facts['os_family'] == 'Debian'
-
     - name: Clone PML repo
       timeout: 180
       git:
@@ -235,14 +225,10 @@
         key: https://repo.percona.com/yum/RPM-GPG-KEY-Percona
       when: ansible_os_family == "RedHat"
 
-    - name: Download Percona Release package on Debian
+    - name: Install Percona Release package on Debian
       apt:
         deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
       when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
-
-    - name: Install Percona release package on Debian
-      ansible.builtin.command: dpkg -i percona-release_latest.generic_all.deb
-      when: ansible_facts['os_family'] == 'Debian'
 
     - name: Install latest percona-release RHEL
       command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
