@@ -111,16 +111,22 @@ def compare_database_hashes(db1, db2, port):
 def compare_entries_number(db1, db2, port):
     query = (
         'db.getMongo().getDBNames().forEach(function(i) { '
-        'if (!["admin", "local", "config", "percona_mongolink"].includes(i)) { '
-        'var collections = db.getSiblingDB(i).runCommand({ listCollections: 1 }).cursor.firstBatch '
-        '.filter(function(coll) { return !coll.type || coll.type !== "view"; }) '
-        '.map(function(coll) { return coll.name; }); '
-        'collections.forEach(function(coll) { '
-        'try { '
-        'var count = db.getSiblingDB(i).getCollection(coll).countDocuments({}); '
-        'print(JSON.stringify({db: i, collection: coll, count: count})); '
-        '} catch (err) {} '
-        '});}});'
+        '  if (!["admin", "local", "config", "percona_mongolink"].includes(i)) { '
+        '    var collections = db.getSiblingDB(i).runCommand({ listCollections: 1 }).cursor.firstBatch '
+        '      .filter(function(coll) { '
+        '        return (!coll.type || coll.type !== "view") && coll.name !== "system.profile"; '
+        '      }) '
+        '      .map(function(coll) { return coll.name; }); '
+        '    collections.forEach(function(coll) { '
+        '      if (!(i === "test" && coll === "system.profile")) { '
+        '        try { '
+        '          var count = db.getSiblingDB(i).getCollection(coll).countDocuments({}); '
+        '          print(JSON.stringify({ db: i, collection: coll, count: count })); '
+        '        } catch (err) {} '
+        '      } '
+        '    }); '
+        '  } '
+        '});'
     )
 
     def get_collection_counts(db):
