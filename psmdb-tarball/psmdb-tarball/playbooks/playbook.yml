@@ -27,18 +27,6 @@
       debug:
         msg: "{{ maj_version }}"
 
-    - name: Detect FCV
-      set_fact:
-        fcv: "{{ mongodb_ver[0].split('.')[0] }}.{{ mongodb_ver[0].split('.')[1] }}"
-
-    - name: Get git repo branch
-      set_fact:
-        repo_branch: "v{{ mongodb_ver[0].split('.')[0] }}.{{ mongodb_ver[0].split('.')[1] }}"
-
-    - name: Debug repo branch
-      debug:
-        msg: "{{ repo_branch }}"
-
     - name: Download tarball from url
       get_url:
         url: '{{ tarball_template }}{{ item }}-minimal.tar.gz'
@@ -77,68 +65,6 @@
         - bullseye
       when: tarball.startswith('s3')
       ignore_errors: yes
-
-    - name: Detect last-lts
-      set_fact:
-        last_lts: "{{ item }}"
-      loop:
-        - "4.4"
-        - "5.0"
-        - "6.0"
-        - "7.0"
-        - "8.0"
-      when:
-        - ( fcv == "9.0" and item == "8.0" ) or
-          ( fcv == "8.0" and item == "7.0" ) or
-          ( fcv == "7.0" and item == "6.0" ) or
-          ( fcv == "6.0" and item == "5.0" ) or
-          ( fcv == "5.0" and item == "4.4" )
-
-    - debug:
-        var: last_lts
-
-    - name: Query latest last-lts version
-      uri:
-        url: https://www.percona.com/products-api.php
-        method: POST
-        body_format: form-urlencoded
-        body:
-          version: percona-server-mongodb-{{ last_lts }}
-        return_content: true
-      register: result
-
-    - name: Debug result
-      debug:
-        var: result.content
-
-    - name: Parse latest last-lts version
-      set_fact:
-        psmdb_last_lts: "{{ result.content|regex_replace('<option>-- Select version --</option><option value=[^>]*>([^<]*)</option>.*', '\\1')}}"
-
-    #output be like percona-server-mongodb-5.0.29-25
-    - debug:
-        var: psmdb_last_lts
-
-    #generate uri for last_lts
-    #https://downloads.percona.com/downloads/percona-server-mongodb-7.0/percona-server-mongodb-7.0.18-11/binary/tarball/percona-server-mongodb-7.0.18-11-x86_64.focal-minimal.tar.gz
-    - name: Download last_lts tarball from url
-      get_url:
-        url: 'https://downloads.percona.com/downloads/percona-server-mongodb-{{ last_lts }}/{{ psmdb_last_lts }}/binary/tarball/{{ psmdb_last_lts }}-x86_64.{{ item }}-minimal.tar.gz'
-        dest: /tmp/percona-server-mongodb-{{ last_lts }}-{{ item }}.tar.gz
-        mode: '0644'
-      loop:
-        - ol7
-        - ol8
-        - ol9
-        - ol2023
-        - jammy
-        - focal
-        - noble
-        - buster
-        - bookworm
-        - bullseye
-      ignore_errors: yes
-
 
 - name: Converge
   hosts: all
