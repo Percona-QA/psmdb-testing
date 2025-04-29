@@ -35,17 +35,17 @@
 
     - name: Change Source node hostname
       hostname:
-        name: pml_source
+        name: pml-source
       when: inventory_hostname == "jenkins-pml-source"
 
     - name: Change Destination node hostname
       hostname:
-        name: pml_destination
+        name: pml-destination
       when: inventory_hostname == "jenkins-pml-destination"
 
     - name: Change Monglink node hostname
       hostname:
-        name: pml_mongolink
+        name: pml-mongolink
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Prerequisite for debian 11
