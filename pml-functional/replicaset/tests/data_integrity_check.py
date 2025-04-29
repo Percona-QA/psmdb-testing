@@ -39,18 +39,20 @@ def compare_data_rs(db1, db2, port):
 def compare_database_hashes(db1, db2, port):
     query = (
         'db.getMongo().getDBNames().forEach(function(dbName) { '
-        'if (!["admin", "local", "config", "percona_mongolink"].includes(dbName)) { '
-        'var collections = []; '
-        'db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
-        'if (!coll.type || coll.type !== "view") { collections.push(coll.name); } '
-        '}); '
-        'if (collections.length > 0) { '
-        'var result = db.getSiblingDB(dbName).runCommand({ dbHash: 1, collections: collections }); '
-        'print(JSON.stringify({db: dbName, md5: result.md5, collections: result.collections})); '
-        '} else { '
-        'print(JSON.stringify({db: dbName, md5: null, collections: {}})); '
-        '} '
-        '} '
+        '    if (!["admin", "local", "config", "percona_mongolink"].includes(dbName)) { '
+        '        var collections = []; '
+        '        db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
+        '            if ((!coll.type || coll.type !== "view") && !(dbName === "test" && coll.name === "system.profile")) { '
+        '                collections.push(coll.name); '
+        '            } '
+        '        }); '
+        '        if (collections.length > 0) { '
+        '            var result = db.getSiblingDB(dbName).runCommand({ dbHash: 1, collections: collections }); '
+        '            print(JSON.stringify({ db: dbName, md5: result.md5, collections: result.collections })); '
+        '        } else { '
+        '            print(JSON.stringify({ db: dbName, md5: null, collections: {} })); '
+        '        } '
+        '    } '
         '});'
     )
 
@@ -200,11 +202,18 @@ def compare_collection_metadata(db1, db2, port):
 
 def get_all_collection_metadata(db, port):
     query = (
-        'db.getMongo().getDBNames().forEach(function(i) { '
-        'if (!["admin", "local", "config", "percona_mongolink"].includes(i)) { '
-        'var collections = db.getSiblingDB(i).runCommand({ listCollections: 1 }).cursor.firstBatch '
-        '.map(function(coll) { return { db: i, name: coll.name, type: coll.type, options: coll.options }; }); '
-        'print(JSON.stringify(collections)); }});'
+        'db.getMongo().getDBNames().forEach(function(dbName) { '
+        '    if (!["admin", "local", "config", "percona_mongolink"].includes(dbName)) { '
+        '        var collections = db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch '
+        '            .filter(function(coll) { '
+        '                return !(dbName === "test" && coll.name === "system.profile"); '
+        '            }) '
+        '            .map(function(coll) { '
+        '                return { db: dbName, name: coll.name, type: coll.type, options: coll.options }; '
+        '            }); '
+        '        print(JSON.stringify(collections)); '
+        '    } '
+        '});'
     )
 
     response = db.check_output(
