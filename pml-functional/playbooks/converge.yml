@@ -485,20 +485,14 @@
         executable: /bin/bash
       when: inventory_hostname == "jenkins-pml-mongolink"
 
+    - name: Enable pmm3-client repository
+      command: percona-release enable pmm3-client
+      when: inventory_hostname in groups['psmdb']
+
     - name: Install pmm package Debian
       apt:
         name: pmm3-client
       when: ansible_os_family == "Debian"
-
-    - name: Configure RHEL Percona repositories
-      yum:
-        name: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
-        state: present
-      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
-
-    - name: Enable pmm3-client repository
-      command: percona-release enable pmm3-client
-      when: inventory_hostname in groups['psmdb']
 
     - name: Install pmm package RHEL
       yum:
