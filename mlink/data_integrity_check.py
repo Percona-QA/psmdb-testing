@@ -1,10 +1,8 @@
 import json
-
-from ansible_collections.community.mongodb.plugins.module_utils.mongodb_common import ConnectionFailure
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 
-from .cluster import Cluster
+from cluster import Cluster
 
 def compare_data_rs(db1, db2):
     def resolve_container_or_uri(db):
@@ -60,6 +58,9 @@ def compare_data_sharded(db1, db2):
 
 def compare_database_hashes(db1_container, db2_container):
     def get_db_hashes_and_collections(uri):
+        client = MongoClient(uri)
+        db_hashes = {}
+        collection_hashes = {}
 
         for db_name in client.list_database_names():
             if db_name in ["admin", "local", "config", "percona_mongolink"]:
