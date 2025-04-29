@@ -318,8 +318,14 @@ class Mongolink:
 
         while time.time() - start_time < timeout:
             status_response = self.status()
-            if not status_response.get("success") or not status_response["data"].get("ok"):
-                error_msg = status_response["data"].get("error", "Unknown error")
+            if not status_response.get("success"):
+                error_msg = status_response.get("error", "Unknown error")
+                Cluster.log(f"Error: replication failed, error: {error_msg}")
+                return False
+
+            data = status_response.get("data")
+            if not data or not data.get("ok"):
+                error_msg = data.get("error", "Unknown error") if data else "No data received"
                 Cluster.log(f"Error: replication failed, error: {error_msg}")
                 return False
 
