@@ -84,9 +84,9 @@
         packages:
         - jq
         - vim
-        - zlib-devel
+        - zlib1g-dev
         - libjpeg-devel
-        - freetype-devel
+        - libfreetype6-dev
         - gcc
         - python3-devel
         - python3.12
