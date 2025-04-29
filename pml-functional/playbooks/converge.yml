@@ -85,7 +85,7 @@
         - jq
         - vim
         - zlib1g-dev
-        - libjpeg-devel
+        - libjpeg-dev
         - libfreetype6-dev
         - gcc
         - python3-devel
