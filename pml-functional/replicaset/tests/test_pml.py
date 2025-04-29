@@ -193,7 +193,8 @@ def wait_for_repl_stage(timeout=60, interval=1, stable_duration=2):
                 if state != "running":
                     return False
                 time.sleep(0.5)
-            Cluster.log("Initial sync is completed")
+            elapsed = round(time.time() - start_time, 2)
+            Cluster.log(f"Initial sync is completed in {elapsed} seconds")
             return True
         time.sleep(interval)
 
