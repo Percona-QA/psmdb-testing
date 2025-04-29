@@ -205,9 +205,6 @@ def test_prepare_data():
     assert confirm_collection_size(source, "27017", collections, datasize)
 
 def test_initiate_pml():
-    result = json.loads(pml.check_output(
-        "percona-mongolink start"))
-    assert result in [{"ok": True}, {'error': 'already running', 'ok': False}]
     assert pml_start()
     assert wait_for_repl_stage()
     assert pml_finalize()
@@ -216,9 +213,5 @@ def test_data_transfer():
     assert confirm_collection_size(destination, "27017", collections, datasize)
 
 def test_data_integrity():
-    # srcIp = source.check_output("curl -s https://ifconfig.me")
-    # dstIp = destination.check_output("curl -s https://ifconfig.me")
-    # srcMongoString = f"mongodb://{srcIp}:27017"
-    # dstMongoString = f"mongodb://{dstIp}:27017"
     assert compare_data_rs(source, destination, "27017")
 

@@ -412,6 +412,13 @@
 
           [Service]
           ExecStart=/usr/local/bin/percona-mongolink --source mongodb://{{ private_source_ip }}:27017 --target mongodb://{{ private_destination_ip }}:27017 --log-level debug --log-json
+          Environment="PML_USE_COLLECTION_BULK_WRITE={{ lookup('env', 'PML_USE_COLLECTION_BULK_WRITE') }}"
+          Environment="PML_CLONE_NUM_PARALLEL_COLLECTIONS={{ lookup('env', 'PML_CLONE_NUM_PARALLEL_COLLECTIONS') }}"
+          Environment="PML_CLONE_NUM_READ_WORKERS={{ lookup('env', 'PML_CLONE_NUM_READ_WORKERS') }}"
+          Environment="PML_CLONE_NUM_INSERT_WORKERS={{ lookup('env', 'PML_CLONE_NUM_INSERT_WORKERS') }}"
+          Environment="PML_CLONE_SEGMENT_SIZE={{ lookup('env', 'PML_CLONE_SEGMENT_SIZE') }}"
+          Environment="PML_CLONE_READ_BATCH_SIZE={{ lookup('env', 'PML_CLONE_READ_BATCH_SIZE') }}"
+          Environment="PML_DEV_TARGET_CLIENT_COMPRESSORS={{ lookup('env', 'PML_DEV_TARGET_CLIENT_COMPRESSORS') }}"
           Restart=on-failure
           User=root
 
@@ -421,6 +428,34 @@
         group: root
         mode: '0644'
       when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Show PML_USE_COLLECTION_BULK_WRITE
+      debug:
+        msg: "Value is {{ lookup('env', 'PML_USE_COLLECTION_BULK_WRITE') }}"
+
+    - name: Show PML_CLONE_NUM_PARALLEL_COLLECTIONS
+      debug:
+        msg: "Value is {{ lookup('env', 'PML_CLONE_NUM_PARALLEL_COLLECTIONS') }}"
+
+    - name: Show PML_CLONE_NUM_READ_WORKERS
+      debug:
+        msg: "Value is {{ lookup('env', 'PML_CLONE_NUM_READ_WORKERS') }}"
+
+    - name: Show PML_CLONE_NUM_INSERT_WORKERS
+      debug:
+        msg: "Value is {{ lookup('env', 'PML_CLONE_NUM_INSERT_WORKERS') }}"
+
+    - name: Show PML_CLONE_SEGMENT_SIZE
+      debug:
+        msg: "Value is {{ lookup('env', 'PML_CLONE_SEGMENT_SIZE') }}"
+
+    - name: Show PML_CLONE_READ_BATCH_SIZE
+      debug:
+        msg: "Value is {{ lookup('env', 'PML_CLONE_READ_BATCH_SIZE') }}"
+
+    - name: Show PML_DEV_TARGET_CLIENT_COMPRESSORS
+      debug:
+        msg: "Value is {{ lookup('env', 'PML_DEV_TARGET_CLIENT_COMPRESSORS') }}"
 
     - name: Reload systemd and start PML service
       service:
