@@ -429,34 +429,6 @@
         mode: '0644'
       when: inventory_hostname == "jenkins-pml-mongolink"
 
-    - name: Show PML_USE_COLLECTION_BULK_WRITE
-      debug:
-        msg: "Value is {{ lookup('env', 'PML_USE_COLLECTION_BULK_WRITE') | int  }}"
-
-    - name: Show PML_CLONE_NUM_PARALLEL_COLLECTIONS
-      debug:
-        msg: "Value is {{ lookup('env', 'PML_CLONE_NUM_PARALLEL_COLLECTIONS') | int  }}"
-
-    - name: Show PML_CLONE_NUM_READ_WORKERS
-      debug:
-        msg: "Value is {{ lookup('env', 'PML_CLONE_NUM_READ_WORKERS') | int  }}"
-
-    - name: Show PML_CLONE_NUM_INSERT_WORKERS
-      debug:
-        msg: "Value is {{ lookup('env', 'PML_CLONE_NUM_INSERT_WORKERS') | int  }}"
-
-    - name: Show PML_CLONE_SEGMENT_SIZE
-      debug:
-        msg: "Value is {{ lookup('env', 'PML_CLONE_SEGMENT_SIZE') | int  }}"
-
-    - name: Show PML_CLONE_READ_BATCH_SIZE
-      debug:
-        msg: "Value is {{ lookup('env', 'PML_CLONE_READ_BATCH_SIZE') | int  }}"
-
-    - name: Show PML_DEV_TARGET_CLIENT_COMPRESSORS
-      debug:
-        msg: "Value is {{ lookup('env', 'PML_DEV_TARGET_CLIENT_COMPRESSORS') | int  }}"
-
     - name: Reload systemd and start PML service
       service:
         daemon_reload: yes
