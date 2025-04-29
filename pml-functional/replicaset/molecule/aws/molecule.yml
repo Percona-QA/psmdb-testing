@@ -8,7 +8,7 @@ platforms:
     groups:
       - psmdb
     region: us-west-2
-    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
     vpc_subnet_id: subnet-0dc7518100473f19d
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ec2-user
@@ -19,7 +19,7 @@ platforms:
     groups:
       - psmdb
     region: us-west-2
-    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
     vpc_subnet_id: subnet-0dc7518100473f19d
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ec2-user
@@ -28,7 +28,7 @@ platforms:
       iit-billing-tag: jenkins-psmdb-worker
   - name: jenkins-pml-mongolink
     region: us-west-2
-    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
     vpc_subnet_id: subnet-0dc7518100473f19d
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ec2-user

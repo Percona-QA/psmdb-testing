@@ -26,10 +26,11 @@
         pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('main', true) }}"
 
     - set_fact:
-        # Branch of pml branch to test
+        # Go Version
         golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.2', true) }}"
 
     - set_fact:
+        # User to log into each AWS Instance
         ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
 
     - name: Change Source node hostname

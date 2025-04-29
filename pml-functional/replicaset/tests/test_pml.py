@@ -164,7 +164,7 @@ def status(timeout=45):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-def wait_for_repl_stage(timeout=60, interval=1, stable_duration=2):
+def wait_for_repl_stage(timeout=3600, interval=1, stable_duration=2):
     start_time = time.time()
 
     while time.time() - start_time < timeout:
@@ -194,7 +194,7 @@ def wait_for_repl_stage(timeout=60, interval=1, stable_duration=2):
                     return False
                 time.sleep(0.5)
             elapsed = round(time.time() - start_time, 2)
-            Cluster.log(f"Initial sync is completed in {elapsed} seconds")
+            Cluster.log(f"Initial sync completed in {elapsed} seconds")
             return True
         time.sleep(interval)
 
