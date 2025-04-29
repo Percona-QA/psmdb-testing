@@ -59,7 +59,15 @@
         shell: /bin/bash
         groups: wheel
         append: yes
-      when: ssh_user != "none" and ssh_pubkey != "none"
+      when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'Redhat'
+
+    - name: Add user
+      user:
+        name: "{{ ssh_user }}"
+        shell: /bin/bash
+        groups: wheel
+        append: yes
+      when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'Debian'
 
     - name: Add pub key
       authorized_key:
@@ -74,4 +82,12 @@
         state: present
         regexp: '^%wheel'
         line: '%wheel ALL=(ALL) NOPASSWD: ALL'
-      when: ssh_user != "none" and ssh_pubkey != "none"
+      when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'Redhat'
+
+    - name: Allow sudo without password
+      lineinfile:
+        dest: /etc/sudoers
+        state: present
+        regexp: '^%sudo'
+        line: '%sudo ALL=(ALL) NOPASSWD: ALL'
+      when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'Debian'
