@@ -53,15 +53,15 @@
     - set_fact:
         ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
 
-    - name: Add user
+    - name: Add user to Redhat
       user:
         name: "{{ ssh_user }}"
         shell: /bin/bash
         groups: wheel
         append: yes
-      when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'Redhat'
+      when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'RedHat'
 
-    - name: Add user
+    - name: Add user to Debian
       user:
         name: "{{ ssh_user }}"
         shell: /bin/bash
@@ -82,7 +82,7 @@
         state: present
         regexp: '^%wheel'
         line: '%wheel ALL=(ALL) NOPASSWD: ALL'
-      when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'Redhat'
+      when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'RedHat'
 
     - name: Allow sudo without password
       lineinfile:
