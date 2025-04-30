@@ -129,7 +129,7 @@
       pip:
         name:
           - pymongo
-      when: ansible_facts['os_family'] == 'Redhat'
+      when: ansible_facts['os_family'] == 'RedHat'
 
     - name: Install Pymongo on Debian
       command: python3 -m pip install --break-system-packages pymongo
@@ -379,7 +379,7 @@
       service: name=mongod state=started
       when: inventory_hostname in groups['psmdb']
 
-    - name: Create a replicaset rs for Source\
+    - name: Create a replicaset rs for Source
       community.mongodb.mongodb_replicaset:
         replica_set: rs
         login_host: "{{ private_source_ip }}"
@@ -452,17 +452,6 @@
         remote_src: yes
         mode: '0755'
         force: yes
-      when: inventory_hostname == "jenkins-pml-mongolink"
-
-    - name: Check runc installed correctly
-      command: runc --version
-      register: runc_version
-      changed_when: false
-      when: inventory_hostname == "jenkins-pml-mongolink"
-
-    - name: Check runc installed correctly
-      debug:
-        msg: "runc version: {{ runc_version.stdout }}"
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Ensure docker group exists
