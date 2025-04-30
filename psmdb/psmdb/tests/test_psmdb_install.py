@@ -134,6 +134,26 @@ def test_pro_version(host):
     for feature in PRO_FEATURES:
         assert feature in enabled_features, f'"{feature}" not found in proFeatures: {enabled_features}'
 
+def test_binary_symbol_visibility(host):
+    binaries = ["/usr/bin/mongod", "/usr/bin/mongos"]
+
+    for binary in binaries:
+        readelf_result = host.run(f"readelf -S {binary}")
+        file_result = host.run(f"file {binary}")
+
+        assert readelf_result.rc == 0, f"readelf failed for {binary}"
+        assert file_result.rc == 0, f"file failed for {binary}"
+        file_output = file_result.stdout.lower()
+
+        if pro_build == "true":
+            assert ".symtab" in readelf_result.stdout, f"{binary} is missing .symtab section (PRO build)"
+            assert ".strtab" in readelf_result.stdout, f"{binary} is missing .strtab section (PRO build)"
+            assert "not stripped" in file_output, f"{binary} should NOT be stripped (PRO build)"
+        else:
+            assert ".symtab" not in readelf_result.stdout, f"{binary} should NOT have .symtab (community build)"
+            assert ".strtab" not in readelf_result.stdout, f"{binary} should NOT have .strtab (community build)"
+            assert "not stripped" not in file_output, f"{binary} should be stripped (community build)"
+
 def test_version_pt(host):
     if toolkit != "true" :
         pytest.skip("skipping pt tests")

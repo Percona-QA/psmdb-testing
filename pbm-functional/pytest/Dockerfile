@@ -1,27 +1,7 @@
 ARG PSMDB=percona/percona-server-mongodb
 ARG GO_VER=bullseye
 
-FROM alpine AS x509
-USER root
-ENV EASYRSA_DN=org
-ENV EASYRSA_REQ_COUNTRY=US
-ENV EASYRSA_REQ_PROVINCE=California
-ENV EASYRSA_REQ_CITY=SanFrancisco
-ENV EASYRSA_REQ_ORG=Percona
-ENV EASYRSA_REQ_EMAIL=pbm@percona.com
-RUN apk add --no-cache bash git openssl && cd ~ && \
-    git clone https://github.com/OpenVPN/easy-rsa.git && \
-    cd easy-rsa/easyrsa3/ && \
-    ./easyrsa init-pki && \
-    ./easyrsa --req-cn=Percona --batch build-ca nopass && \
-    ./easyrsa --req-ou=server --subject-alt-name=DNS:localhost,DNS:rscfg01,DNS:rs101,IP:127.0.0.1 --batch build-server-full psmdb nopass && \
-    ./easyrsa --req-ou=client --batch build-client-full pbm nopass && \
-    mkdir -p /etc/x509 && \
-    cp pki/ca.crt /etc/x509/ca.crt && \
-    cat pki/issued/psmdb.crt pki/private/psmdb.key > /etc/x509/psmdb.pem && \
-    cat pki/issued/pbm.crt pki/private/pbm.key > /etc/x509/pbm.pem 
-
-FROM pykmip/local AS pykmip
+FROM easyrsa/local AS easyrsa
 
 FROM golang:$GO_VER AS builder
 ARG PBM_BRANCH=dev
@@ -29,6 +9,7 @@ ARG PR_NUMBER
 ARG MAKE_TARGET=build
 WORKDIR /
 RUN mkdir -p /pbm-old && mkdir -p /pbm-new && \
+    echo 'Acquire::Retries "20";' > /etc/apt/apt.conf.d/80-retries && \
     apt update && apt -y install gcc libgssapi-krb5-2 libkrb5-dev libsasl2-modules-gssapi-mit && \
     git clone https://github.com/percona/percona-backup-mongodb.git && cd percona-backup-mongodb && \
     if [ -n "$PR_NUMBER" ]; then git fetch origin pull/$PR_NUMBER/head:CURRENT_PR; PBM_BRANCH=CURRENT_PR; fi && \
@@ -51,11 +32,13 @@ RUN yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noar
     mkdir -p /opt/mongodb && tar -C /opt/mongodb --transform='s,^/*[^/]*,,S' -xzvf mongo-ce.tgz || true && rm -rf mongo-ce.tgz || true
 COPY --from=builder /pbm-new/ /pbm-new/
 COPY --from=builder /pbm-old/ /pbm-old/
-COPY --from=pykmip /etc/mongod.pem /etc/pykmip/mongod.pem
-COPY --from=pykmip /root/easy-rsa/easyrsa3/pki/ca.crt /etc/pykmip/ca.crt
-COPY --from=x509 /etc/x509/ /etc/x509/
+COPY --from=easyrsa /etc/pykmip/mongod.pem /etc/pykmip/mongod.pem
+COPY --from=easyrsa /etc/x509/ca.crt /etc/pykmip/ca.crt
+COPY --from=easyrsa /etc/x509/ /etc/x509/
+COPY --from=easyrsa /etc/nginx-minio/ca.crt /etc/nginx-minio/ca.crt
 COPY conf/supervisord.d/ /etc/supervisord.d/
 COPY conf/pbm/minio.yaml /etc/pbm.conf
+COPY conf/pbm/pbm-1525.yaml /etc/pbm-1525.conf
 COPY conf/pbm/pbm-1043.yaml /etc/pbm-1043.conf
 COPY conf/pbm/pbm-1211.yaml /etc/pbm-1211.conf
 COPY conf/pbm/filesystem-profile.yaml /etc/pbm-fs-profile.conf
@@ -70,6 +53,7 @@ RUN echo -e 'vaulttoken' > /etc/vault/token && \
     chown -R mongodb /etc/pykmip && chmod 400 /etc/pykmip/mongod.pem && \
     chown -R mongodb /etc/vault && chmod 400 /etc/vault/token && \
     chown -R mongodb /etc/x509 && chmod 400 /etc/x509/* && \
+    chown -R mongodb /etc/nginx-minio && \
     if [ -f "/usr/bin/mongosh" ] ; then \
         ln -s /usr/bin/mongosh /usr/bin/mongo ; \
     fi && \

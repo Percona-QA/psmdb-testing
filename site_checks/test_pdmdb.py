@@ -8,12 +8,13 @@ from packaging import version
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
 PDMDB_VER = PSMDB_VER.split("-")[0]
+FCV_VER = PDMDB_VER.split(".")[0] + "." + PDMDB_VER.split(".")[1]
 PBM_VER = os.environ.get("PBM_VERSION")
 
 if version.parse(PSMDB_VER) > version.parse("7.0.0"):
-    SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','source','jammy','focal']
+    SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','source','jammy','focal','redhat/2023']
 elif version.parse(PSMDB_VER) > version.parse("6.0.0") and version.parse(PSMDB_VER) < version.parse("7.0.0"):
-    SOFTWARE_FILES = ['bullseye','binary','redhat/9','redhat/8','source','jammy','focal']
+    SOFTWARE_FILES = ['bullseye','binary','redhat/9','redhat/8','source','jammy','focal','redhat/2023']
     if (PDMDB_VER.startswith("5") and version.parse(PDMDB_VER) > version.parse("5.0.27")):
        SOFTWARE_FILES.append('noble')
     if (PDMDB_VER.startswith("6") and version.parse(PDMDB_VER) > version.parse("6.0.15")):
@@ -26,7 +27,7 @@ else:
 def get_package_tuples():
     list = []
     for software_files in SOFTWARE_FILES:
-        data = 'version_files=percona-distribution-mongodb-' + PDMDB_VER + '&software_files=' + software_files
+        data = 'version_files=percona-distribution-mongodb-' + PDMDB_VER + '|percona-distribution-mongodb-' + FCV_VER + '&software_files=' + software_files
         req = requests.post("https://www.percona.com/products-api.php",data=data,headers = {"content-type": "application/x-www-form-urlencoded; charset=UTF-8"})
         assert req.status_code == 200
         assert req.text != '[]', software_files
@@ -35,7 +36,7 @@ def get_package_tuples():
             if (PDMDB_VER.startswith("5") and version.parse(PDMDB_VER) > version.parse("5.0.27")) or \
                (PDMDB_VER.startswith("6") and version.parse(PDMDB_VER) > version.parse("6.0.15")) or \
                (PDMDB_VER.startswith("7") and version.parse(PDMDB_VER) > version.parse("7.0.12")):
-                replacement_map = {'redhat/9': 'ol9','redhat/8': 'ol8','redhat/7': 'ol7'}
+                replacement_map = {'redhat/9': 'ol9','redhat/8': 'ol8','redhat/7': 'ol7','redhat/2023': 'ol2023'}
                 tar_os = [replacement_map[os] if os in replacement_map else os for os in SOFTWARE_FILES if os not in ['source', 'binary']]
                 for os in tar_os:
                   assert "percona-server-mongodb-" + PSMDB_VER + "-x86_64." + os + "-minimal.tar.gz" in req.text

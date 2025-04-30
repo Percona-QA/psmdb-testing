@@ -4,21 +4,29 @@
     state: present
 
 - name: Add HashiCorp yum repo
-  command: yum-config-manager --add-repo=https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+  command: yum-config-manager --add-repo=https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
   args:
     creates: /etc/yum.repos.d/hashicorp.repo
-  when: ansible_distribution_major_version > "7"
+  when: ansible_distribution == "Amazon"
 
-- name: Fix Hashicorp yum repo
-  shell: |
-    sed 's/\$releasever/{{ ansible_distribution_major_version }}/g' -i /etc/yum.repos.d/hashicorp.repo
-  when: ansible_distribution_major_version > "7"
+- block:
+  - name: Add HashiCorp yum repo
+    command: yum-config-manager --add-repo=https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+    args:
+      creates: /etc/yum.repos.d/hashicorp.repo
+    when: ansible_distribution_major_version|int >= 8
+
+  - name: Fix Hashicorp yum repo
+    shell: |
+      sed 's/\$releasever/{{ ansible_distribution_major_version }}/g' -i /etc/yum.repos.d/hashicorp.repo
+    when: ansible_distribution_major_version|int >= 8
+  when: ansible_distribution != "Amazon"
 
 - name: Install Vault via yum
   yum:
     name: vault
     state: present
-  when: ansible_distribution_major_version > "7"
+  when: ansible_distribution_major_version|int >= 8
 
 - name: Install Vault for Centos7 from archive
   yum: name=https://archive.releases.hashicorp.com/RHEL/7/x86_64/stable/vault-1.17.2-1.x86_64.rpm state=present

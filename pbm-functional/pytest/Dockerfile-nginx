@@ -1,3 +1,6 @@
+FROM easyrsa/local AS easyrsa
+
 FROM nginx:stable-alpine
 COPY conf/nginx.conf /etc/nginx/nginx.conf
-EXPOSE 21114 12111 12112
+COPY --from=easyrsa /etc/nginx-minio/ /etc/nginx-minio/
+EXPOSE 21114 12111 12112 15250

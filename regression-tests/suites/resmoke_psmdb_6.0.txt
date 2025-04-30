@@ -16,7 +16,7 @@ aggregation_sharded_collections_causally_consistent_passthrough|wiredTiger
 aggregation_sharded_collections_passthrough|wiredTiger
 aggregation_tde_cbc|wiredTiger
 aggregation_tde_gcm|wiredTiger
-audit --excludeWithAnyTags=requires_fcv_60|wiredTiger
+audit --jobs=1 --excludeWithAnyTags=requires_fcv_60|wiredTiger
 auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 auth_audit|wiredTiger
 backup|wiredTiger
@@ -370,7 +370,7 @@ aggregation_sharded_collections_causally_consistent_passthrough|inMemory
 aggregation_sharded_collections_passthrough|inMemory
  aggregation_tde_cbc|inMemory
  aggregation_tde_gcm|inMemory
-audit --excludeWithAnyTags=requires_fcv_60|inMemory
+audit --jobs=1 --excludeWithAnyTags=requires_fcv_60|inMemory
 auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 auth_audit|inMemory
  backup|inMemory

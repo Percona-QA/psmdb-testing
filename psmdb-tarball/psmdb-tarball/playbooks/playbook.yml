@@ -9,7 +9,7 @@
 
     - name: Get tarball template
       set_fact:
-        tarball_template: "{{ tarball | regex_replace('glibc.+', '') }}"      
+        tarball_template: "{{ tarball | regex_replace('glibc.+', '') }}"
 
     - name: Debug tarball tarball template
       debug:
@@ -20,37 +20,30 @@
         mongodb_ver: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
 
     - name: Get mongodb major version
-      set_fact: 
+      set_fact:
         maj_version={{ mongodb_ver[0].split('.')[0] }}
 
     - name: Debug mongodb major version
       debug:
-        msg: "{{ maj_version }}"    
-
-    - name: Get git repo branch
-      set_fact:
-        repo_branch: "v{{ mongodb_ver[0].split('.')[0] }}.{{ mongodb_ver[0].split('.')[1] }}"
-
-    - name: Debug repo branch
-      debug:
-        msg: "{{ repo_branch }}"
+        msg: "{{ maj_version }}"
 
     - name: Download tarball from url
       get_url:
         url: '{{ tarball_template }}{{ item }}-minimal.tar.gz'
         dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}-{{ item }}.tar.gz
         mode: '0644'
-      loop: 
+      loop:
         - ol7
         - ol8
         - ol9
+        - ol2023
         - jammy
         - focal
         - noble
         - buster
         - bookworm
         - bullseye
-      when: tarball.startswith('http') 
+      when: tarball.startswith('http')
       ignore_errors: yes
 
     - name: Download tarball from s3
@@ -59,10 +52,11 @@
         object: "{{ tarball_template | urlsplit('path') }}{{ item }}-minimal.tar.gz"
         dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}-{{ item }}.tar.gz
         mode: get
-      loop: 
+      loop:
         - ol7
         - ol8
         - ol9
+        - ol2023
         - jammy
         - focal
         - noble
@@ -70,8 +64,7 @@
         - bookworm
         - bullseye
       when: tarball.startswith('s3')
-      ignore_errors: yes 
-
+      ignore_errors: yes
 
 - name: Converge
   hosts: all

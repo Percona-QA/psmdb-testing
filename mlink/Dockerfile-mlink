@@ -1,0 +1,8 @@
+ARG GO_VERSION=latest
+ARG MLINK_BRANCH=main
+FROM golang:$GO_VERSION
+COPY percona-mongolink /percona-mongolink
+RUN apt update && apt -y install curl && \
+    cd /percona-mongolink && \
+    git checkout $MLINK_BRANCH && \
+    make build && cp -rpf bin/* /usr/bin/

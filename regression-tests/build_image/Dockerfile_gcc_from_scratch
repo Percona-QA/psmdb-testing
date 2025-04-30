@@ -52,6 +52,7 @@ RUN set -ex; \
 COPY --from=toolchain_builder /opt /opt
 ENV PATH="/opt/python/bin:/opt/gcc/bin:${PATH}"
 RUN pip3 install --upgrade pip && pip3 install virtualenv && python3 -m venv /opt/venv
+ENV VIRTUAL_ENV /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 RUN cd /opt && git clone $repo && \
     cd percona-server-mongodb/ && \
@@ -66,12 +67,19 @@ RUN cd /opt && git clone $repo && \
 WORKDIR /opt/percona-server-mongodb
 ENV POETRY_VIRTUALENVS_CREATE=false
 ENV POETRY_INSTALLER_MAX_WORKERS=10
+ENV PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
 ENV GLIBC_TUNABLES=glibc.pthread.rseq=0
+RUN set -ex; \
+    if [ -f "/usr/bin/yum" ] ; then \
+         yum install -y cmake openssl-devel openldap-devel krb5-devel libcurl-devel cyrus-sasl-devel bzip2-devel zlib-devel lz4-devel xz-devel e2fsprogs-devel iproute; \
+    else \
+         DEBIAN_FRONTEND=noninteractive apt-get -y install cmake libssl-dev libldap2-dev libkrb5-dev libcurl4-openssl-dev libsasl2-dev liblz4-dev libbz2-dev libsnappy-dev zlib1g-dev libzlcore-dev liblzma-dev e2fslibs-dev iproute2; \
+    fi 
 RUN set -ex; \
     pip install --upgrade pip; \
     VER=$(echo $psm_ver | cut -d"." -f1) && \
     if [ $VER -ge 8 ]; then \
-        pip install 'poetry==1.5.1' 'pyproject-hooks==1.0.0' && \
+        pip install 'poetry==2.0.0' && \
         for i in $(seq 5); do \
             poetry install --no-root --sync && break || sleep 1 ; \
             echo "Python failed install required deps with poetry, retrying..." ; \
@@ -80,12 +88,6 @@ RUN set -ex; \
         pip install --upgrade PyYAML==5.3.1 && \
         pip install --upgrade referencing==0.35.1 && \
         pip install -r etc/pip/dev-requirements.txt; \        
-    fi && echo $PATH
-RUN set -ex; \
-    if [ -f "/usr/bin/yum" ] ; then \
-         yum install -y cmake openssl-devel openldap-devel krb5-devel libcurl-devel cyrus-sasl-devel bzip2-devel zlib-devel lz4-devel xz-devel iproute; \
-    else \
-         DEBIAN_FRONTEND=noninteractive apt-get -y install cmake libssl-dev libldap2-dev libkrb5-dev libcurl4-openssl-dev libsasl2-dev liblz4-dev libbz2-dev libsnappy-dev zlib1g-dev libzlcore-dev liblzma-dev iproute2; \
     fi 
 ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
 ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "

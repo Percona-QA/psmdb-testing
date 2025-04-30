@@ -1,0 +1,12 @@
+---
+- name: cleanup data
+  hosts: psmdb
+  become: true
+  become_method: sudo
+  tasks:
+
+    - name: stop mongod service
+      service: name=mongod state=stopped
+
+    - name: erase data directory for mongod
+      shell: rm -rf /mnt/data/db/*

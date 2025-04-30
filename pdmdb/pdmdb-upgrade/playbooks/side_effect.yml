@@ -61,11 +61,16 @@
     - name: enable new pdmdb repo
       command: percona-release enable {{ to_version }} {{ to_repo }}
 
+    - name: Set PSMDB version
+      set_fact:
+        psmdb_server_version: "{{ lookup('env', 'TO_PDMDB_VERSION').split('-')[1] }}"
+
     - block:
-      - name: include tasks for installing and PSMDB
-        include_tasks: ../../tasks/install_psmdb.yml
+      - name: include tasks for installing PSMDB
+        include_tasks: ../../../tasks/install_psmdb.yml
         vars:
-          psmdb_version: "{{ lookup('env', 'TO_PDMDB_VERSION') }}"
+          psmdb_to_test: "{{ psmdb_server_version }}"
+          psmdb_pkg_name_addon: "{{ '' }}"
       environment:
         PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
 

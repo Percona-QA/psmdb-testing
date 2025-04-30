@@ -6,7 +6,7 @@ driver:
 platforms:
   - name: debian12-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
-    image: ami-0b6edd8449255b799
+    image: "${MOLECULE_DEBIAN12_AMI:-ami-0b6edd8449255b799}"
     vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: t2.micro
     ssh_user: admin

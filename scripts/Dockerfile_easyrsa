@@ -1,0 +1,21 @@
+FROM alpine AS x509
+USER root
+ENV EASYRSA_DN=org
+ENV EASYRSA_REQ_COUNTRY=US
+ENV EASYRSA_REQ_PROVINCE=California
+ENV EASYRSA_REQ_CITY=SanFrancisco
+ENV EASYRSA_REQ_ORG=Percona
+ENV EASYRSA_REQ_EMAIL=pbm@percona.com
+RUN apk add --no-cache bash git openssl openjdk11 && cd ~ && \
+    git clone https://github.com/OpenVPN/easy-rsa.git && \
+    cd easy-rsa/easyrsa3/ && \
+    ./easyrsa init-pki && \
+    ./easyrsa --req-cn=Percona --batch build-ca nopass && \
+    ./easyrsa --req-ou=server --subject-alt-name=DNS:localhost,DNS:psmdb,IP:127.0.0.1 --batch build-server-full psmdb nopass && \
+    ./easyrsa --req-ou=client --batch build-client-full ycsb nopass && \
+    mkdir -p /etc/x509 && \
+    cp pki/ca.crt /etc/x509/ca.crt && \
+    cat pki/issued/psmdb.crt pki/private/psmdb.key > /etc/x509/psmdb.pem && chmod 400 /etc/x509/psmdb.pem && \
+    cat pki/issued/ycsb.crt pki/private/ycsb.key > /etc/x509/ycsb.pem && chmod 400 /etc/x509/ycsb.pem && \
+    keytool -noprompt -import -alias cacert -storepass changeit -keystore /etc/x509/cacert.jks -file /etc/x509/ca.crt
+VOLUME ["/etc/x509"]

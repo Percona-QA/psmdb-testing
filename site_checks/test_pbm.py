@@ -6,12 +6,12 @@ import json
 from packaging import version
 
 PBM_VER = os.environ.get("PBM_VERSION")
-SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','source','jammy','focal','noble']
+SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','source','jammy','focal','noble','redhat/2023']
 
 def get_package_tuples():
     list = []
     for software_files in SOFTWARE_FILES:
-        data = 'version_files=percona-backup-mongodb-' + PBM_VER + '&software_files=' + software_files
+        data = 'version_files=percona-backup-mongodb-' + PBM_VER + '|percona-backup-mongodb&software_files=' + software_files
         req = requests.post("https://www.percona.com/products-api.php",data=data,headers = {"content-type": "application/x-www-form-urlencoded; charset=UTF-8"})
         assert req.status_code == 200
         assert req.text != '[]', software_files

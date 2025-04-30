@@ -6,7 +6,7 @@ driver:
 platforms:
   - name: ufocal-pro-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
-    image: ami-0e0a93493e27b76c9
+    image: "${MOLECULE_UFOCAL_PRO_AMI:-ami-0e0a93493e27b76c9}"
     vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: t3.large
     ssh_user: ubuntu

@@ -11,7 +11,9 @@ DEB_PACKAGES = ['percona-server-mongodb', 'percona-server-mongodb-server', 'perc
                 'percona-server-mongodb-tools', 'percona-server-mongodb-dbg']
 RPM_PACKAGES_7 = ['percona-server-mongodb', 'percona-server-mongodb-server', 'percona-server-mongodb-mongos',
                 'percona-server-mongodb-tools', 'percona-server-mongodb-debuginfo']
-RPM_PACKAGES_8 = ['percona-server-mongodb', 'percona-server-mongodb-mongos-debuginfo',
+RPM_PACKAGES_8 = ['percona-server-mongodb', 'percona-server-mongodb-server', 'percona-server-mongodb-mongos',
+                           'percona-server-mongodb-tools',
+                           'percona-server-mongodb-mongos-debuginfo',
                            'percona-server-mongodb-server-debuginfo',
                            'percona-server-mongodb-tools-debuginfo']
 
@@ -24,12 +26,13 @@ BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
 PSMDB_VER = os.environ.get("PDMDB_VERSION").lstrip("pdmdb-")
 TESTING_BRANCH = os.environ.get("TESTING_BRANCH")
 MONGOSH_VER_RHEL7 = '2.1.5'
-MONGOSH_VER = '2.3.2'
 
 def get_mongosh_ver():
     url = "https://raw.githubusercontent.com/Percona-QA/psmdb-testing/" + TESTING_BRANCH + "/MONGOSH_VERSION"
     r = requests.get(url)
     return r.text.rstrip()
+
+MONGOSH_VER = get_mongosh_ver()
 
 def test_mongod_service(host):
     mongod = host.service("mongod")
@@ -39,7 +42,7 @@ def test_mongod_service(host):
 @pytest.mark.parametrize("package", DEB_PACKAGES)
 def test_deb_packages(host, package):
     os = host.system_info.distribution
-    if os.lower() in ["redhat", "centos", 'rhel']:
+    if os.lower() in ["redhat", "centos", "rhel", "amzn"]:
         pytest.skip("This test only for Debian based platforms")
     pkg = host.package(package)
     assert pkg.is_installed
@@ -50,7 +53,7 @@ def test_deb_packages(host, package):
 @pytest.mark.parametrize("package", RPM_PACKAGES_7)
 def test_rpm7_packages(host, package):
     os = host.system_info.distribution
-    if os in ["debian", "ubuntu"]:
+    if os in ["debian", "ubuntu", "amzn"]:
         pytest.skip("This test only for RHEL based platforms")
     if float(host.system_info.release) != 7.0:
         pytest.skip("Only for centos7 tests")
@@ -62,7 +65,7 @@ def test_rpm7_packages(host, package):
 @pytest.mark.parametrize("package", RPM_PACKAGES_8)
 def test_rpm8_packages(host, package):
     os = host.system_info.distribution
-    if os in ["debian", "ubuntu"]:
+    if os in ["debian", "ubuntu", "amzn"]:
         pytest.skip("This test only for RHEL based platforms")
     if float(host.system_info.release) != 8.0:
         pytest.skip("Only for centos8 tests")
@@ -73,10 +76,19 @@ def test_rpm8_packages(host, package):
 @pytest.mark.parametrize("package", RPM_PACKAGES_9)
 def test_rpm9_packages(host, package):
     os = host.system_info.distribution
-    if os in ["debian", "ubuntu"]:
+    if os in ["debian", "ubuntu", "amzn"]:
         pytest.skip("This test only for RHEL based platforms")
     if float(host.system_info.release) < 9.0:
         pytest.skip("Only for centos9 tests")
+    pkg = host.package(package)
+    assert pkg.is_installed
+    assert PSMDB_VER in pkg.version
+
+@pytest.mark.parametrize("package", RPM_PACKAGES_8)
+def test_al_packages(host, package):
+    os = host.system_info.distribution
+    if os in ["debian", "ubuntu", "redhat", "centos", "rhel"]:
+        pytest.skip("This test only for AL platforms")
     pkg = host.package(package)
     assert pkg.is_installed
     assert PSMDB_VER in pkg.version

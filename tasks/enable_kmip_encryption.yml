@@ -111,7 +111,7 @@
     state: started
 
 - name: Check mongod ready status
-  shell: mongo --eval="printjson(db.serverStatus().ok)"
+  shell: mongo --quiet --eval="printjson(db.serverStatus().ok)"
   register: mongodbready
   until: mongodbready.stdout | int == 1
   retries: 20

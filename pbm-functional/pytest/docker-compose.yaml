@@ -15,7 +15,7 @@ services:
       - JIRA_PASSWORD=${JIRA_PASSWORD:-}
       - JENKINS_URL=${JENKINS_URL:-}
       - GIT_URL=https://github.com/percona/percona-backup-mongodb
-      - GIT_BRANCH=${PBM_BRANCH:-main}
+      - GIT_BRANCH=${PBM_BRANCH:-dev}
     networks:
       - test
 
@@ -53,6 +53,7 @@ services:
       - test
     depends_on:
       - minio
+      - easyrsa
 
   createbucket:
     container_name: createbucket
@@ -73,6 +74,8 @@ services:
     hostname: pykmip
     networks:
       - test
+    depends_on:
+      - easyrsa
 
   vault:
     image: hashicorp/vault
@@ -129,7 +132,14 @@ services:
       - "PERCONA_TELEMETRY_URL=https://check-dev.percona.com/v1/telemetry/GenericReport"
     command: /bin/bash
     depends_on:
-      - pykmip
+      - easyrsa
+
+  easyrsa:
+    image: easyrsa/local
+    build:
+      dockerfile: ./Dockerfile-easyrsa
+      context: .
+    command: /bin/bash
 
   golang_reports:
     image: golang:bullseye
@@ -144,9 +154,9 @@ networks:
     name: test
 
 volumes:
-  backups: 
+  backups:
     name: backups
-  fs: 
+  fs:
     name: fs
   keytabs:
     name: keytabs

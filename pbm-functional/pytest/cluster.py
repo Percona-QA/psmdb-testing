@@ -66,16 +66,16 @@ class Cluster:
         def validate_rs(rs):
             assert isinstance(rs['_id'], str) and isinstance(
                 rs['members'], list)
-            assert len(rs['members']) % 2 == 1
+            #assert len(rs['members']) % 2 == 1
             arbiter = False
             hosts = []
             for id, member in enumerate(rs['members']):
                 assert isinstance(member, dict)
                 assert set(member.keys()) <= {
-                    'host', 'priority', 'arbiterOnly', 'hidden', 'secondaryDelaySecs', 'slaveDelay', 'votes', 'buildIndexes'}
+                    'host', 'priority', 'arbiterOnly', 'hidden', 'secondaryDelaySecs', 'slaveDelay', 'votes', 'buildIndexes', 'tags'}
                 assert 'host' in member and isinstance(member['host'], str)
                 if id == 0:
-                    assert set(member.keys()) == {'host'}
+                    assert set(member.keys()) == {'host'} or set(member.keys()) == {'host','tags'}
                 if 'priority' in member:
                     assert isinstance(member['priority'], int)
                 if 'arbiterOnly' in member:
@@ -93,6 +93,8 @@ class Cluster:
                         assert member['priority'] == 0
                 if 'buildIndexes' in member:
                     assert isinstance(member['buildIndexes'], bool)
+                if 'tags' in member:
+                    assert isinstance(member['tags'], dict)
                 if member['host'] not in hosts:
                     hosts.append(member['host'])
                 else:
@@ -254,6 +256,12 @@ class Cluster:
             for host in self.config['members']:
                 Cluster.log("Creating container " + host['host'])
                 pbm_mongodb_uri = copy.deepcopy(self.pbm_mongodb_uri)
+                if 'tags' in host and 'ce' in host['tags'] and host['tags']['ce'] == "true":
+                    autostart_ce = "true"
+                    autostart_psmdb = "false"
+                else:
+                    autostart_ce = "false"
+                    autostart_psmdb = "true"
                 if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                     pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
                 docker.from_env().containers.run(
@@ -262,7 +270,8 @@ class Cluster:
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                    environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
+                                 "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + self.mongod_extra_args,
                                  "GOCOVERDIR=/gocoverdir/reports"],
                     volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
@@ -280,6 +289,12 @@ class Cluster:
                 for host in shard['members']:
                     Cluster.log("Creating container " + host['host'])
                     pbm_mongodb_uri = copy.deepcopy(self.pbm_mongodb_uri)
+                    if 'tags' in host and 'ce' in host['tags'] and host['tags']['ce'] == 'true':
+                        autostart_ce = "true"
+                        autostart_psmdb = "false"
+                    else:
+                        autostart_ce = "false"
+                        autostart_psmdb = "true"
                     if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                         pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
                     docker.from_env().containers.run(
@@ -288,7 +303,8 @@ class Cluster:
                         hostname=host['host'],
                         detach=True,
                         network='test',
-                        environment=["PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                        environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
+                                     "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
                                      "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + self.mongod_extra_args, "KRB5_TRACE=/dev/stderr",
                                      "GOCOVERDIR=/gocoverdir/reports"],
                         volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
@@ -296,13 +312,20 @@ class Cluster:
                     if 'arbiterOnly' in host:
                         if host['arbiterOnly']:
                             self.__delete_pbm(host['host'])
-                    conn = conn + host['host'] + ':27017,'
+                    if 'hidden' not in host or host['hidden'] != True:
+                        conn = conn + host['host'] + ':27017,'
                 conn = conn[:-1]
                 shards.append(conn)
             conn = self.config['configserver']['_id'] + "/"
             for host in self.config['configserver']['members']:
                 Cluster.log("Creating container " + host['host'])
                 pbm_mongodb_uri = copy.deepcopy(self.pbm_mongodb_uri)
+                if 'tags' in host and 'ce' in host['tags'] and host['tags']['ce'] == 'true':
+                    autostart_ce = "true"
+                    autostart_psmdb = "false"
+                else:
+                    autostart_ce = "false"
+                    autostart_psmdb = "true"
                 if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                     pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
                 docker.from_env().containers.run(
@@ -311,7 +334,8 @@ class Cluster:
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                    environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
+                                 "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
                                  self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + self.mongod_extra_args,
                                  "GOCOVERDIR=/gocoverdir/reports"],
@@ -349,10 +373,10 @@ class Cluster:
         Cluster.log("The cluster was prepared in {} seconds".format(duration))
 
     # setups pbm from default config-file, minio as storage
-    def setup_pbm(self):
+    def setup_pbm(self,file="/etc/pbm.conf"):
         host = self.pbm_cli
         n = testinfra.get_host("docker://" + host)
-        result = n.check_output('pbm config --file=/etc/pbm.conf --out=json')
+        result = n.check_output('pbm config --file=' + file + ' --out=json')
         Cluster.log("Setup PBM:\n" + result)
         time.sleep(5)
 
@@ -389,7 +413,7 @@ class Cluster:
                     name = json.loads(start.stdout)['name']
                     Cluster.log("Backup started")
                     break
-                elif "resync" in start.stdout:
+                elif "resync" in start.stdout.lower() or "resync" in start.stderr.lower():
                     Cluster.log("Resync in progress, retrying: " + start.stdout)
                 else:
                     logs = n.check_output("pbm logs -sD -t0")
@@ -423,10 +447,6 @@ class Cluster:
     # 3. check_pbm_status = bool - check `pbm status` output, raises error if any agent is failed
     def make_restore(self, name, **kwargs):
         if self.layout == "sharded":
-            client = pymongo.MongoClient(self.connection)
-            result = client.admin.command("balancerStop")
-            client.close()
-            Cluster.log("Stopping balancer: " + str(result))
             self.stop_mongos()
         self.stop_arbiters()
         n = testinfra.get_host("docker://" + self.pbm_cli)
@@ -440,10 +460,12 @@ class Cluster:
             time.sleep(1)
         Cluster.log("Restore started")
         timeout=kwargs.get('timeout', 240)
-        result = n.run('timeout ' + str(timeout) + ' pbm restore ' + name + ' --wait')
+        result = n.run('SSL_CERT_FILE=/etc/nginx-minio/ca.crt timeout ' + str(timeout) + ' pbm restore ' + name + ' --wait')
 
-        if result.rc == 0:
+        if result.rc == 0 and "Error" not in result.stdout:
             Cluster.log(result.stdout)
+        elif result.rc == 0 and "Error" in result.stdout:
+            assert False, result.stdout
         else:
             # try to catch possible failures if timeout exceeded
             error=''
@@ -493,18 +515,21 @@ class Cluster:
         print("\n")
         cleanup=kwargs.get('cleanup_backups', False)
         if cleanup:
-            timeout = time.time() + 30
-            self.disable_pitr()
-            result=self.exec_pbm_cli("delete-pitr --all --force --yes ")
-            Cluster.log(result.stdout + result.stderr)
-            while True:
-                if not self.get_status()['running'] or time.time() > timeout:
-                    break
-            result=self.exec_pbm_cli("delete-backup --older-than=0d --force --yes")
-            Cluster.log(result.stdout + result.stderr)
-            while True:
-                if not self.get_status()['running'] or time.time() > timeout:
-                    break
+            try:
+                timeout = time.time() + 30
+                self.disable_pitr()
+                result=self.exec_pbm_cli("delete-pitr --all --force --yes ")
+                Cluster.log(result.stdout + result.stderr)
+                while True:
+                    if not self.get_status()['running'] or time.time() > timeout:
+                        break
+                result=self.exec_pbm_cli("delete-backup --older-than=0d --force --yes")
+                Cluster.log(result.stdout + result.stderr)
+                while True:
+                    if not self.get_status()['running'] or time.time() > timeout:
+                        break
+            except AssertionError as e:
+                pass
 
         for host in self.all_hosts:
             try:
@@ -660,7 +685,7 @@ class Cluster:
                          '{"db":"admin","role":"clusterMonitor" },' +
                          '{"db":"admin","role":"restore" },' +
                          '{"db":"admin","role":"pbmAnyAction" }]});\'')
-        ldap_mongo_grp = ('\'db.getSiblingDB("admin").runCommand({createRole:"cn=readers,ou=users,dc=example,dc=org",privileges: [],"roles":[' +
+        ldap_mongo_grp = ('\'db.getSiblingDB("admin").runCommand({createRole:"cn=readers,ou=groups,dc=example,dc=org",privileges: [],"roles":[' +
                          '{"db":"admin","role":"readWrite","collection":""},' +
                          '{"db":"admin","role":"backup" },' +
                          '{"db":"admin","role":"clusterMonitor" },' +

@@ -1,7 +1,7 @@
 ---
 
 
-- name: Install necessary tools for Debain
+- name: Install necessary tools for Debian
   apt:
     name: "{{ packages }}"
     update_cache: yes

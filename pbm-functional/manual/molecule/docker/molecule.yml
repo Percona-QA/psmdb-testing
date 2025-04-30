@@ -5,52 +5,55 @@ driver:
   name: docker
 platforms:
   - name: primary-rs
-    groups: 
+    groups:
       - mongo
       - primary
       - mc
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
     pre_build_image: true
-    networks: 
+    networks:
       - name: test
   - name: secondary1-rs
     groups:
       - mongo
       - secondary
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
     pre_build_image: true
-    networks: 
+    networks:
        - name: test
   - name: secondary2-rs
     groups:
       - mongo
       - secondary
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
+    cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
     pre_build_image: true
-    networks: 
+    networks:
       - name: test
   - name: minio
     groups:
       - minio
     image: "minio/minio"
-    exposed_ports: 
+    exposed_ports:
       - 9000
     env: "MINIO_ACCESS_KEY=minio1234 MINIO_SECRET_KEY=minio1234"
     command: "server /backup"
     pre_build_image: true
-    networks: 
+    networks:
       - name: test
 provisioner:
   name: ansible
