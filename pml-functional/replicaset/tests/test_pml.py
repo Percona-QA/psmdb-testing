@@ -198,7 +198,7 @@ def wait_for_repl_stage(timeout=3600, interval=1, stable_duration=2):
     print("Error: Timeout reached while waiting for initial sync to complete")
     return False
 
-def test_prepare_data_PML_01():
+def test_prepare_data():
     load_data(source,"27017")
     assert confirm_collection_size(source, "27017", collections, datasize)
 
