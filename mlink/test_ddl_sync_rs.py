@@ -3,6 +3,7 @@ import pymongo
 import time
 import threading
 import docker
+import re
 
 from cluster import Cluster
 from mongolink import Mongolink
@@ -67,7 +68,9 @@ def test_rs_mlink_PML_T9(reset_state, srcRS, dstRS, mlink):
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
 
-    generate_dummy_data(srcRS.connection, 'dummy', 5, 500000)
+    for i in range(5):
+        src["dummy"].create_collection(f"collection_{i}", capped=True, size=2147483648, max=500000)
+    generate_dummy_data(srcRS.connection, 'dummy', 5, 500000, drop_before_creation=False)
     for i in range(5):
         src["dummy"][f"collection_{i}"].create_index([("array", 1)])
 
@@ -75,16 +78,13 @@ def test_rs_mlink_PML_T9(reset_state, srcRS, dstRS, mlink):
     assert result is True, "Failed to start mlink service"
 
     for i in range(5):
+        src["dummy"].command("collMod", f"collection_{i}", cappedSize=512 * 1024, cappedMax=500)
         src["dummy"][f"collection_{i}"].drop_indexes()
     for i in range(5):
         src["dummy"].drop_collection(f"collection_{i}")
 
-    result = mlink.wait_for_repl_stage(timeout=30)
-    if not result:
-        if "ns not found" in mlink.logs():
-            pytest.xfail("Known issue: PML-95")
-        else:
-            assert False, "Failed to start replication stage"
+    result = mlink.wait_for_repl_stage()
+    assert result is True, "Failed to start replication stage"
 
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
@@ -94,8 +94,11 @@ def test_rs_mlink_PML_T9(reset_state, srcRS, dstRS, mlink):
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
     mlink_error, error_logs = mlink.check_mlink_errors()
-    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
-    pytest.fail("Unexpected pass: test should have failed due to PML-95")
+    expected_errors = ["ERR Resize capped collection","ERR No indexes to create"]
+    if not mlink_error:
+        unexpected = [line for line in error_logs if all(expected_error not in line for expected_error in expected_errors)]
+        if unexpected:
+            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -152,6 +155,8 @@ def test_rs_mlink_PML_T11(reset_state, srcRS, dstRS, mlink):
     Test to verify DB drop and re-creation during clone phase
     """
     try:
+        mlink_env = {"PML_CLONE_NUM_PARALLEL_COLLECTIONS": "5"}
+        mlink.create(log_level="trace", extra_args="--reset-state", env_vars=mlink_env)
         src = pymongo.MongoClient(srcRS.connection)
         dst = pymongo.MongoClient(dstRS.connection)
 
@@ -162,7 +167,12 @@ def test_rs_mlink_PML_T11(reset_state, srcRS, dstRS, mlink):
             result = mlink.start()
             assert result is True, "Failed to start mlink service"
         def delayed_drop():
-            time.sleep(0.15)
+            log_stream = mlink.logs(stream=True)
+            pattern = re.compile(r'read batch \d+:\d+.*ns=init_test_db\.collection_0.*s=copy')
+            for raw_line in log_stream:
+                line = raw_line.decode("utf-8").strip()
+                if pattern.search(line):
+                    break
             src.drop_database("init_test_db")
         t1 = threading.Thread(target=start_mlink)
         t2 = threading.Thread(target=delayed_drop)

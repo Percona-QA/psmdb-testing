@@ -52,7 +52,7 @@ def stop_all_crud_operations():
         stop_event.set()
 
 def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, doc_size=150000,
-                        batch_size=10000, stop_event=None, sleep_between_batches=0):
+                        batch_size=10000, stop_event=None, sleep_between_batches=0, drop_before_creation=True):
     """
     With default parameters generates ~500MB of data within 10 seconds
     If stop_event is provided, it can be used to stop generation early.
@@ -62,7 +62,8 @@ def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, d
     client = pymongo.MongoClient(connection_string)
     db = client[db_name]
 
-    client.drop_database(db_name)
+    if drop_before_creation:
+        client.drop_database(db_name)
 
     collections = [f"collection_{i}" for i in range(num_collections)]
 
