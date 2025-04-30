@@ -52,7 +52,7 @@ verifier:
     s: true
     junitxml: report.xml
 scenario:
-  name: redhat8
+  name: ubuntu24
   test_sequence:
     - create
     - prepare
