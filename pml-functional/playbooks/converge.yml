@@ -491,8 +491,8 @@
 
     - name: Install pmm package Debian
       apt:
-        name: pmm3-client
-      when: ansible_os_family == "Debian"
+        name: pmm-client
+      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
 
     - name: Install pmm package RHEL
       yum:
