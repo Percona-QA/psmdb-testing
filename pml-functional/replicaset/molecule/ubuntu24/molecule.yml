@@ -51,7 +51,7 @@ verifier:
     s: true
     junitxml: report.xml
 scenario:
-  name: aws
+  name: ubuntu24
   test_sequence:
     - create
     - prepare
