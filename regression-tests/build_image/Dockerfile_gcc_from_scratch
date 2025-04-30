@@ -15,6 +15,9 @@ RUN set -ex; \
     if [ "$toolchain_version" = "v4" ]; then \
         wget https://gcc.gnu.org/pub/gcc/releases/gcc-11.3.0/gcc-11.3.0.tar.gz -O gcc.tar.gz; \
     fi; \
+    if [ "$toolchain_version" = "v5" ]; then \
+        wget https://gcc.gnu.org/pub/gcc/releases/gcc-14.2.0/gcc-14.2.0.tar.gz -O gcc.tar.gz; \
+    fi; \
     mkdir -p /opt/src/gcc && tar -xf gcc.tar.gz -C /opt/src/gcc --strip-components=1; \
     cd /opt/src/gcc && ./contrib/download_prerequisites; \
     mkdir /opt/objdir && cd /opt/objdir; \
@@ -26,8 +29,7 @@ ENV PATH="/opt/gcc/bin:${PATH}"
 RUN set -ex; \
     if [ "$toolchain_version" = "v3" ]; then \
         wget https://www.python.org/ftp/python/3.8.19/Python-3.8.19.tgz -O /opt/python.tgz ; \    
-    fi; \
-    if [ "$toolchain_version" = "v4" ]; then \
+    else \
         wget https://www.python.org/ftp/python/3.10.14/Python-3.10.14.tgz -O /opt/python.tgz; \
     fi; \
     mkdir -p /opt/src/python && tar -xzf /opt/python.tgz -C /opt/src/python --strip-components=1 ; \
@@ -54,7 +56,8 @@ ENV PATH="/opt/python/bin:/opt/gcc/bin:${PATH}"
 RUN pip3 install --upgrade pip && pip3 install virtualenv && python3 -m venv /opt/venv
 ENV VIRTUAL_ENV /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
-RUN cd /opt && git clone $repo && \
+RUN cd /opt && mkdir -p percona-server-mongodb && \
+    git clone $repo percona-server-mongodb && \
     cd percona-server-mongodb/ && \
     git checkout $branch && git pull && \
     REVISION_LONG=$(git rev-parse HEAD) && \
