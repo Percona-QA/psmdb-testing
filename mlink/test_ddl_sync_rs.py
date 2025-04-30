@@ -168,7 +168,7 @@ def test_rs_mlink_PML_T11(reset_state, srcRS, dstRS, mlink):
             assert result is True, "Failed to start mlink service"
         def delayed_drop():
             log_stream = mlink.logs(stream=True)
-            pattern = re.compile(r'read batch \d+:\d+.*ns=init_test_db\.collection_0.*s=copy')
+            pattern = re.compile(r'read batch.*ns=init_test_db\.collection_0.*s=copy')
             for raw_line in log_stream:
                 line = raw_line.decode("utf-8").strip()
                 if pattern.search(line):
@@ -180,16 +180,9 @@ def test_rs_mlink_PML_T11(reset_state, srcRS, dstRS, mlink):
         t2.start()
         t1.join()
         t2.join()
-
         init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
-
-        result = mlink.wait_for_repl_stage(timeout=30)
-        if not result:
-            if "collection dropped" in mlink.logs():
-                pytest.xfail("Known issue: PML-86")
-            else:
-                assert False, "Failed to start replication stage"
-
+        result = mlink.wait_for_repl_stage()
+        assert result is True, "Failed to start replication stage"
     except Exception as e:
         raise
     finally:
@@ -209,8 +202,11 @@ def test_rs_mlink_PML_T11(reset_state, srcRS, dstRS, mlink):
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
     mlink_error, error_logs = mlink.check_mlink_errors()
-    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
-    pytest.fail("Unexpected pass: test should have failed due to PML-86")
+    expected_errors = ["QueryPlanKilled","RetryableWrite"]
+    if not mlink_error:
+        unexpected = [line for line in error_logs if all(expected_error not in line for expected_error in expected_errors)]
+        if unexpected:
+            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")

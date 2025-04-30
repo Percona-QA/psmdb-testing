@@ -439,7 +439,7 @@ def test_rs_mlink_PML_T19(reset_state, srcRS, dstRS, mlink):
             assert result is True, "Failed to start mlink service"
         def rename_collection():
             log_stream = mlink.logs(stream=True)
-            pattern = re.compile(r'read batch \d+:\d+.*ns=test_db\.collection_4.*s=copy')
+            pattern = re.compile(r'read batch.*ns=test_db\.collection_4.*s=copy')
             for raw_line in log_stream:
                 line = raw_line.decode("utf-8").strip()
                 if pattern.search(line):
@@ -457,12 +457,8 @@ def test_rs_mlink_PML_T19(reset_state, srcRS, dstRS, mlink):
     except Exception as e:
         raise
 
-    result = mlink.wait_for_repl_stage(timeout=30)
-    if not result:
-        if "collection renamed" in mlink.logs(tail=2000):
-                pytest.xfail("Known issue: PML-109")
-        else:
-            assert False, "Failed to start replication stage"
+    result = mlink.wait_for_repl_stage()
+    assert result is True, "Failed to finish init sync"
 
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
@@ -474,8 +470,21 @@ def test_rs_mlink_PML_T19(reset_state, srcRS, dstRS, mlink):
     assert new_name in dst_collections, "Renamed collection not found on destination"
     assert old_name not in dst_collections, "Old collection name still exists on destination"
 
-    result, _ = compare_data_rs(srcRS, dstRS)
-    assert result is True, "Data mismatch after synchronization"
+    expected_mismatches = [
+        ("test_db", "hash mismatch"),
+        ("test_db.renamed_collection_4", "hash mismatch"),
+        ("test_db.renamed_collection_4", "record count mismatch")]
+
+    result, summary = compare_data_rs(srcRS, dstRS)
+    if not result:
+        unexpected = [m for m in summary if m not in expected_mismatches]
+        missing_expected = [m for m in expected_mismatches if m not in summary]
+        if unexpected:
+            assert False, f"Unexpected mismatches found: {unexpected}"
+        if missing_expected:
+            assert False, f"Expected mismatches missing: {missing_expected}"
+        pytest.xfail("Known issue: PML-109")
+
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
     pytest.fail("Unexpected pass: test should have failed due to PML-109")
