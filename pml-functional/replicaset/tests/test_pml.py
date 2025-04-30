@@ -4,9 +4,7 @@ import sys
 import time
 import json
 import testinfra.utils.ansible_runner
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 from data_integrity_check import compare_data_rs
-from mlink.cluster import Cluster
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-source')
@@ -104,21 +102,21 @@ def pml_start():
         if output:
             try:
                 if output.get("ok") is True or output.get("error") == "already running":
-                    Cluster.log("Sync started successfully")
+                    print("Sync started successfully")
                     return True
 
                 elif output.get("ok") is False and output.get("error") != "already running":
                     error_msg = output.get("error", "Unknown error")
-                    Cluster.log(f"Failed to start sync between src and dst cluster: {error_msg}")
+                    print(f"Failed to start sync between src and dst cluster: {error_msg}")
                     return False
 
             except json.JSONDecodeError:
-                Cluster.log("Received invalid JSON response.")
+                print("Received invalid JSON response.")
 
-        Cluster.log("Failed to start sync between src and dst cluster")
+        print("Failed to start sync between src and dst cluster")
         return False
     except Exception as e:
-        Cluster.log(f"Unexpected error: {e}")
+        print(f"Unexpected error: {e}")
         return False
 
 def pml_finalize():
@@ -129,28 +127,28 @@ def pml_finalize():
             try:
                 print(output)
                 if output.get("ok") is True:
-                    Cluster.log("Sync finalized successfully")
+                    print("Sync finalized successfully")
                     return True
 
                 elif output.get("ok") is False:
                     error_msg = output.get("error", "Unknown error")
-                    Cluster.log(f"Failed to finalize sync between src and dst cluster: {error_msg}")
+                    print(f"Failed to finalize sync between src and dst cluster: {error_msg}")
                     return False
 
             except json.JSONDecodeError:
-                Cluster.log("Received invalid JSON response.")
+                print("Received invalid JSON response.")
 
-        Cluster.log("Failed to finalize sync between src and dst cluster")
+        print("Failed to finalize sync between src and dst cluster")
         return False
     except Exception as e:
-        Cluster.log(f"Unexpected error: {e}")
+        print(f"Unexpected error: {e}")
         return False
 
 def status(timeout=45):
     try:
         output = pml.check_output(f"curl -m {timeout} -s -X GET http://localhost:2242/status -d '{{}}'")
         json_output = json.loads(output)
-        Cluster.log(output)
+        print(output)
 
         if not json_output.get("ok", False):
             return {"success": False, "error": "mlink status command returned ok: false"}
@@ -171,7 +169,7 @@ def wait_for_repl_stage(timeout=3600, interval=1, stable_duration=2):
         status_response = status()
 
         if not status_response["success"]:
-            Cluster.log(f"Error: Impossible to retrieve status, {status_response['error']}")
+            print(f"Error: Impossible to retrieve status, {status_response['error']}")
             return False
 
         initial_sync = status_response["data"].get("initialSync")
@@ -186,7 +184,7 @@ def wait_for_repl_stage(timeout=3600, interval=1, stable_duration=2):
             while time.time() - stable_start < stable_duration:
                 stable_status = status()
                 if not stable_status["success"]:
-                    Cluster.log(f"Error: Impossible to retrieve status, {stable_status['error']}")
+                    print(f"Error: Impossible to retrieve status, {stable_status['error']}")
                     return False
 
                 state = stable_status["data"].get("state")
@@ -194,11 +192,11 @@ def wait_for_repl_stage(timeout=3600, interval=1, stable_duration=2):
                     return False
                 time.sleep(0.5)
             elapsed = round(time.time() - start_time, 2)
-            Cluster.log(f"Initial sync completed in {elapsed} seconds")
+            print(f"Initial sync completed in {elapsed} seconds")
             return True
         time.sleep(interval)
 
-    Cluster.log("Error: Timeout reached while waiting for initial sync to complete")
+    print("Error: Timeout reached while waiting for initial sync to complete")
     return False
 
 def test_prepare_data():
