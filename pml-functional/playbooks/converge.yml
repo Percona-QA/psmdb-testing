@@ -489,17 +489,16 @@
       command: percona-release enable pmm3-client
       when: inventory_hostname in groups['psmdb']
 
-    - name: Install pmm package Debian
-      apt:
-        name: pmm-client
-      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
-
-    - name: Install pmm package RHEL
+    - name: Install deps RHEL
       yum:
-        name: pmm-client
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+          - pmm-client
       when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
-    - name: Install deps
+    - name: Install pmm client Debian
       apt:
         name: "{{ packages }}"
         state: present
@@ -507,7 +506,7 @@
       vars:
         packages:
           - pmm-client
-      when: ansible_os_family == "Debian"
+      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
 
     - name: Configure PMM on source psmdb node
       shell: >
