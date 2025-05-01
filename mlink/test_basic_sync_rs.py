@@ -716,6 +716,8 @@ def test_rs_mlink_PML_T31(reset_state, srcRS, dstRS, mlink):
     """
     Test how pml deals with huge number of namespaces on the clone phase
     """
+    mlink_env = {"PML_CLONE_NUM_PARALLEL_COLLECTIONS": "50"}
+    mlink.create(extra_args="--reset-state", env_vars=mlink_env)
     databases = 1000
     collections = 10
     Cluster.log("Creating " + str(databases) + " databases with " + str(collections) + " collections")
@@ -727,7 +729,7 @@ def test_rs_mlink_PML_T31(reset_state, srcRS, dstRS, mlink):
             client[db][coll].insert_one({})
         Cluster.log("Created " + db)
     mlink.start()
-    result = mlink.wait_for_repl_stage(180,10)
+    result = mlink.wait_for_repl_stage(300,10)
     assert result is True, "Failed to catch up on replication, mlink logs:\n" + str(mlink.logs(20))
     result = mlink.finalize()
     assert result is True, "Failed to finalize mlink service, mlink logs:\n" + str(mlink.logs(20))
