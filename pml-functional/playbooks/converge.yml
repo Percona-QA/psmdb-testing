@@ -4,6 +4,16 @@
   become_method: sudo
   collections:
     - community.mongodb
+  vars:
+    env_string: "{{ lookup('env', 'EXTRA_VARS') | default('') }}"
+    env_vars_parsed: >-
+      {{ dict(
+           env_string.split(',') 
+           | map('trim') 
+           | select('match', '^.+?=.+$') 
+           | map('split', '=', 1)
+         )
+      }}
   tasks:
     - set_fact:
         # Version of psmdb release to be enabled (psmdb-70)
@@ -286,6 +296,18 @@
         - percona-server-mongodb-mongos-{{ psmdb_version }}
         - percona-server-mongodb-tools-{{ psmdb_version }}
       when: ansible_os_family == "RedHat" and psmdb_version != "latest" and inventory_hostname in groups['psmdb']
+
+    - name: Show parsed variables
+      debug:
+        var: env_vars_parsed
+
+    - name: Export each environment variable
+      shell: |
+        export {{ item.key }}="{{ item.value }}"
+        echo "$${{ item.key }}=$${{ item.key }}"
+      loop: "{{ env_vars_parsed | dict2items }}"
+      environment: "{{ env_vars_parsed }}"
+      when: env_string != "" and inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Install mongo shell deb package
       apt:
