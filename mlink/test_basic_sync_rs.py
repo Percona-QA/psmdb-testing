@@ -739,3 +739,30 @@ def test_rs_mlink_PML_T31(reset_state, srcRS, dstRS, mlink):
         assert 'test' + str(i) in database_names, "Data mismatch after synchronization"
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
+
+@pytest.mark.usefixtures("start_cluster")
+@pytest.mark.timeout(600,func_only=True)
+def test_rs_mlink_PML_T43(reset_state, srcRS, dstRS, mlink):
+    """
+    Test how pml deals with huge number of indexes on the clone phase
+    """
+    collections = 200
+    indexes = 50
+    Cluster.log("Creating " + str(collections) + " collections with " + str(indexes) + " indexes")
+    client=pymongo.MongoClient(srcRS.connection)
+    for i in range(collections):
+        coll = 'test' + str(i)
+        for j in range(indexes):
+            index = 'test' + str(j)
+            client['test'][coll].create_index(index)
+        client['test'][coll].insert_one({})
+        Cluster.log("Created " + coll)
+    mlink.start()
+    result = mlink.wait_for_repl_stage(300,10)
+    assert result is True, "Failed to catch up on replication, mlink logs:\n" + str(mlink.logs(20))
+    result = mlink.finalize()
+    assert result is True, "Failed to finalize mlink service, mlink logs:\n" + str(mlink.logs(20))
+    result, _ = compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after synchronization"
+    mlink_error, error_logs = mlink.check_mlink_errors()
+    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
