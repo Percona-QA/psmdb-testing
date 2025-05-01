@@ -300,14 +300,7 @@
     - name: Show parsed variables
       debug:
         var: env_vars_parsed
-
-    - name: Export each environment variable
-      shell: |
-        export {{ item.key }}="{{ item.value }}"
-        echo "$${{ item.key }}=$${{ item.key }}"
-      loop: "{{ env_vars_parsed | dict2items }}"
-      environment: "{{ env_vars_parsed }}"
-      when: env_string != "" and inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Install mongo shell deb package
       apt:
@@ -426,7 +419,7 @@
         daemon_reload: yes
       when: inventory_hostname in groups['psmdb']
 
-    - name: Create PML system unit file
+    - name: Create PML system unit file (always) with optional environment variables
       copy:
         dest: /etc/systemd/system/pml.service
         content: |
@@ -435,14 +428,16 @@
           After=network.target
 
           [Service]
-          ExecStart=/usr/local/bin/percona-mongolink --source mongodb://{{ private_source_ip }}:27017 --target mongodb://{{ private_destination_ip }}:27017 --log-level debug --log-json
-          Environment="PML_USE_COLLECTION_BULK_WRITE={{ lookup('env', 'PML_USE_COLLECTION_BULK_WRITE') | int  }}"
-          Environment="PML_CLONE_NUM_PARALLEL_COLLECTIONS={{ lookup('env', 'PML_CLONE_NUM_PARALLEL_COLLECTIONS') | int  }}"
-          Environment="PML_CLONE_NUM_READ_WORKERS={{ lookup('env', 'PML_CLONE_NUM_READ_WORKERS') | int  }}"
-          Environment="PML_CLONE_NUM_INSERT_WORKERS={{ lookup('env', 'PML_CLONE_NUM_INSERT_WORKERS') | int  }}"
-          Environment="PML_CLONE_SEGMENT_SIZE={{ lookup('env', 'PML_CLONE_SEGMENT_SIZE') | int  }}"
-          Environment="PML_CLONE_READ_BATCH_SIZE={{ lookup('env', 'PML_CLONE_READ_BATCH_SIZE') | int  }}"
-          Environment="PML_DEV_TARGET_CLIENT_COMPRESSORS={{ lookup('env', 'PML_DEV_TARGET_CLIENT_COMPRESSORS') | int  }}"
+          {% if env_vars_parsed %}
+          {% for item in env_vars_parsed | dict2items %}
+          Environment="{{ item.key }}={{ item.value }}"
+          {% endfor %}
+          {% endif %}
+          ExecStart=/usr/local/bin/percona-mongolink \
+            --source mongodb://{{ private_source_ip }}:27017 \
+            --target mongodb://{{ private_destination_ip }}:27017 \
+            --log-level debug \
+            --log-json
           Restart=on-failure
           User=root
 
