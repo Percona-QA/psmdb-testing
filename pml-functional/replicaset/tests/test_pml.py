@@ -17,8 +17,7 @@ pml = testinfra.utils.ansible_runner.AnsibleRunner(
 collections = int(os.getenv("COLLECTIONS", default = 5))
 datasize = int(os.getenv("DATASIZE", default = 100))
 distribute = os.getenv("DISTRIBUTE", default = "false")
-extraEnvVars = os.getenv("EXTRA_ENV_VARS", default = "")
-TIMEOUT = int(os.getenv("TIMEOUT",default = 300))
+TIMEOUT = int(os.getenv("TIMEOUT",default = 3600))
 
 def create_config(datasize, collections):
     string = []
@@ -204,7 +203,7 @@ def test_prepare_data():
 
 def test_data_transfer_PML_T40():
     assert pml_start()
-    assert wait_for_repl_stage()
+    assert wait_for_repl_stage(TIMEOUT)
     assert pml_finalize()
     assert confirm_collection_size(destination, "27017", collections, datasize)
 
