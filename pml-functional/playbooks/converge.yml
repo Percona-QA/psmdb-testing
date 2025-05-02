@@ -297,11 +297,6 @@
         - percona-server-mongodb-tools-{{ psmdb_version }}
       when: ansible_os_family == "RedHat" and psmdb_version != "latest" and inventory_hostname in groups['psmdb']
 
-    - name: Show parsed variables
-      debug:
-        var: env_vars_parsed
-      when: inventory_hostname == "jenkins-pml-mongolink"
-
     - name: Install mongo shell deb package
       apt:
         name: "{{ packages }}"
@@ -419,7 +414,7 @@
         daemon_reload: yes
       when: inventory_hostname in groups['psmdb']
 
-    - name: Create PML system unit file (always) with optional environment variables
+    - name: Create PML system unit file with optional environment variables
       copy:
         dest: /etc/systemd/system/pml.service
         content: |

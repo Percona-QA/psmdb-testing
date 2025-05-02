@@ -208,9 +208,9 @@ def test_data_transfer_PML_T40():
     assert pml_finalize()
     assert confirm_collection_size(destination, "27017", collections, datasize)
 
-def test_datasize_PML_41():
+def test_datasize_PML_T41():
     assert confirm_collection_size(destination, "27017", collections, datasize)
 
-def test_PML_data_integrity_PML_42():
+def test_PML_data_integrity_PML_T42():
     assert compare_data_rs(source, destination, "27017")
 
