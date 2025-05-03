@@ -1,0 +1,182 @@
+{
+  "title": "PML_sync_monitor",
+  "uid": "pml_sync_monitor",
+  "editable": true,
+  "graphTooltip": 0,
+  "id": null,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "name": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 6,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rate(percona_mongolink_copy_read_size_bytes_total[$__rate_interval]) / 1048576",
+          "legendFormat": "read Mb/s",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(percona_mongolink_copy_insert_size_bytes_total[$__rate_interval]) / 1048576",
+          "legendFormat": "write Mb/s",
+          "refId": "B"
+        }
+      ],
+      "title": "Speed",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "name": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 1,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "percona_mongolink_copy_read_size_bytes_total / 1073741824",
+          "legendFormat": "Read",
+          "refId": "A"
+        },
+        {
+          "expr": "percona_mongolink_copy_insert_size_bytes_total / 1073741824",
+          "legendFormat": "Write",
+          "refId": "B"
+        },
+        {
+          "expr": "percona_mongolink_estimated_total_size_bytes / 1073741824",
+          "legendFormat": "Expected",
+          "refId": "C"
+        }
+      ],
+      "title": "Bytes (in GiB)",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "name": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 2,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "percona_mongolink_copy_read_batch_duration_seconds * 100",
+          "legendFormat": "Read Batch",
+          "refId": "Read Batch Elapsed"
+        },
+        {
+          "expr": "percona_mongolink_copy_insert_batch_duration_seconds * 100",
+          "legendFormat": "Write Batch",
+          "refId": "Insert Batch Elapsed"
+        }
+      ],
+      "title": "Duration in ms [per ~48MB]",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "name": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 4,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "go_memstats_heap_inuse_bytes / 1048576",
+          "legendFormat": "heap",
+          "refId": "A"
+        }
+      ],
+      "title": "Memory Usage in MiB",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "name": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "id": 3,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "percona_mongolink_copy_read_document_total",
+          "legendFormat": "Read",
+          "refId": "Read Documents Count"
+        },
+        {
+          "expr": "percona_mongolink_copy_insert_document_total",
+          "legendFormat": "Write",
+          "refId": "Insert Documents Count"
+        }
+      ],
+      "title": "Total Documents Count",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "name": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "id": 7,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "percona_mongolink_lag_time_seconds",
+          "legendFormat": "Lag Time",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(percona_mongolink_lag_time_seconds[$__rate_interval])",
+          "legendFormat": "Lag Time Rate",
+          "refId": "B"
+        }
+      ],
+      "title": "Lag Time",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "name": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "id": 5,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "percona_mongolink_initial_sync_lag_time_seconds",
+          "legendFormat": "Initial Sync",
+          "refId": "A"
+        },
+        {
+          "expr": "percona_mongolink_lag_time_seconds",
+          "legendFormat": "Source TIme",
+          "refId": "B"
+        }
+      ],
+      "title": "Lag Time in logical seconds",
+      "transparent": true,
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 41,
+  "time": { "from": "now-2m", "to": "now" },
+  "timezone": "browser",
+  "version": 2
+}
