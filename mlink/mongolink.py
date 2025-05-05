@@ -106,6 +106,29 @@ class Mongolink:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    def metrics(self, timeout=45):
+        try:
+            exec_result = self.container.exec_run(f"curl -m {timeout} -s -X GET http://localhost:2242/metrics")
+            response = exec_result.output.decode("utf-8", errors="ignore").strip()
+            status_code = exec_result.exit_code
+            if status_code != 0 or not response:
+                return {"success": False, "error": "Failed to execute mlink metrics command"}
+            metrics_data = {}
+            for line in response.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                try:
+                    key_value = line.split(None, 1)
+                    if len(key_value) == 2:
+                        key, value = key_value
+                        metrics_data[key] = float(value)
+                except ValueError:
+                    continue
+            return {"success": True, "data": metrics_data}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     def restart(self, timeout=60):
         if self.container:
             try:
