@@ -50,6 +50,23 @@ def test_logical_PBM_T297(start_cluster,cluster):
     client.admin.command({"enableSharding": "testDB", "primaryShard": "rs1"})
     client.admin.command({"shardCollection": "testDB.test", "key": {"_id": 1}})
 
+    #client.drop_database('testDB')
+
+    csrsclient = pymongo.MongoClient("mongodb://pbm:pbmpass@rscfg01:27017/?authSource=admin")
+    primaryclient = pymongo.MongoClient("mongodb://pbm:pbmpass@rs101:27017/?authSource=admin")
+
+    Cluster.log(csrsclient['config']['databases'].find_one({'_id':'testDB'}))
+    Cluster.log(csrsclient['config']['collections'].find_one({'_id':'testDB.test'}))
+    uuid = csrsclient['config']['collections'].find_one({'_id':'testDB.test'})['uuid']
+    Cluster.log(csrsclient['config']['chunks'].find_one({'uuid':uuid}))
+
+    version = csrsclient['config']['databases'].find_one({'_id':'testDB'})['version']
+    primaryclient['testDB'].command({'_shardsvrDropDatabase':1, 'databaseVersion': version, "writeConcern": {"w": "majority"}})
+
+    Cluster.log(csrsclient['config']['databases'].find_one({'_id':'testDB'}))
+    Cluster.log(csrsclient['config']['collections'].find_one({'_id':'testDB.test'}))
+    Cluster.log(csrsclient['config']['chunks'].find_one({'uuid':uuid}))
+
     cluster.make_restore(backup)
     try:
         count = client["testDB"]["test"].count_documents({})

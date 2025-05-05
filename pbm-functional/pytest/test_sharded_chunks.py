@@ -37,7 +37,7 @@ def start_cluster(cluster,request):
         assert result.rc == 0
         Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
         client=pymongo.MongoClient(cluster.connection)
-        client.admin.command("enableSharding", "test")
+        client.admin.command({"enableSharding": "test", "primaryShard": "rs1"})
         client.admin.command("shardCollection", "test.test", key={"_id": 1})
         Cluster.log("Set chunksize to 16Mb")
         result = client['config']['settings'].update_one({ '_id': 'chunksize' }, { "$set": { '_id': 'chunksize', 'value': 16 }}, upsert=True)
@@ -86,6 +86,12 @@ def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster):
     time.sleep(5)
     cluster.disable_pitr()
 
+    csrsclient = pymongo.MongoClient("mongodb://pbm:pbmpass@rscfg01:27017/?authSource=admin")
+    primaryclient = pymongo.MongoClient("mongodb://pbm:pbmpass@rs101:27017/?authSource=admin")
+
+    version = csrsclient['config']['databases'].find_one({'_id':'test'})['version']
+    primaryclient['test'].command({'_shardsvrDropDatabase':1, 'databaseVersion': version, "writeConcern": {"w": "majority"}})
+
     time.sleep(5)
     cluster.make_restore(backup,make_resync=False,check_pbm_status=True)
 
@@ -119,6 +125,12 @@ def test_load_chunks_migration_base_PBM_T285(start_cluster,cluster):
     for i in range(threads):
         background_insert[i].join()
     Cluster.log("Background threads are finished")
+
+    csrsclient = pymongo.MongoClient("mongodb://pbm:pbmpass@rscfg01:27017/?authSource=admin")
+    primaryclient = pymongo.MongoClient("mongodb://pbm:pbmpass@rs101:27017/?authSource=admin")
+
+    version = csrsclient['config']['databases'].find_one({'_id':'test'})['version']
+    primaryclient['test'].command({'_shardsvrDropDatabase':1, 'databaseVersion': version, "writeConcern": {"w": "majority"}})
 
     time.sleep(5)
     cluster.make_restore(backup,make_resync=False,check_pbm_status=True)
