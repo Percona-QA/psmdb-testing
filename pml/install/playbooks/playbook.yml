@@ -202,7 +202,7 @@
         groups: docker
         append: yes
 
-    - name: Create Source PSMDB Docker Container
+    - name: Create Source standalone PSMDB container
       community.docker.docker_container:
         name: source
         image: percona/percona-server-mongodb:8.0
@@ -210,17 +210,17 @@
         restart_policy: unless-stopped
         published_ports:
           - "27017:27017"
-        command: "--port=27017 --replSet=rs"
+        command: "--port=27017"
 
-    - name: Create Destination PSMDB Docker Container
+    - name: Create Destination standalone PSMDB container
       community.docker.docker_container:
         name: destination
         image: percona/percona-server-mongodb:8.0
         state: started
         restart_policy: unless-stopped
         published_ports:
-          - "28017:28017"
-        command: "--port=28017 --replSet=rs1"
+          - "28017:27017"
+        command: "--port=27017"
 
     - name: Get IP of source container
       community.docker.docker_container_info:
