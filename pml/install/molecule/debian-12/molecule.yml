@@ -1,0 +1,45 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: ec2
+platforms:
+  - name: debian12-${BUILD_NUMBER}-${JOB_NAME}
+    region: us-west-2
+    image: "${MOLECULE_DEBIAN12_AMI:-ami-0b6edd8449255b799}"
+    vpc_subnet_id: subnet-03136d8c244f56036
+    instance_type: t2.micro
+    ssh_user: admin
+    root_device_name: /dev/xvda
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+      job-name: ${JOB_NAME}
+provisioner:
+  name: ansible
+  log: True
+  playbooks:
+    create: ../../../../playbooks/create.yml
+    destroy: ../../../../playbooks/destroy.yml
+    cleanup: ../../playbooks/cleanup.yml
+    converge: ../../playbooks/playbook.yml
+    prepare: ../../../../playbooks/prepare.yml
+verifier:
+  name: testinfra
+  directory: ../../../tests/
+  options:
+    verbose: true
+    s: true
+    junitxml: report.xml
+scenario:
+  name: debian-12
+  destroy_sequence:
+    - destroy
+  cleanup_sequence:
+    - cleanup
+  test_sequence:
+    - destroy
+    - create
+    - prepare
+    - converge
+    - verify
+    - cleanup

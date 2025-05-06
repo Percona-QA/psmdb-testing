@@ -1,0 +1,113 @@
+---
+# tasks file for pbm
+- name: Install percona release package
+  include_tasks: ../../../tasks/install_percona_release.yml
+
+- name: setup psmdb repo with percona-release
+  command: percona-release enable {{ psmdb_to_test }} testing
+  vars:
+    psmdb_to_test: "{{ lookup('env', 'psmdb_to_test') }}"
+
+- name: setup pbm repo with percona-release
+  command: percona-release enable pbm {{ install_repo }}
+  vars:
+    install_repo: "{{ lookup('env', 'install_repo') }}"
+  when: lookup('env', 'install_repo') != "main" and lookup('env', 'install_repo') != "tools"
+
+- name: setup pbm repo with percona-release
+  command: percona-release enable pbm
+  vars:
+    install_repo: "{{ lookup('env', 'install_repo') }}"
+  when: lookup('env', 'install_repo') == "main"
+
+- name: setup tools repo with percona-release
+  command: percona-release enable tools release
+  vars:
+    install_repo: "{{ lookup('env', 'install_repo') }}"
+  when: lookup('env', 'install_repo') == "tools"
+
+- name: include tasks for PSMDB install
+  include_tasks: ../../tasks/install_setup_psmdb.yml
+  vars:
+    psmdb_to_test: "{{ lookup('env', 'psmdb_to_test') }}"
+
+- name: install PBM new deb packages
+  apt:
+    name: percona-backup-mongodb
+    update_cache: yes
+    state: latest
+  when: ansible_os_family == "Debian"
+
+- name: install PBM new rpm packages
+  yum:
+    name: percona-backup-mongodb
+    state: latest
+  when: ansible_os_family == "RedHat"
+
+- name: add storage for pbm-agent
+  blockinfile:
+    path: /etc/pbm-agent-storage.conf
+    mode: '0666'
+    create: true
+    block: |
+      storage:
+        type: s3
+        s3:
+           region: us-east-1
+           bucket: operator-testing
+           credentials:
+             access-key-id: {{ access_key }}
+             secret-access-key: {{ access_secret }}
+  vars:
+    access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+    access_secret: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+
+- name: add GCP storage for pbm-agent
+  blockinfile:
+    path: /etc/pbm-agent-storage-gcp.conf
+    mode: '0666'
+    create: true
+    block: |
+      storage:
+        type: s3
+        s3:
+           region: us-east-1
+           endpointUrl: https://storage.googleapis.com
+           bucket: operator-testing
+           credentials:
+             access-key-id: {{ access_key }}
+             secret-access-key: {{ access_secret }}
+  vars:
+    access_key: "{{ lookup('env', 'GCP_ACCESS_KEY') }}"
+    access_secret: "{{ lookup('env', 'GCP_SECRET_KEY') }}"
+
+- name: add local storage for pbm-agent
+  blockinfile:
+    path: /etc/pbm-agent-storage-local.conf
+    mode: '0666'
+    create: true
+    block: |
+      storage:
+          type: filesystem
+          filesystem:
+              path: /tmp
+
+- name: edit pbm-agent service config for deb
+  blockinfile:
+    path: /etc/default/pbm-agent
+    block: |
+      PBM_MONGODB_URI="mongodb://localhost:27017/"
+  when: ansible_os_family == "Debian"
+
+- name: edit pbm-agent service config for rhel based
+  blockinfile:
+    path: /etc/sysconfig/pbm-agent
+    block: |
+      PBM_MONGODB_URI="mongodb://localhost:27017/"
+  when: ansible_os_family == "RedHat"
+
+- name: start pbm-agent service
+  service:
+    name: pbm-agent
+    state: started
+    enabled: yes
