@@ -221,3 +221,32 @@
         published_ports:
           - "28017:28017"
         command: "--port=28017 --replSet=rs1"
+
+    - name: Get IP of source container
+      community.docker.docker_container_info:
+        name: source
+      register: source
+
+    - name: Set fact for source IP
+      set_fact:
+        source_ip: "{{ source.containers[0].NetworkSettings.Networks.bridge.IPAddress }}"
+
+    - name: Get IP of destination container
+      community.docker.docker_container_info:
+        name: destination
+      register: destination
+
+    - name: Set fact for destination IP
+      set_fact:
+        destination_ip: "{{ destination.containers[0].NetworkSettings.Networks.bridge.IPAddress }}"
+
+    - name: Add container IPs to /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item.ip }} {{ item.hostname }}"
+        state: present
+        create: yes
+      loop:
+        - { ip: "{{ source_ip }}", hostname: "source" }
+        - { ip: "{{ destination_ip }}", hostname: "destination" }
+      become: true
