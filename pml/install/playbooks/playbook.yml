@@ -149,6 +149,18 @@
         remote_src: true
       when: inventory_hostname == "jenkins-pml-mongolink"
 
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Add current user to docker group
+      user:
+        name: "{{ ansible_user | default('ec2-user') }}"
+        groups: docker
+        append: yes
+
     - name: Create Source PSMDB Docker Container
       community.docker.docker_container:
         name: source
