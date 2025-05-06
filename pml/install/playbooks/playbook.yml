@@ -149,10 +149,6 @@
         remote_src: true
       when: inventory_hostname == "jenkins-pml-mongolink"
 
-    - name: Get private destination ip address
-      set_fact:
-        private_destination_ip: "{{ hostvars[groups['pml_destination_group'][0]]['ansible_default_ipv4']['address'] }}"
-
     - name: Create Source PSMDB Docker Container
       community.docker.docker_container:
         name: source
@@ -161,7 +157,7 @@
         restart_policy: unless-stopped
         published_ports:
           - "28017:28017"
-        command: "--port=27017 --replSet=rs2"
+        command: "--port=27017 --replSet=rs"
 
     - name: Create Destination PSMDB Docker Container
       community.docker.docker_container:
@@ -171,4 +167,4 @@
         restart_policy: unless-stopped
         published_ports:
           - "28017:28017"
-        command: "--port=28017 --replSet=rs"
+        command: "--port=28017 --replSet=rs1"
