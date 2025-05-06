@@ -209,7 +209,7 @@
         state: started
         restart_policy: unless-stopped
         published_ports:
-          - "28017:28017"
+          - "27017:27017"
         command: "--port=27017 --replSet=rs"
 
     - name: Create Destination PSMDB Docker Container
