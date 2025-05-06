@@ -3,8 +3,6 @@
   hosts: all
   become: true
   become_method: sudo
-  roles:
-    - role: install
   tasks:
     - set_fact:
         # Version of psmdb release to be enabled (psmdb-70)
