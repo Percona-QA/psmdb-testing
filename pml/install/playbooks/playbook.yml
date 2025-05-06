@@ -222,6 +222,10 @@
           - "28017:27017"
         command: "--port=27017"
 
+    - name: Show container info (debug)
+      debug:
+        var: source
+
     - name: Get IP of source container
       community.docker.docker_container_info:
         name: source
@@ -230,6 +234,7 @@
     - name: Set fact for source IP
       set_fact:
         source_ip: "{{ source.containers[0].NetworkSettings.Networks.bridge.IPAddress }}"
+      when: source.containers is defined and source.containers | length > 0
 
     - name: Get IP of destination container
       community.docker.docker_container_info:
@@ -239,6 +244,8 @@
     - name: Set fact for destination IP
       set_fact:
         destination_ip: "{{ destination.containers[0].NetworkSettings.Networks.bridge.IPAddress }}"
+      when: source.containers is defined and source.containers | length > 0
+
 
     - name: Add container IPs to /etc/hosts
       lineinfile:
