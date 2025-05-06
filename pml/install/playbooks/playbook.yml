@@ -177,6 +177,31 @@
         state: started
         enabled: true
 
+    - name: Download runc binary
+      get_url:
+        url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
+        dest: /usr/local/bin/runc
+        mode: '0755'
+
+    - name: Move runc to /usr/bin
+      copy:
+        src: /usr/local/bin/runc
+        dest: /usr/bin/runc
+        remote_src: yes
+        mode: '0755'
+        force: yes
+
+    - name: Ensure docker group exists
+      group:
+        name: docker
+        state: present
+
+    - name: Add user ssh-user to docker group
+      user:
+        name: "{{ ssh_user }}"
+        groups: docker
+        append: yes
+
     - name: Create Source PSMDB Docker Container
       community.docker.docker_container:
         name: source
