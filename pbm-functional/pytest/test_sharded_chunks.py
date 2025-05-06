@@ -128,9 +128,28 @@ def test_load_chunks_migration_base_PBM_T285(start_cluster,cluster):
 
     csrsclient = pymongo.MongoClient("mongodb://pbm:pbmpass@rscfg01:27017/?authSource=admin")
     primaryclient = pymongo.MongoClient("mongodb://pbm:pbmpass@rs101:27017/?authSource=admin")
+    rs2client = pymongo.MongoClient("mongodb://pbm:pbmpass@rs201:27017/?authSource=admin")
+    rs3client = pymongo.MongoClient("mongodb://pbm:pbmpass@rs301:27017/?authSource=admin")
+
+    Cluster.log(csrsclient['config']['databases'].find_one({'_id':'test'}))
+    Cluster.log(csrsclient['config']['collections'].find_one({'_id':'test.test'}))
+    uuid = csrsclient['config']['collections'].find_one({'_id':'test.test'})['uuid']
+    Cluster.log(csrsclient['config']['chunks'].find_one({'uuid':uuid}))
+    assert primaryclient['test']['test'].find_one({})
+    assert rs2client['test']['test'].find_one({})
+    assert rs3client['test']['test'].find_one({})
 
     version = csrsclient['config']['databases'].find_one({'_id':'test'})['version']
     primaryclient['test'].command({'_shardsvrDropDatabase':1, 'databaseVersion': version, "writeConcern": {"w": "majority"}})
+
+    Cluster.log(csrsclient['config']['databases'].find_one({'_id':'test'}))
+    Cluster.log(csrsclient['config']['collections'].find_one({'_id':'test.test'}))
+    Cluster.log(csrsclient['config']['chunks'].find_one({'uuid':uuid}))
+
+    assert not primaryclient['test']['test'].find_one({})
+    assert not rs2client['test']['test'].find_one({})
+    assert not rs3client['test']['test'].find_one({})
+
 
     time.sleep(5)
     cluster.make_restore(backup,make_resync=False,check_pbm_status=True)
