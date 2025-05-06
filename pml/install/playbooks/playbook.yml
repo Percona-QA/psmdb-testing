@@ -153,11 +153,6 @@
       set_fact:
         private_destination_ip: "{{ hostvars[groups['pml_destination_group'][0]]['ansible_default_ipv4']['address'] }}"
 
-    - name: Ensure community.docker collection is available
-      ansible.builtin.ansible.builtin.ansible-galaxy:
-        name: community.docker
-        type: collection
-
     - name: Create Source PSMDB Docker Container
       community.docker.docker_container:
         name: source
