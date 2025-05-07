@@ -141,6 +141,36 @@
         groups: docker
         append: yes
 
+    - name: Get info about the container
+      community.docker.docker_container_info:
+        name: source
+      register: source_container
+
+    - name: Get info about the container
+      community.docker.docker_container_info:
+        name: destination
+      register: destination_container
+
+    - name: Store the Source Container IP
+      set_fact:
+        source_ip: "{{ source_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
+
+    - name: Store the Destination Container IP
+      set_fact:
+        destination_ip: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
+
+    - name: Add container IPs to /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item.ip }} {{ item.hostname }}"
+        state: present
+        create: yes
+      loop:
+        - { ip: "{{ source_ip }}", hostname: "source" }
+        - { ip: "{{ destination_ip }}", hostname: "destination" }
+      become: true
+
+
     - name: Create Source standalone PSMDB container
       community.docker.docker_container:
         name: source
@@ -172,35 +202,6 @@
         container: destination
         command: >
           mongosh --eval 'rs.initiate({_id: "rs1", members: [{ _id: 0, host: "{{ destination_ip }}:27017" }]})'
-
-    - name: Get info about the container
-      community.docker.docker_container_info:
-        name: source
-      register: source_container
-
-    - name: Get info about the container
-      community.docker.docker_container_info:
-        name: destination
-      register: destination_container
-
-    - name: Store the Source Container IP
-      set_fact:
-        source_ip: "{{ source_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
-
-    - name: Store the Destination Container IP
-      set_fact:
-        destination_ip: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
-
-    - name: Add container IPs to /etc/hosts
-      lineinfile:
-        path: /etc/hosts
-        line: "{{ item.ip }} {{ item.hostname }}"
-        state: present
-        create: yes
-      loop:
-        - { ip: "{{ source_ip }}", hostname: "source" }
-        - { ip: "{{ destination_ip }}", hostname: "destination" }
-      become: true
 
     - name: Install Go from official tarball on PML host
       vars:
