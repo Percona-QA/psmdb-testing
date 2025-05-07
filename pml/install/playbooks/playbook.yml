@@ -222,19 +222,14 @@
           - "28017:27017"
         command: "--port=27017"
 
-    - name: Get source container name
-      docker_container_info:
-        name:{{ container_name }}
-      register: result
+    - name: Get info about the container
+      community.docker.docker_container_info:
+        name: source
+      register: container_info
 
-    - name: Confirm Source Exists
+    - name: Show the container IP
       debug:
-        msg: "The container {{ 'exists' if result.exists else 'does not exist' }}"
-
-    - name: Print IP address of Source
-      debug:
-        var: result.container.NetworkSettings.IPAddress
-      when: result.exists
+        msg: "{{ container_info.containers[0].NetworkSettings.Networks.bridge.IPAddress }}"
 
 #    - name: Add container IPs to /etc/hosts
 #      lineinfile:
