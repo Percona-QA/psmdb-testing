@@ -265,31 +265,31 @@
       systemd:
         daemon_reload: yes
 
-    - name: Create PML system unit file with optional environment variables
-      copy:
-        dest: /etc/systemd/system/pml.service
-        content: |
-          [Unit]
-          Description=Percona MongoLink Service
-          After=network.target
-
-          [Service]
-          ExecStart=/usr/local/bin/percona-mongolink \
-            --source mongodb://{{ source_ip }}:27017 \
-            --target mongodb://{{ destination_ip }}:28017 \
-            --log-level debug \
-            --log-json
-          Restart=on-failure
-          User=root
-
-          [Install]
-          WantedBy=multi-user.target
-        owner: root
-        group: root
-        mode: '0644'
-
-    - name: Reload systemd and start PML service
-      service:
-        daemon_reload: yes
-        name: pml.service
-        state: started
+#    - name: Create PML system unit file with optional environment variables
+#      copy:
+#        dest: /etc/systemd/system/pml.service
+#        content: |
+#          [Unit]
+#          Description=Percona MongoLink Service
+#          After=network.target
+#
+#          [Service]
+#          ExecStart=/usr/local/bin/percona-mongolink \
+#            --source mongodb://{{ source_ip }}:27017 \
+#            --target mongodb://{{ destination_ip }}:28017 \
+#            --log-level debug \
+#            --log-json
+#          Restart=on-failure
+#          User=root
+#
+#          [Install]
+#          WantedBy=multi-user.target
+#        owner: root
+#        group: root
+#        mode: '0644'
+#
+#    - name: Reload systemd and start PML service
+#      service:
+#        daemon_reload: yes
+#        name: pml.service
+#        state: started
