@@ -276,7 +276,7 @@
           [Service]
           ExecStart=/usr/local/bin/percona-mongolink \
             --source mongodb://{{ source_ip }}:27017 \
-            --target mongodb://{{ destination_ip }}:28017 \
+            --target mongodb://{{ destination_ip }}:27017 \
             --log-level debug \
             --log-json
           Restart=on-failure
