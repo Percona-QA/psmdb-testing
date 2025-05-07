@@ -161,6 +161,18 @@
           - "28017:27017"
         command: "--port=27017 --replSet rs1"
 
+    - name: Initiate source replicaset
+      community.docker.docker_container_exec:
+        container: source
+        command: >
+          mongosh --eval 'rs.initiate({_id: "rs0", members: [{ _id: 0, host: "localhost:27017" }]})'
+
+    - name: Initiate destination replicaset
+      community.docker.docker_container_exec:
+        container: destination
+        command: >
+          mongosh --eval 'rs.initiate({_id: "rs1", members: [{ _id: 0, host: "localhost:27017" }]})'
+
     - name: Get info about the container
       community.docker.docker_container_info:
         name: source
