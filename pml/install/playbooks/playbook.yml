@@ -137,7 +137,6 @@
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
         GOBIN: /usr/local/go/bin
-      when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Move mongolink binary to /usr/local/bin
       copy:
@@ -145,7 +144,39 @@
         dest: /usr/local/bin/
         mode: '0755'
         remote_src: true
-      when: inventory_hostname == "jenkins-pml-mongolink"
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Create PML system unit file with optional environment variables
+      copy:
+        dest: /etc/systemd/system/pml.service
+        content: |
+          [Unit]
+          Description=Percona MongoLink Service
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/bin/percona-mongolink \
+            --source mongodb://{{ private_source_ip }}:27017 \
+            --target mongodb://{{ private_destination_ip }}:27017 \
+            --log-level debug \
+            --log-json
+          Restart=on-failure
+          User=root
+
+          [Install]
+          WantedBy=multi-user.target
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Reload systemd and start PML service
+      service:
+        daemon_reload: yes
+        name: pml.service
+        state: started
 
     - name: Remove podman-docker if present
       ansible.builtin.yum:
