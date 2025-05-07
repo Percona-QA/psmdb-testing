@@ -164,21 +164,21 @@
     - name: Get info about the container
       community.docker.docker_container_info:
         name: source
-      register: container_info
+      register: source_container
 
     - name: Get info about the container
       community.docker.docker_container_info:
         name: destination
-      register: container_info
+      register: destination_container
 
     - name: Show the Source Container IP
       debug:
-        msg: "{{ container_info.container.NetworkSettings.Networks.bridge.IPAddress }}"
+        msg: "{{ source_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
       register: source_ip
 
     - name: Show the Destination Container IP
       debug:
-        msg: "{{ container_info.container.NetworkSettings.Networks.bridge.IPAddress }}"
+        msg: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
       register: destination_ip
 
     - name: Add container IPs to /etc/hosts
