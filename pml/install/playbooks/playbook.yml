@@ -171,15 +171,13 @@
         name: destination
       register: destination_container
 
-    - name: Show the Source Container IP
-      debug:
-        msg: "{{ source_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
-      register: source_ip
+    - name: Store the Source Container IP
+      set_fact:
+        source_ip: "{{ source_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
 
-    - name: Show the Destination Container IP
-      debug:
-        msg: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
-      register: destination_ip
+    - name: Store the Destination Container IP
+      set_fact:
+        destination_ip: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
 
     - name: Add container IPs to /etc/hosts
       lineinfile:
