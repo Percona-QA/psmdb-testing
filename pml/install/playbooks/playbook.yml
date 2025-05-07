@@ -165,13 +165,13 @@
       community.docker.docker_container_exec:
         container: source
         command: >
-          mongosh --eval 'rs.initiate({_id: "rs0", members: [{ _id: 0, host: "localhost:27017" }]})'
+          mongosh --eval 'rs.initiate({_id: "rs0", members: [{ _id: 0, host: "{{ source_ip }}:27017" }]})'
 
     - name: Initiate destination replicaset
       community.docker.docker_container_exec:
         container: destination
         command: >
-          mongosh --eval 'rs.initiate({_id: "rs1", members: [{ _id: 0, host: "localhost:27017" }]})'
+          mongosh --eval 'rs.initiate({_id: "rs1", members: [{ _id: 0, host: "{{ destination_ip }}:27017" }]})'
 
     - name: Get info about the container
       community.docker.docker_container_info:
@@ -275,8 +275,8 @@
 #
 #          [Service]
 #          ExecStart=/usr/local/bin/percona-mongolink \
-#            --source mongodb://{{ source_ip }}:27017 \
-#            --target mongodb://{{ destination_ip }}:28017 \
+#            --source mongodb://{{ 172.17.0.2 }}:27017 \
+#            --target mongodb://{{ 172.17.0.3 }}:28017 \
 #            --log-level debug \
 #            --log-json
 #          Restart=on-failure
