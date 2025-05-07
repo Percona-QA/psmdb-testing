@@ -265,7 +265,7 @@
       systemd:
         daemon_reload: yes
 
-    - name: Create PML system unit file with optional environment variables
+    - name: Create PML system unit file
       copy:
         dest: /etc/systemd/system/pml.service
         content: |
@@ -275,8 +275,8 @@
 
           [Service]
           ExecStart=/usr/local/bin/percona-mongolink \
-            --source mongodb://{{ 172.17.0.2 }}:27017 \
-            --target mongodb://{{ 172.17.0.3 }}:28017 \
+            --source mongodb://{{ source_ip }}:27017 \
+            --target mongodb://{{ destination_ip }}:28017 \
             --log-level debug \
             --log-json
           Restart=on-failure
