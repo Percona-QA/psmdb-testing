@@ -149,7 +149,7 @@
         restart_policy: unless-stopped
         published_ports:
           - "27017:27017"
-        command: "--port=27017"
+        command: "--port=27017 --replSet rs0"
 
     - name: Create Destination standalone PSMDB container
       community.docker.docker_container:
@@ -159,7 +159,7 @@
         restart_policy: unless-stopped
         published_ports:
           - "28017:27017"
-        command: "--port=27017"
+        command: "--port=27017 --replSet rs1"
 
     - name: Get info about the container
       community.docker.docker_container_info:
