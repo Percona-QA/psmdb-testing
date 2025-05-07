@@ -229,7 +229,7 @@
 
     - name: Show the container IP
       debug:
-        msg: "{{ container_info.containers[0].NetworkSettings.Networks.bridge.IPAddress }}"
+        msg: "{{ container_info }}"
 
 #    - name: Add container IPs to /etc/hosts
 #      lineinfile:
