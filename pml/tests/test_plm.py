@@ -82,7 +82,7 @@ def pml_finalize(host):
 #     assert sync["clonedSize"] == sync["estimatedCloneSize"]
 #
 #
-def test_finalize_pml(pml_finalize):
+def test_finalize_pml(pml_finalize, pml_status):
     """Start and stop pbm agent
 
     :param pml_finalize:
