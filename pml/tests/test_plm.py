@@ -19,7 +19,7 @@ def plm_start(host):
 
     result = host.run("percona-mongolink start")
     assert result.rc == 0, '"ok": true' in result.stdout
-    result = host.run("systemctl status pml.service")
+    result = host.run("journalctl -x")
     assert "Change Replication started" in result.stdout
     return True
 
@@ -30,11 +30,9 @@ def plm_status(host):
     :param host:
     :return:
     """
-
-    with host.sudo("root"):
-        result = host.run("percona-mongolink status")
-        assert result.rc == 0, result.stdout
-        return result
+    result = host.run("percona-mongolink status")
+    assert result.rc == 0, result.stdout
+    return result
 
 @pytest.fixture()
 def plm_finalize(host):
