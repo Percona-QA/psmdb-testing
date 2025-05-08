@@ -167,7 +167,7 @@
       copy:
         src: /tmp/percona-mongolink/bin/percona-mongolink
         dest: /usr/local/bin/
-        mode: '0755'
+        mode: '0775'
         remote_src: true
       when: inventory_hostname == "jenkins-pml-mongolink"
 
