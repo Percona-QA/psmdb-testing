@@ -1,10 +1,11 @@
 ## Setup ##
 
 Expected location for percona-mongolink to build docker image properly:
-
+```
 |- psmdb-testing
 |  |- mlink
 |- percona-mongolink
+```
 
 ```docker-compose build``` - build docker images for the tests
 
