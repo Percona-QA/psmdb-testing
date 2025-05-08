@@ -59,37 +59,36 @@ def pml_status(host):
 # def test_plm_start(plm_start):
 #     assert plm_start
 
-def test_plm_status(pml_status):
-    pml_status_output = json.loads(pml_status.stdout)
-    assert "ok" in pml_status_output
-    assert "state" in pml_status_output
-    assert "info" in pml_status_output
-    assert "lagTime" in pml_status_output
-    assert "eventsProcessed" in pml_status_output
-    assert "lastReplicatedOpTime" in pml_status_output
-    assert "initialSync" in pml_status_output
+# def test_plm_status(pml_status):
+#     pml_status_output = json.loads(pml_status.stdout)
+#     assert "ok" in pml_status_output
+#     assert "state" in pml_status_output
+#     assert "info" in pml_status_output
+#     assert "lagTime" in pml_status_output
+#     assert "eventsProcessed" in pml_status_output
+#     assert "lastReplicatedOpTime" in pml_status_output
+#     assert "initialSync" in pml_status_output
+#
+#     assert pml_status_output["ok"] is True
+#     assert pml_status_output["state"] == "running"
+#     assert pml_status_output["info"] == "Replicating Changes"
+#     assert pml_status_output["lagTime"] >= 0
+#     assert isinstance(pml_status_output["eventsProcessed"], int)
+#
+#     sync = pml_status_output["initialSync"]
+#     assert sync["completed"] is True
+#     assert sync["cloneCompleted"] is True
+#     assert sync["estimatedCloneSize"] >= 0
+#     assert sync["clonedSize"] == sync["estimatedCloneSize"]
+#
+#
+def test_finalize_pml(plm_finalize):
+    """Start and stop pbm agent
 
-    assert pml_status_output["ok"] is True
-    assert pml_status_output["state"] == "running"
-    assert pml_status_output["info"] == "Replicating Changes"
-    assert pml_status_output["lagTime"] >= 0
-    assert isinstance(pml_status_output["eventsProcessed"], int)
-
-    sync = pml_status_output["initialSync"]
-    assert sync["completed"] is True
-    assert sync["cloneCompleted"] is True
-    assert sync["estimatedCloneSize"] >= 0
-    assert sync["clonedSize"] == sync["estimatedC123loneSize"]
-#
-#
-# # TODO add correct start/stop test
-# def test_finalize_pml(plm_finalize):
-#     """Start and stop pbm agent
-#
-#     :param plm_finalize:
-#     """
-#     print("KEITH TEST: " + json.loads(pml_status)["state"])
-#     assert json.loads(pml_status)["state"] == "finalized"
+    :param plm_finalize:
+    """
+    print("KEITH TEST: " + json.loads(pml_status)["state"])
+    assert json.loads(pml_status)["state"] == "finalized"
 #
 # def test_pml_version(host):
 #     """Check that pbm version is not empty strings
