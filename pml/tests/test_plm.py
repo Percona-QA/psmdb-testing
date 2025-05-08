@@ -24,7 +24,7 @@ def plm_start(host):
     return True
 
 @pytest.fixture()
-def plm_status(host):
+def pml_status(host):
     """Start and stop pbm-agent service
 
     :param host:
@@ -61,8 +61,8 @@ def test_plm_binary(host):
 def test_plm_start(plm_start):
     assert plm_start
 
-def test_plm_status(plm_status):
-    pml_status_output = json.loads(plm_status.stdout)
+def test_plm_status(pml_status):
+    pml_status_output = json.loads(pml_status.stdout)
     assert "ok" in pml_status_output
     assert "state" in pml_status_output
     assert "info" in pml_status_output
@@ -90,8 +90,7 @@ def test_finalize_pml(plm_finalize):
 
     :param plm_finalize:
     """
-
-    assert "Finalization is completed" in plm_finalize.stout
+    assert json.loads(pml_status)["state"] == "finalized"
 
 def test_pml_version(host):
     """Check that pbm version is not empty strings
