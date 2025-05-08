@@ -88,6 +88,7 @@ def test_finalize_pml(plm_finalize):
 
     :param plm_finalize:
     """
+    print("KEITH TEST: " + json.loads(pml_status)["state"])
     assert json.loads(pml_status)["state"] == "finalized"
 
 def test_pml_version(host):
@@ -98,7 +99,7 @@ def test_pml_version(host):
     """
     result = host.run("percona-mongolink version")
     assert result.rc == 0, result.stdout
-
+    print("KEITH TEST 2: " + result)
     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
 
     assert re.match(pattern, result)
