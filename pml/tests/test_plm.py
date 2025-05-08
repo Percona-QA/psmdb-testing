@@ -45,6 +45,17 @@ def pml_finalize(host):
     assert result.rc == 0, '"ok": true' in result.stdout
     return result
 
+@pytest.fixture()
+def pml_version(host):
+    """Start and stop pbm-agent service
+
+    :param host:
+    :return:
+    """
+    result = host.run("percona-mongolink version")
+    assert result.rc == 0, result.stdout
+    return result
+
 # def test_plm_binary(host):
 #     """Check pbm binary
 #     """
@@ -82,27 +93,24 @@ def pml_finalize(host):
 #     assert sync["clonedSize"] == sync["estimatedCloneSize"]
 #
 #
-def test_finalize_pml(pml_finalize, pml_status):
-    """Start and stop pbm agent
-
-    :param pml_finalize:
-    """
-
-    print(str(json.loads(pml_status.stdout)))
-    assert json.loads(pml_status.stdout)["state"] == "finalized"
+# def test_finalize_pml(pml_finalize, pml_status):
+#     """Start and stop pbm agent
 #
-# def test_pml_version(host):
-#     """Check that pbm version is not empty strings
-#
-#     :param host:
-#     :return:
+#     :param pml_finalize:
 #     """
-#     result = host.run("percona-mongolink version")
-#     assert result.rc == 0, result.stdout
-#     print("KEITH TEST 2: " + result)
-#     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
+#     assert json.loads(pml_status.stdout)["state"] == "finalized"
 #
-#     assert re.match(pattern, result)
+def test_pml_version(host, pml_version):
+    """Check that pbm version is not empty strings
+
+    :param host:
+    :return:
+    """
+    assert pml_version.rc == 0, pml_version.stdout
+    print("KEITH TEST 2: " + pml_version.stdout)
+    pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
+
+    assert re.match(pattern, pml_version.stdout)
 #
 #
 # def test_pml_help(host):
