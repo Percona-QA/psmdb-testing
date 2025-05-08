@@ -1,0 +1,31 @@
+address: 0.0.0.0:7373
+
+admin:
+  identity: disabled
+
+tls:
+  key: /tmp/kes/kes.key
+  cert: /tmp/kes/kes.crt
+
+keystore:
+  fs:
+    path: /keys
+
+log:
+  error: on
+  audit: on
+
+policy:
+  minio-server:
+    allow:
+      - /v1/key/create/*
+      - /v1/key/generate/*
+      - /v1/key/decrypt/*
+      - /v1/key/bulk/decrypt
+      - /v1/key/list/*
+      - /v1/status
+      - /v1/metrics
+      - /v1/log/audit
+      - /v1/log/error
+    identities:
+# last line must be empty
