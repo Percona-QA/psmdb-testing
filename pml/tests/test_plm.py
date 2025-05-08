@@ -100,7 +100,7 @@ def pml_version(host):
 #     """
 #     assert json.loads(pml_status.stdout)["state"] == "finalized"
 #
-def test_pml_version(host, pml_version):
+def test_pml_version(pml_version):
     """Check that pbm version is not empty strings
 
     :param host:
@@ -110,7 +110,7 @@ def test_pml_version(host, pml_version):
     print("KEITH TEST 2: " + pml_version.stdout)
     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
 
-    assert re.match(pattern, pml_version.stdout)
+    assert re.match(pattern, pml_version.stdout.strip())
 #
 #
 # def test_pml_help(host):
