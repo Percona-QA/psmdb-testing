@@ -41,11 +41,9 @@ def plm_finalize(host):
     :param host:
     :return:
     """
-
-    with host.sudo("root"):
-        result = host.run("percona-mongolink finalize")
-        assert result.rc == 0, '"ok": true' in result.stdout
-        return result
+    result = host.run("percona-mongolink finalize")
+    assert result.rc == 0, '"ok": true' in result.stdout
+    return result
 
 def test_plm_binary(host):
     """Check pbm binary
@@ -103,7 +101,7 @@ def test_pml_version(host):
 
     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
 
-    assert re.match(pattern, result), f"Output does not match expected format: {result}"
+    assert re.match(pattern, result)
 
 
 def test_pml_help(host):
