@@ -87,7 +87,8 @@ def test_finalize_pml(pml_finalize):
 
     :param plm_finalize:
     """
-    print(json.loads(pml_status)["state"])
+
+    print(json.loads(pml_status))
     assert json.loads(pml_status)["state"] == "finalized"
 #
 # def test_pml_version(host):
