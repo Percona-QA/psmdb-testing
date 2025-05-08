@@ -79,7 +79,7 @@ def test_plm_status(pml_status):
     assert sync["completed"] is True
     assert sync["cloneCompleted"] is True
     assert sync["estimatedCloneSize"] >= 0
-    assert sync["clonedSize"] == sync["estimatedCloneSize"]
+    assert sync["clonedSize"] == sync["estimatedC123loneSize"]
 #
 #
 # # TODO add correct start/stop test
