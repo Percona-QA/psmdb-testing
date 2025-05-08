@@ -63,7 +63,7 @@ def test_plm_binary(host):
 def test_plm_start(plm_start):
     assert plm_start
 
-def test_plm_status(plm_statsu):
+def test_plm_status(plm_status):
     pml_status_output = json.loads(plm_status.stdout)
     assert "ok" in pml_status_output
     assert "state" in pml_status_output
@@ -87,13 +87,13 @@ def test_plm_status(plm_statsu):
 
 
 # TODO add correct start/stop test
-def test_finalize_pml(start_stop_pbm):
+def test_finalize_pml(plm_finalize):
     """Start and stop pbm agent
 
-    :param start_stop_pbm:
+    :param plm_finalize:
     """
 
-    assert "Finalization is completed" in start_stop_pbm.stout
+    assert "Finalization is completed" in plm_finalize.stout
 
 def test_pml_version(host):
     """Check that pbm version is not empty strings
