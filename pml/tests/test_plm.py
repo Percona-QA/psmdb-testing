@@ -1,5 +1,5 @@
 import os
-from typing import re
+import re
 import pytest
 import json
 
