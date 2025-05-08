@@ -85,10 +85,10 @@ def pml_finalize(host):
 def test_finalize_pml(pml_finalize):
     """Start and stop pbm agent
 
-    :param plm_finalize:
+    :param pml_finalize:
     """
 
-    print(json.loads(pml_status))
+    print(str(json.loads(pml_status)))
     assert json.loads(pml_status)["state"] == "finalized"
 #
 # def test_pml_version(host):
