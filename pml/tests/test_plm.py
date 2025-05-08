@@ -33,18 +33,18 @@ def pml_status(host):
     result = host.run("percona-mongolink status")
     assert result.rc == 0, result.stdout
     return result
-#
-# @pytest.fixture()
-# def plm_finalize(host):
-#     """Start and stop pbm-agent service
-#
-#     :param host:
-#     :return:
-#     """
-#     result = host.run("percona-mongolink finalize")
-#     assert result.rc == 0, '"ok": true' in result.stdout
-#     return result
-#
+
+@pytest.fixture()
+def pml_finalize(host):
+    """Start and stop pbm-agent service
+
+    :param host:
+    :return:
+    """
+    result = host.run("percona-mongolink finalize")
+    assert result.rc == 0, '"ok": true' in result.stdout
+    return result
+
 # def test_plm_binary(host):
 #     """Check pbm binary
 #     """
@@ -82,7 +82,7 @@ def pml_status(host):
 #     assert sync["clonedSize"] == sync["estimatedCloneSize"]
 #
 #
-def test_finalize_pml(plm_finalize):
+def test_finalize_pml(pml_finalize):
     """Start and stop pbm agent
 
     :param plm_finalize:
