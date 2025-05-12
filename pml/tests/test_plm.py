@@ -106,11 +106,11 @@ def test_pml_help(host):
     result = host.run("percona-mongolink help")
     assert result.rc == 0, result.stdout
 
-def test_pml_transfer():
-    assert pml_add_db_row()
-    assert pml_start()
-    pml_confirm_clone_complete()
-    pml_confirm_db_row()
+def test_pml_transfer(host):
+    assert pml_add_db_row(host)
+    assert pml_start(host)
+    assert pml_confirm_clone_complete(host)
+    assert pml_confirm_db_row(host)
     # assert pml_finalize()
 
 
