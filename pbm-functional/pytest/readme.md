@@ -12,6 +12,11 @@ Environment variables for  the setup:
 
 ```docker-compose up -d``` - create *test* network, start and configure storages for tests  - volume *fs* as fs-storage, container *minio* as AWS S3-like storage and container *azurite* as emulator for Azure Blob Storage.
 
+## Re-build image with local repo ##
+
+```docker build --build-context repo=../../../percona-backup-mongodb . -t replica_member/local -f Dockerfile-local```
+
+
 ## Run Tests ##
 
 1) ```docker-compose run test pytest``` - run all tests 
