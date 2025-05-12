@@ -7,7 +7,7 @@ import json
 
 import testinfra.utils.ansible_runner
 pml = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('psmdb')[0]
+    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
 def pml_start(host):
     """Start and stop pbm-agent service
@@ -22,9 +22,9 @@ def pml_start(host):
     assert "Change Replication started" in result.stdout
     return True
 
-def pml_finalize():
+def pml_finalize(host):
     try:
-        output = json.loads(pml.check_output("curl -s -X POST http://localhost:2242/finalize -d '{}'"))
+        output = json.loads(host.check_output("curl -s -X POST http://localhost:2242/finalize -d '{}'"))
 
         if output:
             try:
@@ -131,7 +131,7 @@ def test_pml_transfer(host):
     # assert pml_start(host)
     # assert pml_confirm_clone_complete(host)
     # assert "testUser" in pml_confirm_db_row(host).stdout
-    assert pml_finalize()
+    assert pml_finalize(host)
 
 
 # def test_finalize_pml(pml_finalize, pml_status):
