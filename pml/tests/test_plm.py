@@ -65,7 +65,7 @@ def pml_confirm_db_row(host):
 
 def pml_confirm_clone_complete(host, timeout=60):
     while timeout > 0:
-        status_output = pml_status(host)
+        status_output = json.loads(pml_status(host))
         print(status_output)
         if status_output["initialSync"]["cloneCompleted"] is True:
             return True
