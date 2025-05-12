@@ -52,7 +52,10 @@ def pml_version(host):
     :return:
     """
     result = host.run("percona-mongolink version")
-    print("KEITH TEST 1: " + str(result.stdout))
+    print("RC:", result.rc)
+    print("STDOUT:", result.stdout)
+    print("STDERR:", result.stderr)
+    print(host.run("which percona-mongolink").stdout)
     assert result.rc == 0, result.stdout
     return result
 
