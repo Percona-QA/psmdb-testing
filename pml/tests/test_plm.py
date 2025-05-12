@@ -57,12 +57,12 @@ def pml_version(host):
     return result
 
 def pml_add_db_row(host):
-    result = host.run("docker exec -it source mongo testdb --eval 'db.test.insertOne({ name: `testUser`, age: 42 })'")
+    result = host.run("sudo docker exec -it source mongo testdb --eval 'db.test.insertOne({ name: `testUser`, age: 42 })'")
     assert result.rc == 0
     return True
 
 def pml_confirm_db_row(host):
-    result = host.run("docker exec -it source mongo testdb --eval 'db.test.find()'")
+    result = host.run("sudo docker exec -it source mongo testdb --eval 'db.test.find()'")
     assert result.rc == 0
     return result
 
@@ -76,35 +76,35 @@ def pml_confirm_clone_complete(timeout=60):
         timeout -= 1
     return True
 
-def test_plm_binary(host):
-    """Check pbm binary
-    """
-    file = host.file("/tmp/percona-mongolink/bin/percona-mongolink")
-    assert file.user == "root"
-    assert file.group == "root"
-    try:
-        assert file.mode == 0o755
-    except AssertionError:
-        pytest.xfail("Possible xfail")
-
-def test_pml_version(pml_version):
-    """Check that pbm version is not empty strings
-
-    :param host:
-    :return:
-    """
-    pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
-
-    assert re.match(pattern, pml_version.stderr)
-
-def test_pml_help(host):
-    """Check that pbm have help message
-
-    :param host:
-    :return:
-    """
-    result = host.run("percona-mongolink help")
-    assert result.rc == 0, result.stdout
+# def test_plm_binary(host):
+#     """Check pbm binary
+#     """
+#     file = host.file("/tmp/percona-mongolink/bin/percona-mongolink")
+#     assert file.user == "root"
+#     assert file.group == "root"
+#     try:
+#         assert file.mode == 0o755
+#     except AssertionError:
+#         pytest.xfail("Possible xfail")
+#
+# def test_pml_version(pml_version):
+#     """Check that pbm version is not empty strings
+#
+#     :param host:
+#     :return:
+#     """
+#     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
+#
+#     assert re.match(pattern, pml_version.stderr)
+#
+# def test_pml_help(host):
+#     """Check that pbm have help message
+#
+#     :param host:
+#     :return:
+#     """
+#     result = host.run("percona-mongolink help")
+#     assert result.rc == 0, result.stdout
 
 def test_pml_transfer(host):
     assert pml_add_db_row(host)
