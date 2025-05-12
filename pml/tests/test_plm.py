@@ -7,7 +7,7 @@ import json
 
 import testinfra.utils.ansible_runner
 pml = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('psmdb')
+    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('psmdb')[0]
 
 def pml_start(host):
     """Start and stop pbm-agent service
