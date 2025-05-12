@@ -149,7 +149,7 @@
         restart_policy: unless-stopped
         published_ports:
           - "27017:27017"
-        command: "--port=27017 --replSet rs0"
+        command: "--port=27017 --replSet rs0 --bind_ip_all"
 
     - name: Create Destination standalone PSMDB container
       community.docker.docker_container:
@@ -159,7 +159,7 @@
         restart_policy: unless-stopped
         published_ports:
           - "28017:27017"
-        command: "--port=27017 --replSet rs1"
+        command: "--port=27017 --replSet rs1 --bind_ip_all"
 
     - name: Get info about the Source container
       community.docker.docker_container_info:
