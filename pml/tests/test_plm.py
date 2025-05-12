@@ -6,7 +6,8 @@ import time
 import pytest
 import json
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-import mlink.data_integrity_check as data_integrity_check
+from mlink.data_integrity_check import compare_data_rs
+from mlink.cluster import Cluster
 
 import testinfra.utils.ansible_runner
 pml = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -175,7 +176,7 @@ def wait_for_repl_stage(host, timeout=3600, interval=1, stable_duration=2):
 #     assert pml_finalize(host)
 
 def test_PML_data_integrity_PML_T42():
-    assert data_integrity_check.compare_data_rs("mongodb://source:27017/test", "mongodb://destinatio:27017/test", "27017")
+    assert compare_data_rs("mongodb://source:27017/test", "mongodb://destinatio:27017/test", "27017")
 
 # def test_plm_status(pml_status):
 #     pml_status_output = json.loads(pml_status.stdout)
