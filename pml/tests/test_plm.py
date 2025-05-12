@@ -1,9 +1,11 @@
 import os
 import re
+import sys
 import time
 
 import pytest
 import json
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from mlink.data_integrity_check import compare_data_rs
 
 import testinfra.utils.ansible_runner
