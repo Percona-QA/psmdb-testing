@@ -4,6 +4,7 @@ import time
 
 import pytest
 import json
+from mlink.data_integrity_check import compare_data_rs
 
 import testinfra.utils.ansible_runner
 pml = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -164,21 +165,16 @@ def wait_for_repl_stage(host, timeout=3600, interval=1, stable_duration=2):
 #     result = host.run("percona-mongolink help")
 #     assert result.rc == 0, result.stdout
 
-def test_pml_transfer(host):
-    assert pml_add_db_row(host)
-    assert pml_start(host)
-    assert wait_for_repl_stage(host)
-    assert "testUser" in pml_confirm_db_row(host).stdout
-    assert pml_finalize(host)
+# def test_pml_transfer(host):
+#     assert pml_add_db_row(host)
+#     assert pml_start(host)
+#     assert wait_for_repl_stage(host)
+#     assert "testUser" in pml_confirm_db_row(host).stdout
+#     assert pml_finalize(host)
 
-
-# def test_finalize_pml(pml_finalize, pml_status):
-#     """Start and stop pbm agent
-#
-#     :param pml_finalize:
-#     """
-#     assert json.loads(pml_status.stdout)["state"] == "finalized"
-#
+def test_PML_data_integrity_PML_T42():
+    assert compare_data_rs("mongodb://source:27017/test", "mongodb://destinatio:27017/test", "27017")
+    
 # def test_plm_status(pml_status):
 #     pml_status_output = json.loads(pml_status.stdout)
 #     assert "ok" in pml_status_output
