@@ -99,22 +99,21 @@ def pml_version(host):
 #     """
 #     assert json.loads(pml_status.stdout)["state"] == "finalized"
 #
-def test_pml_version(pml_version):
-    """Check that pbm version is not empty strings
-
-    :param host:
-    :return:
-    """
-    pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
-
-    assert re.match(pattern, pml_version.stderr)
-#
-#
-# def test_pml_help(host):
-#     """Check that pbm have help message
+# def test_pml_version(pml_version):
+#     """Check that pbm version is not empty strings
 #
 #     :param host:
 #     :return:
 #     """
-#     result = host.run("percona-mongolink help")
-#     assert result.rc == 0, result.stdout
+#     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
+#
+#     assert re.match(pattern, pml_version.stderr)
+
+def test_pml_help(host):
+    """Check that pbm have help message
+
+    :param host:
+    :return:
+    """
+    result = host.run("percona-mongolink help")
+    assert result.rc == 0, result.stdout
