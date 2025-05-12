@@ -106,7 +106,7 @@ def pml_confirm_clone_complete(timeout=60):
 def test_pml_transfer(host):
     assert pml_add_db_row(host)
     assert pml_start(host)
-    assert pml_confirm_clone_complete(host)
+    assert pml_confirm_clone_complete()
     assert pml_confirm_db_row(host)
     # assert pml_finalize()
 
