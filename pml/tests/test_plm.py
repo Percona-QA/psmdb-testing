@@ -32,7 +32,6 @@ def pml_finalize(host):
     result = host.run("percona-mongolink finalize")
     return result.rc == 0, '"ok": true' in result.stdout
 
-@pytest.fixture()
 def pml_status(host):
     """Start and stop pbm-agent service
 
