@@ -10,17 +10,28 @@ pml = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
 def pml_start(host):
-    """Start and stop pbm-agent service
+    try:
+        output = json.loads(host.check_output("curl -s -X POST http://localhost:2242/start -d '{}'"))
 
-    :param host:
-    :return:
-    """
+        if output:
+            try:
+                if output.get("ok") is True or output.get("error") == "already running":
+                    print("Sync started successfully")
+                    return True
 
-    result = host.run("percona-mongolink start")
-    assert result.rc == 0, '"ok": true' in result.stdout
-    result = host.run("journalctl -x")
-    assert "Change Replication started" in result.stdout
-    return True
+                elif output.get("ok") is False and output.get("error") != "already running":
+                    error_msg = output.get("error", "Unknown error")
+                    print(f"Failed to start sync between src and dst cluster: {error_msg}")
+                    return False
+
+            except json.JSONDecodeError:
+                print("Received invalid JSON response.")
+
+        print("Failed to start sync between src and dst cluster")
+        return False
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return False
 
 def pml_finalize(host):
     try:
@@ -47,24 +58,20 @@ def pml_finalize(host):
         print(f"Unexpected error: {e}")
         return False
 
-# def pml_finalize(host):
-#     """Start and stop pbm-agent service
-#
-#     :param host:
-#     :return:
-#     """
-#     result = host.run("percona-mongolink finalize")
-#     return result.rc == 0, '"ok": true' in result.stdout
+def pml_status(host, timeout=45):
+    try:
+        output = host.check_output(f"curl -m {timeout} -s -X GET http://localhost:2242/status -d '{{}}'")
+        json_output = json.loads(output)
+        print(output)
 
-def pml_status(host):
-    """Start and stop pbm-agent service
+        if not json_output.get("ok", False):
+            return {"success": False, "error": "mlink status command returned ok: false"}
 
-    :param host:
-    :return:
-    """
-    result = host.run("percona-mongolink status")
-    assert result.rc == 0, result.stdout
-    return result
+        try:
+            cleaned_output = json.loads(output.replace("\n", "").replace("\r", "").strip())
+            return {"success": True, "data": cleaned_output}
+        except json.JSONDecodeError as e:
+            return {"success": False, "error": "Invalid JSON response"}
 
 @pytest.fixture()
 def pml_version(host):
@@ -87,14 +94,39 @@ def pml_confirm_db_row(host):
     assert result.rc == 0
     return result
 
-def pml_confirm_clone_complete(host, timeout=60):
-    while timeout > 0:
-        status_output = json.loads(pml_status(host).stdout)
-        if status_output["initialSync"]["cloneCompleted"] is True:
+def wait_for_repl_stage(host, timeout=3600, interval=1, stable_duration=2):
+    start_time = time.time()
+
+    while time.time() - start_time < timeout:
+        status_response = pml_status(host)
+
+        if not status_response["success"]:
+            print(f"Error: Impossible to retrieve status, {status_response['error']}")
+            return False
+
+        initial_sync = status_response["data"].get("initialSync")
+        if initial_sync is None:
+            time.sleep(interval)
+            continue
+        if "completed" not in initial_sync:
+            time.sleep(interval)
+            continue
+        if initial_sync["completed"]:
+            stable_start = time.time()
+            while time.time() - stable_start < stable_duration:
+                stable_status = pml_status(host)
+                if not stable_status["success"]:
+                    print(f"Error: Impossible to retrieve status, {stable_status['error']}")
+                    return False
+
+                state = stable_status["data"].get("state")
+                if state != "running":
+                    return False
+                time.sleep(0.5)
+            elapsed = round(time.time() - start_time, 2)
+            print(f"Initial sync completed in {elapsed} seconds")
             return True
-        time.sleep(1)
-        timeout -= 1
-    return True
+        time.sleep(interval)
 
 # def test_plm_binary(host):
 #     """Check pbm binary
@@ -127,10 +159,10 @@ def pml_confirm_clone_complete(host, timeout=60):
 #     assert result.rc == 0, result.stdout
 
 def test_pml_transfer(host):
-    # assert pml_add_db_row(host)
-    # assert pml_start(host)
-    # assert pml_confirm_clone_complete(host)
-    # assert "testUser" in pml_confirm_db_row(host).stdout
+    assert pml_add_db_row(host)
+    assert pml_start(host)
+    assert wait_for_repl_stage(host)
+    assert "testUser" in pml_confirm_db_row(host).stdout
     assert pml_finalize(host)
 
 
