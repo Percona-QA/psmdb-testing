@@ -73,6 +73,9 @@ def pml_status(host, timeout=45):
         except json.JSONDecodeError as e:
             return {"success": False, "error": "Invalid JSON response"}
 
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @pytest.fixture()
 def pml_version(host):
     """Start and stop pbm-agent service
@@ -127,6 +130,9 @@ def wait_for_repl_stage(host, timeout=3600, interval=1, stable_duration=2):
             print(f"Initial sync completed in {elapsed} seconds")
             return True
         time.sleep(interval)
+
+    print("Error: Timeout reached while waiting for initial sync to complete")
+    return False
 
 # def test_plm_binary(host):
 #     """Check pbm binary
