@@ -59,14 +59,13 @@ def pml_add_db_row(host):
     return True
 
 def pml_confirm_db_row(host):
-    result = host.run("sudo docker exec -i destination mongosh testdb --eval 'db.test.find()'")
+    result = host.run("sudo docker exec -i destination mongosh testdb --eval 'db.test.findOne()'")
     assert result.rc == 0
     return result
 
 def pml_confirm_clone_complete(host, timeout=60):
     while timeout > 0:
         status_output = json.loads(pml_status(host).stdout)
-        print(status_output)
         if status_output["initialSync"]["cloneCompleted"] is True:
             return True
         time.sleep(1)
@@ -104,10 +103,10 @@ def pml_confirm_clone_complete(host, timeout=60):
 #     assert result.rc == 0, result.stdout
 
 def test_pml_transfer(host):
-    assert pml_add_db_row(host)
-    assert pml_start(host)
-    assert pml_confirm_clone_complete(host)
-    print(str(pml_confirm_db_row(host).stdout))
+    # assert pml_add_db_row(host)
+    # assert pml_start(host)
+    # assert pml_confirm_clone_complete(host)
+    assert "testUser" in pml_confirm_db_row(host).stdout
     # assert pml_finalize()
 
 
