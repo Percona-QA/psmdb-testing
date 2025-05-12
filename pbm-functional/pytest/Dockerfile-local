@@ -1,0 +1,11 @@
+FROM golang:bullseye AS builder
+WORKDIR /
+RUN mkdir -p /percona-backup-mongodb && \
+    apt update && apt -y install gcc libgssapi-krb5-2 libkrb5-dev libsasl2-modules-gssapi-mit
+COPY --from=repo . /percona-backup-mongodb/
+RUN cd /percona-backup-mongodb && ls -lah && make build
+
+FROM replica_member/local
+COPY --from=builder /percona-backup-mongodb/bin/ /pbm-new/
+RUN cp -rpf /pbm-new/* /usr/bin/ 
+
