@@ -176,7 +176,7 @@ def wait_for_repl_stage(host, timeout=3600, interval=1, stable_duration=2):
 #     assert pml_finalize(host)
 
 def test_PML_data_integrity_PML_T42():
-    assert compare_data_rs("mongodb://source:27017/test", "mongodb://destinatio:27017/test")
+    assert compare_data_rs("mongodb://source:27017/test", "mongodb://destination:27017/test")
 
 # def test_plm_status(pml_status):
 #     pml_status_output = json.loads(pml_status.stdout)
