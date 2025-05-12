@@ -2,7 +2,7 @@ import json
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 
-from .cluster import Cluster
+from cluster import Cluster
 
 def compare_data_rs(db1, db2):
     def resolve_container_or_uri(db):

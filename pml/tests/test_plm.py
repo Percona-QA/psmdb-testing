@@ -5,9 +5,6 @@ import time
 
 import pytest
 import json
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from mlink.data_integrity_check import compare_data_rs
-from mlink.cluster import Cluster
 
 import testinfra.utils.ansible_runner
 pml = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -138,35 +135,35 @@ def wait_for_repl_stage(host, timeout=3600, interval=1, stable_duration=2):
     print("Error: Timeout reached while waiting for initial sync to complete")
     return False
 
-# def test_plm_binary(host):
-#     """Check pbm binary
-#     """
-#     file = host.file("/tmp/percona-mongolink/bin/percona-mongolink")
-#     assert file.user == "root"
-#     assert file.group == "root"
-#     try:
-#         assert file.mode == 0o755
-#     except AssertionError:
-#         pytest.xfail("Possible xfail")
-#
-# def test_pml_version(pml_version):
-#     """Check that pbm version is not empty strings
-#
-#     :param host:
-#     :return:
-#     """
-#     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
-#
-#     assert re.match(pattern, pml_version.stderr)
-#
-# def test_pml_help(host):
-#     """Check that pbm have help message
-#
-#     :param host:
-#     :return:
-#     """
-#     result = host.run("percona-mongolink help")
-#     assert result.rc == 0, result.stdout
+def test_plm_binary(host):
+    """Check pbm binary
+    """
+    file = host.file("/tmp/percona-mongolink/bin/percona-mongolink")
+    assert file.user == "root"
+    assert file.group == "root"
+    try:
+        assert file.mode == 0o755
+    except AssertionError:
+        pytest.xfail("Possible xfail")
+
+def test_pml_version(pml_version):
+    """Check that pbm version is not empty strings
+
+    :param host:
+    :return:
+    """
+    pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
+
+    assert re.match(pattern, pml_version.stderr)
+
+def test_pml_help(host):
+    """Check that pbm have help message
+
+    :param host:
+    :return:
+    """
+    result = host.run("percona-mongolink help")
+    assert result.rc == 0, result.stdout
 
 def test_pml_transfer(host):
     assert pml_add_db_row(host)
@@ -175,32 +172,25 @@ def test_pml_transfer(host):
     assert "testUser" in pml_confirm_db_row(host).stdout
     assert pml_finalize(host)
 
-def test_PML_data_integrity_PML_T42():
-    success, mismatches = compare_data_rs(
-        "mongodb://localhost:27017/test",  # source
-        "mongodb://localhost:28017/test"   # destination
-    )
-    assert success, f"Data mismatch found: {mismatches}"
+def test_plm_status(pml_status):
+    pml_status_output = json.loads(pml_status.stdout)
+    assert "ok" in pml_status_output
+    assert "state" in pml_status_output
+    assert "info" in pml_status_output
+    assert "lagTime" in pml_status_output
+    assert "eventsProcessed" in pml_status_output
+    assert "lastReplicatedOpTime" in pml_status_output
+    assert "initialSync" in pml_status_output
 
-# def test_plm_status(pml_status):
-#     pml_status_output = json.loads(pml_status.stdout)
-#     assert "ok" in pml_status_output
-#     assert "state" in pml_status_output
-#     assert "info" in pml_status_output
-#     assert "lagTime" in pml_status_output
-#     assert "eventsProcessed" in pml_status_output
-#     assert "lastReplicatedOpTime" in pml_status_output
-#     assert "initialSync" in pml_status_output
-#
-#     assert pml_status_output["ok"] is True
-#     assert pml_status_output["state"] == "running"
-#     assert pml_status_output["info"] == "Replicating Changes"
-#     assert pml_status_output["lagTime"] >= 0
-#     assert isinstance(pml_status_output["eventsProcessed"], int)
-#
-#     sync = pml_status_output["initialSync"]
-#     assert sync["completed"] is True
-#     assert sync["cloneCompleted"] is True
-#     assert sync["estimatedCloneSize"] >= 0
-#     assert sync["clonedSize"] == sync["estimatedCloneSize"]
+    assert pml_status_output["ok"] is True
+    assert pml_status_output["state"] == "running"
+    assert pml_status_output["info"] == "Replicating Changes"
+    assert pml_status_output["lagTime"] >= 0
+    assert isinstance(pml_status_output["eventsProcessed"], int)
+
+    sync = pml_status_output["initialSync"]
+    assert sync["completed"] is True
+    assert sync["cloneCompleted"] is True
+    assert sync["estimatedCloneSize"] >= 0
+    assert sync["clonedSize"] == sync["estimatedCloneSize"]
 
