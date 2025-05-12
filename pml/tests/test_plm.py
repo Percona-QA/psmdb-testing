@@ -10,7 +10,6 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
 
-@pytest.fixture()
 def pml_start(host):
     """Start and stop pbm-agent service
 
@@ -24,7 +23,6 @@ def pml_start(host):
     assert "Change Replication started" in result.stdout
     return True
 
-@pytest.fixture()
 def pml_finalize(host):
     """Start and stop pbm-agent service
 
