@@ -4,7 +4,6 @@ import pytest
 import json
 
 import testinfra.utils.ansible_runner
-
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
@@ -53,6 +52,7 @@ def pml_version(host):
     :return:
     """
     result = host.run("percona-mongolink version")
+    print("KEITH TEST 1: " + str(result.stdout))
     assert result.rc == 0, result.stdout
     return result
 
