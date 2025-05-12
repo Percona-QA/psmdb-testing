@@ -57,7 +57,7 @@ def pml_version(host):
     return result
 
 def pml_add_db_row(host):
-    result = host.run("docker exec -i source mongo testdb --eval 'db.test.insertOne({ name: \"testUser\", age: 42 })")
+    result = host.run("docker exec -i source mongo testdb --eval 'db.test.insertOne({ name: \"testUser\", age: 42 })'")
     assert result.rc == 0
     return True
 
