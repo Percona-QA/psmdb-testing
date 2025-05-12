@@ -9,7 +9,7 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
 
 
 @pytest.fixture()
-def plm_start(host):
+def pml_start(host):
     """Start and stop pbm-agent service
 
     :param host:
@@ -55,6 +55,16 @@ def pml_version(host):
     assert result.rc == 0, result.stdout
     return result
 
+def pml_add_db_row(host):
+    result = host.run("docker exec -it source mongo testdb --eval 'db.test.insertOne({ name: `testUser`, age: 42 })'")
+    assert result.rc == 0
+    return True
+
+def pml_confirm_db_row(host):
+    result = host.run("docker exec -it source mongo testdb --eval 'db.test.find()'")
+    assert result.rc == 0
+    return result
+
 def test_plm_binary(host):
     """Check pbm binary
     """
@@ -85,9 +95,13 @@ def test_pml_help(host):
     result = host.run("percona-mongolink help")
     assert result.rc == 0, result.stdout
 
-# def test_plm_start(plm_start):
-#     assert plm_start
-#
+def test_pml_transfer():
+    assert pml_start
+    assert pml_add_db_row
+    assert pml_finalize
+    # assert pml_confirm_db_row.stdout contains
+
+
 # def test_finalize_pml(pml_finalize, pml_status):
 #     """Start and stop pbm agent
 #
