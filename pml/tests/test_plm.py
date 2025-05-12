@@ -63,9 +63,9 @@ def pml_confirm_db_row(host):
     assert result.rc == 0
     return result
 
-def pml_confirm_clone_complete(timeout=60):
+def pml_confirm_clone_complete(host, timeout=60):
     while timeout > 0:
-        status_output = pml_status()
+        status_output = pml_status(host)
         if status_output["initialSync"]["cloneCompleted"] is True:
             return True
         time.sleep(1)
@@ -105,7 +105,7 @@ def pml_confirm_clone_complete(timeout=60):
 def test_pml_transfer(host):
     assert pml_add_db_row(host)
     assert pml_start(host)
-    assert pml_confirm_clone_complete()
+    assert pml_confirm_clone_complete(host)
     assert pml_confirm_db_row(host)
     # assert pml_finalize()
 
