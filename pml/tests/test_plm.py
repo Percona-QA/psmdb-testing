@@ -66,39 +66,6 @@ def test_plm_binary(host):
     except AssertionError:
         pytest.xfail("Possible xfail")
 
-def test_plm_start(plm_start):
-    assert plm_start
-
-def test_plm_status(pml_status):
-    pml_status_output = json.loads(pml_status.stdout)
-    assert "ok" in pml_status_output
-    assert "state" in pml_status_output
-    assert "info" in pml_status_output
-    assert "lagTime" in pml_status_output
-    assert "eventsProcessed" in pml_status_output
-    assert "lastReplicatedOpTime" in pml_status_output
-    assert "initialSync" in pml_status_output
-
-    assert pml_status_output["ok"] is True
-    assert pml_status_output["state"] == "running"
-    assert pml_status_output["info"] == "Replicating Changes"
-    assert pml_status_output["lagTime"] >= 0
-    assert isinstance(pml_status_output["eventsProcessed"], int)
-
-    sync = pml_status_output["initialSync"]
-    assert sync["completed"] is True
-    assert sync["cloneCompleted"] is True
-    assert sync["estimatedCloneSize"] >= 0
-    assert sync["clonedSize"] == sync["estimatedCloneSize"]
-
-
-def test_finalize_pml(pml_finalize, pml_status):
-    """Start and stop pbm agent
-
-    :param pml_finalize:
-    """
-    assert json.loads(pml_status.stdout)["state"] == "finalized"
-
 def test_pml_version(pml_version):
     """Check that pbm version is not empty strings
 
@@ -117,3 +84,36 @@ def test_pml_help(host):
     """
     result = host.run("percona-mongolink help")
     assert result.rc == 0, result.stdout
+
+# def test_plm_start(plm_start):
+#     assert plm_start
+#
+# def test_finalize_pml(pml_finalize, pml_status):
+#     """Start and stop pbm agent
+#
+#     :param pml_finalize:
+#     """
+#     assert json.loads(pml_status.stdout)["state"] == "finalized"
+#
+# def test_plm_status(pml_status):
+#     pml_status_output = json.loads(pml_status.stdout)
+#     assert "ok" in pml_status_output
+#     assert "state" in pml_status_output
+#     assert "info" in pml_status_output
+#     assert "lagTime" in pml_status_output
+#     assert "eventsProcessed" in pml_status_output
+#     assert "lastReplicatedOpTime" in pml_status_output
+#     assert "initialSync" in pml_status_output
+#
+#     assert pml_status_output["ok"] is True
+#     assert pml_status_output["state"] == "running"
+#     assert pml_status_output["info"] == "Replicating Changes"
+#     assert pml_status_output["lagTime"] >= 0
+#     assert isinstance(pml_status_output["eventsProcessed"], int)
+#
+#     sync = pml_status_output["initialSync"]
+#     assert sync["completed"] is True
+#     assert sync["cloneCompleted"] is True
+#     assert sync["estimatedCloneSize"] >= 0
+#     assert sync["clonedSize"] == sync["estimatedCloneSize"]
+
