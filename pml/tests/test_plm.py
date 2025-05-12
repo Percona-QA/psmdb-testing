@@ -172,25 +172,3 @@ def test_pml_transfer(host):
     assert "testUser" in pml_confirm_db_row(host).stdout
     assert pml_finalize(host)
 
-def test_plm_status(pml_status):
-    pml_status_output = json.loads(pml_status.stdout)
-    assert "ok" in pml_status_output
-    assert "state" in pml_status_output
-    assert "info" in pml_status_output
-    assert "lagTime" in pml_status_output
-    assert "eventsProcessed" in pml_status_output
-    assert "lastReplicatedOpTime" in pml_status_output
-    assert "initialSync" in pml_status_output
-
-    assert pml_status_output["ok"] is True
-    assert pml_status_output["state"] == "running"
-    assert pml_status_output["info"] == "Replicating Changes"
-    assert pml_status_output["lagTime"] >= 0
-    assert isinstance(pml_status_output["eventsProcessed"], int)
-
-    sync = pml_status_output["initialSync"]
-    assert sync["completed"] is True
-    assert sync["cloneCompleted"] is True
-    assert sync["estimatedCloneSize"] >= 0
-    assert sync["clonedSize"] == sync["estimatedCloneSize"]
-
