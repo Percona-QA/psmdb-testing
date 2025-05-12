@@ -168,12 +168,12 @@ def wait_for_repl_stage(host, timeout=3600, interval=1, stable_duration=2):
 #     result = host.run("percona-mongolink help")
 #     assert result.rc == 0, result.stdout
 
-# def test_pml_transfer(host):
-#     assert pml_add_db_row(host)
-#     assert pml_start(host)
-#     assert wait_for_repl_stage(host)
-#     assert "testUser" in pml_confirm_db_row(host).stdout
-#     assert pml_finalize(host)
+def test_pml_transfer(host):
+    assert pml_add_db_row(host)
+    assert pml_start(host)
+    assert wait_for_repl_stage(host)
+    assert "testUser" in pml_confirm_db_row(host).stdout
+    assert pml_finalize(host)
 
 def test_PML_data_integrity_PML_T42():
     success, mismatches = compare_data_rs(
