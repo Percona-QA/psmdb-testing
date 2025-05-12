@@ -1,5 +1,7 @@
 import os
 import re
+from datetime import time
+
 import pytest
 import json
 
@@ -23,6 +25,16 @@ def pml_start(host):
     return True
 
 @pytest.fixture()
+def pml_finalize(host):
+    """Start and stop pbm-agent service
+
+    :param host:
+    :return:
+    """
+    result = host.run("percona-mongolink finalize")
+    return result.rc == 0, '"ok": true' in result.stdout
+
+@pytest.fixture()
 def pml_status(host):
     """Start and stop pbm-agent service
 
@@ -31,17 +43,6 @@ def pml_status(host):
     """
     result = host.run("percona-mongolink status")
     assert result.rc == 0, result.stdout
-    return result
-
-@pytest.fixture()
-def pml_finalize(host):
-    """Start and stop pbm-agent service
-
-    :param host:
-    :return:
-    """
-    result = host.run("percona-mongolink finalize")
-    assert result.rc == 0, '"ok": true' in result.stdout
     return result
 
 @pytest.fixture()
@@ -64,6 +65,16 @@ def pml_confirm_db_row(host):
     result = host.run("docker exec -it source mongo testdb --eval 'db.test.find()'")
     assert result.rc == 0
     return result
+
+def pml_confirm_clone_complete(timeout=60):
+    status_output = pml_status()
+    while timeout > 0:
+        status_output = pml_status()
+        if status_output["initialSync"]["cloneCompleted"] is True:
+            return True
+        time.sleep(1)
+        timeout -= 1
+    return True
 
 def test_plm_binary(host):
     """Check pbm binary
@@ -96,10 +107,11 @@ def test_pml_help(host):
     assert result.rc == 0, result.stdout
 
 def test_pml_transfer():
-    assert pml_start
-    assert pml_add_db_row
-    assert pml_finalize
-    # assert pml_confirm_db_row.stdout contains
+    assert pml_add_db_row()
+    assert pml_start()
+    pml_confirm_clone_complete()
+    pml_confirm_db_row()
+    # assert pml_finalize()
 
 
 # def test_finalize_pml(pml_finalize, pml_status):
