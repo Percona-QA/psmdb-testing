@@ -57,17 +57,16 @@ def pml_version(host):
     return result
 
 def pml_add_db_row(host):
-    result = host.run("sudo docker exec -it source mongo testdb --eval 'db.test.insertOne({ name: `testUser`, age: 42 })'")
+    result = host.run("docker exec -i source mongo testdb --eval 'db.test.insertOne({ name: \"testUser\", age: 42 })")
     assert result.rc == 0
     return True
 
 def pml_confirm_db_row(host):
-    result = host.run("sudo docker exec -it source mongo testdb --eval 'db.test.find()'")
+    result = host.run("docker exec -i destination mongo testdb --eval 'db.test.find()'")
     assert result.rc == 0
     return result
 
 def pml_confirm_clone_complete(timeout=60):
-    status_output = pml_status()
     while timeout > 0:
         status_output = pml_status()
         if status_output["initialSync"]["cloneCompleted"] is True:
