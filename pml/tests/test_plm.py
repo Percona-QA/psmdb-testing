@@ -53,7 +53,6 @@ def pml_version(host):
     :return:
     """
     result = host.run("percona-mongolink version")
-    print("KEITH TEST: " + result.stdout)
     assert result.rc == 0, result.stdout
     return result
 
@@ -108,7 +107,7 @@ def test_pml_version(pml_version):
     :return:
     """
     assert pml_version.rc == 0, pml_version.stdout
-    print("KEITH TEST 2: " + pml_version.stdout)
+    print("KEITH TEST: " + str(pml_version.stdout))
     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
 
     assert re.match(pattern, pml_version.stdout.strip())
