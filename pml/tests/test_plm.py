@@ -62,7 +62,7 @@ def test_plm_binary(host):
     assert file.user == "root"
     assert file.group == "root"
     try:
-        assert file.mode == 0o775
+        assert file.mode == 0o755
     except AssertionError:
         pytest.fail("Possible xfail")
 
