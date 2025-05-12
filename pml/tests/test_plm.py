@@ -6,7 +6,7 @@ import pytest
 import json
 
 import testinfra.utils.ansible_runner
-testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
+pml = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
 
@@ -23,14 +23,39 @@ def pml_start(host):
     assert "Change Replication started" in result.stdout
     return True
 
-def pml_finalize(host):
-    """Start and stop pbm-agent service
+def pml_finalize():
+    try:
+        output = json.loads(pml.check_output("curl -s -X POST http://localhost:2242/finalize -d '{}'"))
 
-    :param host:
-    :return:
-    """
-    result = host.run("percona-mongolink finalize")
-    return result.rc == 0, '"ok": true' in result.stdout
+        if output:
+            try:
+                print(output)
+                if output.get("ok") is True:
+                    print("Sync finalized successfully")
+                    return True
+
+                elif output.get("ok") is False:
+                    error_msg = output.get("error", "Unknown error")
+                    print(f"Failed to finalize sync between src and dst cluster: {error_msg}")
+                    return False
+
+            except json.JSONDecodeError:
+                print("Received invalid JSON response.")
+
+        print("Failed to finalize sync between src and dst cluster")
+        return False
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return False
+
+# def pml_finalize(host):
+#     """Start and stop pbm-agent service
+#
+#     :param host:
+#     :return:
+#     """
+#     result = host.run("percona-mongolink finalize")
+#     return result.rc == 0, '"ok": true' in result.stdout
 
 def pml_status(host):
     """Start and stop pbm-agent service
@@ -106,8 +131,8 @@ def test_pml_transfer(host):
     # assert pml_add_db_row(host)
     # assert pml_start(host)
     # assert pml_confirm_clone_complete(host)
-    assert "testUser" in pml_confirm_db_row(host).stdout
-    # assert pml_finalize()
+    # assert "testUser" in pml_confirm_db_row(host).stdout
+    assert pml_finalize()
 
 
 # def test_finalize_pml(pml_finalize, pml_status):
