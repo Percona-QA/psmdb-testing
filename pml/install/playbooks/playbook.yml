@@ -116,9 +116,16 @@
         state: started
         enabled: true
 
-    - name: Download runc binary
+    - name: Set runc binary URL based on architecture
+      set_fact:
+        runc_url: >-
+          https://github.com/opencontainers/runc/releases/download/v1.1.12/{{
+            'runc.arm64' if ansible_architecture == 'aarch64' else 'runc.amd64'
+          }}
+
+    - name: Download correct runc binary
       get_url:
-        url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
+        url: "{{ runc_url }}"
         dest: /usr/local/bin/runc
         mode: '0755'
 
@@ -141,15 +148,15 @@
         groups: docker
         append: yes
 
-#    - name: Create Source standalone PSMDB container
-#      community.docker.docker_container:
-#        name: source
-#        image: percona/percona-server-mongodb:8.0
-#        state: started
-#        restart_policy: unless-stopped
-#        published_ports:
-#          - "27017:27017"
-#        command: "--port=27017 --replSet rs0 --bind_ip_all"
+    - name: Create Source standalone PSMDB container
+      community.docker.docker_container:
+        name: source
+        image: percona/percona-server-mongodb:8.0
+        state: started
+        restart_policy: unless-stopped
+        published_ports:
+          - "27017:27017"
+        command: "--port=27017 --replSet rs0 --bind_ip_all"
 #
 #    - name: Create Destination standalone PSMDB container
 #      community.docker.docker_container:
