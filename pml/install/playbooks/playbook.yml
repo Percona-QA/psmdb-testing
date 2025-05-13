@@ -163,9 +163,15 @@
       when:
         - ansible_distribution == "Amazon"
 
-    - name: Install requests via pip
-      pip:
-        name: requests
+    - name: Install required Python packages via pip3
+      ansible.builtin.pip:
+        name:
+          - pip
+          - setuptools
+          - wheel
+          - packaging
+          - requests
+        state: latest
         executable: pip3
       when:
         - ansible_distribution == "Amazon"
