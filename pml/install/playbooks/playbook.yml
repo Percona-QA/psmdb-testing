@@ -141,155 +141,155 @@
         groups: docker
         append: yes
 
-    - name: Create Source standalone PSMDB container
-      community.docker.docker_container:
-        name: source
-        image: percona/percona-server-mongodb:8.0
-        state: started
-        restart_policy: unless-stopped
-        published_ports:
-          - "27017:27017"
-        command: "--port=27017 --replSet rs0 --bind_ip_all"
-
-    - name: Create Destination standalone PSMDB container
-      community.docker.docker_container:
-        name: destination
-        image: percona/percona-server-mongodb:8.0
-        state: started
-        restart_policy: unless-stopped
-        published_ports:
-          - "28017:27017"
-        command: "--port=27017 --replSet rs1 --bind_ip_all"
-
-    - name: Get info about the Source container
-      community.docker.docker_container_info:
-        name: source
-      register: source_container
-
-    - name: Get info about the Destination container
-      community.docker.docker_container_info:
-        name: destination
-      register: destination_container
-
-    - name: Store the Source Container IP
-      set_fact:
-        source_ip: "{{ source_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
-
-    - name: Store the Destination Container IP
-      set_fact:
-        destination_ip: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
-
-    - name: Initiate source replicaset
-      community.docker.docker_container_exec:
-        container: source
-        command: >
-          mongosh --eval 'rs.initiate({_id: "rs0", members: [{ _id: 0, host: "{{ source_ip }}:27017" }]})'
-
-    - name: Initiate destination replicaset
-      community.docker.docker_container_exec:
-        container: destination
-        command: >
-          mongosh --eval 'rs.initiate({_id: "rs1", members: [{ _id: 0, host: "{{ destination_ip }}:27017" }]})'
-
-    - name: Add container IPs to /etc/hosts
-      lineinfile:
-        path: /etc/hosts
-        line: "{{ item.ip }} {{ item.hostname }}"
-        state: present
-        create: yes
-      loop:
-        - { ip: "{{ source_ip }}", hostname: "source" }
-        - { ip: "{{ destination_ip }}", hostname: "destination" }
-      become: true
-
-    - name: Install Go from official tarball on PML host
-      vars:
-        go_version: "{{ golang_version }}"
-        go_tarball: "go{{ go_version }}.linux-amd64.tar.gz"
-        go_url: "https://go.dev/dl/{{ go_tarball }}"
-        go_install_dir: "/usr/local"
-      block:
-        - name: Download Go {{ go_version }}
-          get_url:
-            url: "{{ go_url }}"
-            dest: "/tmp/{{ go_tarball }}"
-            mode: '0644'
-
-        - name: Extract Go
-          unarchive:
-            src: "/tmp/{{ go_tarball }}"
-            dest: "{{ go_install_dir }}"
-            remote_src: yes
-
-    - name: Check Go is available
-      command: go version
-      environment:
-        PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
-      register: go_version_output
-      ignore_errors: true
-
-    - name: Install Pymongo for Redhat
-      pip:
-        name:
-          - pymongo
-      when: ansible_facts['os_family'] == 'RedHat'
-
-    - name: Install Pymongo on Debian
-      command: python3 -m pip install --break-system-packages pymongo
-      when: ansible_facts['os_family'] == 'Debian'
-
-    - name: Clone PML repo
-      timeout: 180
-      git:
-        repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
-        dest: /tmp/percona-mongolink
-        version: "{{ pml_branch }}"
-
-    - name: Build PML
-      command: make build
-      args:
-        chdir: /tmp/percona-mongolink
-      environment:
-        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
-        GOROOT: /usr/local/go/
-        GOBIN: /usr/local/go/bin
-
-    - name: Move mongolink binary to /usr/local/bin
-      copy:
-        src: /tmp/percona-mongolink/bin/percona-mongolink
-        dest: /usr/local/bin/
-        mode: '0775'
-        remote_src: true
-
-    - name: Reload systemd
-      systemd:
-        daemon_reload: yes
-
-    - name: Create PML system unit file
-      copy:
-        dest: /etc/systemd/system/pml.service
-        content: |
-          [Unit]
-          Description=Percona MongoLink Service
-          After=network.target
-
-          [Service]
-          ExecStart=/usr/local/bin/percona-mongolink \
-            --source mongodb://{{ source_ip }}:27017 \
-            --target mongodb://{{ destination_ip }}:27017 \
-            --log-level debug \
-            --log-json
-          Restart=on-failure
-          User=root
-
-          [Install]
-          WantedBy=multi-user.target
-        owner: root
-        group: root
-        mode: '0644'
-
-    - name: Reload systemd and start PML service
-      service:
-        daemon_reload: yes
-        name: pml.service
-        state: started
+#    - name: Create Source standalone PSMDB container
+#      community.docker.docker_container:
+#        name: source
+#        image: percona/percona-server-mongodb:8.0
+#        state: started
+#        restart_policy: unless-stopped
+#        published_ports:
+#          - "27017:27017"
+#        command: "--port=27017 --replSet rs0 --bind_ip_all"
+#
+#    - name: Create Destination standalone PSMDB container
+#      community.docker.docker_container:
+#        name: destination
+#        image: percona/percona-server-mongodb:8.0
+#        state: started
+#        restart_policy: unless-stopped
+#        published_ports:
+#          - "28017:27017"
+#        command: "--port=27017 --replSet rs1 --bind_ip_all"
+#
+#    - name: Get info about the Source container
+#      community.docker.docker_container_info:
+#        name: source
+#      register: source_container
+#
+#    - name: Get info about the Destination container
+#      community.docker.docker_container_info:
+#        name: destination
+#      register: destination_container
+#
+#    - name: Store the Source Container IP
+#      set_fact:
+#        source_ip: "{{ source_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
+#
+#    - name: Store the Destination Container IP
+#      set_fact:
+#        destination_ip: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
+#
+#    - name: Initiate source replicaset
+#      community.docker.docker_container_exec:
+#        container: source
+#        command: >
+#          mongosh --eval 'rs.initiate({_id: "rs0", members: [{ _id: 0, host: "{{ source_ip }}:27017" }]})'
+#
+#    - name: Initiate destination replicaset
+#      community.docker.docker_container_exec:
+#        container: destination
+#        command: >
+#          mongosh --eval 'rs.initiate({_id: "rs1", members: [{ _id: 0, host: "{{ destination_ip }}:27017" }]})'
+#
+#    - name: Add container IPs to /etc/hosts
+#      lineinfile:
+#        path: /etc/hosts
+#        line: "{{ item.ip }} {{ item.hostname }}"
+#        state: present
+#        create: yes
+#      loop:
+#        - { ip: "{{ source_ip }}", hostname: "source" }
+#        - { ip: "{{ destination_ip }}", hostname: "destination" }
+#      become: true
+#
+#    - name: Install Go from official tarball on PML host
+#      vars:
+#        go_version: "{{ golang_version }}"
+#        go_tarball: "go{{ go_version }}.linux-amd64.tar.gz"
+#        go_url: "https://go.dev/dl/{{ go_tarball }}"
+#        go_install_dir: "/usr/local"
+#      block:
+#        - name: Download Go {{ go_version }}
+#          get_url:
+#            url: "{{ go_url }}"
+#            dest: "/tmp/{{ go_tarball }}"
+#            mode: '0644'
+#
+#        - name: Extract Go
+#          unarchive:
+#            src: "/tmp/{{ go_tarball }}"
+#            dest: "{{ go_install_dir }}"
+#            remote_src: yes
+#
+#    - name: Check Go is available
+#      command: go version
+#      environment:
+#        PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
+#      register: go_version_output
+#      ignore_errors: true
+#
+#    - name: Install Pymongo for Redhat
+#      pip:
+#        name:
+#          - pymongo
+#      when: ansible_facts['os_family'] == 'RedHat'
+#
+#    - name: Install Pymongo on Debian
+#      command: python3 -m pip install --break-system-packages pymongo
+#      when: ansible_facts['os_family'] == 'Debian'
+#
+#    - name: Clone PML repo
+#      timeout: 180
+#      git:
+#        repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
+#        dest: /tmp/percona-mongolink
+#        version: "{{ pml_branch }}"
+#
+#    - name: Build PML
+#      command: make build
+#      args:
+#        chdir: /tmp/percona-mongolink
+#      environment:
+#        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
+#        GOROOT: /usr/local/go/
+#        GOBIN: /usr/local/go/bin
+#
+#    - name: Move mongolink binary to /usr/local/bin
+#      copy:
+#        src: /tmp/percona-mongolink/bin/percona-mongolink
+#        dest: /usr/local/bin/
+#        mode: '0775'
+#        remote_src: true
+#
+#    - name: Reload systemd
+#      systemd:
+#        daemon_reload: yes
+#
+#    - name: Create PML system unit file
+#      copy:
+#        dest: /etc/systemd/system/pml.service
+#        content: |
+#          [Unit]
+#          Description=Percona MongoLink Service
+#          After=network.target
+#
+#          [Service]
+#          ExecStart=/usr/local/bin/percona-mongolink \
+#            --source mongodb://{{ source_ip }}:27017 \
+#            --target mongodb://{{ destination_ip }}:27017 \
+#            --log-level debug \
+#            --log-json
+#          Restart=on-failure
+#          User=root
+#
+#          [Install]
+#          WantedBy=multi-user.target
+#        owner: root
+#        group: root
+#        mode: '0644'
+#
+#    - name: Reload systemd and start PML service
+#      service:
+#        daemon_reload: yes
+#        name: pml.service
+#        state: started
