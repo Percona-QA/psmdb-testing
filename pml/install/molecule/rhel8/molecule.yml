@@ -5,8 +5,6 @@ driver:
   name: ec2
 platforms:
   - name: rhel8-${BUILD_NUMBER}-${JOB_NAME}
-    groups:
-      - psmdb
     region: us-west-2
     image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
     vpc_subnet_id: subnet-0dc7518100473f19d
@@ -23,7 +21,6 @@ provisioner:
     create: ../../../../playbooks/create.yml
     prepare: ../../playbooks/prepare.yml
     destroy: ../../../../playbooks/destroy.yml
-    cleanup: ../../playbooks/cleanup.yml
     converge: ../../playbooks/playbook.yml
 verifier:
   name: testinfra
@@ -39,7 +36,7 @@ scenario:
   test_sequence:
     - destroy
     - create
+    - prepare
     - converge
     - verify
-    - cleanup
     - destroy
