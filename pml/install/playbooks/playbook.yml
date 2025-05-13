@@ -3,6 +3,8 @@
   hosts: all
   become: true
   become_method: sudo
+  vars:
+    ansible_python_interpreter: /usr/bin/python3.9
   tasks:
     - set_fact:
         # Version of psmdb release to be enabled (psmdb-70)
@@ -160,12 +162,6 @@
       package:
         name: python3-pip
         state: present
-      when:
-        - ansible_distribution == "Amazon"
-
-    - name: Bootstrap packaging module using pip3 CLI
-      ansible.builtin.command: pip3 install --upgrade packaging
-      changed_when: false
       when:
         - ansible_distribution == "Amazon"
 
