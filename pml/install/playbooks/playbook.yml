@@ -165,16 +165,12 @@
       when:
         - ansible_distribution == "Amazon"
 
-    - name: Install required Python packages via pip3
+    - name: Install required Python packages via pip3 (skip system packages)
       ansible.builtin.pip:
         name:
-          - pip
-          - setuptools
-          - wheel
-          - packaging
           - requests
-        state: latest
         executable: pip3
+        state: present
       when:
         - ansible_distribution == "Amazon"
 
