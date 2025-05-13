@@ -163,6 +163,12 @@
       when:
         - ansible_distribution == "Amazon"
 
+    - name: Bootstrap packaging module using pip3 CLI
+      ansible.builtin.command: pip3 install --upgrade packaging
+      changed_when: false
+      when:
+        - ansible_distribution == "Amazon"
+
     - name: Install required Python packages via pip3
       ansible.builtin.pip:
         name:
