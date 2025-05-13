@@ -156,10 +156,17 @@
         groups: docker
         append: yes
 
-    - name: Ensure python3-requests is installed on Amazon Linux
-      ansible.builtin.package:
-        name: python3-requests
+    - name: Ensure pip is installed
+      package:
+        name: python3-pip
         state: present
+      when:
+        - ansible_distribution == "Amazon"
+
+    - name: Install requests via pip
+      pip:
+        name: requests
+        executable: pip3
       when:
         - ansible_distribution == "Amazon"
 
