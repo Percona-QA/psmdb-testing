@@ -156,6 +156,13 @@
         groups: docker
         append: yes
 
+    - name: Ensure python3-requests is installed on Amazon Linux
+      ansible.builtin.package:
+        name: python3-requests
+        state: present
+      when:
+        - ansible_distribution == "Amazon"
+
     - name: Create Source standalone PSMDB container
       community.docker.docker_container:
         name: source
