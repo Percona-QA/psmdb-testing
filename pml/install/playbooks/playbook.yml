@@ -212,11 +212,13 @@
     - name: Install Go from official tarball on PML host
       vars:
         go_version: "{{ golang_version }}"
-        go_tarball: "go{{ go_version }}.linux-amd64.tar.gz"
+        go_arch: >-
+          {{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}
+        go_tarball: "go{{ go_version }}.linux-{{ go_arch }}.tar.gz"
         go_url: "https://go.dev/dl/{{ go_tarball }}"
         go_install_dir: "/usr/local"
       block:
-        - name: Download Go {{ go_version }}
+        - name: Download Go {{ go_version }} for {{ go_arch }}
           get_url:
             url: "{{ go_url }}"
             dest: "/tmp/{{ go_tarball }}"
