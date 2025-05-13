@@ -190,23 +190,13 @@
       community.docker.docker_container_exec:
         container: source
         command: >
-          mongosh --quiet --eval "
-          if (!rs.status().ok && rs.status().codeName === 'NotYetInitialized') {
-            rs.initiate({_id: 'rs0', members: [{ _id: 0, host: '{{ source_ip }}:27017' }]})
-          } else {
-            print('Replica set already initialized')
-          }"
+          mongosh --eval 'rs.initiate({_id: "rs0", members: [{ _id: 0, host: "{{ source_ip }}:27017" }]})'
 
     - name: Initiate destination replicaset
       community.docker.docker_container_exec:
         container: destination
         command: >
-          mongosh --quiet --eval "
-          if (!rs.status().ok && rs.status().codeName === 'NotYetInitialized') {
-            rs.initiate({_id: 'rs0', members: [{ _id: 0, host: '{{ destination_ip }}:27017' }]})
-          } else {
-            print('Replica set already initialized')
-          }"
+          mongosh --eval 'rs.initiate({_id: "rs1", members: [{ _id: 0, host: "{{ destination_ip }}:27017" }]})'
 
     - name: Add container IPs to /etc/hosts
       lineinfile:
