@@ -190,6 +190,7 @@
       community.docker.docker_container_exec:
         container: source
         command: >
+          mongosh --quiet --eval "
           if (!rs.status().ok && rs.status().codeName === 'NotYetInitialized') {
             rs.initiate({_id: 'rs0', members: [{ _id: 0, host: '{{ source_ip }}:27017' }]})
           } else {
@@ -200,6 +201,7 @@
       community.docker.docker_container_exec:
         container: destination
         command: >
+          mongosh --quiet --eval "
           if (!rs.status().ok && rs.status().codeName === 'NotYetInitialized') {
             rs.initiate({_id: 'rs0', members: [{ _id: 0, host: '{{ destination_ip }}:27017' }]})
           } else {
