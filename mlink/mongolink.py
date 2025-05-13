@@ -106,6 +106,29 @@ class Mongolink:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    def metrics(self, timeout=45):
+        try:
+            exec_result = self.container.exec_run(f"curl -m {timeout} -s -X GET http://localhost:2242/metrics")
+            response = exec_result.output.decode("utf-8", errors="ignore").strip()
+            status_code = exec_result.exit_code
+            if status_code != 0 or not response:
+                return {"success": False, "error": "Failed to execute mlink metrics command"}
+            metrics_data = {}
+            for line in response.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                try:
+                    key_value = line.split(None, 1)
+                    if len(key_value) == 2:
+                        key, value = key_value
+                        metrics_data[key] = float(value)
+                except ValueError:
+                    continue
+            return {"success": True, "data": metrics_data}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     def restart(self, timeout=60):
         if self.container:
             try:
@@ -211,16 +234,15 @@ class Mongolink:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
-    def logs(self, tail=50, stream=False):
+    def logs(self, tail=50, filter=True, stream=False):
         try:
             if stream:
                 return self.container.logs(stream=True, follow=True)
             raw_logs = self.container.logs().decode("utf-8").strip()
-            filtered_lines = [
-                line for line in raw_logs.splitlines()
-                if "GET /status" not in line
-            ]
-            last_logs = "\n".join(filtered_lines[-tail:])
+            lines = raw_logs.splitlines()
+            if filter:
+                lines = [line for line in lines if "GET /status" not in line]
+            last_logs = "\n".join(lines[-tail:])
             return last_logs if last_logs else "No logs found"
 
         except docker.errors.NotFound:
@@ -230,18 +252,21 @@ class Mongolink:
 
     def check_mlink_errors(self):
         try:
-            logs = self.container.logs().decode("utf-8").strip()
+            logs = self.container.logs().decode("utf-8")
 
         except docker.errors.NotFound:
-            return "Error: mlink container not found."
+            return False, ["Error: mlink container not found."]
         except Exception as e:
-            return f"Error fetching logs: {e}"
+            return False, [f"Error fetching logs: {e}"]
 
         ansi_escape_re = re.compile(r"\x1b\[[0-9;]*m")
-        error_pattern = re.compile(r"\b(ERROR|error|ERR|err)\b")
-        clean_lines = [ansi_escape_re.sub("", line) for line in logs.split("\n")]
-        errors_found = [line for line in clean_lines if error_pattern.search(line)]
-
+        error_pattern = re.compile(r"\b(?:ERROR|ERR|error|err)\b")
+        def error_lines():
+            for line in logs.splitlines():
+                clean = ansi_escape_re.sub("", line)
+                if error_pattern.search(clean):
+                    yield clean
+        errors_found = list(error_lines())
         return not bool(errors_found), errors_found
 
     def wait_for_zero_lag(self, timeout=120, interval=1):
