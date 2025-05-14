@@ -116,11 +116,13 @@
       ansible.builtin.yum:
         name: podman-docker
         state: absent
+      when: ansible_os_family == "RedHat"
 
     - name: Install dnf plugins (for managing repos)
       ansible.builtin.yum:
         name: dnf-plugins-core
         state: present
+      when: ansible_os_family == "RedHat"
 
     - name: Add Docker CE repository
       ansible.builtin.get_url:
