@@ -52,7 +52,7 @@
           - freetype-devel
           - gcc
           - python3-devel
-          - python3.12
+          - python3.9
           - python3-pip
           - make
           - wget
