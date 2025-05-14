@@ -32,6 +32,7 @@ verifier:
 scenario:
   name: debian-11
   destroy_sequence:
+    - destroy
   test_sequence:
     - destroy
     - create
