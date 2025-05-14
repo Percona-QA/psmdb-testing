@@ -225,7 +225,7 @@
       when:
         - ansible_distribution == "Amazon"
 
-    - name: Install required Python packages for Amazon Linux
+    - name: Install required Python packages on Amazon Linux
       pip:
         name:
           - requests
@@ -240,7 +240,7 @@
         state: latest
         executable: pip3
 
-    - name: Create Source standalone PSMDB container
+    - name: Create Source PSMDB container
       community.docker.docker_container:
         name: source
         image: percona/percona-server-mongodb:8.0
@@ -250,7 +250,7 @@
           - "27017:27017"
         command: "--port=27017 --replSet rs0 --bind_ip_all"
 
-    - name: Create Destination standalone PSMDB container
+    - name: Create Destination PSMDB container
       community.docker.docker_container:
         name: destination
         image: percona/percona-server-mongodb:8.0
@@ -310,7 +310,7 @@
         go_url: "https://go.dev/dl/{{ go_tarball }}"
         go_install_dir: "/usr/local"
       block:
-        - name: Download Go {{ go_version }} for {{ go_arch }}
+        - name: Download Go version:{{ go_version }}
           get_url:
             url: "{{ go_url }}"
             dest: "/tmp/{{ go_tarball }}"
