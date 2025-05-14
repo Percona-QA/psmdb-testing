@@ -250,11 +250,16 @@
       when:
         - ansible_distribution == "Amazon"
 
+    - name: Install packaging is installed on Amazon Linux
+      package:
+        name: python3-packaging
+        state: present
+      when: ansible_distribution == "Amazon"
+
     - name: Install required Python packages on Amazon Linux
       pip:
         name:
           - requests
-          - packages
         executable: pip3
         state: present
       when:
