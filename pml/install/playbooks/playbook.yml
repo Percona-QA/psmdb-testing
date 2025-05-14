@@ -165,7 +165,7 @@
       when:
         - ansible_distribution == "Amazon"
 
-    - name: Install required Python packages via pip3 (skip system packages)
+    - name: Install required Python packages for Amazon Linux
       ansible.builtin.pip:
         name:
           - requests
