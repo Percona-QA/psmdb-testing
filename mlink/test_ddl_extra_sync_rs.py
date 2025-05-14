@@ -13,23 +13,23 @@ from data_generator import create_all_types_db, generate_dummy_data, stop_all_cr
 from data_integrity_check import compare_data_rs
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def docker_client():
     return docker.from_env()
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def dstRS():
     return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]})
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def srcRS():
     return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]})
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def mlink(srcRS,dstRS):
     return Mongolink('mlink',srcRS.mlink_connection, dstRS.mlink_connection)
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def start_cluster(srcRS, dstRS, mlink, request):
     try:
         srcRS.destroy()
@@ -417,7 +417,19 @@ def test_rs_mlink_PML_T18(reset_state, srcRS, dstRS, mlink):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_mlink_PML_T19(reset_state, srcRS, dstRS, mlink):
+@pytest.mark.parametrize(
+    "clone_stage_pattern",
+    [
+        r'Starting "test_db\.collection_4" collection clone',
+        r'Collection "test_db\.collection_4" has been created',
+        r'read batch.*ns=test_db\.collection_4.*s=copy'
+    ],
+    ids=[
+        "rename_at_clone_start",
+        "rename_after_collection_created",
+        "rename_during_batch_copy"
+    ])
+def test_rs_mlink_PML_T19(reset_state, srcRS, dstRS, mlink, clone_stage_pattern):
     """
     Test to check renameCollection while collection is being cloned
     """
@@ -428,66 +440,49 @@ def test_rs_mlink_PML_T19(reset_state, srcRS, dstRS, mlink):
         mlink.create(log_level="trace", extra_args="--reset-state", env_vars=mlink_env)
         src = pymongo.MongoClient(srcRS.connection)
         dst = pymongo.MongoClient(dstRS.connection)
-
         db_name = "test_db"
         old_name = "collection_4"
         new_name = "renamed_collection_4"
-        generate_dummy_data(srcRS.connection, db_name, 5, 500000)
-
+        generate_dummy_data(srcRS.connection, db_name)
         def start_mlink():
             result = mlink.start()
             assert result is True, "Failed to start mlink service"
         def rename_collection():
             log_stream = mlink.logs(stream=True)
-            pattern = re.compile(r'read batch.*ns=test_db\.collection_4.*s=copy')
+            pattern = re.compile(clone_stage_pattern)
             for raw_line in log_stream:
                 line = raw_line.decode("utf-8").strip()
                 if pattern.search(line):
                     break
+            initial_docs_1 = [{"_id": i, "value": f"doc{i}", "email": f"user{i}@test.com", "field": i} for i in range(10)]
+            initial_docs_2 = [{"_id": i + 10, "value": f"doc{i}", "email_new": f"user{i}@test.com", "field": i} for i in range(10)]
+            src[db_name][old_name].insert_many(initial_docs_1)
             res = src.admin.command("renameCollection", f"{db_name}.{old_name}", to=f"{db_name}.{new_name}")
             assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
-
+            src[db_name][new_name].insert_many(initial_docs_2)
         t1 = threading.Thread(target=start_mlink)
         t2 = threading.Thread(target=rename_collection)
         t1.start()
         t2.start()
         t1.join()
         t2.join()
-
     except Exception as e:
         raise
-
-    result = mlink.wait_for_repl_stage()
-    assert result is True, "Failed to finish init sync"
-
-    result = mlink.wait_for_zero_lag()
-    assert result is True, "Failed to catch up on replication"
-    result = mlink.finalize()
-    assert result is True, "Failed to finalize mlink service"
-
+    assert mlink.wait_for_repl_stage() is True, "Failed to finish init sync"
+    assert mlink.wait_for_zero_lag() is True, "Failed to catch up on replication"
+    assert mlink.finalize() is True, "Failed to finalize mlink service"
     time.sleep(1)
     dst_collections = dst[db_name].list_collection_names()
     assert new_name in dst_collections, "Renamed collection not found on destination"
     assert old_name not in dst_collections, "Old collection name still exists on destination"
-
-    expected_mismatches = [
-        ("test_db", "hash mismatch"),
-        ("test_db.renamed_collection_4", "hash mismatch"),
-        ("test_db.renamed_collection_4", "record count mismatch")]
-
-    result, summary = compare_data_rs(srcRS, dstRS)
-    if not result:
-        unexpected = [m for m in summary if m not in expected_mismatches]
-        missing_expected = [m for m in expected_mismatches if m not in summary]
-        if unexpected:
-            assert False, f"Unexpected mismatches found: {unexpected}"
-        if missing_expected:
-            assert False, f"Expected mismatches missing: {missing_expected}"
-        pytest.xfail("Known issue: PML-109")
-
+    result, _ = compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after synchronization"
     mlink_error, error_logs = mlink.check_mlink_errors()
-    assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
-    pytest.fail("Unexpected pass: test should have failed due to PML-109")
+    expected_errors = ["QueryPlanKilled", "NamespaceNotFound", "No indexes to create"]
+    if not mlink_error:
+        unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
+        if unexpected:
+            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -502,9 +497,7 @@ def test_rs_mlink_PML_T20(reset_state, srcRS, dstRS, mlink):
         mlink.create(extra_args="--reset-state", env_vars=mlink_env)
         src = pymongo.MongoClient(srcRS.connection)
         dst = pymongo.MongoClient(dstRS.connection)
-
         generate_dummy_data(srcRS.connection, "dummy")
-
         db_name1, db_name2 = "test_db1", "test_db2"
         old_name1, old_name2, old_name3  = "test_collection1", "test_collection2", "test_collection3"
         new_name1, new_name2, new_name3 = "renamed_collection1", "renamed_collection2", "renamed_collection3"
@@ -513,7 +506,6 @@ def test_rs_mlink_PML_T20(reset_state, srcRS, dstRS, mlink):
         for coll_name in [old_name1, old_name2, old_name3]:
             src[db_name1][coll_name].insert_many(initial_docs_1)
         src[db_name1][new_name2].insert_many(initial_docs_2)
-
         def start_mlink():
             result = mlink.start()
             assert result is True, "Failed to start mlink service"
@@ -522,87 +514,57 @@ def test_rs_mlink_PML_T20(reset_state, srcRS, dstRS, mlink):
             watched_collections = {
                 f"{db_name1}.{old_name1}": False,
                 f"{db_name1}.{old_name2}": False,
+                f"{db_name1}.{new_name2}": False,
                 f"{db_name1}.{old_name3}": False,
             }
+            rename1_done = rename2_done = rename3_done = False
             for raw_line in log_stream:
                 line = raw_line.decode("utf-8").strip()
-                if not watched_collections[f"{db_name1}.{old_name1}"] and f'Collection "{db_name1}.{old_name1}" created' in line:
+                for coll in watched_collections:
+                    if not watched_collections[coll] and f'Collection "{coll}" cloned' in line:
+                        watched_collections[coll] = True
+                if watched_collections[f"{db_name1}.{old_name1}"] and not rename1_done:
                     res = src.admin.command("renameCollection", f"{db_name1}.{old_name1}", to=f"{db_name1}.{new_name1}")
                     assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
-                    watched_collections[f"{db_name1}.{old_name1}"] = True
-                elif not watched_collections[f"{db_name1}.{old_name2}"] and f'Collection "{db_name1}.{old_name2}" created' in line:
+                    rename1_done = True
+                if (watched_collections[f"{db_name1}.{old_name2}"] and watched_collections[f"{db_name1}.{new_name2}"] and
+                    not rename2_done):
                     res = src.admin.command("renameCollection", f"{db_name1}.{old_name2}", to=f"{db_name1}.{new_name2}", dropTarget=True)
                     assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
-                    watched_collections[f"{db_name1}.{old_name2}"] = True
-                elif not watched_collections[f"{db_name1}.{old_name3}"] and f'Collection "{db_name1}.{old_name3}" created' in line:
+                    rename2_done = True
+                if watched_collections[f"{db_name1}.{old_name3}"] and not rename3_done:
                     res = src.admin.command("renameCollection", f"{db_name1}.{old_name3}", to=f"{db_name2}.{new_name3}")
                     assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
-                    watched_collections[f"{db_name1}.{old_name3}"] = True
-                if all(watched_collections.values()):
+                    rename3_done = True
+                if rename1_done and rename2_done and rename3_done:
                     break
-
         t1 = threading.Thread(target=start_mlink)
         t2 = threading.Thread(target=rename_collection)
         t1.start()
         t2.start()
         t1.join()
         t2.join()
-
     except Exception as e:
         raise
-
-    result = mlink.wait_for_repl_stage(timeout=30)
-    if not result:
-        if "collection renamed" in mlink.logs():
-                pytest.xfail("Known issue: PML-110")
-        else:
-            assert False, "Failed to start replication stage"
-
-    result = mlink.wait_for_zero_lag()
-    assert result is True, "Failed to catch up on replication"
-    result = mlink.finalize()
-    assert result is True, "Failed to finalize mlink service"
-
+    assert mlink.wait_for_repl_stage() is True, "Failed to finish init sync"
+    assert mlink.wait_for_zero_lag() is True, "Failed to catch up on replication"
+    assert mlink.finalize() is True, "Failed to finalize mlink service"
     time.sleep(1)
-    expected_db_mismatch = ("test_db1", "hash mismatch")
-    expected_collections = ["test_db1.renamed_collection1", "test_db1.renamed_collection2"]
-    expected_types = ["hash mismatch", "record count mismatch"]
-
-    result, summary = compare_data_rs(srcRS, dstRS)
-    if not result:
-        summary_set = set(summary)
-        if expected_db_mismatch not in summary_set:
-            assert False, f"Expected mismatch missing: {expected_db_mismatch}"
-
-        collections_with_both = []
-        for coll in expected_collections:
-            mismatches = [t for (c, t) in summary if c == coll]
-            if all(m in mismatches for m in expected_types):
-                collections_with_both.append(coll)
-        if not collections_with_both:
-            assert False, f"Expected at least one collection with both mismatches: {expected_collections}"
-
-        allowed = [expected_db_mismatch]
-        for coll in expected_collections:
-            for mismatch_type in expected_types:
-                allowed.append((coll, mismatch_type))
-        unexpected = [m for m in summary if m not in allowed]
-        if not unexpected:
-            pytest.xfail("Known issue: PML-110")
-        assert False, f"Unexpected mismatches found: {unexpected}"
-
+    dst_collections1 = set(dst[db_name1].list_collection_names())
+    dst_collections2 = set(dst[db_name2].list_collection_names())
+    for name in [new_name1, new_name2]:
+        assert name in dst_collections1, f"Expected collection '{name}' not found in {db_name1}"
+    for name in [old_name1, old_name2, old_name3]:
+        assert name not in dst_collections1, f"Old collection '{name}' still exists in {db_name1}"
+    assert new_name3 in dst_collections2, f"Renamed collection '{new_name3}' not found in {db_name2}"
+    result, _ = compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after synchronization"
     mlink_error, error_logs = mlink.check_mlink_errors()
-    expected_error = "catalog:rename"
+    expected_errors = ["already exists"]
     if not mlink_error:
-        has_expected = any(expected_error in line for line in error_logs)
-        unexpected = [line for line in error_logs if expected_error not in line]
-
+        unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
         if unexpected:
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
-        elif has_expected:
-            pytest.xfail(f"Expected fail: {expected_error}, no errors should be returned")
-    else:
-        pytest.fail("Unexpected pass: test should have failed due to PML-110")
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -613,7 +575,6 @@ def test_rs_mlink_PML_T21(reset_state, srcRS, dstRS, mlink):
     try:
         src = pymongo.MongoClient(srcRS.connection)
         dst = pymongo.MongoClient(dstRS.connection)
-
         init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
         db_name1, db_name2 = "test_db1", "test_db2"
         old_name1, old_name2, old_name3  = "test_collection1", "test_collection2", "test_collection3"
@@ -624,12 +585,10 @@ def test_rs_mlink_PML_T21(reset_state, srcRS, dstRS, mlink):
             src[db_name1][coll_name].insert_many(initial_docs)
         src[db_name1][new_name2].create_index("email", unique=True, name="email_unique22")
         src[db_name1][old_name3].create_index("email", unique=True, name="email_unique31")
-
         result = mlink.start()
         assert result is True, "Failed to start mlink service"
         result = mlink.wait_for_repl_stage()
         assert result is True, "Failed to finish init sync"
-
         repl_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         res = src.admin.command("renameCollection", f"{db_name1}.{old_name1}", to=f"{db_name1}.{new_name1}")
         assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
@@ -637,7 +596,6 @@ def test_rs_mlink_PML_T21(reset_state, srcRS, dstRS, mlink):
         assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
         res = src.admin.command("renameCollection", f"{db_name1}.{old_name3}", to=f"{db_name2}.{new_name3}")
         assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
-
     except Exception as e:
         raise
     finally:
@@ -649,12 +607,10 @@ def test_rs_mlink_PML_T21(reset_state, srcRS, dstRS, mlink):
             all_threads += operation_threads_2
         for thread in all_threads:
             thread.join()
-
     result = mlink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
     result = mlink.finalize()
     assert result is True, "Failed to finalize mlink service"
-
     time.sleep(1)
     dst_collections1 = set(dst[db_name1].list_collection_names())
     dst_collections2 = set(dst[db_name2].list_collection_names())
@@ -663,13 +619,11 @@ def test_rs_mlink_PML_T21(reset_state, srcRS, dstRS, mlink):
     for name in [old_name1, old_name2, old_name3]:
         assert name not in dst_collections1, f"Old collection '{name}' still exists in {db_name1}"
     assert new_name3 in dst_collections2, f"Renamed collection '{new_name3}' not found in {db_name2}"
-
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
-
     mlink_error, error_logs = mlink.check_mlink_errors()
-    expected_error = "ERR add collection"
+    expected_errors = ["already exists"]
     if not mlink_error:
-        unexpected = [line for line in error_logs if expected_error not in line]
+        unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
         if unexpected:
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))

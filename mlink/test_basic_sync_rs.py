@@ -12,23 +12,23 @@ from data_generator import create_all_types_db, generate_dummy_data, stop_all_cr
 from data_integrity_check import compare_data_rs
 from metrics_collector import metrics_collector
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def docker_client():
     return docker.from_env()
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def dstRS():
     return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]})
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def srcRS():
     return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]})
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def mlink(srcRS,dstRS):
     return Mongolink('mlink',srcRS.mlink_connection, dstRS.mlink_connection)
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def start_cluster(srcRS, dstRS, mlink, request):
     try:
         srcRS.destroy()
@@ -668,11 +668,9 @@ def test_rs_mlink_PML_T30(reset_state, srcRS, dstRS, mlink):
     mlink.create(log_level="trace", extra_args="--reset-state", env_vars=mlink_env)
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
-
     normal_docs = [{"a": {"b": 1}, "words": "omnibus"} for _ in range(20000)]
     src["init_test_db"].invalid_text_collection1.insert_many(normal_docs)
     src["init_test_db"].invalid_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
-
     def start_mlink():
         result = mlink.start()
         assert result is True, "Failed to start mlink service"
@@ -694,23 +692,13 @@ def test_rs_mlink_PML_T30(reset_state, srcRS, dstRS, mlink):
     t2.start()
     t1.join()
     t2.join()
-
-    result = mlink.wait_for_repl_stage(timeout=30)
-    if not result:
-        if "text index contains an array in document" in mlink.logs():
-            pytest.xfail("Known issue: PML-118")
-        else:
-            assert False, "Failed to start replication stage"
-    result = mlink.wait_for_zero_lag()
-    assert result is True, "Failed to catch up on replication"
-    result = mlink.finalize()
-    assert result is True, "Failed to finalize mlink service"
-
+    assert mlink.wait_for_repl_stage(timeout=30) is True, "Failed to start replication stage"
+    assert mlink.wait_for_zero_lag() is True, "Failed to catch up on replication"
+    assert mlink.finalize() is True, "Failed to finalize mlink service"
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
     mlink_error, error_logs = mlink.check_mlink_errors()
     assert mlink_error is True, f"Mlink reported errors in logs: {error_logs}"
-    pytest.fail("Unexpected pass: test should have failed due to PML-118")
 
 @pytest.mark.usefixtures("start_cluster")
 @pytest.mark.timeout(600,func_only=True)

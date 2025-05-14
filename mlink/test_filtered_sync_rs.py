@@ -8,23 +8,23 @@ from mongolink import Mongolink
 from data_generator import create_all_types_db, stop_all_crud_operations
 from data_integrity_check import compare_data_rs
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def docker_client():
     return docker.from_env()
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def dstRS():
     return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]})
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def srcRS():
     return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]})
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def mlink(srcRS,dstRS):
     return Mongolink('mlink',srcRS.mlink_connection, dstRS.mlink_connection)
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def start_cluster(srcRS, dstRS, mlink, request):
     try:
         srcRS.destroy()

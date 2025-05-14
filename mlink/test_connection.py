@@ -9,23 +9,23 @@ from mongolink import Mongolink
 from data_generator import create_all_types_db, stop_all_crud_operations
 from data_integrity_check import compare_data_rs
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def docker_client():
     return docker.from_env()
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def mongod_extra_args():
     return '--tlsMode allowTLS --tlsCAFile=/etc/x509/ca.crt --tlsCertificateKeyFile=/etc/x509/psmdb.pem --setParameter=authenticationMechanisms=SCRAM-SHA-1,MONGODB-X509'
 
 def _make_config(rs_name, host):
     return {"_id": rs_name, "members": [{"host": host}]}
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def srcRS(mongod_extra_args):
     config = _make_config("rs1", "rs101")
     return Cluster(config, mongod_extra_args=mongod_extra_args)
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def dstRS(mongod_extra_args):
     config = _make_config("rs2", "rs201")
     return Cluster(config, mongod_extra_args=mongod_extra_args)
@@ -79,7 +79,7 @@ def mlink(srcRS, dstRS, mlink_connection_options, request):
     request.addfinalizer(cleanup)
     return mlink_instance
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def start_cluster(srcRS, dstRS):
     try:
         srcRS.destroy()
@@ -119,6 +119,9 @@ def test_rs_mlink_PML_T45(reset_state, srcRS, dstRS, mlink, docker_client):
         _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
         result = mlink.start()
         assert result is True, "Failed to start mlink service"
+        _, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
+        result = mlink.wait_for_repl_stage()
+        assert result is True, "Failed to start replication stage"
         # Check if all connections from PML are using correct appName
         mlink_container = docker_client.containers.get('mlink')
         mlink_network = list(mlink_container.attrs['NetworkSettings']['Networks'].values())[0]
@@ -135,9 +138,6 @@ def test_rs_mlink_PML_T45(reset_state, srcRS, dstRS, mlink, docker_client):
                 if client_ip == mlink_ip:
                     assert app_name == "pml", (f"Connection from {client_address} does not use appName=pml (found '{app_name}')")
             client.close()
-        _, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
-        result = mlink.wait_for_repl_stage()
-        assert result is True, "Failed to start replication stage"
         _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         time.sleep(5)
     except Exception as e:
