@@ -113,41 +113,50 @@
         - ansible_distribution_version is version('12', '==')
 
     - name: Remove podman-docker if present
-      ansible.builtin.yum:
+      yum:
         name: podman-docker
         state: absent
       when: ansible_os_family == "RedHat"
 
     - name: Install dnf plugins (for managing repos)
-      ansible.builtin.yum:
+      yum:
         name: dnf-plugins-core
         state: present
       when: ansible_os_family == "RedHat"
 
     - name: Add Docker CE repository
-      ansible.builtin.get_url:
+      get_url:
         url: https://download.docker.com/linux/centos/docker-ce.repo
         dest: /etc/yum.repos.d/docker-ce.repo
         mode: '0644'
 
     - name: Force release server to use 9 in Docker repo for AL2023 compatibility
-      ansible.builtin.replace:
+      replace:
         path: /etc/yum.repos.d/docker-ce.repo
         regexp: '\$releasever'
         replace: '9'
       when:
         - ansible_distribution == "Amazon"
 
-    - name: Install Docker CE and dependencies
-      ansible.builtin.yum:
+    - name: Install Docker CE and dependencies for Redhat
+      yum:
         name:
           - docker-ce
           - docker-ce-cli
           - containerd.io
         state: present
 
+    - name: Install Docker CE and dependencies on Debian/Ubuntu
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: yes
+
     - name: Enable and start Docker service
-      ansible.builtin.service:
+      service:
         name: docker
         state: started
         enabled: true
@@ -192,7 +201,7 @@
         - ansible_distribution == "Amazon"
 
     - name: Install required Python packages for Amazon Linux
-      ansible.builtin.pip:
+      pip:
         name:
           - requests
         executable: pip3
