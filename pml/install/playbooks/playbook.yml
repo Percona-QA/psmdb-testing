@@ -106,16 +106,6 @@
         update_cache: yes
       when:
         - ansible_os_family == "Debian"
-        - ansible_distribution_version is version('11', '==')
-
-    - name: Install python3.11 on Debian 12
-      apt:
-        name: python3.11
-        state: present
-        update_cache: yes
-      when:
-        - ansible_os_family == "Debian"
-        - ansible_distribution_version is version('12', '==')
 
     - name: Remove podman-docker if present
       yum:
@@ -233,7 +223,7 @@
         groups: docker
         append: yes
 
-    - name: Ensure pip is installed
+    - name: Ensure pip is installed on Amazon Linux
       package:
         name: python3-pip
         state: present
@@ -248,6 +238,12 @@
         state: present
       when:
         - ansible_distribution == "Amazon"
+
+    - name: Upgrade pip to latest version
+      pip:
+        name: pip
+        state: latest
+        executable: pip3
 
     - name: Create Source standalone PSMDB container
       community.docker.docker_container:
