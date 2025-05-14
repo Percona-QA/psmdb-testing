@@ -144,7 +144,6 @@
         mode: '0755'
       when:
         - ansible_os_family == "Debian"
-        - ansible_distribution_version is version('11', '==')
 
     - name: Download Docker GPG key to keyring
       get_url:
@@ -153,7 +152,6 @@
         mode: '0644'
       when:
         - ansible_os_family == "Debian"
-        - ansible_distribution_version is version('11', '==')
 
     - name: Add Docker APT repository
       copy:
@@ -163,7 +161,6 @@
         mode: '0644'
       when:
         - ansible_os_family == "Debian"
-        - ansible_distribution_version is version('11', '==')
 
     - name: Update apt cache
       apt:
