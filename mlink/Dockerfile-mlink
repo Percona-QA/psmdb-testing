@@ -1,7 +1,10 @@
 ARG GO_VERSION=latest
 ARG MLINK_BRANCH=main
+FROM easyrsa/local AS easyrsa
 FROM golang:$GO_VERSION
 COPY percona-mongolink /percona-mongolink
+COPY --from=easyrsa /etc/x509/ca.crt /etc/pykmip/ca.crt
+COPY --from=easyrsa /etc/x509/ /etc/x509/
 RUN apt update && apt -y install curl socat && \
     cd /percona-mongolink && \
     git checkout $MLINK_BRANCH && \
