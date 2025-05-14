@@ -99,6 +99,16 @@
         update_cache: yes
       when:
         - ansible_os_family == "Debian"
+        - ansible_distribution_major_version == "11"
+
+    - name: Install python3.11 on Debian 12
+      apt:
+        name: python3.11
+        state: present
+        update_cache: yes
+      when:
+        - ansible_os_family == "Debian"
+        - ansible_distribution_major_version == "12"
 
     - name: Remove podman-docker if present on Redhat
       yum:
