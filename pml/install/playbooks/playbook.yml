@@ -130,7 +130,7 @@
         dest: /etc/yum.repos.d/docker-ce.repo
         mode: '0644'
       when:
-        - ansible_os_family == "RedHat" or ansible_distribution == "Amazon"
+        - ansible_os_family == "RedHat"
 
     - name: Force release server to use 9 in Docker repo for AL2023 compatibility
       replace:
@@ -147,6 +147,8 @@
           - docker-ce-cli
           - containerd.io
         state: present
+      when:
+        - ansible_os_family == "RedHat"
 
     - name: Install Docker CE and dependencies on Debian/Ubuntu
       apt:
