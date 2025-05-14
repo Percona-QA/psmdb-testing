@@ -247,6 +247,15 @@
         name: pip
         state: latest
         executable: pip3
+      when:
+        - ansible_distribution == "Debian"
+        - ansible_distribution_major_version == "11"
+
+    - name: Upgrade pip on Debian 12 with --break-system-packages
+      ansible.builtin.command: python3 -m pip install --upgrade pip --break-system-packages
+      when:
+        - ansible_distribution == "Debian"
+        - ansible_distribution_major_version == "12"
 
     - name: Create Source PSMDB container
       community.docker.docker_container:
