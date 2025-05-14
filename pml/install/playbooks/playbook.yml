@@ -72,6 +72,7 @@
           - libjpeg-dev
           - libfreetype6-dev
           - gcc
+          - python3.9
           - python3-dev
           - python3-pip
           - make
@@ -87,28 +88,10 @@
 
     - name: Install python3.12 on Ubuntu
       apt:
-        name: python3.12
-        state: present
-        update_cache: yes
-      when: ansible_os_family == "Ubuntu"
-
-    - name: Install python3.9 on Debian 11
-      apt:
         name: python3.9
         state: present
         update_cache: yes
-      when:
-        - ansible_os_family == "Debian"
-        - ansible_distribution_major_version == "11"
-
-    - name: Install python3.11 on Debian 12
-      apt:
-        name: python3.11
-        state: present
-        update_cache: yes
-      when:
-        - ansible_os_family == "Debian"
-        - ansible_distribution_major_version == "12"
+      when: ansible_os_family == "Ubuntu"
 
     - name: Remove podman-docker if present on Redhat
       yum:
@@ -246,21 +229,6 @@
     - name: Ensure pip is installed on Amazon Linux
       package:
         name: python3-pip
-        state: present
-      when:
-        - ansible_distribution == "Amazon"
-
-    - name: Install packaging is installed on Amazon Linux
-      package:
-        name: python3-packaging
-        state: present
-      when: ansible_distribution == "Amazon"
-
-    - name: Install required Python packages on Amazon Linux
-      pip:
-        name:
-          - requests
-        executable: pip3
         state: present
       when:
         - ansible_distribution == "Amazon"
