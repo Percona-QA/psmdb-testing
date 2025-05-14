@@ -101,7 +101,7 @@
 
     - name: Install python3.9 on Debian 11
       apt:
-        name: python3.12
+        name: python3.9
         state: present
         update_cache: yes
       when:
