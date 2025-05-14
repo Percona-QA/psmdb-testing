@@ -669,6 +669,8 @@ def test_rs_mlink_PML_T30(reset_state, srcRS, dstRS, mlink):
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
 
+    normal_docs = [{"a": {"b": 1}, "words": "omnibus"} for _ in range(20000)]
+    src["init_test_db"].invalid_text_collection1.insert_many(normal_docs)
     src["init_test_db"].invalid_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
 
     def start_mlink():

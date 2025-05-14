@@ -128,18 +128,20 @@ class Cluster:
         else:
             return "sharded"
 
-    # returns mongodb connection string to cluster, for replicaset layout we except that the first member will always be primary
+    # returns mongodb connection string to cluster
     @property
     def connection(self):
         if self.layout == "replicaset":
-            return "mongodb://root:root@" + self.config['members'][0]['host'] + ":27017/?replicaSet=" + self.config['_id']
+            hosts = ",".join(f"{member['host']}:27017" for member in self.config["members"])
+            return (f"mongodb://root:root@{hosts}/"f"?replicaSet={self.config['_id']}")
         else:
             return "mongodb://root:root@" + self.config['mongos'] + ":27017/"
 
     @property
     def mlink_connection(self):
         if self.layout == "replicaset":
-            return "mongodb://mlink:test1234@" + self.config['members'][0]['host'] + ":27017/?replicaSet=" + self.config['_id']
+            hosts = ",".join(f"{member['host']}:27017" for member in self.config["members"])
+            return (f"mongodb://root:root@{hosts}/"f"?replicaSet={self.config['_id']}")
         else:
             return "mongodb://mlink:test1234@" + self.config['mongos'] + ":27017/"
 
@@ -311,6 +313,131 @@ class Cluster:
             docker.from_env().containers.get(host).restart()
         time.sleep(1)
 
+    # restart primary node in each RS
+    def restart_primary(self, delay=0, force=False):
+        client = pymongo.MongoClient(self.connection)
+        container_names = []
+        if self.layout == "replicaset":
+            ismaster = client.admin.command("isMaster")
+            primary_host = ismaster["primary"]
+            for member in self.config["members"]:
+                if primary_host.startswith(member["host"]):
+                    container_names.append(member["host"])
+                    break
+            else:
+                raise Exception("Primary node is not found in RS")
+        elif self.layout == "sharded":
+            configserver_hosts = self.config["configserver"]["members"]
+            configserver_conn = "mongodb://root:root@" + configserver_hosts[0]["host"] + ":27017/?replicaSet=" + self.config["configserver"]["_id"]
+            cfg_client = pymongo.MongoClient(configserver_conn)
+            cfg_ismaster = cfg_client.admin.command("isMaster")
+            cfg_primary = cfg_ismaster["primary"]
+            for member in configserver_hosts:
+                if cfg_primary.startswith(member["host"]):
+                    container_names.append(member["host"])
+                    break
+            else:
+                raise Exception("Primary node is not found in config RS")
+            for shard in self.config["shards"]:
+                shard_hosts = shard["members"]
+                shard_conn = "mongodb://root:root@" + shard_hosts[0]["host"] + ":27017/?replicaSet=" + shard["_id"]
+                shard_client = pymongo.MongoClient(shard_conn)
+                shard_ismaster = shard_client.admin.command("isMaster")
+                shard_primary = shard_ismaster["primary"]
+                for member in shard_hosts:
+                    if shard_primary.startswith(member["host"]):
+                        container_names.append(member["host"])
+                        break
+                else:
+                    raise Exception(f"Primary node is not found in {shard['_id']} RS")
+        for container_name in container_names:
+            container = docker.from_env().containers.get(container_name)
+            if force:
+                container.kill()
+                Cluster.log("Killed " + container_name)
+            else:
+                container.stop()
+                Cluster.log("Stopped " + container_name)
+            if delay > 0:
+                time.sleep(delay)
+            container.start()
+            Cluster.log("Started " + container_name)
+
+    # step down primary node in each RS
+    def stepdown_primary(self, stepdown_timeout=10):
+        def step_down(client, name, timeout):
+            try:
+                client.admin.command("replSetStepDown", timeout)
+            except pymongo.errors.AutoReconnect:
+                Cluster.log(f"{name} primary stepped down successfully")
+                return True
+            except pymongo.errors.OperationFailure as e:
+                Cluster.log(f"{name} stepdown failed: {e}. Retrying with force...")
+                try:
+                    client.admin.command("replSetStepDown", timeout, force=True)
+                    Cluster.log(f"{name} primary stepped down with force")
+                    return True
+                except (pymongo.errors.AutoReconnect, pymongo.errors.OperationFailure) as e2:
+                    Cluster.log(f"{name} stepdown with force failed: {e2}")
+                    return False
+            return True
+        def is_primary(client):
+            try:
+                hello = client.admin.command("hello")
+                return hello.get("isWritablePrimary", False)
+            except Exception as e:
+                Cluster.log(f"Error checking primary status: {e}")
+                return False
+        def try_stepdown(uri, name):
+            try:
+                with pymongo.MongoClient(uri, serverSelectionTimeoutMS=5000) as client:
+                    if is_primary(client):
+                        if step_down(client, name, stepdown_timeout):
+                            Cluster.log(f"Primary in {name} is stepped down")
+            except Exception as e:
+                Cluster.log(f"Error handling client for {name}: {e}")
+        if self.layout == "replicaset":
+            try_stepdown(self.connection, "Replica set")
+        elif self.layout == "sharded":
+            config = self.config["configserver"]
+            config_host = next((m["host"] for m in config["members"]), None)
+            config_rs = config["_id"]
+            config_uri = f"mongodb://root:root@{config_host}:27017/?replicaSet={config_rs}"
+            try_stepdown(config_uri, "Config server")
+            for shard in self.config["shards"]:
+                shard_host = next((m["host"] for m in shard["members"]), None)
+                shard_rs = shard["_id"]
+                shard_uri = f"mongodb://root:root@{shard_host}:27017/?replicaSet={shard_rs}"
+                try_stepdown(shard_uri, f"Shard {shard_rs}")
+
+    # disconnects all containers from the network and reconnects them after delay
+    def network_interruption(self, delay=5):
+        docker_client = docker.from_env()
+        network = docker_client.networks.get("test")
+        all_hosts = []
+        if self.layout == "replicaset":
+            all_hosts = [m["host"] for m in self.config["members"]]
+        elif self.layout == "sharded":
+            all_hosts += [m["host"] for m in self.config["configserver"]["members"]]
+            for shard in self.config["shards"]:
+                all_hosts += [m["host"] for m in shard["members"]]
+        containers = [docker_client.containers.get(name) for name in all_hosts]
+        Cluster.log(f"Disconnecting {len(containers)} containers from the network...")
+        for c in containers:
+            try:
+                network.disconnect(c, force=True)
+                Cluster.log(f"Disconnected {c.name}")
+            except Exception as e:
+                Cluster.log(f"Failed to disconnect {c.name}: {e}")
+        time.sleep(delay)
+        Cluster.log("Reconnecting containers to the network...")
+        for c in containers:
+            try:
+                network.connect(c)
+                Cluster.log(f"Reconnected {c.name}")
+            except Exception as e:
+                Cluster.log(f"Failed to reconnect {c.name}: {e}")
+
     # stops mongos container
     def stop_mongos(self):
         if self.layout == "sharded":
@@ -331,10 +458,10 @@ class Cluster:
         primary = replicaset['members'][0]['host']
         primary = testinfra.get_host("docker://" + primary)
         rs = copy.deepcopy(replicaset)
-        rs['members'][0]['priority'] = 1000
         for id, data in enumerate(rs['members']):
             rs['members'][id]['_id'] = id
             rs['members'][id]['host'] = rs['members'][id]['host'] + ":27017"
+        rs['settings'] = {'electionTimeoutMillis': 2000}
         init_rs = ('\'config =' +
                    json.dumps(rs) +
                    ';rs.initiate(config);\'')
@@ -364,8 +491,17 @@ class Cluster:
                          '{"db":"admin","role":"clusterManager" },' +
                          '{"db":"admin","role":"restore" },' +
                          '{"db":"admin","role":"readWriteAnyDatabase" }]});\'')
+        x509_mlink_user = (
+            '\'db.getSiblingDB("$external").runCommand({createUser:"emailAddress=pml@percona.com,CN=pml,OU=client,O=Percona,L=SanFrancisco,ST=California,C=US","roles":['
+            + '{"db":"admin","role":"backup" },'
+            + '{"db":"admin","role":"clusterMonitor" },'
+            + '{"db":"admin","role":"clusterManager" },'
+            + '{"db":"admin","role":"restore" },'
+            + '{"db":"admin","role":"readWriteAnyDatabase" }]});\'')
         logs = primary.check_output(
             "mongosh -u root -p root --quiet --eval " + mlink_user)
+        logs = primary.check_output(
+            "mongosh -u root -p root --quiet --eval " + x509_mlink_user)
 
     def __setup_authorizations(self, replicasets):
         with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -392,7 +528,7 @@ class Cluster:
                 Cluster.log("Waiting for " + host + " to became primary")
             if time.time() > timeout:
                 assert False
-            time.sleep(3)
+            time.sleep(1)
 
     def wait_for_primaries(self):
         Cluster.log(self.primary_hosts)

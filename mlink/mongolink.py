@@ -16,6 +16,7 @@ class Mongolink:
         self.name = name
         self.src = src
         self.dst = dst
+        self.src_internal = kwargs.get('src_internal')
         self.mlink_image = kwargs.get('mlink_image', "mlink/local")
 
     @property
@@ -275,7 +276,7 @@ class Mongolink:
         counter = 0
 
         try:
-            src_client = pymongo.MongoClient(self.src)
+            src_client = pymongo.MongoClient(self.src_internal or self.src)
         except Exception as e:
             Cluster.log(f"Error: Failed to connect to source MongoDB URI: {e}")
             return False
@@ -323,7 +324,7 @@ class Mongolink:
             if cluster_time.time == last_ts.time + 1:
                 if last_events_processed is not None and current_events_processed == last_events_processed:
                     counter += 1
-                    if counter >= 2:
+                    if counter >= 5:
                         Cluster.log(f"Src and dst are in sync: 1s lag detected but no new events, "
                                 f"last repl TS {last_ts}, cluster time {cluster_time}, "
                                 f"eventsProcessed={current_events_processed}, last_eventsProcessed={last_events_processed}")
