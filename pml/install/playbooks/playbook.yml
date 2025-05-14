@@ -228,22 +228,6 @@
         groups: docker
         append: yes
 
-    - name: Ensure pip is installed on Amazon Linux
-      package:
-        name: python3-pip
-        state: present
-      when:
-        - ansible_distribution == "Amazon"
-
-    - name: Install required Python packages on Amazon Linux
-      pip:
-        name:
-          - requests
-        executable: pip3
-        state: present
-      when:
-        - ansible_distribution == "Amazon"
-
     - name: Upgrade pip on Debian 11
       pip:
         name: pip
@@ -258,6 +242,23 @@
       when:
         - ansible_distribution == "Debian"
         - ansible_distribution_major_version == "12"
+
+    - name: Ensure pip is installed on Amazon Linux
+      package:
+        name: python3-pip
+        state: present
+      when:
+        - ansible_distribution == "Amazon"
+
+    - name: Install required Python packages on Amazon Linux
+      pip:
+        name:
+          - requests
+          - packages
+        executable: pip3
+        state: present
+      when:
+        - ansible_distribution == "Amazon"
 
     - name: Create Source PSMDB container
       community.docker.docker_container:
