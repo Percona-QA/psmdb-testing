@@ -250,12 +250,6 @@
       register: go_version_output
       ignore_errors: true
 
-    - name: Install Pymongo for Redhat
-      pip:
-        name:
-          - pymongo
-      when: ansible_facts['os_family'] == 'RedHat'
-
     - name: Install Pymongo on Debian
       command: python3 -m pip install --break-system-packages pymongo
       when: ansible_facts['os_family'] == 'Debian'
