@@ -58,7 +58,7 @@
         state: absent
       when: ansible_os_family == "RedHat"
 
-    - name: Install dnf plugins (for managing repos)
+    - name: Install dnf plugins
       yum:
         name: dnf-plugins-core
         state: present
