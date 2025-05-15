@@ -19,9 +19,9 @@ provisioner:
   log: True
   playbooks:
     create: ../../../../playbooks/create.yml
+    prepare: ../../playbooks/prepare.yml
     destroy: ../../../../playbooks/destroy.yml
-    cleanup: ../../playbooks/cleanup.yml
-    converge: ../../playbooks/playbook.yml
+    converge: ../../playbooks/ubuntu.yml
 verifier:
   name: testinfra
   directory: ../../../tests/
@@ -33,12 +33,9 @@ scenario:
   name: ubuntu-focal-arm
   destroy_sequence:
     - destroy
-  clenup_sequence:
-    - cleanup
   test_sequence:
     - destroy
     - create
     - converge
     - verify
-    - cleanup
     - destroy
