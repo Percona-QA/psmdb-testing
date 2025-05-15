@@ -259,7 +259,15 @@
 
     - name: Install Pymongo on Debian
       command: python3 -m pip install --break-system-packages pymongo
-      when: ansible_facts['os_family'] == 'Debian'
+      when:
+        - ansible_distribution == 'Ubuntu' and not ansible_distribution_major_version == "20"
+
+
+    - name: Install Pymongo on Debian
+      command: python3 -m pip install pymongo
+      when:
+        - ansible_distribution == 'Ubuntu'
+        - ansible_distribution_major_version == "20"
 
     - name: Clone PML repo
       timeout: 180
