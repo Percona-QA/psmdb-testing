@@ -7,7 +7,7 @@ platforms:
   - name: rhel8-arm-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
     image: "${MOLECULE_RHEL8_ARM_AMI:-ami-0bb199dd39edd7d71}"
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-0dc7518100473f19d
     instance_type: c6g.large
     ssh_user: ec2-user
     root_device_name: /dev/sda1
@@ -19,9 +19,9 @@ provisioner:
   log: True
   playbooks:
     create: ../../../../playbooks/create.yml
+    prepare: ../../playbooks/prepare.yml
     destroy: ../../../../playbooks/destroy.yml
-    cleanup: ../../playbooks/cleanup.yml
-    converge: ../../playbooks/playbook.yml
+    converge: ../../playbooks/redhat.yml
 verifier:
   name: testinfra
   directory: ../../../tests/
@@ -33,8 +33,6 @@ scenario:
   name: rhel8-arm
   destroy_sequence:
     - destroy
-  clenup_sequence:
-    - cleanup
   test_sequence:
     - destroy
     - create
