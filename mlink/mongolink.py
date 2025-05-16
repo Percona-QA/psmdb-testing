@@ -16,6 +16,7 @@ class Mongolink:
         self.name = name
         self.src = src
         self.dst = dst
+        self.src_internal = kwargs.get('src_internal')
         self.mlink_image = kwargs.get('mlink_image', "mlink/local")
 
     @property
@@ -275,7 +276,7 @@ class Mongolink:
         counter = 0
 
         try:
-            src_client = pymongo.MongoClient(self.src)
+            src_client = pymongo.MongoClient(self.src_internal or self.src)
         except Exception as e:
             Cluster.log(f"Error: Failed to connect to source MongoDB URI: {e}")
             return False
