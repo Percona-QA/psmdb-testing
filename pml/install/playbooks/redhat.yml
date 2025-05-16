@@ -239,7 +239,7 @@
       when: ansible_facts['os_family'] == 'RedHat'
 
     - name: Clone PML repo
-      timeout: 600
+      timeout: 900
       git:
         repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
         dest: /tmp/percona-mongolink
