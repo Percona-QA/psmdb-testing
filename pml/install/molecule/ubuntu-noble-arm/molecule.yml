@@ -9,7 +9,7 @@ platforms:
     image: "${MOLECULE_UNOBLE_ARM_AMI:-ami-0d34f4864e58df827}"
     vpc_subnet_id: subnet-0dc7518100473f19d
     instance_type: c6g.large
-    ssh_user: ec2-user
+    ssh_user: ubuntu
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
