@@ -28,7 +28,7 @@
         from_port: 0
         to_port: 0
         cidr_ip: '0.0.0.0/0'
-    keypair_name: "keith-test"
+    keypair_name: "molecule-pkg-tests"
     keypair_path: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/ssh_key"
 
   tasks:
