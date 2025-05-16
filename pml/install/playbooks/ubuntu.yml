@@ -253,7 +253,6 @@
         - ansible_distribution_major_version == "20" or ansible_distribution_major_version == "22"
 
     - name: Clone PML repo
-      timeout: 900
       git:
         repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
         dest: /tmp/percona-mongolink
