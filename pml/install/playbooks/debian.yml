@@ -18,7 +18,7 @@
 
     - set_fact:
         # Go Version
-        golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.1', true) }}"
+        golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.2', true) }}"
 
     - set_fact:
         # User to log into each AWS Instance
