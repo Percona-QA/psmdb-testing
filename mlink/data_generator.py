@@ -40,7 +40,10 @@ def create_all_types_db(connection_string, db_name="init_test_db", create_ts=Fal
 def continuous_crud_ops_collection_background(collection_metadata, stop_event):
     while not stop_event.is_set():
         for metadata in collection_metadata:
-            perform_crud_ops_collection(metadata["collection"], metadata["capped"], metadata["timeseries"])
+            try:
+                perform_crud_ops_collection(metadata["collection"], metadata["capped"], metadata["timeseries"])
+            except Exception as e:
+                time.sleep(0.1)
         time.sleep(0.1)
 
 def stop_db_crud_operations(db_name):

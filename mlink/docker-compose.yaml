@@ -21,12 +21,16 @@ services:
       args:
         - MONGODB_IMAGE=${MONGODB_IMAGE:-percona/percona-server-mongodb}
     command: /bin/bash
+    depends_on:
+      - easyrsa
 
   mlink:
     image: mlink/local
     build:
       dockerfile: psmdb-testing/mlink/Dockerfile-mlink
       context: ../../
+    depends_on:
+      - easyrsa
 
   prometheus:
     image: prom/prometheus
@@ -52,6 +56,13 @@ services:
       - ./conf/grafana:/etc/grafana/provisioning
     networks:
       - test
+
+  easyrsa:
+    image: easyrsa/local
+    build:
+      dockerfile: ./Dockerfile-easyrsa
+      context: .
+    command: /bin/bash
 
 networks:
   test:
