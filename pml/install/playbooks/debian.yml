@@ -51,13 +51,13 @@
           - lsb-release
       when: ansible_os_family == "Debian"
 
-    - name: Install percona release package
+    - name: Install Percona Release
       include_tasks: ../../../tasks/install_percona_release.yml
 
-    - name: setup pml repo with percona-release
+    - name: Setup pml repo with percona-release
       command: percona-release enable pml {{ lookup('env', 'install_repo') }}
 
-    - name: install PML
+    - name: Install PML
       apt:
         name: percona-mongolink
         update_cache: yes
@@ -227,7 +227,8 @@
         - { ip: "{{ destination_ip }}", hostname: "destination" }
       become: true
 
-
+    - name: Start PML Server
+      ansible.builtin.shell: "percona-mongolink --source mongodb://{{ source_ip }}:27017 --target mongodb://{{ destination_ip }}:27017"
 
 #    - name: Install Go from official tarball
 #      vars:
