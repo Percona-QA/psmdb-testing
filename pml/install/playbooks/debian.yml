@@ -54,12 +54,10 @@
     - name: Install percona release package
       include_tasks: ../../../tasks/install_percona_release.yml
 
-    - name: setup pbm repo with percona-release
-      command: percona-release enable pml
-      vars:
-        install_repo: "{{ lookup('env', 'install_repo') }}"
+    - name: setup pml repo with percona-release
+      command: percona-release enable pml {{ lookup('env', 'install_repo') }}
 
-    - name: install PBM new deb packages
+    - name: install PML
       apt:
         name: percona-mongolink
         update_cache: yes
