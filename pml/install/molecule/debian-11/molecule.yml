@@ -20,7 +20,7 @@ provisioner:
   playbooks:
     create: ../../../../playbooks/create.yml
     destroy: ../../../../playbooks/destroy.yml
-    converge: ../../playbooks/playbook.yml
+    converge: ../../playbooks/debian.yml
     prepare: ../../playbooks/prepare.yml
 verifier:
   name: testinfra
