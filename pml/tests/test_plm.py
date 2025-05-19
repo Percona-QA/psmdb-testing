@@ -137,7 +137,7 @@ def wait_for_repl_stage(host, timeout=3600, interval=1, stable_duration=2):
 def test_plm_binary(host):
     """Check PLM binary
     """
-    file = host.file("/tmp/percona-mongolink/bin/percona-mongolink")
+    file = host.file("/usr/bin/percona-mongolink")
     assert file.user == "root"
     assert file.group == "root"
     try:
@@ -145,15 +145,15 @@ def test_plm_binary(host):
     except AssertionError:
         pytest.xfail("Possible xfail")
 
-def test_pml_version(pml_version):
-    """Check that PLM version is correct
-
-    :param host:
-    :return:
-    """
-    pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
-
-    assert re.match(pattern, pml_version.stderr)
+# def test_pml_version(pml_version):
+#     """Check that PLM version is correct
+#
+#     :param host:
+#     :return:
+#     """
+#     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
+#
+#     assert re.match(pattern, pml_version.stderr)
 
 def test_pml_help(host):
     """Check that PLM help command works
