@@ -24,20 +24,6 @@
         # User to log into each AWS Instance
         ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
 
-    - name: Install percona release package
-      include_tasks: ../../../tasks/install_percona_release.yml
-
-    - name: setup pbm repo with percona-release
-      command: percona-release enable pml
-      vars:
-        install_repo: "{{ lookup('env', 'install_repo') }}"
-
-    - name: install PBM new deb packages
-      apt:
-        name: percona-mongolink
-        update_cache: yes
-        state: latest
-
     - name: Install dependencies
       apt:
         name: "{{ packages }}"
@@ -45,6 +31,7 @@
         update_cache: yes
       vars:
         packages:
+          - gnupg2
           - jq
           - vim
           - zlib1g-dev
@@ -63,6 +50,20 @@
           - gnupg
           - lsb-release
       when: ansible_os_family == "Debian"
+
+    - name: Install percona release package
+      include_tasks: ../../../tasks/install_percona_release.yml
+
+    - name: setup pbm repo with percona-release
+      command: percona-release enable pml
+      vars:
+        install_repo: "{{ lookup('env', 'install_repo') }}"
+
+    - name: install PBM new deb packages
+      apt:
+        name: percona-mongolink
+        update_cache: yes
+        state: latest
 
     - name: Create keyrings directory
       file:
