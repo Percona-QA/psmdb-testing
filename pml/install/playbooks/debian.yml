@@ -24,6 +24,20 @@
         # User to log into each AWS Instance
         ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
 
+    - name: Install percona release package
+      include_tasks: ../../../tasks/install_percona_release.yml
+
+    - name: setup pbm repo with percona-release
+      command: percona-release enable pml
+      vars:
+        install_repo: "{{ lookup('env', 'install_repo') }}"
+
+    - name: install PBM new deb packages
+      apt:
+        name: percona-mongolink
+        update_cache: yes
+        state: latest
+
     - name: Install dependencies
       apt:
         name: "{{ packages }}"
@@ -214,99 +228,93 @@
         - { ip: "{{ destination_ip }}", hostname: "destination" }
       become: true
 
-    - name: Install Go from official tarball
-      vars:
-        go_version: "{{ golang_version }}"
-        go_arch: >-
-          {{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}
-        go_tarball: "go{{ go_version }}.linux-{{ go_arch }}.tar.gz"
-        go_url: "https://go.dev/dl/{{ go_tarball }}"
-        go_install_dir: "/usr/local"
-      block:
-        - name: Download Go version:{{ go_version }}
-          get_url:
-            url: "{{ go_url }}"
-            dest: "/tmp/{{ go_tarball }}"
-            mode: '0644'
 
-        - name: Extract Go
-          unarchive:
-            src: "/tmp/{{ go_tarball }}"
-            dest: "{{ go_install_dir }}"
-            remote_src: yes
 
-    - name: Check Go is available
-      command: go version
-      environment:
-        PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
-      register: go_version_output
-      ignore_errors: true
-
-    - name: Install Pymongo
-      command: python3 -m pip install --break-system-packages pymongo
-      when: ansible_facts['os_family'] == 'Debian'
-
-    - name: Clone PML repo
-      git:
-        repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
-        dest: /tmp/percona-mongolink
-        version: "{{ pml_branch }}"
-        force: yes
-        accept_hostkey: yes
-
-    - name: Manually debug Git clone
-      shell: |
-        set -x
-        export GIT_TERMINAL_PROMPT=0
-        git clone https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git -b {{ pml_branch }} /tmp/percona-mongolink
-      register: git_output
-      ignore_errors: true
-
-    - name: Build PML
-      command: make build
-      args:
-        chdir: /tmp/percona-mongolink
-      environment:
-        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
-        GOROOT: /usr/local/go/
-        GOBIN: /usr/local/go/bin
-
-    - name: Move mongolink binary to /usr/local/bin
-      copy:
-        src: /tmp/percona-mongolink/bin/percona-mongolink
-        dest: /usr/local/bin/
-        mode: '0775'
-        remote_src: true
-
-    - name: Reload systemd
-      systemd:
-        daemon_reload: yes
-
-    - name: Create PML system unit file
-      copy:
-        dest: /etc/systemd/system/pml.service
-        content: |
-          [Unit]
-          Description=Percona MongoLink Service
-          After=network.target
-
-          [Service]
-          ExecStart=/usr/local/bin/percona-mongolink \
-            --source mongodb://{{ source_ip }}:27017 \
-            --target mongodb://{{ destination_ip }}:27017 \
-            --log-level debug \
-            --log-json
-          Restart=on-failure
-          User=root
-
-          [Install]
-          WantedBy=multi-user.target
-        owner: root
-        group: root
-        mode: '0644'
-
-    - name: Reload systemd and start PML service
-      service:
-        daemon_reload: yes
-        name: pml.service
-        state: started
+#    - name: Install Go from official tarball
+#      vars:
+#        go_version: "{{ golang_version }}"
+#        go_arch: >-
+#          {{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}
+#        go_tarball: "go{{ go_version }}.linux-{{ go_arch }}.tar.gz"
+#        go_url: "https://go.dev/dl/{{ go_tarball }}"
+#        go_install_dir: "/usr/local"
+#      block:
+#        - name: Download Go version:{{ go_version }}
+#          get_url:
+#            url: "{{ go_url }}"
+#            dest: "/tmp/{{ go_tarball }}"
+#            mode: '0644'
+#
+#        - name: Extract Go
+#          unarchive:
+#            src: "/tmp/{{ go_tarball }}"
+#            dest: "{{ go_install_dir }}"
+#            remote_src: yes
+#
+#    - name: Check Go is available
+#      command: go version
+#      environment:
+#        PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
+#      register: go_version_output
+#      ignore_errors: true
+#
+#    - name: Install Pymongo
+#      command: python3 -m pip install --break-system-packages pymongo
+#      when: ansible_facts['os_family'] == 'Debian'
+#
+#    - name: Clone PML repo
+#      git:
+#        repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
+#        dest: /tmp/percona-mongolink
+#        version: "{{ pml_branch }}"
+#        force: yes
+#        accept_hostkey: yes
+#
+#    - name: Build PML
+#      command: make build
+#      args:
+#        chdir: /tmp/percona-mongolink
+#      environment:
+#        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
+#        GOROOT: /usr/local/go/
+#        GOBIN: /usr/local/go/bin
+#
+#    - name: Move mongolink binary to /usr/local/bin
+#      copy:
+#        src: /tmp/percona-mongolink/bin/percona-mongolink
+#        dest: /usr/local/bin/
+#        mode: '0775'
+#        remote_src: true
+#
+#    - name: Reload systemd
+#      systemd:
+#        daemon_reload: yes
+#
+#    - name: Create PML system unit file
+#      copy:
+#        dest: /etc/systemd/system/pml.service
+#        content: |
+#          [Unit]
+#          Description=Percona MongoLink Service
+#          After=network.target
+#
+#          [Service]
+#          ExecStart=/usr/local/bin/percona-mongolink \
+#            --source mongodb://{{ source_ip }}:27017 \
+#            --target mongodb://{{ destination_ip }}:27017 \
+#            --log-level debug \
+#            --log-json
+#          Restart=on-failure
+#          User=root
+#
+#          [Install]
+#          WantedBy=multi-user.target
+#        owner: root
+#        group: root
+#        mode: '0644'
+#
+#    - name: Reload systemd and start PML service
+#      service:
+#        daemon_reload: yes
+#        name: pml.service
+#        state: started
