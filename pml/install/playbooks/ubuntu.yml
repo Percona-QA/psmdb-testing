@@ -5,20 +5,12 @@
   become_method: sudo
   tasks:
     - set_fact:
-        # Version of psmdb release to be enabled (psmdb-70)
-        psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-80', true) }}"
-
-    - set_fact:
         # Github token to access mongolink repo
         token: "{{ lookup('env', 'MONGO_REPO_TOKEN') }}"
 
     - set_fact:
-        # Version of psmdb (e.g. 7.0.16)
+        # Version of psmdb (e.g. 6.0, 7.0, 8.0)
         psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
-
-    - set_fact:
-        # Version of mongosh
-        psmdb_mongosh: "{{ psmdb_to_test.split('-')[1].split('.')[0] }}"
 
     - set_fact:
         # Branch of pml branch to test
@@ -31,7 +23,6 @@
     - set_fact:
         # User to log into each AWS Instance
         ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
-
 
     - name: Create keyrings directory
       file:
@@ -62,7 +53,7 @@
         mode: '0644'
       when: ansible_os_family == "Debian"
 
-    - name: Install deps for Debian based systems
+    - name: Install dependencies
       apt:
         name: "{{ packages }}"
         state: present
@@ -118,7 +109,7 @@
             'runc.arm64' if ansible_architecture == 'aarch64' else 'runc.amd64'
           }}
 
-    - name: Download correct runc binary
+    - name: Download correct Runc binary
       get_url:
         url: "{{ runc_url }}"
         dest: /usr/local/bin/runc
@@ -146,7 +137,7 @@
     - name: Create Source PSMDB container
       community.docker.docker_container:
         name: source
-        image: percona/percona-server-mongodb:8.0
+        image: percona/percona-server-mongodb:{{ psmdb_version }}
         state: started
         restart_policy: unless-stopped
         published_ports:
@@ -156,7 +147,7 @@
     - name: Create Destination PSMDB container
       community.docker.docker_container:
         name: destination
-        image: percona/percona-server-mongodb:8.0
+        image: percona/percona-server-mongodb:{{ psmdb_version }}
         state: started
         restart_policy: unless-stopped
         published_ports:
@@ -212,7 +203,7 @@
         - { ip: "{{ destination_ip }}", hostname: "destination" }
       become: true
 
-    - name: Install Go from official tarball on PML host
+    - name: Install Go from official tarball
       vars:
         go_version: "{{ golang_version }}"
         go_arch: >-
