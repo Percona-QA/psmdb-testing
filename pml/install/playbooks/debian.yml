@@ -235,10 +235,10 @@
     - name: Ensure PML Server has started
       ansible.builtin.shell: |
         percona-mongolink status
-      register: mongo_check
+      register: mongolink_check
       retries: 5
       delay: 5
-      until: '"ok": true, in mongo_check.stdout'
+      until: '"\"ok\": true" in mongolink_check.stdout'
 
 
 
