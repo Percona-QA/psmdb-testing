@@ -4,7 +4,7 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: PML-ujammy-${BUILD_NUMBER}-${JOB_NAME}
+  - name: ujammy-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
     image: "${MOLECULE_UJAMMY_AMI:-ami-0ee8244746ec5d6d4}"
     vpc_subnet_id: subnet-0dc7518100473f19d
