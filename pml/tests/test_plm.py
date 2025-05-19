@@ -78,7 +78,7 @@ def pml_status(host, timeout=45):
 
 @pytest.fixture()
 def pml_version(host):
-    """Start and stop pbm-agent service
+    """Capture PLM Version command output
 
     :param host:
     :return:
@@ -135,7 +135,7 @@ def wait_for_repl_stage(host, timeout=3600, interval=1, stable_duration=2):
     return False
 
 def test_plm_binary(host):
-    """Check pbm binary
+    """Check PLM binary
     """
     file = host.file("/tmp/percona-mongolink/bin/percona-mongolink")
     assert file.user == "root"
@@ -146,7 +146,7 @@ def test_plm_binary(host):
         pytest.xfail("Possible xfail")
 
 def test_pml_version(pml_version):
-    """Check that pbm version is not empty strings
+    """Check that PLM version is correct
 
     :param host:
     :return:
@@ -156,7 +156,7 @@ def test_pml_version(pml_version):
     assert re.match(pattern, pml_version.stderr)
 
 def test_pml_help(host):
-    """Check that pbm have help message
+    """Check that PLM help command works
 
     :param host:
     :return:
@@ -165,6 +165,7 @@ def test_pml_help(host):
     assert result.rc == 0, result.stdout
 
 def test_pml_transfer(host):
+    """Test basic PLM Transfer functionality"""
     assert pml_add_db_row(host)
     assert pml_start(host)
     assert wait_for_repl_stage(host)
