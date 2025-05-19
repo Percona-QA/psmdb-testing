@@ -1,0 +1,20 @@
+FROM alpine
+USER root
+ENV EASYRSA_DN=org
+ENV EASYRSA_REQ_COUNTRY=US
+ENV EASYRSA_REQ_PROVINCE=California
+ENV EASYRSA_REQ_CITY=SanFrancisco
+ENV EASYRSA_REQ_ORG=Percona
+ENV EASYRSA_REQ_EMAIL=pml@percona.com
+RUN apk add --no-cache bash git openssl && cd ~ && \
+    git clone https://github.com/OpenVPN/easy-rsa.git && \
+    cd easy-rsa/easyrsa3/ && \
+    ./easyrsa init-pki && \
+    ./easyrsa --req-cn=Percona --batch build-ca nopass
+WORKDIR /root/easy-rsa/easyrsa3
+RUN ./easyrsa --req-ou=server --subject-alt-name=DNS:localhost,DNS:rs101,DNS:rs201,IP:127.0.0.1 --batch build-server-full psmdb nopass && \
+    ./easyrsa --req-ou=client --batch build-client-full pml nopass && \
+    mkdir -p /etc/x509 && \
+    cp pki/ca.crt /etc/x509/ && \
+    cat pki/issued/psmdb.crt pki/private/psmdb.key > /etc/x509/psmdb.pem && \
+    cat pki/issued/pml.crt pki/private/pml.key > /etc/x509/pml.pem
