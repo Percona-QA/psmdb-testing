@@ -4,7 +4,7 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: debian11-${BUILD_NUMBER}-${JOB_NAME}
+  - name: PML-debian11-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
     image: "${MOLECULE_DEBIAN11_AMI:-ami-05f9dcaa9ddb9a15e}"
     vpc_subnet_id: subnet-0dc7518100473f19d

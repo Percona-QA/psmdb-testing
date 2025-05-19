@@ -4,7 +4,7 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: unoble-arm-${BUILD_NUMBER}-${JOB_NAME}
+  - name: PML-unoble-arm-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
     image: "${MOLECULE_UNOBLE_ARM_AMI:-ami-0d34f4864e58df827}"
     vpc_subnet_id: subnet-0dc7518100473f19d

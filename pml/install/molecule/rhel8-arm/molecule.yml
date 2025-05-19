@@ -4,7 +4,7 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: rhel8-arm-${BUILD_NUMBER}-${JOB_NAME}
+  - name: PML-rhel8-arm-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
     image: "${MOLECULE_RHEL8_ARM_AMI:-ami-0bb199dd39edd7d71}"
     vpc_subnet_id: subnet-0dc7518100473f19d
