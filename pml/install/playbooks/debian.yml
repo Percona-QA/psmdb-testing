@@ -246,11 +246,11 @@
       command: python3 -m pip install --break-system-packages pymongo
       when: ansible_facts['os_family'] == 'Debian'
 
-#    - name: Clone PML repo
-#      git:
-#        repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
-#        dest: /tmp/percona-mongolink
-#        version: "{{ pml_branch }}"
+    - name: Clone PML repo
+      git:
+        repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
+        dest: /tmp/percona-mongolink
+        version: "{{ pml_branch }}"
 
     - name: Build PML
       command: make build
