@@ -10,7 +10,7 @@
 
     - set_fact:
         # Version of psmdb (e.g. 6.0, 7.0, 8.0)
-        psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
+        psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('8.0', true) }}"
 
     - set_fact:
         # Branch of pml branch to test
