@@ -148,7 +148,7 @@
     - name: Clone PML repo
       timeout: 180
       git:
-        repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
+        repo: 'https://{{ token }}@github.com/percona/percona-mongolink.git'
         dest: /tmp/percona-mongolink
         version: "{{ pml_branch }}"
       when: inventory_hostname == "jenkins-pml-mongolink"
