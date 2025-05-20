@@ -55,7 +55,7 @@ def create_collection_types(db, create_ts=False, drop_before_creation=False):
     collections_metadata.append({"collection": fr_collation_collection, "capped": False, "timeseries": False})
 
     # Capped Collection
-    db.create_collection("capped_logs", capped=True, size=1024 * 1024, max=20)
+    db.create_collection("capped_logs", capped=True, size=1024 * 1024, max=200)
     capped_collection = db.capped_logs
     capped_collection.insert_many([
         {"timestamp": datetime.datetime.now(datetime.timezone.utc), "log": "Test log 1"},

@@ -10,15 +10,15 @@ from mongolink import Mongolink
 from metrics_collector import metrics_collector
 from data_generator import generate_dummy_data
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def dstRS():
     return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]},mongod_extra_args='--setParameter enableTestCommands=1')
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def srcRS():
     return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]},mongod_extra_args='--setParameter enableTestCommands=1 --oplogSize 20')
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def mlink(srcRS,dstRS):
     return Mongolink('mlink',srcRS.mlink_connection + '&appName=mongolink', dstRS.mlink_connection + '&appName=mongolink')
 
