@@ -12,11 +12,11 @@ from cluster import Cluster
 from mongolink import Mongolink
 from data_integrity_check import compare_data_sharded
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def docker_client():
     return docker.from_env()
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def src_config():
     return { "mongos": "mongos1",
              "configserver":
@@ -26,7 +26,7 @@ def src_config():
                             {"_id": "rs2", "members": [{"host":"rs201"},{"host": "rs202"},{"host": "rs203" }]}
                       ]}
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def dst_config():
     return { "mongos": "mongos2",
              "configserver":
@@ -36,15 +36,15 @@ def dst_config():
                             {"_id": "rs4", "members": [{"host":"rs401"},{"host": "rs402"},{"host": "rs403" }]}
                       ]}
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def srcCluster(src_config):
     return Cluster(src_config)
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def dstCluster(dst_config):
     return Cluster(dst_config)
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def mlink(srcCluster,dstCluster):
     return Mongolink('mlink',srcCluster.mlink_connection, dstCluster.mlink_connection)
 

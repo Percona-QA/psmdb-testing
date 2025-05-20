@@ -6,15 +6,15 @@ import docker
 from cluster import Cluster
 from data_integrity_check import compare_data_rs
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def docker_client():
     return docker.from_env()
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def dstRS():
     return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]})
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def srcRS():
     return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]})
 
