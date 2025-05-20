@@ -4,7 +4,7 @@
   become_method: sudo
   tasks:
     - set_fact:
-      ssh_pubkey: "{{ lookup('env', 'SSH_PUBKEY') | default('none', true) }}"
+        ssh_pubkey: "{{ lookup('env', 'SSH_PUBKEY') | default('none', true) }}"
 
     - set_fact:
         ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
