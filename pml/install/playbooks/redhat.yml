@@ -44,6 +44,18 @@
           - git
       when: ansible_os_family == "RedHat"
 
+    - name: Install Percona Release
+      include_tasks: ../../../tasks/install_percona_release.yml
+
+    - name: Setup pml repo with percona-release
+      command: percona-release enable pml {{ lookup('env', 'install_repo') }}
+
+    - name: Install PML
+      yum:
+        name: percona-mongolink
+        update_cache: yes
+        state: latest
+
     - name: Remove podman-docker if present
       yum:
         name: podman-docker
@@ -196,91 +208,15 @@
         - { ip: "{{ destination_ip }}", hostname: "destination" }
       become: true
 
-    - name: Install Go from official tarball
-      vars:
-        go_version: "{{ golang_version }}"
-        go_arch: >-
-          {{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}
-        go_tarball: "go{{ go_version }}.linux-{{ go_arch }}.tar.gz"
-        go_url: "https://go.dev/dl/{{ go_tarball }}"
-        go_install_dir: "/usr/local"
-      block:
-        - name: Download Go version:{{ go_version }}
-          get_url:
-            url: "{{ go_url }}"
-            dest: "/tmp/{{ go_tarball }}"
-            mode: '0644'
+    - name: Start PML Server
+      ansible.builtin.shell: "percona-mongolink --source mongodb://{{ source_ip }}:27017 --target mongodb://{{ destination_ip }}:27017  > /dev/null 2>&1 &"
+      async: 1
+      poll: 0
 
-        - name: Extract Go
-          unarchive:
-            src: "/tmp/{{ go_tarball }}"
-            dest: "{{ go_install_dir }}"
-            remote_src: yes
-
-    - name: Check Go is available
-      command: go version
-      environment:
-        PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
-      register: go_version_output
-      ignore_errors: true
-
-    - name: Install Pymongo
-      pip:
-        name:
-          - pymongo
-      when: ansible_facts['os_family'] == 'RedHat'
-
-    - name: Clone PML repo
-      git:
-        repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
-        dest: /tmp/percona-mongolink
-        version: "{{ pml_branch }}"
-
-    - name: Build PML
-      command: make build
-      args:
-        chdir: /tmp/percona-mongolink
-      environment:
-        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
-        GOROOT: /usr/local/go/
-        GOBIN: /usr/local/go/bin
-
-    - name: Move mongolink binary to /usr/local/bin
-      copy:
-        src: /tmp/percona-mongolink/bin/percona-mongolink
-        dest: /usr/local/bin/
-        mode: '0775'
-        remote_src: true
-
-    - name: Reload systemd
-      systemd:
-        daemon_reload: yes
-
-    - name: Create PML system unit file
-      copy:
-        dest: /etc/systemd/system/pml.service
-        content: |
-          [Unit]
-          Description=Percona MongoLink Service
-          After=network.target
-
-          [Service]
-          ExecStart=/usr/local/bin/percona-mongolink \
-            --source mongodb://{{ source_ip }}:27017 \
-            --target mongodb://{{ destination_ip }}:27017 \
-            --log-level debug \
-            --log-json
-          Restart=on-failure
-          User=root
-
-          [Install]
-          WantedBy=multi-user.target
-        owner: root
-        group: root
-        mode: '0644'
-
-    - name: Reload systemd and start PML service
-      service:
-        daemon_reload: yes
-        name: pml.service
-        state: started
+    - name: Ensure PML Server has started
+      ansible.builtin.shell: |
+        percona-mongolink status
+      register: mongolink_check
+      retries: 5
+      delay: 5
+      until: '"\"ok\": true" in mongolink_check.stdout'
