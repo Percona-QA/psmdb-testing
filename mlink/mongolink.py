@@ -392,7 +392,12 @@ class Mongolink:
             try:
                 collection_names = dst_client["percona_mongolink"].list_collection_names()
                 if "checkpoints" in collection_names:
-                    return True
+                    doc = dst_client["percona_mongolink"]["checkpoints"].find_one({
+                        "_id": "mongolink",
+                        "data.clone.finishTime": {"$exists": True}
+                    })
+                    if doc:
+                        return True
                 time.sleep(1)
             except Exception as e:
                 Cluster.log(f"Error: Failed while checking for checkpoints collection: {e}")

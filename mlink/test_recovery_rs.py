@@ -127,6 +127,7 @@ def test_rs_mlink_PML_T29(reset_state, srcRS, dstRS, mlink):
         result = mlink.wait_for_repl_stage()
         assert result is True, "Failed to start replication stage"
         result = mlink.pause()
+        mlink.restart()
         assert result is True, "Replication is paused"
         repl_test_db, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         time.sleep(5)
@@ -152,9 +153,9 @@ def test_rs_mlink_PML_T29(reset_state, srcRS, dstRS, mlink):
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
     mlink_error, error_logs = mlink.check_mlink_errors()
-    expected_error = "cannot pause: Change Replication is not runnning"
+    expected_errors = ["Change Replication is not runnning", "detected concurrent process"]
     if not mlink_error:
-        unexpected = [line for line in error_logs if expected_error not in line]
+        unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
         if unexpected:
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 

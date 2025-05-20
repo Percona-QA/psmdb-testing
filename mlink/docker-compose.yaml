@@ -27,8 +27,10 @@ services:
   mlink:
     image: mlink/local
     build:
-      dockerfile: psmdb-testing/mlink/Dockerfile-mlink
-      context: ../../
+      dockerfile: Dockerfile-mlink
+      args:
+        - MLINK_BRANCH=${MLINK_BRANCH:-main}
+        - MAKE_TARGET=${MAKE_TARGET:-build}
     depends_on:
       - easyrsa
 

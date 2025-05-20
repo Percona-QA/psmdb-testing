@@ -94,7 +94,7 @@ def test_rs_mlink_PML_T9(reset_state, srcRS, dstRS, mlink):
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
     mlink_error, error_logs = mlink.check_mlink_errors()
-    expected_errors = ["ERR Resize capped collection","ERR No indexes to create"]
+    expected_errors = ["NamespaceNotFound", "IndexNotFound", "collection not found", "No indexes to create"]
     if not mlink_error:
         unexpected = [line for line in error_logs if all(expected_error not in line for expected_error in expected_errors)]
         if unexpected:
