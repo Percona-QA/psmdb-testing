@@ -151,15 +151,6 @@ def stop_plm_service(host):
     assert is_active.stdout.strip() == "inactive", f"PLM service is still active: {is_active.stdout}"
     return stop_plm
 
-def test_pml_transfer(host):
-    """Test basic PLM Transfer functionality"""
-    time.sleep(5)
-    assert pml_add_db_row(host)
-    assert pml_start(host)
-    assert wait_for_repl_stage(host)
-    assert "testUser" in pml_confirm_db_row(host).stdout
-    assert pml_finalize(host)
-
 def start_plm_service(host):
     start_plm = host.run("sudo systemctl start percona-mongolink")
     assert start_plm.rc == 0, start_plm.stdout
@@ -214,4 +205,13 @@ def test_start_pml(host):
 
 def test_restart_pml(host):
     restart_plm_service(host)
+
+def test_pml_transfer(host):
+    """Test basic PLM Transfer functionality"""
+    time.sleep(10)
+    assert pml_add_db_row(host)
+    assert pml_start(host)
+    assert wait_for_repl_stage(host)
+    assert "testUser" in pml_confirm_db_row(host).stdout
+    assert pml_finalize(host)
 
