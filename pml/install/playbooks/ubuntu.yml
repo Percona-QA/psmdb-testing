@@ -9,6 +9,10 @@
         psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('8.0', true) }}"
 
     - set_fact:
+        # Branch of pml branch to test
+        pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('latest', true) }}"
+
+    - set_fact:
         # User to log into each AWS Instance
         ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
 
@@ -72,9 +76,9 @@
 
     - name: Install PML
       apt:
-        name: percona-mongolink
+        name: percona-mongolink={{ pml_branch }}
         update_cache: yes
-        state: latest
+        state: present
 
     - name: Update apt cache
       apt:
