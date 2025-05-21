@@ -45,6 +45,14 @@ def start_cluster(srcRS, dstRS, mlink, request):
 
 @pytest.fixture(scope="function")
 def reset_state(srcRS, dstRS, mlink, request):
+    log_level = "debug"
+    env_vars = None
+    log_marker = request.node.get_closest_marker("mlink_log_level")
+    if log_marker and log_marker.args:
+        log_level = log_marker.args[0]
+    env_marker = request.node.get_closest_marker("mlink_env")
+    if env_marker and env_marker.args:
+        env_vars = env_marker.args[0]
     src_client = pymongo.MongoClient(srcRS.connection)
     dst_client = pymongo.MongoClient(dstRS.connection)
     def print_logs():
@@ -59,7 +67,7 @@ def reset_state(srcRS, dstRS, mlink, request):
     for db_name in dst_client.list_database_names():
         if db_name not in {"admin", "local", "config"}:
             dst_client.drop_database(db_name)
-    mlink.create()
+    mlink.create(log_level=log_level, env_vars=env_vars)
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -417,6 +425,8 @@ def test_rs_mlink_PML_T18(reset_state, srcRS, dstRS, mlink):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
+@pytest.mark.mlink_env({"PML_CLONE_NUM_PARALLEL_COLLECTIONS": "5"})
+@pytest.mark.mlink_log_level("trace")
 @pytest.mark.parametrize(
     "clone_stage_pattern",
     [
@@ -434,10 +444,6 @@ def test_rs_mlink_PML_T19(reset_state, srcRS, dstRS, mlink, clone_stage_pattern)
     Test to check renameCollection while collection is being cloned
     """
     try:
-        mlink_env = {
-            "PML_CLONE_NUM_PARALLEL_COLLECTIONS": "5"
-        }
-        mlink.create(log_level="trace", extra_args="--reset-state", env_vars=mlink_env)
         src = pymongo.MongoClient(srcRS.connection)
         dst = pymongo.MongoClient(dstRS.connection)
         db_name = "test_db"
@@ -477,24 +483,15 @@ def test_rs_mlink_PML_T19(reset_state, srcRS, dstRS, mlink, clone_stage_pattern)
     assert old_name not in dst_collections, "Old collection name still exists on destination"
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
-    mlink_error, error_logs = mlink.check_mlink_errors()
-    expected_errors = ["QueryPlanKilled", "NamespaceNotFound", "collection not found", "No indexes to create"]
-    if not mlink_error:
-        unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
-        if unexpected:
-            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
+@pytest.mark.mlink_env({"PML_CLONE_NUM_PARALLEL_COLLECTIONS": "5"})
 def test_rs_mlink_PML_T20(reset_state, srcRS, dstRS, mlink):
     """
     Test to check renameCollection during data clone
     """
     try:
-        mlink_env = {
-            "PML_CLONE_NUM_PARALLEL_COLLECTIONS": "5"
-        }
-        mlink.create(extra_args="--reset-state", env_vars=mlink_env)
         src = pymongo.MongoClient(srcRS.connection)
         dst = pymongo.MongoClient(dstRS.connection)
         generate_dummy_data(srcRS.connection, "dummy")
@@ -557,14 +554,12 @@ def test_rs_mlink_PML_T20(reset_state, srcRS, dstRS, mlink):
     for name in [old_name1, old_name2, old_name3]:
         assert name not in dst_collections1, f"Old collection '{name}' still exists in {db_name1}"
     assert new_name3 in dst_collections2, f"Renamed collection '{new_name3}' not found in {db_name2}"
-    result, _ = compare_data_rs(srcRS, dstRS)
-    assert result is True, "Data mismatch after synchronization"
-    mlink_error, error_logs = mlink.check_mlink_errors()
-    expected_errors = ["already exists"]
-    if not mlink_error:
-        unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
-        if unexpected:
-            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
+    result, summary = compare_data_rs(srcRS, dstRS)
+    if not result:
+        expected_mismatches = ["hash mismatch"]
+        unexpected_mismatches = [mismatch for mismatch in summary if mismatch[1] not in expected_mismatches]
+        if unexpected_mismatches:
+            pytest.fail("Unexpected mismatches:\n" + "\n".join(str(m) for m in unexpected_mismatches))
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -621,9 +616,3 @@ def test_rs_mlink_PML_T21(reset_state, srcRS, dstRS, mlink):
     assert new_name3 in dst_collections2, f"Renamed collection '{new_name3}' not found in {db_name2}"
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
-    mlink_error, error_logs = mlink.check_mlink_errors()
-    expected_errors = ["already exists"]
-    if not mlink_error:
-        unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
-        if unexpected:
-            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))

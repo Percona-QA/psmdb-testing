@@ -36,7 +36,7 @@ class Mongolink:
         Cluster.log(f"Starting mlink to sync from '{self.src}' → '{self.dst}'...")
         client = docker.from_env()
 
-        cmd = f"percona-mongolink --source {self.src} --target {self.dst} --log-level={log_level} --no-color {extra_args}".strip()
+        cmd = f"pml --source {self.src} --target {self.dst} --log-level={log_level} --no-color {extra_args}".strip()
         container = client.containers.run(
             image=self.mlink_image,
             name=self.name,
@@ -133,11 +133,11 @@ class Mongolink:
     def restart(self, timeout=60):
         if self.container:
             try:
+                start_log_time = int(time.time())
                 self.container.stop()
                 time.sleep(2)
                 self.container.start()
-                time.sleep(2)
-                log_stream = self.container.logs(stream=True, follow=True, since=int(time.time()))
+                log_stream = self.container.logs(stream=True, follow=True, since=start_log_time)
                 start_time = time.time()
                 for line in log_stream:
                     log_line = line.decode('utf-8').strip()
@@ -177,9 +177,13 @@ class Mongolink:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
-    def resume(self):
+    def resume(self, from_failure=False):
         try:
-            exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/resume")
+            if from_failure:
+                cmd = 'curl -s -d \'{"fromFailure": true}\' -X POST http://localhost:2242/resume'
+            else:
+                cmd = 'curl -s -X POST http://localhost:2242/resume'
+            exec_result = self.container.exec_run(cmd)
             response = exec_result.output.decode("utf-8").strip()
             status_code = exec_result.exit_code
             if status_code == 0 and response:

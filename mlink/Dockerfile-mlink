@@ -1,8 +1,8 @@
 ARG GO_VERSION=latest
+FROM easyrsa/local AS easyrsa
+FROM golang:${GO_VERSION}
 ARG MLINK_BRANCH=main
 ARG MAKE_TARGET=build
-FROM easyrsa/local AS easyrsa
-FROM golang:$GO_VERSION
 COPY --from=easyrsa /etc/x509/ca.crt /etc/pykmip/ca.crt
 COPY --from=easyrsa /etc/x509/ /etc/x509/
 RUN apt update && apt -y install curl socat git && \
