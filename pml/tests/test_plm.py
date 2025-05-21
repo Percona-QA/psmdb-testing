@@ -1,8 +1,6 @@
 import os
 import re
 import time
-import distro
-from pathlib import Path
 
 import pytest
 import json
@@ -164,7 +162,7 @@ def start_plm_service(host):
 #     """
 #     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
 
-    assert re.match(pattern, pml_version.stderr)
+# assert re.match(pattern, pml_version.stderr)
 
 def test_plm_binary(host):
     """Check PLM binary
@@ -206,6 +204,7 @@ def test_restart_pml(host):
 
 def test_pml_transfer(host):
     """Test basic PLM Transfer functionality"""
+    time.sleep()
     assert pml_add_db_row(host)
     assert pml_start(host)
     assert wait_for_repl_stage(host)
