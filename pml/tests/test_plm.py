@@ -208,6 +208,7 @@ def test_restart_pml(host):
 
 def test_pml_transfer(host):
     """Test basic PLM Transfer functionality"""
+    time.sleep(5)
     assert pml_add_db_row(host)
     assert pml_start(host)
     assert wait_for_repl_stage(host)
