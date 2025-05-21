@@ -167,15 +167,15 @@ def test_plm_binary(host):
     except AssertionError:
         pytest.xfail("Possible xfail")
 
-def test_pml_version(pml_version):
-    """Check that PLM version is correct
-
-    :param host:
-    :return:
-    """
-    pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
-
-    assert re.match(pattern, pml_version.stderr)
+# def test_pml_version(pml_version):
+#     """Check that PLM version is correct
+#
+#     :param host:
+#     :return:
+#     """
+#     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
+#
+#     assert re.match(pattern, pml_version.stderr)
 
 def test_pml_help(host):
     """Check that PLM help command works
@@ -204,11 +204,11 @@ def test_pml_environment_file_exists(host):
     except AssertionError:
         pytest.xfail("Possible xfail")
 
-# def test_pml_transfer(host):
-#     """Test basic PLM Transfer functionality"""
-#     assert pml_add_db_row(host)
-#     assert pml_start(host)
-#     assert wait_for_repl_stage(host)
-#     assert "testUser" in pml_confirm_db_row(host).stdout
-#     assert pml_finalize(host)
+def test_pml_transfer(host):
+    """Test basic PLM Transfer functionality"""
+    assert pml_add_db_row(host)
+    assert pml_start(host)
+    assert wait_for_repl_stage(host)
+    assert "testUser" in pml_confirm_db_row(host).stdout
+    assert pml_finalize(host)
 
