@@ -213,16 +213,3 @@
         - { ip: "{{ source_ip }}", hostname: "source" }
         - { ip: "{{ destination_ip }}", hostname: "destination" }
       become: true
-
-    - name: Start PML Server
-      ansible.builtin.shell: "percona-mongolink --source mongodb://172.17.0.2:27017 --target mongodb://172.17.0.3:27017  > /dev/null 2>&1 &"
-      async: 1
-      poll: 0
-
-    - name: Ensure PML Server has started
-      ansible.builtin.shell: |
-        percona-mongolink status
-      register: mongolink_check
-      retries: 5
-      delay: 5
-      until: '"\"ok\": true" in mongolink_check.stdout'
