@@ -9,12 +9,21 @@ import testinfra.utils.ansible_runner
 pml = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
-def pml_start(host):
+def pml_start(host, timeout=30, interval=2):
+
+    start = time.time()
+    while time.time() - start < timeout:
+        result = host.run("percona-mongolink start")
+        output = result.stdout.strip()
+
+        if "connection refused" not in output:
+            print("PML service has started.")
+
+        print(f"PML service has not start yet: {output}")
+        time.sleep(interval)
+
     try:
         result = host.run("percona-mongolink start")
-        print(f"STDOUT: '{result.stdout}'")
-        print(f"STDERR: '{result.stderr}'")
-        print(f"RC: {result.rc}")
         output = json.loads(result.stdout)
 
         if output:
@@ -208,7 +217,7 @@ def test_restart_pml(host):
 
 def test_pml_transfer(host):
     """Test basic PLM Transfer functionality"""
-    time.sleep(30)
+
     assert pml_add_db_row(host)
     assert pml_start(host)
     assert wait_for_repl_stage(host)
