@@ -11,7 +11,7 @@ pml = testinfra.utils.ansible_runner.AnsibleRunner(
 
 def pml_start(host):
     try:
-        output = json.loads(host.check_output("curl -s -X POST http://localhost:2242/start -d '{}'"))
+        output = json.loads(host.check_output("percona-mongolink start"))
 
         if output:
             try:
@@ -35,7 +35,7 @@ def pml_start(host):
 
 def pml_finalize(host):
     try:
-        output = json.loads(host.check_output("curl -s -X POST http://localhost:2242/finalize -d '{}'"))
+        output = json.loads(host.check_output("percona-mongolink finalize"))
 
         if output:
             try:
@@ -60,7 +60,7 @@ def pml_finalize(host):
 
 def pml_status(host, timeout=45):
     try:
-        output = host.check_output(f"curl -m {timeout} -s -X GET http://localhost:2242/status -d '{{}}'")
+        output = host.check_output(f"percona-mongolink status")
         json_output = json.loads(output)
         print(output)
 
