@@ -177,9 +177,17 @@ class Mongolink:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
-    def resume(self):
+    def resume(self, from_failure=False):
         try:
-            exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/resume")
+            if from_failure:
+                cmd = (
+                    'curl -s -H "Content-Type: application/json" '
+                    '-d \'{"fromFailure": true}\' '
+                    '-X POST http://localhost:2242/resume'
+                )
+            else:
+                cmd = 'curl -s -X POST http://localhost:2242/resume'
+            exec_result = self.container.exec_run(cmd)
             response = exec_result.output.decode("utf-8").strip()
             status_code = exec_result.exit_code
             if status_code == 0 and response:
