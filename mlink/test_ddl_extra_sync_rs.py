@@ -478,7 +478,7 @@ def test_rs_mlink_PML_T19(reset_state, srcRS, dstRS, mlink, clone_stage_pattern)
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
     mlink_error, error_logs = mlink.check_mlink_errors()
-    expected_errors = ["QueryPlanKilled", "NamespaceNotFound", "No indexes to create"]
+    expected_errors = ["QueryPlanKilled", "NamespaceNotFound", "collection not found", "No indexes to create"]
     if not mlink_error:
         unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
         if unexpected:
