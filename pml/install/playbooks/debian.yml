@@ -213,3 +213,24 @@
         - { ip: "{{ source_ip }}", hostname: "source" }
         - { ip: "{{ destination_ip }}", hostname: "destination" }
       become: true
+
+    - name: Update PML_SOURCE_URI
+      lineinfile:
+        path: /etc/default/percona-mongolink
+        regexp: '^PML_SOURCE_URI='
+        line: 'PML_SOURCE_URI="mongodb://{{ source_ip }}:27017"'
+        backrefs: yes
+
+    - name: Update PML_TARGET_URI
+      lineinfile:
+        path: /etc/default/percona-mongolink
+        regexp: '^PML_TARGET_URI='
+        line: 'PML_TARGET_URI="mongodb://{{ destination_ip }}:28017"'
+        backrefs: yes
+
+    - name: Start PML service
+      service:
+        daemon_reload: yes
+        name: percona-mongolink
+        state: started
+        enabled: yes
