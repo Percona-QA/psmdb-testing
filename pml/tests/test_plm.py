@@ -1,6 +1,5 @@
 import os
 import re
-import time
 
 import pytest
 import json
@@ -11,10 +10,12 @@ pml = testinfra.utils.ansible_runner.AnsibleRunner(
 
 def pml_start(host):
     try:
-        output = host.run("percona-mongolink start")
-        print(f"STDOUT: '{output.stdout}'")
-        print(f"STDERR: '{output.stderr}'")
-        print(f"RC: {output.rc}")
+        result = host.run("percona-mongolink start")
+        print(f"STDOUT: '{result.stdout}'")
+        print(f"STDERR: '{result.stderr}'")
+        print(f"RC: {result.rc}")
+
+        output = json.loads(result.stdout)
 
         if output:
             try:
@@ -207,7 +208,6 @@ def start_plm_service(host):
 
 def test_pml_transfer(host):
     """Test basic PLM Transfer functionality"""
-    time.sleep(5)
     assert pml_add_db_row(host)
     assert pml_start(host)
     assert wait_for_repl_stage(host)
