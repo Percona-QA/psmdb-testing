@@ -201,15 +201,23 @@
         - { ip: "{{ destination_ip }}", hostname: "destination" }
       become: true
 
-    - name: Start PML Server
-      ansible.builtin.shell: "percona-mongolink --source mongodb://{{ source_ip }}:27017 --target mongodb://{{ destination_ip }}:27017  > /dev/null 2>&1 &"
-      async: 1
-      poll: 0
+    - name: Update PML_SOURCE_URI
+      lineinfile:
+        path: /etc/default/percona-mongolink
+        regexp: '^PML_SOURCE_URI='
+        line: 'PML_SOURCE_URI="mongodb://{{ source_ip }}:27017"'
+        backrefs: yes
 
-    - name: Ensure PML Server has started
-      ansible.builtin.shell: |
-        percona-mongolink status
-      register: mongolink_check
-      retries: 5
-      delay: 5
-      until: '"\"ok\": true" in mongolink_check.stdout'
+    - name: Update PML_TARGET_URI
+      lineinfile:
+        path: /etc/default/percona-mongolink
+        regexp: '^PML_TARGET_URI='
+        line: 'PML_TARGET_URI="mongodb://{{ destination_ip }}:27017"'
+        backrefs: yes
+
+    - name: Start PML service
+      service:
+        daemon_reload: yes
+        name: percona-mongolink
+        state: started
+        enabled: yes
