@@ -5,20 +5,8 @@
   become_method: sudo
   tasks:
     - set_fact:
-        # Github token to access mongolink repo
-        token: "{{ lookup('env', 'MONGO_REPO_TOKEN') }}"
-
-    - set_fact:
         # Version of psmdb (e.g. 6.0, 7.0, 8.0)
         psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('8.0', true) }}"
-
-    - set_fact:
-        # Branch of pml branch to test
-        pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('main', true) }}"
-
-    - set_fact:
-        # Go Version
-        golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.2', true) }}"
 
     - set_fact:
         # User to log into each AWS Instance
