@@ -225,7 +225,7 @@
       lineinfile:
         path: /etc/default/percona-mongolink
         regexp: '^PML_TARGET_URI='
-        line: 'PML_TARGET_URI="mongodb://{{ destination_ip }}:28017"'
+        line: 'PML_TARGET_URI="mongodb://{{ destination_ip }}:27017"'
         backrefs: yes
 
     - name: Start PML service
