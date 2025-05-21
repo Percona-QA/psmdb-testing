@@ -1,6 +1,8 @@
 import os
 import re
 import time
+import distro
+from pathlib import Path
 
 import pytest
 import json
@@ -138,6 +140,16 @@ def restart_plm_service(host):
     assert result.rc == 0, result.stdout
     return result
 
+def stop_plm_service(host):
+    result = host.run("systemctl stop percona-mongolink")
+    assert result.rc == 0, result.stdout
+    return result
+
+def start_plm_service(host):
+    result = host.run("systemctl start percona-mongolink")
+    assert result.rc == 0, result.stdout
+    return result
+
 def test_plm_binary(host):
     """Check PLM binary
     """
@@ -169,8 +181,16 @@ def test_pml_help(host):
     assert result.rc == 0, result.stdout
 
 def test_restart_pml(host):
-    result = restart_plm_service(host)
-    result.stdout
+    restart_plm_service(host)
+
+def test_stop_pml(host):
+    stop_plm_service(host)
+
+def test_start_pml(host):
+    stop_plm_service(host)
+
+def test_pml_environment_file(host):
+        assert Path("/lib/systemd/system/percona-mongolink.service").exists()
 
 def test_pml_transfer(host):
     """Test basic PLM Transfer functionality"""
