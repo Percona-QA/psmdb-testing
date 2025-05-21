@@ -62,7 +62,6 @@ def pml_status(host, timeout=45):
     try:
         output = host.check_output(f"percona-mongolink status")
         json_output = json.loads(output)
-        print(output)
 
         if not json_output.get("ok", False):
             return {"success": False, "error": "mlink status command returned ok: false"}
@@ -134,6 +133,11 @@ def wait_for_repl_stage(host, timeout=3600, interval=1, stable_duration=2):
     print("Error: Timeout reached while waiting for initial sync to complete")
     return False
 
+def restart_plm_service(host):
+    result = host.run("systemctl restart percona-mongolink")
+    assert result.rc == 0, result.stdout
+    return result
+
 def test_plm_binary(host):
     """Check PLM binary
     """
@@ -163,6 +167,10 @@ def test_pml_help(host):
     """
     result = host.run("percona-mongolink help")
     assert result.rc == 0, result.stdout
+
+def test_restart_pml(host):
+    result = restart_plm_service(host)
+    result.stdout
 
 def test_pml_transfer(host):
     """Test basic PLM Transfer functionality"""

@@ -24,7 +24,7 @@
       user:
         name: "{{ ssh_user }}"
         shell: /bin/bash
-        groups: ubuntu
+        groups: sudo
         append: yes
       when:
         - ssh_user != "none"
