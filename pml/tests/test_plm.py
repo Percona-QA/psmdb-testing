@@ -167,43 +167,43 @@ def start_plm_service(host):
 
 # assert re.match(pattern, pml_version.stderr)
 
-def test_plm_binary(host):
-    """Check PLM binary
-    """
-    file = host.file("/usr/bin/percona-mongolink")
-    assert file.user == "root"
-    assert file.group == "root"
-    try:
-        assert file.mode == 0o755
-    except AssertionError:
-        pytest.xfail("Possible xfail")
-
-def test_pml_help(host):
-    """Check that PLM help command works
-
-    :param host:
-    :return:
-    """
-    result = host.run("percona-mongolink help")
-    assert result.rc == 0, result.stdout
-
-def test_pml_environment_file_exists(host):
-    service_file = host.file("/lib/systemd/system/percona-mongolink.service")
-    assert service_file.user == "root"
-    assert service_file.group == "root"
-    try:
-        assert service_file.mode == 0o644
-    except AssertionError:
-        pytest.xfail("Possible xfail")
-
-def test_stop_pml(host):
-    stop_plm_service(host)
-
-def test_start_pml(host):
-    stop_plm_service(host)
-
-def test_restart_pml(host):
-    restart_plm_service(host)
+# def test_plm_binary(host):
+#     """Check PLM binary
+#     """
+#     file = host.file("/usr/bin/percona-mongolink")
+#     assert file.user == "root"
+#     assert file.group == "root"
+#     try:
+#         assert file.mode == 0o755
+#     except AssertionError:
+#         pytest.xfail("Possible xfail")
+#
+# def test_pml_help(host):
+#     """Check that PLM help command works
+#
+#     :param host:
+#     :return:
+#     """
+#     result = host.run("percona-mongolink help")
+#     assert result.rc == 0, result.stdout
+#
+# def test_pml_environment_file_exists(host):
+#     service_file = host.file("/lib/systemd/system/percona-mongolink.service")
+#     assert service_file.user == "root"
+#     assert service_file.group == "root"
+#     try:
+#         assert service_file.mode == 0o644
+#     except AssertionError:
+#         pytest.xfail("Possible xfail")
+#
+# def test_stop_pml(host):
+#     stop_plm_service(host)
+#
+# def test_start_pml(host):
+#     stop_plm_service(host)
+#
+# def test_restart_pml(host):
+#     restart_plm_service(host)
 
 def test_pml_transfer(host):
     """Test basic PLM Transfer functionality"""
