@@ -142,6 +142,7 @@ def restart_plm_service(host):
     assert result.rc == 0, result.stdout
     is_active = host.run("sudo systemctl show -p SubState percona-mongolink")
     assert is_active.stdout.strip() == "SubState=running", f"PLM service is not running: {is_active.stdout}"
+    wait_for_port_open(host)
     return result
 
 def stop_plm_service(host):
@@ -167,6 +168,19 @@ def start_plm_service(host):
 #     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
 #
 # assert re.match(pattern, pml_version.stderr)
+
+def wait_for_port_open(host, port=2242, timeout=30):
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            # Using testinfra's host.socket
+            if host.socket(f"tcp://127.0.0.1:{port}").is_listening:
+                print(f"Port {port} is listening.")
+                return True
+        except Exception:
+            pass
+        time.sleep(1)
+    raise AssertionError(f"Port {port} did not open within {timeout} seconds.")
 
 def test_plm_binary(host):
     """Check PLM binary
