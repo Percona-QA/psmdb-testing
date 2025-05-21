@@ -12,6 +12,9 @@ pml = testinfra.utils.ansible_runner.AnsibleRunner(
 def pml_start(host):
     try:
         result = host.run("percona-mongolink start")
+        print(f"STDOUT: '{result.stdout}'")
+        print(f"STDERR: '{result.stderr}'")
+        print(f"RC: {result.rc}")
         output = json.loads(result.stdout)
 
         if output:
