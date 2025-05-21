@@ -10,7 +10,7 @@
 
     - set_fact:
         # Branch of pml branch to test
-        pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('latest', true) }}"
+        pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('0.5.0-1.el8', true) }}"
 
     - set_fact:
         # User to log into each AWS Instance
@@ -80,7 +80,7 @@
 
     - name: Install PML
       apt:
-        name: percona-mongolink={{ pml_branch }}
+        name: percona-mongolink-{{ pml_branch }}
         update_cache: yes
         state: present
 
