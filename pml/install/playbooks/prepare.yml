@@ -20,17 +20,6 @@
         - ssh_pubkey != "none"
         - ansible_facts['os_family'] == 'RedHat'
 
-    - name: Add user to Ubuntu
-      user:
-        name: "{{ ssh_user }}"
-        shell: /bin/bash
-        groups: sudo
-        append: yes
-      when:
-        - ssh_user != "none"
-        - ssh_pubkey != "none"
-        - ansible_facts['distribution'] == "Ubuntu"
-
     - name: Add user to Debian
       user:
         name: "{{ ssh_user }}"
@@ -40,7 +29,7 @@
       when:
         - ssh_user != "none"
         - ssh_pubkey != "none"
-        - ansible_facts['distribution'] == "Debian"
+        - ansible_facts['os_family'] == 'Debian'
 
     - name: Add pub key
       authorized_key:
