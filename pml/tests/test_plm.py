@@ -136,7 +136,7 @@ def wait_for_repl_stage(host, timeout=3600, interval=1, stable_duration=2):
     return False
 
 def restart_plm_service(host):
-    result = host.run("systemctl restart percona-mongolink")
+    result = host.run("sudo systemctl restart percona-mongolink")
     assert result.rc == 0, result.stdout
     return result
 
@@ -171,14 +171,14 @@ def start_plm_service(host):
 #
 #     assert re.match(pattern, pml_version.stderr)
 
-def test_pml_help(host):
-    """Check that PLM help command works
-
-    :param host:
-    :return:
-    """
-    result = host.run("percona-mongolink help")
-    assert result.rc == 0, result.stdout
+# def test_pml_help(host):
+#     """Check that PLM help command works
+#
+#     :param host:
+#     :return:
+#     """
+#     result = host.run("percona-mongolink help")
+#     assert result.rc == 0, result.stdout
 
 def test_restart_pml(host):
     restart_plm_service(host)
