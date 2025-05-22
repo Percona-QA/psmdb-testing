@@ -17,6 +17,7 @@ def pml_start(host, timeout=30, interval=2):
             raw_output = result.stdout.strip()
 
             if "connection refused" not in raw_output:
+                print(raw_output)
                 print("PML service has started.")
                 break
 
