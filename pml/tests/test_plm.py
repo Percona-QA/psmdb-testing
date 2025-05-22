@@ -212,7 +212,7 @@ def test_stop_pml(host):
 
 def test_start_pml(host):
     """Test percona-mongolink service starts successfully"""
-    stop_plm_service(host)
+    start_plm_service(host)
 
 def test_restart_pml(host):
     """Test percona-mongolink service restarts successfully"""
