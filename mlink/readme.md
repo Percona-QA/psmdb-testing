@@ -7,7 +7,13 @@ Expected location for percona-mongolink to build docker image properly:
 |- percona-mongolink
 ```
 
+## Build images for tests
+
 ```docker-compose build``` - build docker images for the tests
+
+## Re-build PML image from local repo ##
+
+```docker build --build-context repo=../../percona-mongolink . -t mlink/local -f Dockerfile-mlink-local```
 
 Environment variables for  the setup:
 1) MONGO_VERSION (default **mongo:6.0** ) - base image for the tests

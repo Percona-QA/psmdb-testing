@@ -257,6 +257,12 @@
         dest: /etc/pbm-agent-storage-gcp.conf
         mode: '0666'
 
+    - name: add GCP storage for pbm-agent
+      copy:
+        src: /tmp/pbm-agent-storage-gcp-hmac.conf
+        dest: /etc/pbm-agent-storage-gcp-hmac.conf
+        mode: '0666'
+
     - name: add AZURE storage for pbm-agent
       copy:
         src: /tmp/pbm-agent-storage-azure.conf
