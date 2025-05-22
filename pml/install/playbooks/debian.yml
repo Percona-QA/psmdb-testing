@@ -80,9 +80,9 @@
 
     - name: Install PML
       apt:
-        name: percona-mongolink-{{ pml_branch }}
+        name: "percona-mongolink"
         update_cache: yes
-        state: present
+        state: latest
 
     - name: Enable and start Docker service
       service:
