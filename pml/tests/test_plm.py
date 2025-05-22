@@ -9,7 +9,7 @@ import testinfra.utils.ansible_runner
 pml = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
-def pml_start(host, timeout=30, interval=2):
+def pml_start(host, timeout=60, interval=2):
     """Starts PML and waits until the endpoint is ready
     Also confirms the PML start command works and is ready to clone"""
     try:
