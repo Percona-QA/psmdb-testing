@@ -284,19 +284,6 @@
         - percona-server-mongodb-tools
       when: ansible_os_family == "RedHat" and psmdb_version == "latest" and inventory_hostname in groups['psmdb']
 
-    - name: Install less than latest psmdb rpm packages on redhat
-      yum:
-        name: "{{ packages }}"
-        update_cache: yes
-        state: latest
-      vars:
-        packages:
-        - percona-server-mongodb-{{ psmdb_version }}
-        - percona-server-mongodb-server-{{ psmdb_version }}
-        - percona-server-mongodb-mongos-{{ psmdb_version }}
-        - percona-server-mongodb-tools-{{ psmdb_version }}
-      when: ansible_os_family == "RedHat" and psmdb_version != "latest" and inventory_hostname in groups['psmdb']
-
     - name: Install mongo shell deb package
       apt:
         name: "{{ packages }}"
