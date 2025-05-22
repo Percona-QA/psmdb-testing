@@ -67,19 +67,11 @@
     - name: Setup pml repo with percona-release
       command: percona-release enable pml {{ lookup('env', 'install_repo') }}
 
-    - name: Install PML specific branch
+    - name: Install PML
       yum:
-        name: percona-mongolink-{{ pml_branch }}
+        name: percona-mongolink
         update_cache: yes
-        state: present
-      when: pml_branch != "latest"
-
-    - name: Install PML latest
-      yum:
-        name: percona-mongolink-{{ pml_branch }}
-        update_cache: yes
-        state: present
-      when: pml_branch != "latest"
+        state: latest
 
     - name: Enable and start Docker service
       service:
