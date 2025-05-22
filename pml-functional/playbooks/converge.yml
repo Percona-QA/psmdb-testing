@@ -16,20 +16,12 @@
       }}
   tasks:
     - set_fact:
-        # Version of psmdb release to be enabled (psmdb-70)
-        psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-80', true) }}"
+        # Version of psmdb release to be enabled (6, 7, or 8)
+        psmdb_version: "{{ lookup('env', 'PSMDB') | default('8', true) }}"
 
     - set_fact:
         # Github token to access mongolink repo
         token: "{{ lookup('env', 'MONGO_REPO_TOKEN') }}"
-
-    - set_fact:
-        # Version of psmdb (e.g. 7.0.16)
-        psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('latest', true) }}"
-
-    - set_fact:
-        # Version of mongosh
-        psmdb_mongosh: "{{ psmdb_to_test.split('-')[1].split('.')[0] }}"
 
     - set_fact:
         # Branch of pml branch to test
@@ -255,7 +247,7 @@
       when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
     - name: setup psmdb repo with percona-release
-      command: percona-release enable {{ psmdb_to_test }} release
+      command: percona-release enable psmdb-{{ psmdb_version }}0 release
       when: inventory_hostname in groups['psmdb']
 
     - name: Install psmdb deb packages
@@ -282,29 +274,7 @@
         - percona-server-mongodb-server
         - percona-server-mongodb-mongos
         - percona-server-mongodb-tools
-      when: ansible_os_family == "RedHat" and psmdb_version == "latest" and inventory_hostname in groups['psmdb']
-
-    - name: Install less than latest psmdb rpm packages on redhat
-      yum:
-        name: "{{ packages }}"
-        update_cache: yes
-        state: latest
-      vars:
-        packages:
-        - percona-server-mongodb-{{ psmdb_version }}
-        - percona-server-mongodb-server-{{ psmdb_version }}
-        - percona-server-mongodb-mongos-{{ psmdb_version }}
-        - percona-server-mongodb-tools-{{ psmdb_version }}
-      when: ansible_os_family == "RedHat" and psmdb_version != "latest" and inventory_hostname in groups['psmdb']
-
-    - name: Install mongo shell deb package
-      apt:
-        name: "{{ packages }}"
-        update_cache: yes
-      vars:
-        packages:
-        - percona-server-mongodb-shell
-      when: ansible_os_family == "Debian" and psmdb_mongosh < "6" and inventory_hostname in groups['psmdb']
+      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
     - name: Install mongosh deb package
       apt:
@@ -313,16 +283,7 @@
       vars:
         packages:
         - percona-mongodb-mongosh
-      when: ansible_os_family == "Debian" and psmdb_mongosh >= "6" and inventory_hostname in groups['psmdb']
-
-    - name: install mongo shell rpm package
-      yum:
-        name: "{{ packages }}"
-        state: latest
-      vars:
-        packages:
-        - percona-server-mongodb-shell
-      when: ansible_os_family == "RedHat" and psmdb_mongosh < "6"
+      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
 
     - name: Install mongosh rpm package
       yum:
@@ -331,14 +292,14 @@
       vars:
         packages:
         - percona-mongodb-mongosh
-      when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6" and inventory_hostname in groups['psmdb']
+      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
     - name: Copy mongosh binary to mongo path for test scripts
       file:
         src: /usr/bin/mongosh
         dest: /usr/bin/mongo
         state: link
-      when: psmdb_mongosh >= "6" and inventory_hostname in groups['psmdb']
+      when: inventory_hostname in groups['psmdb']
 
     - name: stop mongod service
       service: name=mongod state=stopped
@@ -573,7 +534,7 @@
       when:
         - inventory_hostname in groups['psmdb']
         - pmm_user_check.stdout == "null"
-        - psmdb_version.split('.')[0] | int >= 8 or psmdb_version == "latest"
+        - psmdb_version | int >= 8
 
     - name: Create MongoDB PMM User role on psmdb < 8
       community.mongodb.mongodb_shell:
@@ -590,7 +551,7 @@
       when:
         - inventory_hostname in groups['psmdb']
         - pmm_user_check.stdout == "null"
-        - psmdb_version.split('.')[0] | int < 8
+        - psmdb_version | int < 8
 
     - name: Check if MongoDB is already registered in PMM
       shell: pmm-admin list | grep mongodb
