@@ -10,6 +10,8 @@ pml = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
 def pml_start(host, timeout=30, interval=2):
+    """Starts PML and waits until the endpoint is ready
+    Also confirms the PML start command works and is ready to clone"""
     try:
         start = time.time()
         while time.time() - start < timeout:
@@ -49,12 +51,13 @@ def pml_start(host, timeout=30, interval=2):
         return False
 
 def pml_finalize(host):
+    """Executes percona-mongolink finalize command
+    signalising that no more replication is to occur"""
     try:
         output = json.loads(host.check_output("percona-mongolink finalize"))
 
         if output:
             try:
-                print(output)
                 if output.get("ok") is True:
                     print("Sync finalized successfully")
                     return True
@@ -74,6 +77,7 @@ def pml_finalize(host):
         return False
 
 def pml_status(host, timeout=45):
+    """Executes percona-mongolink status command and returns output"""
     try:
         output = host.check_output(f"percona-mongolink status")
         json_output = json.loads(output)
@@ -92,26 +96,25 @@ def pml_status(host, timeout=45):
 
 @pytest.fixture()
 def pml_version(host):
-    """Capture PLM Version command output
-
-    :param host:
-    :return:
-    """
+    """Capture PLM Version command and returns output"""
     result = host.run("percona-mongolink version")
     assert result.rc == 0, result.stdout
     return result
 
 def pml_add_db_row(host):
+    """Adds a test row to source database"""
     result = host.run("sudo docker exec -i source mongosh testdb --eval 'db.test.insertOne({ name: \"testUser\", age: 42 })'")
     assert result.rc == 0
     return True
 
 def pml_confirm_db_row(host):
+    """Captures and returns output on a query on the destination database"""
     result = host.run("sudo docker exec -i destination mongosh testdb --eval 'db.test.findOne()'")
     assert result.rc == 0
     return result
 
 def wait_for_repl_stage(host, timeout=3600, interval=1, stable_duration=2):
+    """Wait for percona-mongolink replication to complete"""
     start_time = time.time()
 
     while time.time() - start_time < timeout:
@@ -149,6 +152,7 @@ def wait_for_repl_stage(host, timeout=3600, interval=1, stable_duration=2):
     return False
 
 def restart_plm_service(host):
+    """Restarts percona-mongolink service and confirms it's running"""
     result = host.run("sudo systemctl restart percona-mongolink")
     assert result.rc == 0, result.stdout
     is_active = host.run("sudo systemctl show -p SubState percona-mongolink")
@@ -156,6 +160,7 @@ def restart_plm_service(host):
     return result
 
 def stop_plm_service(host):
+    """Stops percona-mongolink service and confirms it's not running"""
     stop_plm = host.run("sudo systemctl stop percona-mongolink")
     assert stop_plm.rc == 0
     is_active = host.run("sudo systemctl is-active percona-mongolink")
@@ -163,6 +168,7 @@ def stop_plm_service(host):
     return stop_plm
 
 def start_plm_service(host):
+    """Starts percona-mongolink service and confirms it's running"""
     start_plm = host.run("sudo systemctl start percona-mongolink")
     assert start_plm.rc == 0, start_plm.stdout
     status = host.run("sudo systemctl is-active percona-mongolink")
@@ -170,18 +176,13 @@ def start_plm_service(host):
     return start_plm
 
 # def test_pml_version(pml_version):
-#     """Check that PLM version is correct
-#
-#     :param host:
-#     :return:
-#     """
+#     """Test that percona-mongolink version output is correct"""
 #     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
 #
-# assert re.match(pattern, pml_version.stderr)
+#     assert re.match(pattern, pml_version.stderr)
 
 def test_plm_binary(host):
-    """Check PLM binary
-    """
+    """Check PLM binary exists with the correct permissions"""
     file = host.file("/usr/bin/percona-mongolink")
     assert file.user == "root"
     assert file.group == "root"
@@ -191,15 +192,12 @@ def test_plm_binary(host):
         pytest.xfail("Possible xfail")
 
 def test_pml_help(host):
-    """Check that PLM help command works
-
-    :param host:
-    :return:
-    """
+    """Check that PLM help command works"""
     result = host.run("percona-mongolink help")
     assert result.rc == 0, result.stdout
 
 def test_pml_environment_file_exists(host):
+    """Test percona-mongolink-service file exists"""
     service_file = host.file("/lib/systemd/system/percona-mongolink.service")
     assert service_file.user == "root"
     assert service_file.group == "root"
@@ -209,12 +207,15 @@ def test_pml_environment_file_exists(host):
         pytest.xfail("Possible xfail")
 
 def test_stop_pml(host):
+    """Test percona-mongolink service stops successfully"""
     stop_plm_service(host)
 
 def test_start_pml(host):
+    """Test percona-mongolink service starts successfully"""
     stop_plm_service(host)
 
 def test_restart_pml(host):
+    """Test percona-mongolink service restarts successfully"""
     restart_plm_service(host)
 
 def test_pml_transfer(host):
@@ -224,4 +225,3 @@ def test_pml_transfer(host):
     assert wait_for_repl_stage(host)
     assert "testUser" in pml_confirm_db_row(host).stdout
     assert pml_finalize(host)
-
