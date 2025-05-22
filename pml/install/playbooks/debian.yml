@@ -1,0 +1,219 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  become_method: sudo
+  tasks:
+    - set_fact:
+        # Version of psmdb (e.g. 6.0, 7.0, 8.0)
+        psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('8.0', true) }}"
+
+    - set_fact:
+        # User to log into each AWS Instance
+        ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
+
+    - name: Create keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+      when:
+        - ansible_os_family == "Debian"
+
+    - name: Download Docker GPG key to keyring
+      get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+      when:
+        - ansible_os_family == "Debian"
+
+    - name: Add Docker APT repository
+      copy:
+        content: |
+          deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
+        dest: /etc/apt/sources.list.d/docker.list
+        mode: '0644'
+      when:
+        - ansible_os_family == "Debian"
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+      when:
+        - ansible_os_family == "Debian"
+
+    - name: Install dependencies
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+          - python3-pip
+          - wget
+          - iputils-ping
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+      when: ansible_os_family == "Debian"
+
+    - name: Install Percona Release
+      include_tasks: ../../../tasks/install_percona_release.yml
+
+    - name: Setup pml repo with percona-release
+      command: percona-release enable pml {{ lookup('env', 'install_repo') }}
+
+    - name: Install PML
+      apt:
+        name: "percona-mongolink"
+        update_cache: yes
+        state: latest
+
+    - name: Enable and start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Set runc binary URL based on architecture
+      set_fact:
+        runc_url: >-
+          https://github.com/opencontainers/runc/releases/download/v1.1.12/{{
+            'runc.arm64' if ansible_architecture == 'aarch64' else 'runc.amd64'
+          }}
+
+    - name: Download correct Runc binary
+      get_url:
+        url: "{{ runc_url }}"
+        dest: /usr/local/bin/runc
+        mode: '0755'
+
+    - name: Move runc to /usr/bin
+      copy:
+        src: /usr/local/bin/runc
+        dest: /usr/bin/runc
+        remote_src: yes
+        mode: '0755'
+        force: yes
+
+    - name: Ensure docker group exists
+      group:
+        name: docker
+        state: present
+
+    - name: Add user ssh-user to docker group
+      user:
+        name: "{{ ssh_user }}"
+        groups: docker
+        append: yes
+
+    - name: Upgrade pip on Debian 11
+      pip:
+        name: pip
+        state: latest
+        executable: pip3
+      when:
+        - ansible_distribution == "Debian"
+        - ansible_distribution_major_version == "11"
+
+    - name: Upgrade pip on Debian 12
+      command: python3 -m pip install --upgrade pip --break-system-packages
+      when:
+        - ansible_distribution == "Debian"
+        - ansible_distribution_major_version == "12"
+
+    - name: Create Source PSMDB container
+      community.docker.docker_container:
+        name: source
+        image: percona/percona-server-mongodb:{{ psmdb_version }}
+        state: started
+        restart_policy: unless-stopped
+        published_ports:
+          - "27017:27017"
+        command: "--port=27017 --replSet rs0 --bind_ip_all"
+
+    - name: Create Destination PSMDB container
+      community.docker.docker_container:
+        name: destination
+        image: percona/percona-server-mongodb:{{ psmdb_version }}
+        state: started
+        restart_policy: unless-stopped
+        published_ports:
+          - "28017:27017"
+        command: "--port=27017 --replSet rs1 --bind_ip_all"
+
+    - name: Get info about the Source container
+      community.docker.docker_container_info:
+        name: source
+      register: source_container
+
+    - name: Get info about the Destination container
+      community.docker.docker_container_info:
+        name: destination
+      register: destination_container
+
+    - name: Store the Source Container IP
+      set_fact:
+        source_ip: "{{ source_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
+
+    - name: Store the Destination Container IP
+      set_fact:
+        destination_ip: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
+
+    - name: Initiate source replicaset
+      community.docker.docker_container_exec:
+        container: source
+        command: >
+          mongosh --quiet --eval 'try { rs.initiate({_id: "rs0", members: [{ _id: 0, host: "{{ source_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
+      register: rs_source_result
+      retries: 2
+      delay: 5
+      until: rs_source_result.rc == 0
+
+    - name: Initiate destination replicaset
+      community.docker.docker_container_exec:
+        container: destination
+        command: >
+          mongosh --quiet --eval 'try { rs.initiate({_id: "rs1", members: [{ _id: 0, host: "{{ destination_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
+      register: rs_dest_result
+      retries: 2
+      delay: 5
+      until: rs_dest_result.rc == 0
+
+    - name: Add container IPs to /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item.ip }} {{ item.hostname }}"
+        state: present
+        create: yes
+      loop:
+        - { ip: "{{ source_ip }}", hostname: "source" }
+        - { ip: "{{ destination_ip }}", hostname: "destination" }
+      become: true
+
+    - name: Update PML_SOURCE_URI
+      lineinfile:
+        path: /etc/default/percona-mongolink
+        regexp: '^PML_SOURCE_URI='
+        line: 'PML_SOURCE_URI="mongodb://{{ source_ip }}:27017"'
+        backrefs: yes
+
+    - name: Update PML_TARGET_URI
+      lineinfile:
+        path: /etc/default/percona-mongolink
+        regexp: '^PML_TARGET_URI='
+        line: 'PML_TARGET_URI="mongodb://{{ destination_ip }}:27017"'
+        backrefs: yes
+
+    - name: Start PML service
+      service:
+        daemon_reload: yes
+        name: percona-mongolink
+        state: started
+        enabled: yes

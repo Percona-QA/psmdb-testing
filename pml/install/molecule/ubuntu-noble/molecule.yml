@@ -1,0 +1,41 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: ec2
+platforms:
+  - name: unoble-${BUILD_NUMBER}-${JOB_NAME}
+    region: us-west-2
+    image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
+    vpc_subnet_id: subnet-0dc7518100473f19d
+    instance_type: t2.micro
+    ssh_user: ubuntu
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+      job-name: ${JOB_NAME}
+provisioner:
+  name: ansible
+  log: True
+  playbooks:
+    create: ../../../../playbooks/create.yml
+    prepare: ../../playbooks/prepare.yml
+    destroy: ../../../../playbooks/destroy.yml
+    converge: ../../playbooks/ubuntu.yml
+verifier:
+  name: testinfra
+  directory: ../../../tests/
+  options:
+    verbose: true
+    s: true
+    junitxml: report.xml
+scenario:
+  name: ubuntu-noble
+  destroy_sequence:
+    - destroy
+  test_sequence:
+    - destroy
+    - create
+    - converge
+    - verify
+    - destroy
