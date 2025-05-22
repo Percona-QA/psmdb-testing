@@ -47,10 +47,7 @@
         update_cache: yes
       vars:
         packages:
-          - gcc
-          - python3-devel
           - python3-pip
-          - make
           - wget
           - docker-ce
           - docker-ce-cli
