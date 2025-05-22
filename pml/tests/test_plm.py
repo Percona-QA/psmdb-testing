@@ -16,6 +16,8 @@ def pml_start(host, timeout=30, interval=2):
             result = host.run("percona-mongolink start")
             raw_output = result.stdout
             print("KEITH TEST 2: " + raw_output)
+            print("KEITH TEST 2 (stdout):", result.stdout.strip())
+            print("KEITH TEST 2 (stderr):", result.stderr.strip())
 
             if 'connection refused' not in raw_output:
                 print("KEITH TEST: " + raw_output)
