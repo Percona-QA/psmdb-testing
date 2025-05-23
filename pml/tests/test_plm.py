@@ -101,6 +101,7 @@ def pml_version(host):
     """Capture PLM Version command and returns output"""
     result = host.run("percona-mongolink version")
     assert result.rc == 0, result.stdout
+    print("PML version: {}".format(result.stderr))
     return result
 
 def pml_add_db_row(host):
