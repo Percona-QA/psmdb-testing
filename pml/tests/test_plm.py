@@ -197,7 +197,7 @@ def test_pml_version(host):
     assert parsed_config['Version'] == f"v{version}", parsed_config
     assert parsed_config['Platform'], parsed_config
     assert parsed_config['GitCommit'] == get_git_commit(), parsed_config
-    assert parsed_config['GitBranch'] f"release-{version}", parsed_config
+    assert parsed_config['GitBranch'] == f"release-{version}", parsed_config
     assert parsed_config['BuildTime'], parsed_config
     assert parsed_config['GoVersion'], parsed_config
 
