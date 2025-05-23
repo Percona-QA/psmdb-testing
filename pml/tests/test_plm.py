@@ -194,7 +194,7 @@ def test_pml_version(host):
     lines = result.stderr.split("\n")
     # parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
     # print("parsed_config:", parsed_config)
-    parsed_config = {'Version': 'v0.5.0', 'Platform': 'linux', 'GitCommit': '927e026', 'GitBranch': 'main', 'BuildTime': '2025-05-22_16', 'GoVersion': 'go1.24.0'}
+    parsed_config = {'Version': 'v0.5.0', 'Platform': 'linux', 'GitCommit': '927e026', 'GitBranch': 'release-0.5.0', 'BuildTime': '2025-05-22_16', 'GoVersion': 'go1.24.0'}
     assert parsed_config['Version'] == f"v{version}", parsed_config
     assert parsed_config['Platform'], parsed_config
     assert parsed_config['GitCommit'] == "927e026", parsed_config
