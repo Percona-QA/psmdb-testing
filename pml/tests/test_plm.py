@@ -182,7 +182,8 @@ def get_git_commit():
     git_commit = requests.get(url)
 
     if git_commit.status_code == 200:
-        return git_commit
+        print(git_commit.json())
+        return git_commit.json()
     else:
         print(f"Get git commit failed with status code: {git_commit.status_code}")
         return False
