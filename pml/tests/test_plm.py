@@ -9,6 +9,8 @@ import testinfra.utils.ansible_runner
 pml = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
+VERSION = os.getenv("pml_version")
+
 def pml_start(host, timeout=60, interval=2):
     """Starts PML and waits until the endpoint is ready
     Also confirms the PML start command works and is ready to clone"""
@@ -179,7 +181,7 @@ def test_pml_version(host):
     result = pml_version(host)
     lines = result.stderr.split("\n")
     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
-    assert parsed_config['Version'], parsed_config
+    assert parsed_config['Version'] == VERSION, parsed_config
     assert parsed_config['Platform'], parsed_config
     assert parsed_config['GitCommit'], parsed_config
     assert parsed_config['GitBranch'], parsed_config
