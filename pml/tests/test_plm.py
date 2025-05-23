@@ -5,9 +5,12 @@ import time
 import pytest
 import json
 
+import requests
 import testinfra.utils.ansible_runner
 pml = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
+
+version = os.getenv("pml_version")
 
 def pml_start(host, timeout=60, interval=2):
     """Starts PML and waits until the endpoint is ready
@@ -94,7 +97,6 @@ def pml_status(host, timeout=45):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@pytest.fixture()
 def pml_version(host):
     """Capture PLM Version command and returns output"""
     result = host.run("percona-mongolink version")
@@ -175,11 +177,27 @@ def start_plm_service(host):
     assert status.stdout.strip() == "active", f"PLM service is inactive: {status.stdout}"
     return start_plm
 
-# def test_pml_version(pml_version):
-#     """Test that percona-mongolink version output is correct"""
-#     pattern = r"^v\d+\.\d+ [a-f0-9]{7} \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
-#
-#     assert re.match(pattern, pml_version.stderr)
+def get_git_commit():
+    url = f"https://api.github.com/repos/percona/percona-mongolink/commits/release-{version}"
+    git_commit = requests.get(url)
+
+    if git_commit.status_code == 200:
+        return git_commit.json()["sha"][:7]
+    else:
+        print(f"Unable to obtain git commit, failed with status code: {git_commit.status_code}")
+        return False
+
+def test_pml_version(host):
+    """Test that percona-mongolink version output is correct"""
+    result = pml_version(host)
+    lines = result.stderr.split("\n")
+    parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
+    assert parsed_config['Version'] == f"v{version}", parsed_config
+    assert parsed_config['Platform'], parsed_config
+    assert parsed_config['GitCommit'] == get_git_commit(), parsed_config
+    assert parsed_config['GitBranch'] == f"release-{version}", parsed_config
+    assert parsed_config['BuildTime'], parsed_config
+    assert parsed_config['GoVersion'], parsed_config
 
 def test_plm_binary(host):
     """Check PLM binary exists with the correct permissions"""
