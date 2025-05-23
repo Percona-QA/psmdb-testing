@@ -179,7 +179,7 @@ def start_plm_service(host):
     return start_plm
 
 def get_git_commit():
-    url = f"https://api.github.com/repos/percona/percona-backup-mongodb/commits/main"
+    url = f"https://api.github.com/repos/percona/percona-mongolink/commits/main"
     git_commit = requests.get(url)
 
     if git_commit.status_code == 200:
