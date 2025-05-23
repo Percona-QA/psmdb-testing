@@ -98,7 +98,6 @@ def pml_version(host):
     """Capture PLM Version command and returns output"""
     result = host.run("percona-mongolink version")
     assert result.rc == 0, result.stdout
-    print("KEITH TEST 2: " + result.stdout)
     return result
 
 def pml_add_db_row(host):
@@ -178,7 +177,7 @@ def start_plm_service(host):
 def test_pml_version(host):
     """Test that percona-mongolink version output is correct"""
     result = pml_version(host)
-    lines = result.stdout.split("\n")
+    lines = result.stderr.split("\n")
     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
     print("KEITH TEST: " + str(parsed_config))
     assert parsed_config['Version'], parsed_config
