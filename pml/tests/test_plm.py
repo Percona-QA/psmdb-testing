@@ -194,8 +194,8 @@ def test_pml_version(host):
     lines = result.stderr.split("\n")
     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
     assert parsed_config['Version'] == f"release-{version}", parsed_config
-    assert parsed_config['Platform'] == get_git_commit(), parsed_config
-    assert parsed_config['GitCommit'], parsed_config
+    assert parsed_config['Platform'], parsed_config
+    assert parsed_config['GitCommit'] == get_git_commit(), parsed_config
     assert parsed_config['GitBranch'], parsed_config
     assert parsed_config['BuildTime'], parsed_config
     assert parsed_config['GoVersion'], parsed_config
