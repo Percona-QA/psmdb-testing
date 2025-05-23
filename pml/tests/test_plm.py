@@ -179,14 +179,13 @@ def start_plm_service(host):
     return start_plm
 
 def get_git_commit():
-    url = f"https://api.github.com/repos/percona/percona-mongolink/commits/main"
+    url = f"https://api.github.com/repos/percona/percona-mongolink/commits/release-{version}"
     git_commit = requests.get(url)
 
     if git_commit.status_code == 200:
-        print(git_commit.json()["sha"][:7])
         return git_commit.json()["sha"][:7]
     else:
-        print(f"Get git commit failed with status code: {git_commit.status_code}")
+        print(f"Unable to obtain git commit, failed with status code: {git_commit.status_code}")
         return False
 
 def test_pml_version(host):
@@ -194,7 +193,7 @@ def test_pml_version(host):
     result = pml_version(host)
     lines = result.stderr.split("\n")
     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
-    assert parsed_config['Version'] == version, parsed_config
+    assert parsed_config['Version'] == f"release-{version}", parsed_config
     assert parsed_config['Platform'] == get_git_commit(), parsed_config
     assert parsed_config['GitCommit'], parsed_config
     assert parsed_config['GitBranch'], parsed_config
