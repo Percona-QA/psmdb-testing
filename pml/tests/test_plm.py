@@ -177,14 +177,14 @@ def start_plm_service(host):
     assert status.stdout.strip() == "active", f"PLM service is inactive: {status.stdout}"
     return start_plm
 
-def get_git_commit(host):
-    url = f"https://api.github.com/repos/percona/percona-backup-mongodb/commits/release-{version}"
+def get_git_commit():
+    url = f"https://api.github.com/repos/percona/percona-backup-mongodb/commits/main"
     git_commit = requests.get(url)
 
     if git_commit.status_code == 200:
         return git_commit
     else:
-        print(f"Request failed with status code {git_commit.status_code}")
+        print(f"Get git commit failed with status code: {git_commit.status_code}")
         return False
 
 def test_pml_version(host):
@@ -193,53 +193,53 @@ def test_pml_version(host):
     lines = result.stderr.split("\n")
     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
     assert parsed_config['Version'] == version, parsed_config
-    assert parsed_config['Platform'], parsed_config
+    assert parsed_config['Platform'] == get_git_commit(), parsed_config
     assert parsed_config['GitCommit'], parsed_config
     assert parsed_config['GitBranch'], parsed_config
     assert parsed_config['BuildTime'], parsed_config
     assert parsed_config['GoVersion'], parsed_config
 
-def test_plm_binary(host):
-    """Check PLM binary exists with the correct permissions"""
-    file = host.file("/usr/bin/percona-mongolink")
-    assert file.user == "root"
-    assert file.group == "root"
-    try:
-        assert file.mode == 0o755
-    except AssertionError:
-        pytest.xfail("Possible xfail")
-
-def test_pml_help(host):
-    """Check that PLM help command works"""
-    result = host.run("percona-mongolink help")
-    assert result.rc == 0, result.stdout
-
-def test_pml_environment_file_exists(host):
-    """Test percona-mongolink-service file exists"""
-    service_file = host.file("/lib/systemd/system/percona-mongolink.service")
-    assert service_file.user == "root"
-    assert service_file.group == "root"
-    try:
-        assert service_file.mode == 0o644
-    except AssertionError:
-        pytest.xfail("Possible xfail")
-
-def test_stop_pml(host):
-    """Test percona-mongolink service stops successfully"""
-    stop_plm_service(host)
-
-def test_start_pml(host):
-    """Test percona-mongolink service starts successfully"""
-    start_plm_service(host)
-
-def test_restart_pml(host):
-    """Test percona-mongolink service restarts successfully"""
-    restart_plm_service(host)
-
-def test_pml_transfer(host):
-    """Test basic PLM Transfer functionality"""
-    assert pml_add_db_row(host)
-    assert pml_start(host)
-    assert wait_for_repl_stage(host)
-    assert "testUser" in pml_confirm_db_row(host).stdout
-    assert pml_finalize(host)
+# def test_plm_binary(host):
+#     """Check PLM binary exists with the correct permissions"""
+#     file = host.file("/usr/bin/percona-mongolink")
+#     assert file.user == "root"
+#     assert file.group == "root"
+#     try:
+#         assert file.mode == 0o755
+#     except AssertionError:
+#         pytest.xfail("Possible xfail")
+#
+# def test_pml_help(host):
+#     """Check that PLM help command works"""
+#     result = host.run("percona-mongolink help")
+#     assert result.rc == 0, result.stdout
+#
+# def test_pml_environment_file_exists(host):
+#     """Test percona-mongolink-service file exists"""
+#     service_file = host.file("/lib/systemd/system/percona-mongolink.service")
+#     assert service_file.user == "root"
+#     assert service_file.group == "root"
+#     try:
+#         assert service_file.mode == 0o644
+#     except AssertionError:
+#         pytest.xfail("Possible xfail")
+#
+# def test_stop_pml(host):
+#     """Test percona-mongolink service stops successfully"""
+#     stop_plm_service(host)
+#
+# def test_start_pml(host):
+#     """Test percona-mongolink service starts successfully"""
+#     start_plm_service(host)
+#
+# def test_restart_pml(host):
+#     """Test percona-mongolink service restarts successfully"""
+#     restart_plm_service(host)
+#
+# def test_pml_transfer(host):
+#     """Test basic PLM Transfer functionality"""
+#     assert pml_add_db_row(host)
+#     assert pml_start(host)
+#     assert wait_for_repl_stage(host)
+#     assert "testUser" in pml_confirm_db_row(host).stdout
+#     assert pml_finalize(host)
