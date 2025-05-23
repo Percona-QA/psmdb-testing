@@ -94,7 +94,6 @@ def pml_status(host, timeout=45):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@pytest.fixture()
 def pml_version(host):
     """Capture PLM Version command and returns output"""
     result = host.run("percona-mongolink version")
