@@ -182,7 +182,6 @@ def get_git_commit(host):
     git_commit = requests.get(url)
 
     if git_commit.status_code == 200:
-        assert git_commit.rc == 0
         return git_commit
     else:
         print(f"Request failed with status code {git_commit.status_code}")
