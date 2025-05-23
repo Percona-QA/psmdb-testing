@@ -47,6 +47,7 @@
         update_cache: yes
       vars:
         packages:
+          - git
           - python3-pip
           - wget
           - docker-ce
