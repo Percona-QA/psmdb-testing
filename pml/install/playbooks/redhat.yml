@@ -150,25 +150,25 @@
       set_fact:
         destination_ip: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
 
-    - name: Initiate source replicaset
-      community.docker.docker_container_exec:
-        container: source
-        command: >
-          mongosh --quiet --eval 'try { rs.initiate({_id: "rs0", members: [{ _id: 0, host: "{{ source_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
-      register: rs_source_result
-      retries: 2
-      delay: 5
-      until: rs_source_result.rc == 0
+#    - name: Initiate source replicaset
+#      community.docker.docker_container_exec:
+#        container: source
+#        command: >
+#          mongosh --quiet --eval 'try { rs.initiate({_id: "rs0", members: [{ _id: 0, host: "{{ source_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
+#      register: rs_source_result
+#      retries: 2
+#      delay: 5
+#      until: rs_source_result.rc == 0
 
-    - name: Initiate destination replicaset
-      community.docker.docker_container_exec:
-        container: destination
-        command: >
-          mongosh --quiet --eval 'try { rs.initiate({_id: "rs1", members: [{ _id: 0, host: "{{ destination_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
-      register: rs_dest_result
-      retries: 2
-      delay: 5
-      until: rs_dest_result.rc == 0
+#    - name: Initiate destination replicaset
+#      community.docker.docker_container_exec:
+#        container: destination
+#        command: >
+#          mongosh --quiet --eval 'try { rs.initiate({_id: "rs1", members: [{ _id: 0, host: "{{ destination_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
+#      register: rs_dest_result
+#      retries: 2
+#      delay: 5
+#      until: rs_dest_result.rc == 0
 
     - name: Add container IPs to /etc/hosts
       lineinfile:
