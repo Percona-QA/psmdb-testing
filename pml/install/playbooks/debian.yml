@@ -28,6 +28,11 @@
       when:
         - ansible_os_family == "Debian"
 
+    - name: Map architecture for Docker APT repo
+      set_fact:
+        docker_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else
+                      'arm64' if ansible_architecture == 'aarch64' }}"
+
     - name: Add Docker APT repository
       copy:
         content: |
