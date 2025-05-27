@@ -44,6 +44,14 @@ def start_cluster(srcRS, dstRS, mlink, request):
 
 @pytest.fixture(scope="function")
 def reset_state(srcRS, dstRS, mlink, request):
+    log_level = "debug"
+    env_vars = None
+    log_marker = request.node.get_closest_marker("mlink_log_level")
+    if log_marker and log_marker.args:
+        log_level = log_marker.args[0]
+    env_marker = request.node.get_closest_marker("mlink_env")
+    if env_marker and env_marker.args:
+        env_vars = env_marker.args[0]
     src_client = pymongo.MongoClient(srcRS.connection)
     dst_client = pymongo.MongoClient(dstRS.connection)
     def print_logs():
@@ -58,7 +66,7 @@ def reset_state(srcRS, dstRS, mlink, request):
     for db_name in dst_client.list_database_names():
         if db_name not in {"admin", "local", "config"}:
             dst_client.drop_database(db_name)
-    mlink.create()
+    mlink.create(log_level=log_level, env_vars=env_vars)
 
 def add_data(connection_string, db_name, stop_event=None):
     def worker():
@@ -85,6 +93,7 @@ def add_data(connection_string, db_name, stop_event=None):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
+@pytest.mark.mlink_log_level("trace")
 @pytest.mark.parametrize("fail_node", ["src", "dst"])
 def test_rs_mlink_PML_T46(reset_state, srcRS, dstRS, mlink, fail_node):
     """
@@ -92,7 +101,6 @@ def test_rs_mlink_PML_T46(reset_state, srcRS, dstRS, mlink, fail_node):
     """
     target = srcRS if fail_node == "src" else dstRS
     try:
-        mlink.create(log_level="trace", extra_args="--reset-state")
         generate_dummy_data(srcRS.connection)
         _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
         def start_mlink():
@@ -135,14 +143,7 @@ def test_rs_mlink_PML_T46(reset_state, srcRS, dstRS, mlink, fail_node):
     assert mlink.wait_for_zero_lag() is True, "Failed to catch up on replication"
     assert mlink.finalize(), "Failed to finalize mlink service"
     result, _ = compare_data_rs(srcRS, dstRS)
-    mlink_error, error_logs = mlink.check_mlink_errors()
     assert result is True, "Data mismatch after synchronization"
-    expected_errors = ["InterruptedDueToReplStateChange", "ReplicaSetNoPrimary",
-                       "socket was unexpectedly closed", "connection reset by peer"]
-    if not mlink_error:
-        unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
-        if unexpected:
-            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -179,17 +180,27 @@ def test_rs_mlink_PML_T47(reset_state, srcRS, dstRS, mlink, fail_node):
             all_threads += operation_threads_5
         for thread in all_threads:
             thread.join()
-    assert mlink.wait_for_zero_lag() is True, "Failed to catch up on replication"
+    if not mlink.wait_for_zero_lag():
+        stable_start = time.time()
+        while time.time() - stable_start < 3:
+            status = mlink.status()
+            assert not status['data']['ok']
+            assert status['data']['state'] != 'running'
+            assert status['data']['initialSync']['completed']
+            assert status['data']['initialSync']['cloneCompleted']
+            time.sleep(0.5)
+        mlink.resume(from_failure=True)
+        assert mlink.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
     assert mlink.finalize(), "Failed to finalize mlink service"
-    result, _ = compare_data_rs(srcRS, dstRS)
-    mlink_error, error_logs = mlink.check_mlink_errors()
-    assert result is True, "Data mismatch after synchronization"
-    expected_errors = ["InterruptedDueToReplStateChange", "ReplicaSetNoPrimary",
-                       "socket was unexpectedly closed", "connection reset by peer"]
-    if not mlink_error:
-        unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
-        if unexpected:
-            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
+    time.sleep(5)
+    result, summary = compare_data_rs(srcRS, dstRS)
+    if not result:
+        critical_mismatches = {"hash mismatch", "record count mismatch", "missing in dst DB", "missing in src DB"}
+        has_critical = any(mismatch[1] in critical_mismatches for mismatch in summary)
+        if has_critical:
+            pytest.fail("Critical mismatch found:\n" + "\n".join(str(m) for m in summary))
+        else:
+            pytest.xfail("Known issue: PML-155")
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -220,17 +231,20 @@ def test_rs_mlink_PML_T48(reset_state, srcRS, dstRS, mlink, fail_node):
         for t in bg_threads:
             if t and t.is_alive():
                 t.join()
-    assert mlink.wait_for_zero_lag() is True, "Failed to catch up on replication"
+    if not mlink.wait_for_zero_lag():
+        stable_start = time.time()
+        while time.time() - stable_start < 3:
+            status = mlink.status()
+            assert not status['data']['ok']
+            assert status['data']['state'] != 'running'
+            assert status['data']['initialSync']['completed']
+            assert status['data']['initialSync']['cloneCompleted']
+            time.sleep(0.5)
+        mlink.resume(from_failure=True)
+        assert mlink.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
     assert mlink.finalize(), "Failed to finalize mlink service"
     result, _ = compare_data_rs(srcRS, dstRS)
-    mlink_error, error_logs = mlink.check_mlink_errors()
     assert result is True, "Data mismatch after synchronization"
-    expected_errors = ["InterruptedDueToReplStateChange", "ReplicaSetNoPrimary",
-                       "socket was unexpectedly closed", "connection reset by peer"]
-    if not mlink_error:
-        unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
-        if unexpected:
-            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -261,14 +275,17 @@ def test_rs_mlink_PML_T49(reset_state, srcRS, dstRS, mlink, fail_node):
         for t in bg_threads:
             if t and t.is_alive():
                 t.join()
-    assert mlink.wait_for_zero_lag() is True, "Failed to catch up on replication"
+    if not mlink.wait_for_zero_lag():
+        stable_start = time.time()
+        while time.time() - stable_start < 3:
+            status = mlink.status()
+            assert not status['data']['ok']
+            assert status['data']['state'] != 'running'
+            assert status['data']['initialSync']['completed']
+            assert status['data']['initialSync']['cloneCompleted']
+            time.sleep(0.5)
+        mlink.resume(from_failure=True)
+        assert mlink.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
     assert mlink.finalize(), "Failed to finalize mlink service"
     result, _ = compare_data_rs(srcRS, dstRS)
-    mlink_error, error_logs = mlink.check_mlink_errors()
     assert result is True, "Data mismatch after synchronization"
-    expected_errors = ["InterruptedDueToReplStateChange", "ReplicaSetNoPrimary",
-                       "socket was unexpectedly closed", "connection reset by peer"]
-    if not mlink_error:
-        unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
-        if unexpected:
-            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))

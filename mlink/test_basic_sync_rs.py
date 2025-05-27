@@ -44,6 +44,14 @@ def start_cluster(srcRS, dstRS, mlink, request):
 
 @pytest.fixture(scope="function")
 def reset_state(srcRS, dstRS, mlink, request):
+    log_level = "debug"
+    env_vars = None
+    log_marker = request.node.get_closest_marker("mlink_log_level")
+    if log_marker and log_marker.args:
+        log_level = log_marker.args[0]
+    env_marker = request.node.get_closest_marker("mlink_env")
+    if env_marker and env_marker.args:
+        env_vars = env_marker.args[0]
     src_client = pymongo.MongoClient(srcRS.connection)
     dst_client = pymongo.MongoClient(dstRS.connection)
     def print_logs():
@@ -58,7 +66,7 @@ def reset_state(srcRS, dstRS, mlink, request):
     for db_name in dst_client.list_database_names():
         if db_name not in {"admin", "local", "config"}:
             dst_client.drop_database(db_name)
-    mlink.create()
+    mlink.create(log_level=log_level, env_vars=env_vars)
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -660,12 +668,12 @@ def test_rs_mlink_PML_T8(reset_state, srcRS, dstRS, mlink):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
+@pytest.mark.mlink_env({"PML_CLONE_NUM_PARALLEL_COLLECTIONS": "5"})
+@pytest.mark.mlink_log_level("trace")
 def test_rs_mlink_PML_T30(reset_state, srcRS, dstRS, mlink):
     """
     Test to validate handling of concurrent data clone and index build failure
     """
-    mlink_env = {"PML_CLONE_NUM_PARALLEL_COLLECTIONS": "5"}
-    mlink.create(log_level="trace", extra_args="--reset-state", env_vars=mlink_env)
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
     normal_docs = [{"a": {"b": 1}, "words": "omnibus"} for _ in range(20000)]
@@ -702,12 +710,12 @@ def test_rs_mlink_PML_T30(reset_state, srcRS, dstRS, mlink):
 
 @pytest.mark.usefixtures("start_cluster")
 @pytest.mark.timeout(600,func_only=True)
+@pytest.mark.mlink_env({"PML_CLONE_NUM_PARALLEL_COLLECTIONS": "200"})
+@pytest.mark.mlink_log_level("info")
 def test_rs_mlink_PML_T31(reset_state, srcRS, dstRS, mlink):
     """
     Test how pml deals with huge number of namespaces on the clone phase
     """
-    mlink_env = {"PML_CLONE_NUM_PARALLEL_COLLECTIONS": "200"}
-    mlink.create(log_level="info", extra_args="--reset-state", env_vars=mlink_env)
     databases = 1000
     collections = 10
     Cluster.log("Creating " + str(databases) + " databases with " + str(collections) + " collections")
