@@ -129,25 +129,25 @@
         - ansible_distribution == "Debian"
         - ansible_distribution_major_version == "12"
 
-#    - name: Create Source PSMDB container
-#      community.docker.docker_container:
-#        name: source
-#        image: percona/percona-server-mongodb:{{ psmdb_version }}
-#        state: started
-#        restart_policy: unless-stopped
-#        published_ports:
-#          - "27017:27017"
-#        command: "--port=27017 --replSet rs0 --bind_ip_all"
-#
-#    - name: Create Destination PSMDB container
-#      community.docker.docker_container:
-#        name: destination
-#        image: percona/percona-server-mongodb:{{ psmdb_version }}
-#        state: started
-#        restart_policy: unless-stopped
-#        published_ports:
-#          - "28017:27017"
-#        command: "--port=27017 --replSet rs1 --bind_ip_all"
+    - name: Create Source PSMDB container
+      community.docker.docker_container:
+        name: source
+        image: percona/percona-server-mongodb:{{ psmdb_version }}
+        state: started
+        restart_policy: unless-stopped
+        published_ports:
+          - "27017:27017"
+        command: "--port=27017 --replSet rs0 --bind_ip_all"
+
+    - name: Create Destination PSMDB container
+      community.docker.docker_container:
+        name: destination
+        image: percona/percona-server-mongodb:{{ psmdb_version }}
+        state: started
+        restart_policy: unless-stopped
+        published_ports:
+          - "28017:27017"
+        command: "--port=27017 --replSet rs1 --bind_ip_all"
 
     - name: Get info about the Source container
       community.docker.docker_container_info:
@@ -159,33 +159,33 @@
         name: destination
       register: destination_container
 
-#    - name: Store the Source Container IP
-#      set_fact:
-#        source_ip: "{{ source_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
-#
-#    - name: Store the Destination Container IP
-#      set_fact:
-#        destination_ip: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
+    - name: Store the Source Container IP
+      set_fact:
+        source_ip: "{{ source_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
 
-#    - name: Initiate source replicaset
-#      community.docker.docker_container_exec:
-#        container: source
-#        command: >
-#          mongosh --quiet --eval 'try { rs.initiate({_id: "rs0", members: [{ _id: 0, host: "{{ source_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
-#      register: rs_source_result
-#      retries: 2
-#      delay: 5
-#      until: rs_source_result.rc == 0
+    - name: Store the Destination Container IP
+      set_fact:
+        destination_ip: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
 
-#    - name: Initiate destination replicaset
-#      community.docker.docker_container_exec:
-#        container: destination
-#        command: >
-#          mongosh --quiet --eval 'try { rs.initiate({_id: "rs1", members: [{ _id: 0, host: "{{ destination_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
-#      register: rs_dest_result
-#      retries: 2
-#      delay: 5
-#      until: rs_dest_result.rc == 0
+    - name: Initiate source replicaset
+      community.docker.docker_container_exec:
+        container: source
+        command: >
+          mongosh --quiet --eval 'try { rs.initiate({_id: "rs0", members: [{ _id: 0, host: "{{ source_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
+      register: rs_source_result
+      retries: 2
+      delay: 5
+      until: rs_source_result.rc == 0
+
+    - name: Initiate destination replicaset
+      community.docker.docker_container_exec:
+        container: destination
+        command: >
+          mongosh --quiet --eval 'try { rs.initiate({_id: "rs1", members: [{ _id: 0, host: "{{ destination_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
+      register: rs_dest_result
+      retries: 2
+      delay: 5
+      until: rs_dest_result.rc == 0
 
     - name: Add container IPs to /etc/hosts
       lineinfile:

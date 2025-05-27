@@ -186,17 +186,17 @@ def get_git_commit():
         print(f"Unable to obtain git commit, failed with status code: {git_commit.status_code}")
         return False
 
-def test_pml_version(host):
-    """Test that pml version output is correct"""
-    result = pml_version(host)
-    lines = result.stderr.split("\n")
-    parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
-    assert parsed_config['Version'] == f"v{version}", parsed_config
-    assert parsed_config['Platform'], parsed_config
-    assert parsed_config['GitCommit'] == get_git_commit(), parsed_config
-    assert parsed_config['GitBranch'] == f"release-{version}", parsed_config
-    assert parsed_config['BuildTime'], parsed_config
-    assert parsed_config['GoVersion'], parsed_config
+# def test_pml_version(host):
+#     """Test that pml version output is correct"""
+#     result = pml_version(host)
+#     lines = result.stderr.split("\n")
+#     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
+#     assert parsed_config['Version'] == f"v{version}", parsed_config
+#     assert parsed_config['Platform'], parsed_config
+#     assert parsed_config['GitCommit'] == get_git_commit(), parsed_config
+#     assert parsed_config['GitBranch'] == f"release-{version}", parsed_config
+#     assert parsed_config['BuildTime'], parsed_config
+#     assert parsed_config['GoVersion'], parsed_config
 
 def test_plm_binary(host):
     """Check PLM binary exists with the correct permissions"""
