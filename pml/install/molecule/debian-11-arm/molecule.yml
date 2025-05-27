@@ -30,7 +30,7 @@ verifier:
     s: true
     junitxml: report.xml
 scenario:
-  name: debian-11
+  name: debian-11-arm
   destroy_sequence:
     - destroy
   test_sequence:
