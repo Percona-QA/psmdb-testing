@@ -183,14 +183,14 @@
 
     - name: Update PML_SOURCE_URI
       lineinfile:
-        path: /etc/sysconfig/percona-mongolink
+        path: /etc/sysconfig/pml
         regexp: '^PML_SOURCE_URI='
         line: 'PML_SOURCE_URI="mongodb://{{ source_ip }}:27017"'
         backrefs: yes
 
     - name: Update PML_TARGET_URI
       lineinfile:
-        path: /etc/sysconfig/percona-mongolink
+        path: /etc/sysconfig/pml
         regexp: '^PML_TARGET_URI='
         line: 'PML_TARGET_URI="mongodb://{{ destination_ip }}:27017"'
         backrefs: yes
@@ -198,6 +198,6 @@
     - name: Start PML service
       service:
         daemon_reload: yes
-        name: percona-mongolink
+        name: pml
         state: started
         enabled: yes
