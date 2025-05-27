@@ -1,26 +1,28 @@
 import json
 
-def compare_data_rs(db1, db2, port):
+def compare_data_rs(db1, db2, port, full_comparison):
 
-    all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port)
     all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port)
-    mismatch_metadata = compare_collection_metadata(db1, db2, port)
-    mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port)
-
     mismatch_summary = []
 
-    if mismatch_dbs_hash:
-        mismatch_summary.extend(mismatch_dbs_hash)
-    if mismatch_coll_hash:
-        mismatch_summary.extend(mismatch_coll_hash)
     if mismatch_dbs_count:
         mismatch_summary.extend(mismatch_dbs_count)
     if mismatch_coll_count:
         mismatch_summary.extend(mismatch_coll_count)
-    if mismatch_metadata:
-        mismatch_summary.extend(mismatch_metadata)
-    if mismatch_indexes:
-        mismatch_summary.extend(mismatch_indexes)
+
+    if full_comparison:
+        all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port)
+        mismatch_metadata = compare_collection_metadata(db1, db2, port)
+        mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port)
+
+        if mismatch_dbs_hash:
+            mismatch_summary.extend(mismatch_dbs_hash)
+        if mismatch_coll_hash:
+            mismatch_summary.extend(mismatch_coll_hash)
+        if mismatch_metadata:
+            mismatch_summary.extend(mismatch_metadata)
+        if mismatch_indexes:
+            mismatch_summary.extend(mismatch_indexes)
 
     if not mismatch_summary:
         print("Data and indexes are consistent between source and destination databases")
