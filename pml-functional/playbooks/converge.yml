@@ -45,7 +45,7 @@
         name: pml-destination
       when: inventory_hostname == "jenkins-pml-destination"
 
-    - name: Change Monglink node hostname
+    - name: Change Mongolink node hostname
       hostname:
         name: pml-mongolink
       when: inventory_hostname == "jenkins-pml-mongolink"
