@@ -4,11 +4,11 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: debian11-${BUILD_NUMBER}-${JOB_NAME}
+  - name: debian11-arm-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
     image: "${MOLECULE_DEBIAN11_ARM_AMI:-ami-033525b44ab9aa77d}"
     vpc_subnet_id: subnet-0dc7518100473f19d
-    instance_type: t2.micro
+    instance_type: c6g.large
     ssh_user: admin
     root_device_name: /dev/xvda
     instance_tags:
