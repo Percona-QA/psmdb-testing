@@ -141,14 +141,14 @@
       timeout: 180
       git:
         repo: 'https://{{ token }}@github.com/percona/percona-mongolink.git'
-        dest: /tmp/percona-mongolink
+        dest: /tmp/pml
         version: "{{ pml_branch }}"
       when: inventory_hostname == "jenkins-pml-mongolink"
 
     - name: Build PML
       command: make build
       args:
-        chdir: /tmp/percona-mongolink
+        chdir: /tmp/pml
       environment:
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
@@ -157,7 +157,7 @@
 
     - name: Move mongolink binary to /usr/local/bin
       copy:
-        src: /tmp/percona-mongolink/bin/percona-mongolink
+        src: /tmp/pml/bin/pml
         dest: /usr/local/bin/
         mode: '0775'
         remote_src: true
@@ -389,7 +389,7 @@
           Environment="{{ item.key }}={{ item.value }}"
           {% endfor %}
           {% endif %}
-          ExecStart=/usr/local/bin/percona-mongolink \
+          ExecStart=/usr/local/bin/pml \
             --source mongodb://{{ private_source_ip }}:27017 \
             --target mongodb://{{ private_destination_ip }}:27017 \
             --log-level debug \
