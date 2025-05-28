@@ -21,7 +21,7 @@ TIMEOUT = int(os.getenv("TIMEOUT",default = 3600))
 
 def get_cpu_count():
     total_cpus = int(source.check_output("nproc").strip())//2
-    print("The CPUs that are going to be used are: " + str(total_cpus))
+    print("Number of CPUs to be used for data creation: " + str(total_cpus))
     return total_cpus
 
 def create_config(datasize, collections):
@@ -128,7 +128,7 @@ def pml_finalize():
 
         if output:
             try:
-                print(output)
+                print("Finalizing PML...")
                 if output.get("ok") is True:
                     print("Sync finalized successfully")
                     return True
@@ -151,7 +151,6 @@ def status(timeout=45):
     try:
         output = pml.check_output(f"curl -m {timeout} -s -X GET http://localhost:2242/status -d '{{}}'")
         json_output = json.loads(output)
-        print(output)
 
         if not json_output.get("ok", False):
             return {"success": False, "error": "mlink status command returned ok: false"}
