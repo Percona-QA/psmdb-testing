@@ -19,6 +19,10 @@ datasize = int(os.getenv("DATASIZE", default = 100))
 distribute = os.getenv("DISTRIBUTE", default = "false")
 TIMEOUT = int(os.getenv("TIMEOUT",default = 3600))
 
+def get_cpu_count():
+    total_cpus = pml.check_output("nproc")
+    return int(total_cpus)/2
+
 def create_config(datasize, collections):
     string = []
     documentCount = int(datasize / collections)
@@ -68,7 +72,7 @@ def load_data(node,port):
         config = create_config(datasize, collections)
     config_json = json.dumps(config, indent=4)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
-    node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
+    node.check_output(f'mgodatagen -n {get_cpu_count()} --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
 
 def check_count_data(node,port):
     result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.binary.count()' --quiet | tail -1")
