@@ -21,6 +21,7 @@ TIMEOUT = int(os.getenv("TIMEOUT",default = 3600))
 
 def get_cpu_count():
     total_cpus = pml.check_output("nproc")
+    print("The CPUs that are going to be used are: " + str(total_cpus/2))
     return int(total_cpus)/2
 
 def create_config(datasize, collections):
