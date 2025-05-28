@@ -21,7 +21,7 @@ TIMEOUT = int(os.getenv("TIMEOUT",default = 3600))
 
 def get_cpu_count():
     total_cpus = int(source.check_output("nproc").strip())//2
-    print("Number of CPUs to be used for data creation: " + str(total_cpus))
+    print(f"Number of CPUs to be used for data creation: {total_cpus}")
     return total_cpus
 
 def create_config(datasize, collections):
