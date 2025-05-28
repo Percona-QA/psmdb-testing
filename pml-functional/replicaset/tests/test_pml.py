@@ -20,9 +20,9 @@ distribute = os.getenv("DISTRIBUTE", default = "false")
 TIMEOUT = int(os.getenv("TIMEOUT",default = 3600))
 
 def get_cpu_count():
-    total_cpus = pml.check_output("nproc")
-    print("The CPUs that are going to be used are: " + str(total_cpus/2))
-    return int(total_cpus)/2
+    total_cpus = int(source.check_output("nproc").strip())//2
+    print("The CPUs that are going to be used are: " + str(total_cpus))
+    return total_cpus
 
 def create_config(datasize, collections):
     string = []
