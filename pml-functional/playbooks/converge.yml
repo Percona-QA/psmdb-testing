@@ -38,17 +38,17 @@
     - name: Change Source node hostname
       hostname:
         name: pml-source
-      when: inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-pml-source-keith"
 
     - name: Change Destination node hostname
       hostname:
         name: pml-destination
-      when: inventory_hostname == "jenkins-pml-destination"
+      when: inventory_hostname == "jenkins-pml-destination-keith"
 
     - name: Change Mongolink node hostname
       hostname:
         name: pml-mongolink
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith"
 
     - name: Prerequisite for debian 11
       apt:
@@ -117,7 +117,7 @@
             src: "/tmp/{{ go_tarball }}"
             dest: "{{ go_install_dir }}"
             remote_src: yes
-      when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith" or inventory_hostname == "jenkins-pml-source-keith"
 
     - name: Check Go is available
       command: go version
@@ -125,7 +125,7 @@
         PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
       register: go_version_output
       ignore_errors: true
-      when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith" or inventory_hostname == "jenkins-pml-source-keith"
 
     - name: Install Pymongo for Redhat
       pip:
@@ -143,7 +143,7 @@
         repo: 'https://{{ token }}@github.com/percona/percona-mongolink.git'
         dest: /tmp/pml
         version: "{{ pml_branch }}"
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith"
 
     - name: Build PML
       command: make build
@@ -153,7 +153,7 @@
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
         GOBIN: /usr/local/go/bin
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith"
 
     - name: Move mongolink binary to /usr/local/bin
       copy:
@@ -161,14 +161,14 @@
         dest: /usr/local/bin/
         mode: '0775'
         remote_src: true
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith"
 
     - name: Clone Mgodatagen repo
       git:
         repo: 'https://github.com/feliixx/mgodatagen.git'
         dest: /tmp/mgodatagen
         version: "master"
-      when: inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-pml-source-keith"
 
     - name: Build Mgodatagen
       command: go build
@@ -178,7 +178,7 @@
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
         GOBIN: /usr/local/go/bin
-      when: inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-pml-source-keith"
 
     - name: Move mgodatagen binary to /usr/local/bin
       copy:
@@ -186,34 +186,34 @@
         dest: /usr/local/bin/
         mode: '0755'
         remote_src: true
-      when: inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-pml-source-keith"
 
     - name: Get private source ip address
       set_fact:
-        private_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_default_ipv4']['address'] }}"
+        private_source_ip: "{{ hostvars['jenkins-pml-source-keith']['ansible_default_ipv4']['address'] }}"
 
     - name: Get private destination ip address
       set_fact:
-        private_destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_default_ipv4']['address'] }}"
+        private_destination_ip: "{{ hostvars['jenkins-pml-destination-keith']['ansible_default_ipv4']['address'] }}"
 
     - name: Get private pml ip address
       set_fact:
-        private_mongolink_ip: "{{ hostvars['jenkins-pml-mongolink']['ansible_default_ipv4']['address'] }}"
+        private_mongolink_ip: "{{ hostvars['jenkins-pml-mongolink-keith']['ansible_default_ipv4']['address'] }}"
 
     - name: Show source IP (Debug)
       debug:
         var: private_source_ip
-      when: private_source_ip is defined and inventory_hostname == "jenkins-pml-source"
+      when: private_source_ip is defined and inventory_hostname == "jenkins-pml-source-keith"
 
     - name: Show destination IP (Debug)
       debug:
         var: private_destination_ip
-      when: private_destination_ip is defined and inventory_hostname == "jenkins-pml-destination"
+      when: private_destination_ip is defined and inventory_hostname == "jenkins-pml-destination-keith"
 
     - name: Show Monglink IP (Debug)
       debug:
         var: private_mongolink_ip
-      when: private_mongolink_ip is defined and inventory_hostname == "jenkins-pml-mongolink"
+      when: private_mongolink_ip is defined and inventory_hostname == "jenkins-pml-mongolink-keith"
 
     - name: Add source and destination to /etc/hosts in pml
       blockinfile:
@@ -223,7 +223,7 @@
           {{ private_mongolink_ip }}    destination
         create: false
         unsafe_writes: true
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith"
 
     - name: Install GPG key for epel 8
       rpm_key:
@@ -358,7 +358,7 @@
           - host: "{{ private_source_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-pml-source-keith"
 
     - name: Create a replicaset rs for Destination
       community.mongodb.mongodb_replicaset:
@@ -368,7 +368,7 @@
           - host: "{{ private_destination_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "jenkins-pml-destination"
+      when: inventory_hostname == "jenkins-pml-destination-keith"
 
     - name: Reload systemd
       systemd:
@@ -402,21 +402,21 @@
         owner: root
         group: root
         mode: '0644'
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith"
 
     - name: Reload systemd and start PML service
       service:
         daemon_reload: yes
         name: pml.service
         state: started
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith"
 
     - name: Download runc binary
       get_url:
         url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
         dest: /usr/local/bin/runc
         mode: '0755'
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith"
 
     - name: Move runc to /usr/bin
       copy:
@@ -425,27 +425,27 @@
         remote_src: yes
         mode: '0755'
         force: yes
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith"
 
     - name: Ensure docker group exists
       group:
         name: docker
         state: present
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith"
 
     - name: Add user ssh-user to docker group
       user:
         name: "{{ ssh_user }}"
         groups: docker
         append: yes
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith"
 
     - name: Install PMM Server
       shell: |
         curl -fsSL https://www.percona.com/get/pmm | /bin/bash
       args:
         executable: /bin/bash
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-pml-mongolink-keith"
 
     - name: Enable pmm3-client repository
       command: percona-release enable pmm3-client
