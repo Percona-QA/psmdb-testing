@@ -191,8 +191,6 @@ def test_pml_version(host):
     result = pml_version(host)
     lines = result.stderr.split("\n")
     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
-    print(parsed_config)
-    print(get_git_commit())
     assert parsed_config['Version'] == f"v{version}", parsed_config
     assert parsed_config['Platform'], parsed_config
     assert parsed_config['GitCommit'] == get_git_commit(), parsed_config
