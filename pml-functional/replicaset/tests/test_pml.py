@@ -6,13 +6,13 @@ import testinfra.utils.ansible_runner
 from data_integrity_check import compare_data_rs
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-source')
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-source-keith')
 
 destination = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-destination')
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-destination-keith')
 
 pml = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-mongolink')
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('jenkins-pml-mongolink-keith')
 
 collections = int(os.getenv("COLLECTIONS", default = 5))
 datasize = int(os.getenv("DATASIZE", default = 100))
