@@ -1,7 +1,7 @@
 ## Setup ##
 
 Environment variables for  the setup:
-1) MONGO_VERSION (default **percona/percona-server-mongodb:latest** ) - base image for the tests
+1) MONGODB_IMAGE (default **percona/percona-server-mongodb:latest** ) - base image for the tests
 2) MLINK_BRANCH (defaut **main**) - branch, or tag, or commithash to build mlink from
 3) GO_VER (default **latest**) - golang version
 
