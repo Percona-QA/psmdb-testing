@@ -326,8 +326,8 @@ ssl|wiredTiger
  ssl_linear|wiredTiger
 ssl_special|wiredTiger
 ssl_x509|wiredTiger
-talk_directly_to_shardsvrs_jscore_passthrough|wiredTiger
-talk_directly_to_shardsvrs_kill_primary_jscore_passthrough|wiredTiger
+ talk_directly_to_shardsvrs_jscore_passthrough|wiredTiger
+ talk_directly_to_shardsvrs_kill_primary_jscore_passthrough|wiredTiger
 tde_cbc|wiredTiger
 tde_gcm|wiredTiger
 telemetry --jobs=1|wiredTiger
@@ -605,8 +605,8 @@ snmp|inMemory
 ssl|inMemory
 ssl_special|inMemory
 ssl_x509|inMemory
-talk_directly_to_shardsvrs_jscore_passthrough|inMemory
-talk_directly_to_shardsvrs_kill_primary_jscore_passthrough|inMemory
+ talk_directly_to_shardsvrs_jscore_passthrough|inMemory
+ talk_directly_to_shardsvrs_kill_primary_jscore_passthrough|inMemory
  tde_cbc|inMemory
  tde_gcm|inMemory
  tenant_migration_causally_consistent_jscore_passthrough|inMemory
