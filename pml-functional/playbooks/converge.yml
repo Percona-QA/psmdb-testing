@@ -188,6 +188,12 @@
         remote_src: true
       when: inventory_hostname == "jenkins-pml-source"
 
+    - name: Copy load_data.py to /tmp
+      copy:
+        src: ../scripts/load_data.py
+        dest: /tmp/load_data.py
+        mode: '0755'
+
     - name: Get private source ip address
       set_fact:
         private_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_default_ipv4']['address'] }}"

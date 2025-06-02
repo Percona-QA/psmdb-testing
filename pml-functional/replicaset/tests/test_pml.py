@@ -1,7 +1,7 @@
 import os
-import random
 import time
 import json
+from datetime import datetime
 import testinfra.utils.ansible_runner
 from data_integrity_check import compare_data_rs
 
@@ -16,81 +16,35 @@ pml = testinfra.utils.ansible_runner.AnsibleRunner(
 
 collections = int(os.getenv("COLLECTIONS", default = 5))
 datasize = int(os.getenv("DATASIZE", default = 100))
-distribute = os.getenv("DISTRIBUTE", default = "false")
+distribute = os.getenv("RANDOM_DISTRIBUTE_DATA", default="false").lower() == "true"
+doc_template = os.getenv("DOC_TEMPLATE", default = 'random')
+FULL_DATA_COMPARE = os.getenv("FULL_DATA_COMPARE", default="false").lower() == "true"
 TIMEOUT = int(os.getenv("TIMEOUT",default = 3600))
 
-def create_config(datasize, collections):
-    string = []
-    documentCount = int(datasize / collections)
-    for x in range(collections):
-        collectionName = f"collection{x}"
-        string2 = {'database': 'test','collection': collectionName,'count': documentCount,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}
-        string.append(string2)
-    return string
-
-def distribute_create_config(dataSize, collections):
-    string = []
-    distribution_chunks = split_datasize(collections)
-    for x in range(collections):
-        distribution = int(dataSize / 100 * distribution_chunks[x])
-        collectionName = f"collection{x}"
-        string2 = {'database': 'test','collection': collectionName,'count': distribution,'content': {'binary': {'type': 'binary','minLength': 1048576, 'maxLength': 1048576}}}
-        string.append(string2)
-    return string
-
-def randomize_sizes(total_bytes, min_size=512 * 1024, max_size=16 * 1024 * 1024):
-    sizes = []
-    remaining = total_bytes
-
-    while remaining > 0:
-        max_allowed = min(max_size, remaining)
-        size = random.randint(min_size, max_allowed)
-        sizes.append(size)
-        remaining -= size
-
-    return sizes
-
-def split_datasize(numberOfChunks):
-    parts = []
-    remaining = 100
-    for x in range(numberOfChunks - 1):
-        max_number = remaining - (numberOfChunks - len(parts) - 1)
-        n = random.randint(1, max_number)
-        parts.append(n)
-        remaining -= n
-    parts.append(remaining)
-    return parts
-
-def load_data(node,port):
-    if distribute == "true":
-        config = distribute_create_config(datasize, collections)
-    else:
-        config = create_config(datasize, collections)
-    config_json = json.dumps(config, indent=4)
-    node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
-    node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
-
-def check_count_data(node,port):
-    result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.binary.count()' --quiet | tail -1")
-    return result
+def load_data(node):
+    env_vars = f"COLLECTIONS={collections} DATASIZE={datasize} DISTRIBUTE={distribute} DOC_TEMPLATE={doc_template}"
+    node.run_test(f"{env_vars} python3 /tmp/load_data.py")
 
 def obtain_pml_address(node):
     ipaddress = node.check_output(
         "ip -4 addr show scope global | grep inet | awk '{print $2}' | cut -d/ -f1 | head -n 1")
     return ipaddress
 
-def confirm_collection_size(node, port, amountOfCollections, datasize):
-    sizes = []
-    total = 0
-    for collection in range(amountOfCollections):
-        result = node.check_output(
-        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.collection" + str(collection) + ".dataSize() / (1024 * 1024)' --quiet")
-        sizes.append(int(float(result.strip())))
-    for size in sizes:
-        total += size
-    if total == datasize:
-        return True
-    else:
+def confirm_collection_size(node, datasize, dbname="test_db"):
+    cmd = (
+        f'mongosh "mongodb://127.0.0.1:27017/" --quiet --eval \'let total = 0; '
+        f'const dbname = "{dbname}"; const targetdb = db.getSiblingDB(dbname); '
+        f'targetdb.getCollectionNames().forEach(name => {{ '
+        f'let stats = targetdb.getCollection(name).stats(); '
+        f'if (stats && typeof stats.size === "number") {{ total += stats.size; }} }}); '
+        f'print((total / (1024 * 1024)).toFixed(2));\'')
+    try:
+        result = node.check_output(cmd)
+        size_mb = float(result.strip())
+        lower_bound = datasize * 0.995
+        upper_bound = datasize * 1.005
+        return lower_bound <= size_mb <= upper_bound
+    except Exception as e:
         return False
 
 def pml_start():
@@ -197,19 +151,31 @@ def wait_for_repl_stage(timeout=3600, interval=1, stable_duration=2):
     print("Error: Timeout reached while waiting for initial sync to complete")
     return False
 
+def log_step(message):
+    print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}")
+
 def test_prepare_data():
-    load_data(source,"27017")
-    assert confirm_collection_size(source, "27017", collections, datasize)
+    log_step("Starting data generation on source node...")
+    load_data(source)
+    log_step("Data generation completed. Validating size...")
+    assert confirm_collection_size(source, datasize)
+    log_step("Source data size confirmed")
 
 def test_data_transfer_PML_T40():
+    log_step("Starting PML sync...")
     assert pml_start()
+    log_step("Waiting for replication to complete...")
     assert wait_for_repl_stage(TIMEOUT)
+    log_step("Finalizing sync...")
     assert pml_finalize()
-    assert confirm_collection_size(destination, "27017", collections, datasize)
+    log_step("PML sync completed successfully")
 
 def test_datasize_PML_T41():
-    assert confirm_collection_size(destination, "27017", collections, datasize)
+    log_step("Validating destination data size...")
+    assert confirm_collection_size(destination, datasize)
+    log_step("Destination data size confirmed")
 
 def test_PML_data_integrity_PML_T42():
-    assert compare_data_rs(source, destination, "27017")
-
+    log_step("Comparing data integrity between source and destination...")
+    assert compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE)
+    log_step("Data integrity check completed successfully")
