@@ -177,8 +177,9 @@ def start_plm_service(host):
     return start_plm
 
 def get_git_commit():
+    headers = {'Authorization': 'token ' + os.environ.get("MONGO_REPO_TOKEN")}
     url = f"https://api.github.com/repos/percona/percona-mongolink/commits/release-{version}"
-    git_commit = requests.get(url)
+    git_commit = requests.get(url, headers=headers)
 
     if git_commit.status_code == 200:
         return git_commit.json()["sha"]
