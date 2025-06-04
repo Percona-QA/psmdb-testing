@@ -155,24 +155,24 @@
         command: "--port=27017 --replSet rs1 --bind_ip_all"
 
     - name: Wait for mongodb to be ready on source container
-      community.mongodb.mongodb_shell:
-        login_host: localhost
-        login_port: 27017
-        eval: "db.runCommand({ ping: 1 })"
-      register: ping_result
+      community.docker.docker_container_exec:
+        container: source
+        command: >
+          bash -c "until mongosh --quiet --eval 'db.runCommand({ ping: 1 })' > /dev/null 2>&1; do sleep 2; done"
       retries: 10
       delay: 3
-      until: ping_result.rc == 0
+      register: wait_mongo
+      until: wait_mongo.rc == 0
 
     - name: Wait for mongodb to be ready on destination container
-      community.mongodb.mongodb_shell:
-        login_host: localhost
-        login_port: 28017
-        eval: "db.runCommand({ ping: 1 })"
-      register: ping_result
+      community.docker.docker_container_exec:
+        container: destination
+        command: >
+          bash -c "until mongosh --quiet --eval 'db.runCommand({ ping: 1 })' > /dev/null 2>&1; do sleep 2; done"
       retries: 10
       delay: 3
-      until: ping_result.rc == 0
+      register: wait_mongo
+      until: wait_mongo.rc == 0
 
     - name: Get info about the Source container
       community.docker.docker_container_info:
