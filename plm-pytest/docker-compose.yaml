@@ -1,0 +1,72 @@
+services:
+  test:
+    build:
+      dockerfile: ./Dockerfile-testinfra
+      context: .
+    volumes:
+      - .:/test
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    container_name: test
+    hostname: test
+    ports:
+      - "5678:5678"
+    networks:
+      - test
+
+  mongodb:
+    image: mongodb/local
+    build:
+      dockerfile: ./Dockerfile-mongodb
+      context: .
+      args:
+        - MONGODB_IMAGE=${MONGODB_IMAGE:-percona/percona-server-mongodb}
+    command: /bin/bash
+    depends_on:
+      - easyrsa
+
+  perconalink:
+    image: perconalink/local
+    build:
+      dockerfile: Dockerfile-perconalink
+      args:
+        - PLM_BRANCH=${PLM_BRANCH:-main}
+        - MAKE_TARGET=${MAKE_TARGET:-build}
+    depends_on:
+      - easyrsa
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    profiles: ["monitoring"]
+    volumes:
+      - ./conf/prometheus:/etc/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - test
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    profiles: ["monitoring"]
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=adm
+      - GF_SECURITY_ADMIN_PASSWORD=adm
+    volumes:
+      - ./conf/grafana:/etc/grafana/provisioning
+    networks:
+      - test
+
+  easyrsa:
+    image: easyrsa/local
+    build:
+      dockerfile: ./Dockerfile-easyrsa
+      context: .
+    command: /bin/bash
+
+networks:
+  test:
+    name: test
+
