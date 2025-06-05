@@ -6,7 +6,7 @@
     "panels": [
       {
         "type": "timeseries",
-        "title": "percona_link_copy_insert_batch_duration_seconds (in ms)",
+        "title": "percona_link_mongodb_copy_insert_batch_duration_seconds (in ms)",
         "id": 1,
         "gridPos": {
           "h": 8,
@@ -20,7 +20,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_copy_insert_batch_duration_seconds * 1000",
+            "expr": "percona_link_mongodb_copy_insert_batch_duration_seconds * 1000",
             "refId": "A",
             "instant": false
           }
@@ -42,7 +42,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_copy_insert_document_total",
+        "title": "percona_link_mongodb_copy_insert_document_total",
         "id": 2,
         "gridPos": {
           "h": 8,
@@ -56,7 +56,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_copy_insert_document_total",
+            "expr": "percona_link_mongodb_copy_insert_document_total",
             "refId": "B",
             "instant": false
           }
@@ -78,7 +78,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_copy_insert_size_bytes_total (in GiB)",
+        "title": "percona_link_mongodb_copy_insert_size_bytes_total (in GiB)",
         "id": 3,
         "gridPos": {
           "h": 8,
@@ -92,7 +92,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_copy_insert_size_bytes_total / 1073741824",
+            "expr": "percona_link_mongodb_copy_insert_size_bytes_total / 1073741824",
             "refId": "C",
             "instant": false
           }
@@ -114,7 +114,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_copy_read_batch_duration_seconds (in ms)",
+        "title": "percona_link_mongodb_copy_read_batch_duration_seconds (in ms)",
         "id": 4,
         "gridPos": {
           "h": 8,
@@ -128,7 +128,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_copy_read_batch_duration_seconds * 1000",
+            "expr": "percona_link_mongodb_copy_read_batch_duration_seconds * 1000",
             "refId": "D",
             "instant": false
           }
@@ -150,7 +150,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_copy_read_document_total",
+        "title": "percona_link_mongodb_copy_read_document_total",
         "id": 5,
         "gridPos": {
           "h": 8,
@@ -164,7 +164,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_copy_read_document_total",
+            "expr": "percona_link_mongodb_copy_read_document_total",
             "refId": "E",
             "instant": false
           }
@@ -186,7 +186,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_copy_read_size_bytes_total (in GiB)",
+        "title": "percona_link_mongodb_copy_read_size_bytes_total (in GiB)",
         "id": 6,
         "gridPos": {
           "h": 8,
@@ -200,7 +200,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_copy_read_size_bytes_total / 1073741824",
+            "expr": "percona_link_mongodb_copy_read_size_bytes_total / 1073741824",
             "refId": "F",
             "instant": false
           }
@@ -222,7 +222,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_estimated_total_size_bytes (in GiB)",
+        "title": "percona_link_mongodb_estimated_total_size_bytes (in GiB)",
         "id": 7,
         "gridPos": {
           "h": 8,
@@ -236,7 +236,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_estimated_total_size_bytes / 1073741824",
+            "expr": "percona_link_mongodb_estimated_total_size_bytes / 1073741824",
             "refId": "G",
             "instant": false
           }
@@ -258,7 +258,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_events_processed_total",
+        "title": "percona_link_mongodb_events_processed_total",
         "id": 8,
         "gridPos": {
           "h": 8,
@@ -272,7 +272,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_events_processed_total",
+            "expr": "percona_link_mongodb_events_processed_total",
             "refId": "H",
             "instant": false
           }
@@ -294,7 +294,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_initial_sync_lag_time_seconds (in ms)",
+        "title": "percona_link_mongodb_initial_sync_lag_time_seconds (in ms)",
         "id": 9,
         "gridPos": {
           "h": 8,
@@ -308,7 +308,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_initial_sync_lag_time_seconds * 1000",
+            "expr": "percona_link_mongodb_initial_sync_lag_time_seconds * 1000",
             "refId": "I",
             "instant": false
           }
@@ -330,7 +330,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_lag_time_seconds (in ms)",
+        "title": "percona_link_mongodb_lag_time_seconds (in ms)",
         "id": 10,
         "gridPos": {
           "h": 8,
@@ -344,7 +344,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_lag_time_seconds * 1000",
+            "expr": "percona_link_mongodb_lag_time_seconds * 1000",
             "refId": "J",
             "instant": false
           }
@@ -366,7 +366,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_process_cpu_seconds_total",
+        "title": "percona_link_mongodb_process_cpu_seconds_total",
         "id": 11,
         "gridPos": {
           "h": 8,
@@ -380,7 +380,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_process_cpu_seconds_total",
+            "expr": "percona_link_mongodb_process_cpu_seconds_total",
             "refId": "K",
             "instant": false
           }
@@ -402,7 +402,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_process_max_fds",
+        "title": "percona_link_mongodb_process_max_fds",
         "id": 12,
         "gridPos": {
           "h": 8,
@@ -416,7 +416,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_process_max_fds",
+            "expr": "percona_link_mongodb_process_max_fds",
             "refId": "L",
             "instant": false
           }
@@ -438,7 +438,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_process_network_receive_bytes_total (in GiB)",
+        "title": "percona_link_mongodb_process_network_receive_bytes_total (in GiB)",
         "id": 13,
         "gridPos": {
           "h": 8,
@@ -452,7 +452,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_process_network_receive_bytes_total / 1073741824",
+            "expr": "percona_link_mongodb_process_network_receive_bytes_total / 1073741824",
             "refId": "M",
             "instant": false
           }
@@ -474,7 +474,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_process_network_transmit_bytes_total (in GiB)",
+        "title": "percona_link_mongodb_process_network_transmit_bytes_total (in GiB)",
         "id": 14,
         "gridPos": {
           "h": 8,
@@ -488,7 +488,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_process_network_transmit_bytes_total / 1073741824",
+            "expr": "percona_link_mongodb_process_network_transmit_bytes_total / 1073741824",
             "refId": "N",
             "instant": false
           }
@@ -510,7 +510,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_process_open_fds",
+        "title": "percona_link_mongodb_process_open_fds",
         "id": 15,
         "gridPos": {
           "h": 8,
@@ -524,7 +524,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_process_open_fds",
+            "expr": "percona_link_mongodb_process_open_fds",
             "refId": "O",
             "instant": false
           }
@@ -546,7 +546,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_process_resident_memory_bytes (in GiB)",
+        "title": "percona_link_mongodb_process_resident_memory_bytes (in GiB)",
         "id": 16,
         "gridPos": {
           "h": 8,
@@ -560,7 +560,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_process_resident_memory_bytes / 1073741824",
+            "expr": "percona_link_mongodb_process_resident_memory_bytes / 1073741824",
             "refId": "P",
             "instant": false
           }
@@ -582,7 +582,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_process_start_time_seconds",
+        "title": "percona_link_mongodb_process_start_time_seconds",
         "id": 17,
         "gridPos": {
           "h": 8,
@@ -596,7 +596,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_process_start_time_seconds",
+            "expr": "percona_link_mongodb_process_start_time_seconds",
             "refId": "Q",
             "instant": false
           }
@@ -618,7 +618,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_process_virtual_memory_bytes (in GiB)",
+        "title": "percona_link_mongodb_process_virtual_memory_bytes (in GiB)",
         "id": 18,
         "gridPos": {
           "h": 8,
@@ -632,7 +632,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_process_virtual_memory_bytes / 1073741824",
+            "expr": "percona_link_mongodb_process_virtual_memory_bytes / 1073741824",
             "refId": "R",
             "instant": false
           }
@@ -654,7 +654,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_link_process_virtual_memory_max_bytes (in GiB)",
+        "title": "percona_link_mongodb_process_virtual_memory_max_bytes (in GiB)",
         "id": 19,
         "gridPos": {
           "h": 8,
@@ -668,7 +668,7 @@
         },
         "targets": [
           {
-            "expr": "percona_link_process_virtual_memory_max_bytes / 1073741824",
+            "expr": "percona_link_mongodb_process_virtual_memory_max_bytes / 1073741824",
             "refId": "S",
             "instant": false
           }
