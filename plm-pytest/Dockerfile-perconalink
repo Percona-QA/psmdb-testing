@@ -8,7 +8,13 @@ COPY --from=easyrsa /etc/x509/ /etc/x509/
 RUN apt update && apt -y install curl socat git && \
     git clone https://github.com/percona/percona-link-mongodb.git && cd percona-link-mongodb && \
     git checkout $PLM_BRANCH && \
-    make build && cp -rpf bin/* /usr/bin/
+    n=0; until [ "$n" -ge 5 ]; do \
+        make ${MAKE_TARGET} && break; \
+        n=$((n+1)); echo "Retry $n/5 failed. Retrying in 5 seconds..."; \
+        sleep 5; \
+    done && \
+    cp -rpf bin/* /usr/bin/
+
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
