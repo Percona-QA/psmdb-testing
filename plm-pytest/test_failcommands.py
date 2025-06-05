@@ -116,7 +116,6 @@ def test_rs_plink_PML_T39(start_cluster, srcRS, dstRS, plink):
                 break
     t1 = threading.Thread(target=capped_insert)
     t1.start()
-    time.sleep(2)
     result = plink.start()
     assert result is True, "Failed to start plink service"
     result = plink.wait_for_repl_stage()
