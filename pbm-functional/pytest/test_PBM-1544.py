@@ -44,6 +44,7 @@ def start_cluster(cluster,request):
 
 @pytest.mark.timeout(300,func_only=True)
 def test_physical(start_cluster,cluster):
+    time.sleep(3600)
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("physical")
