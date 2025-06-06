@@ -21,7 +21,7 @@ def docker_client():
 
 @pytest.fixture(scope="package")
 def config():
-    return { "_id": "rs1", "members": [{"host":"rs101"},{"host": "rs102"},{"host": "rs103" }]}
+    return { "_id": "rs1", "members": [{"host":"rs101"}]}
 
 @pytest.fixture(scope="package")
 def cluster(config):
