@@ -48,7 +48,7 @@ def test_physical(start_cluster,cluster):
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("physical")
     print("\n\n\n\n=======================================\n\n\n\n\n")
-    print("KEITH TEST: " + str(cluster.get_status()) )
+    print("KEITH TEST: " + str(cluster.check_pbm_status()) )
     print("\n\n\n\n=======================================\n\n\n\n\n")
     result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
     assert int(result.deleted_count) == len(documents)
