@@ -4,7 +4,7 @@ ARG GO_VER=bullseye
 FROM easyrsa/local AS easyrsa
 
 FROM golang:$GO_VER AS builder
-ARG PBM_BRANCH=dev
+    ARG PBM_BRANCH=dev
 ARG PR_NUMBER
 ARG MAKE_TARGET=build
 WORKDIR /

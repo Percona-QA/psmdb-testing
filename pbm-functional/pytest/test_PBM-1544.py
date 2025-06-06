@@ -44,13 +44,13 @@ def start_cluster(cluster,request):
 
 @pytest.mark.timeout(300,func_only=True)
 def test_physical(start_cluster,cluster):
-    time.sleep(3600)
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("physical")
     print("\n\n\n\n=======================================\n\n\n\n\n")
     print("KEITH TEST: " + str(cluster.check_pbm_status()) )
     print("\n\n\n\n=======================================\n\n\n\n\n")
+    time.sleep(3600)
     result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
     assert int(result.deleted_count) == len(documents)
     cluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
