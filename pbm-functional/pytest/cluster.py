@@ -776,7 +776,7 @@ class Cluster:
     def check_pbm_status(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
         result = n.check_output('pbm status --out=json')
-        print(result)
+        print("KEITH TEST" + result)
         parsed_result = json.loads(result)
         Cluster.log("PBM status: \n" + str(parsed_result['cluster']))
         #Cluster.log(json.dumps(parsed_result['cluster'], indent=4))
