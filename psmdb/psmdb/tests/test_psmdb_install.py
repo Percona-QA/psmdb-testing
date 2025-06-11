@@ -3,6 +3,7 @@ import time
 import pytest
 import json
 import yaml
+import re
 import testinfra.utils.ansible_runner
 from packaging import version
 
@@ -153,6 +154,26 @@ def test_binary_symbol_visibility(host):
             assert ".symtab" not in readelf_result.stdout, f"{binary} should NOT have .symtab (community build)"
             assert ".strtab" not in readelf_result.stdout, f"{binary} should NOT have .strtab (community build)"
             assert "not stripped" not in file_output, f"{binary} should be stripped (community build)"
+
+def test_debug_files_validity(host):
+    if (host.system_info.distribution.lower() in ["redhat", "rhel", "centos"]
+        and host.system_info.release.startswith("8")
+        and version.parse("6.0.0") <= version.parse(PSMDB_VER) < version.parse("7.0.0")):
+        pytest.skip("Skipping test_debug_files_validity on RHEL8 for PSMDB 6.x")
+    bin_path = "/usr/bin/mongod"
+    symbol = "mongo::waitForShutdown"
+    mongod = host.file(bin_path)
+    assert mongod.exists, f"{bin_path} not found"
+    assert mongod.mode & 0o111, f"{bin_path} is not executable"
+    cmd = host.run(
+        f"gdb -q -batch "
+        f"-ex 'set debuginfod enabled off' "
+        f"-ex 'file {bin_path}' "
+        f"-ex 'info line {symbol}' "
+        f"-ex 'quit'")
+    output = cmd.stdout or cmd.stderr
+    pattern = (r'Line \d+ of ".+" starts at address 0x[0-9a-f]+ <.+> and ends at 0x[0-9a-f]+ <.+>')
+    assert re.search(pattern, output), f"Expected debug info for waitForShutdown is missing. \nGDB output:\n{output}"
 
 def test_version_pt(host):
     if toolkit != "true" :

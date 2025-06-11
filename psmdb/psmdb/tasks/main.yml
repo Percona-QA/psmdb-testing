@@ -194,3 +194,8 @@
 - name: Make the backup of mongod.conf
   shell: |
     cp -r /etc/mongod.conf /etc/mongod.conf.default
+
+- name: Ensure gdb is installed
+  package:
+    name: gdb
+    state: present
