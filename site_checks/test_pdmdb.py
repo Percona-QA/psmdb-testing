@@ -12,9 +12,9 @@ FCV_VER = PDMDB_VER.split(".")[0] + "." + PDMDB_VER.split(".")[1]
 PBM_VER = os.environ.get("PBM_VERSION")
 
 if version.parse(PSMDB_VER) > version.parse("7.0.0"):
-    SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','source','jammy','focal','redhat/2023']
+    SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','source','jammy','redhat/2023']
 elif version.parse(PSMDB_VER) > version.parse("6.0.0") and version.parse(PSMDB_VER) < version.parse("7.0.0"):
-    SOFTWARE_FILES = ['bullseye','binary','redhat/9','redhat/8','source','jammy','focal','redhat/2023']
+    SOFTWARE_FILES = ['bullseye','binary','redhat/9','redhat/8','source','jammy','redhat/2023']
     if (PDMDB_VER.startswith("5") and version.parse(PDMDB_VER) > version.parse("5.0.27")):
        SOFTWARE_FILES.append('noble')
     if (PDMDB_VER.startswith("6") and version.parse(PDMDB_VER) > version.parse("6.0.15")):
@@ -22,7 +22,7 @@ elif version.parse(PSMDB_VER) > version.parse("6.0.0") and version.parse(PSMDB_V
     if (PDMDB_VER.startswith("7") and version.parse(PDMDB_VER) > version.parse("7.0.12")):
        SOFTWARE_FILES.append('noble')
 else:
-    SOFTWARE_FILES = ['bullseye','binary','redhat/8','source','jammy','focal']
+    SOFTWARE_FILES = ['bullseye','binary','redhat/8','source','jammy']
 
 def get_package_tuples():
     list = []
