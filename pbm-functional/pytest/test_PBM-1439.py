@@ -66,7 +66,7 @@ def test_logical_PBM_T294(start_cluster, cluster):
     insert_thread.join()
     assert result.rc == 0, f"PBM backup failed\nstderr:\n{result.stderr}"
     logs=cluster.exec_pbm_cli("logs -sD -t0 -e backup")
-    error_lines = [line for line in logs.stdout.splitlines() if " E " in line and "active lock is present" not in line]
+    error_lines = [line for line in logs.stdout.splitlines() if " E " in line]
     if error_lines:
         error_summary = "\n".join(error_lines)
         raise AssertionError(f"Errors found in PBM backup logs\n{error_summary}")
@@ -101,7 +101,7 @@ def test_logical_PBM_T295(start_cluster, cluster):
     insert_thread.join()
     assert result.rc == 0, f"PBM backup failed\nstderr:\n{result.stderr}"
     logs = cluster.exec_pbm_cli("logs -sD -t0 -e backup")
-    error_lines = [line for line in logs.stdout.splitlines() if " E " in line and "active lock is present" not in line]
+    error_lines = [line for line in logs.stdout.splitlines() if " E " in line]
     if error_lines:
         error_summary = "\n".join(error_lines)
         raise AssertionError(f"Errors found in PBM backup logs\n{error_summary}")
