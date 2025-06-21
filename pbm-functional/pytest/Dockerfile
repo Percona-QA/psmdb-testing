@@ -45,11 +45,13 @@ COPY conf/pbm/filesystem-profile.yaml /etc/pbm-fs-profile.conf
 COPY conf/krb5.conf /etc/krb5.conf
 COPY keyfile /etc/keyfile
 COPY mongodb-keyfile /etc/mongodb-keyfile
+COPY mongodb-keyfile-new /etc/mongodb-keyfile-new
 RUN echo -e 'vaulttoken' > /etc/vault/token && \
     mkdir -p /var/lib/mongo && \
     chown -R mongodb /var/lib/mongo && \
     chown mongodb /etc/keyfile && chmod 400 /etc/keyfile && \
     chown mongodb /etc/mongodb-keyfile && chmod 400 /etc/mongodb-keyfile && \
+    chown mongodb /etc/mongodb-keyfile-new && chmod 400 /etc/mongodb-keyfile-new && \
     chown -R mongodb /etc/pykmip && chmod 400 /etc/pykmip/mongod.pem && \
     chown -R mongodb /etc/vault && chmod 400 /etc/vault/token && \
     chown -R mongodb /etc/x509 && chmod 400 /etc/x509/* && \
