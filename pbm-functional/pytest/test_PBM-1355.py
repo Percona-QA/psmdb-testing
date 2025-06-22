@@ -118,9 +118,9 @@ def test_remap_PBM_T265(start_cluster,cluster,newcluster,backup_type):
     client=pymongo.MongoClient(newcluster.connection)
     Cluster.log(client.admin.command({'transitionFromDedicatedConfigServer': 1}))
     newcluster.setup_pbm()
-    result = newcluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none")
+    result = newcluster.exec_pbm_cli("config --set storage.type=filesystem "
+            "--set storage.filesystem.path=/backups --set backup.compression=none --wait")
     assert result.rc == 0
-    newcluster.make_resync()
 
     restart = True if backup_type == 'physical' else False
     newcluster.make_restore(backup,restart_cluster=restart,check_pbm_status=True,make_resync=False)

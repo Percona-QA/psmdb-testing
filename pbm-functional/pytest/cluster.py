@@ -376,14 +376,14 @@ class Cluster:
     def setup_pbm(self,file="/etc/pbm.conf"):
         host = self.pbm_cli
         n = testinfra.get_host("docker://" + host)
-        result = n.check_output('pbm config --file=' + file + ' --out=json')
+        result = n.check_output('pbm config --file=' + file + ' --wait --out=json')
         Cluster.log("Setup PBM:\n" + result)
         time.sleep(5)
 
     # pbm --force-resync
     def make_resync(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output('pbm config --force-resync --out json')
+        result = n.check_output('pbm config --force-resync --wait --out json')
         parsed_result = json.loads(result)
         Cluster.log('Started resync: ' + result)
         timeout = time.time() + 30
@@ -581,7 +581,7 @@ class Cluster:
         n = testinfra.get_host("docker://" + self.pbm_cli)
         pitr_extra_args = kwargs.get('pitr_extra_args', "")
         result = n.check_output(
-            "pbm config --set pitr.enabled=true --set pitr.compression=none --out json " + pitr_extra_args)
+            "pbm config --set pitr.enabled=true --set pitr.compression=none --wait --out json " + pitr_extra_args)
         Cluster.log("Enabling PITR: " + result)
         timeout = time.time() + 150
         while True:
@@ -610,7 +610,7 @@ class Cluster:
                     time.sleep(1)
 
         result = n.check_output(
-            "pbm config --set pitr.enabled=false --out json")
+            "pbm config --set pitr.enabled=false --wait --out json")
         Cluster.log("Disabling PITR: " + result)
         timeout = time.time() + 150
         while True:
