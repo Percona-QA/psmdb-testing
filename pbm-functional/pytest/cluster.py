@@ -72,10 +72,11 @@ class Cluster:
             for id, member in enumerate(rs['members']):
                 assert isinstance(member, dict)
                 assert set(member.keys()) <= {
-                    'host', 'priority', 'arbiterOnly', 'hidden', 'secondaryDelaySecs', 'slaveDelay', 'votes', 'buildIndexes', 'tags'}
+                    'host', 'priority', 'arbiterOnly', 'hidden', 'secondaryDelaySecs', 'slaveDelay', 'votes', 'buildIndexes', 'tags', 'mongod_extra_args'}
                 assert 'host' in member and isinstance(member['host'], str)
                 if id == 0:
-                    assert set(member.keys()) == {'host'} or set(member.keys()) == {'host','tags'}
+                    allowed_first_keys = {'host', 'tags', 'mongod_extra_args'}
+                    assert set(member.keys()).issubset(allowed_first_keys)
                 if 'priority' in member:
                     assert isinstance(member['priority'], int)
                 if 'arbiterOnly' in member:
@@ -264,6 +265,7 @@ class Cluster:
                     autostart_psmdb = "true"
                 if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                     pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
+                mongod_args = host.pop("mongod_extra_args", self.mongod_extra_args)
                 docker.from_env().containers.run(
                     image='replica_member/local',
                     name=host['host'],
@@ -272,7 +274,7 @@ class Cluster:
                     network='test',
                     environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
                                  "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
-                                 "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + self.mongod_extra_args,
+                                 "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + mongod_args,
                                  "GOCOVERDIR=/gocoverdir/reports"],
                     volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
                 )
@@ -297,6 +299,7 @@ class Cluster:
                         autostart_psmdb = "true"
                     if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                         pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
+                    mongod_args = host.pop("mongod_extra_args", self.mongod_extra_args)
                     docker.from_env().containers.run(
                         image='replica_member/local',
                         name=host['host'],
@@ -305,7 +308,7 @@ class Cluster:
                         network='test',
                         environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
                                      "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
-                                     "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + self.mongod_extra_args, "KRB5_TRACE=/dev/stderr",
+                                     "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + mongod_args, "KRB5_TRACE=/dev/stderr",
                                      "GOCOVERDIR=/gocoverdir/reports"],
                         volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
                     )
@@ -328,6 +331,7 @@ class Cluster:
                     autostart_psmdb = "true"
                 if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                     pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
+                mongod_args = host.pop("mongod_extra_args", self.mongod_extra_args)
                 docker.from_env().containers.run(
                     image='replica_member/local',
                     name=host['host'],
@@ -337,7 +341,7 @@ class Cluster:
                     environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
                                  "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
-                                 self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + self.mongod_extra_args,
+                                 self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + mongod_args,
                                  "GOCOVERDIR=/gocoverdir/reports"],
                     volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
                 )
@@ -446,6 +450,9 @@ class Cluster:
     # 2. make_resync = bool - `pbm --force-resync` after the restore
     # 3. check_pbm_status = bool - check `pbm status` output, raises error if any agent is failed
     def make_restore(self, name, **kwargs):
+        # Optional custom restore options (e.g., ["--fallback-enabled=true", "--allow-partly-done=false"])
+        restore_opts = kwargs.get('restore_opts', [])
+
         if self.layout == "sharded":
             self.stop_mongos()
         self.stop_arbiters()
@@ -460,9 +467,42 @@ class Cluster:
             time.sleep(1)
         Cluster.log("Restore started")
         timeout=kwargs.get('timeout', 240)
-        result = n.run('SSL_CERT_FILE=/etc/nginx-minio/ca.crt timeout ' + str(timeout) + ' pbm restore ' + name + ' --wait')
-
-        if result.rc == 0 and "Error" not in result.stdout:
+        result = n.run('SSL_CERT_FILE=/etc/nginx-minio/ca.crt timeout ' + str(timeout) +
+            ' pbm restore ' + name + ' ' + ' '.join(restore_opts) + ' --wait')
+        if "--fallback-enabled=true" in restore_opts:
+            # Additional log check due to PBM-1574
+            match = re.search(r"Starting restore (\S+) from", result.stdout)
+            if not match:
+                raise ValueError(f"Failed to extract restore ID from output:\n{result.stdout}")
+            restore_id = match.group(1)
+            Cluster.log(f"Detected restore ID: {restore_id}")
+            pattern = re.compile(
+                rf"\[restore/{re.escape(restore_id)}\] recovery successfully finished"
+                rf"|\[restore/{re.escape(restore_id)}\].*exec cleanup strategy")
+            timeout = time.time() + 60
+            last_logs_by_host = {}
+            matched_hosts = set()
+            while time.time() < timeout:
+                for host in self.mongod_hosts:
+                    if host in matched_hosts:
+                        continue
+                    container = docker.from_env().containers.get(host)
+                    logs = container.logs(stdout=True, stderr=True, tail=1000).decode("utf-8")
+                    last_logs_by_host[host] = logs
+                    if pattern.search(logs):
+                        matched_hosts.add(host)
+                if len(matched_hosts) == len(self.mongod_hosts):
+                    break
+                time.sleep(1)
+            else:
+                unmatched = [h for h in self.mongod_hosts if h not in matched_hosts]
+                error_logs = "\n\n".join(f"--- {host} ---\n{last_logs_by_host.get(host, '')[-2000:]}" for host in unmatched)
+                raise TimeoutError(
+                    f"Timed out waiting for restore completion message for ID '{restore_id}'"
+                    f"on nodes: {', '.join(unmatched)}\n"
+                    f"Expected pattern: '{pattern.pattern}'\n"
+                    f"Last 1000 log lines from unmatched nodes:\n{error_logs}")
+        elif result.rc == 0 and "Error" not in result.stdout:
             Cluster.log(result.stdout)
         elif result.rc == 0 and "Error" in result.stdout:
             assert False, result.stdout
