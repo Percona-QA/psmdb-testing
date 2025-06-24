@@ -33,7 +33,8 @@ def start_cluster(cluster,request):
         os.system("rm -rf /backups/*")
         cluster.create()
         cluster.setup_pbm()
-        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none --out json")
+        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups "
+                                    "--set backup.compression=none --out json --wait")
         assert result.rc == 0
         Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
         time.sleep(5)
