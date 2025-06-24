@@ -36,7 +36,7 @@ def start_cluster(cluster, request):
         cluster.destroy()
         cluster.create()
         cluster.setup_pbm()
-        result = cluster.exec_pbm_cli("config --set storage.s3.endpointUrl=http://nginx-minio:21114")
+        result = cluster.exec_pbm_cli("config --set storage.s3.endpointUrl=http://nginx-minio:21114 --wait")
         Cluster.log("Setup PBM with nginx proxy:\n" + result.stdout)
         assert result.rc == 0
         client = pymongo.MongoClient(cluster.connection)

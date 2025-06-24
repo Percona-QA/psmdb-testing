@@ -45,7 +45,7 @@ def start_cluster(cluster, request):
         result = cluster.exec_pbm_cli("config --set storage.type=azure --set storage.azure.endpointUrl=" + azure_endpoint +
                                       " --set storage.azure.account=" + azure_account +
                                       " --set storage.azure.container=test-container --set storage.azure.credentials.key=" + azure_key +
-                                      " --out json")
+                                      " --out json --wait")
         Cluster.log("Setup PBM with azurite storage:\n" + result.stdout)
         assert result.rc == 0
         client = pymongo.MongoClient(cluster.connection)

@@ -61,7 +61,8 @@ def start_cluster(cluster,newcluster,request):
         client.admin.command("enableSharding", "test")
         client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
         cluster.setup_pbm()
-        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none")
+        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups "
+                                    "--set backup.compression=none --wait")
         assert result.rc == 0
         Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
         yield True

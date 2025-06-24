@@ -39,7 +39,7 @@ def test_logical_PBM_T298(start_cluster, cluster):
     """
     Test case to check that backup is NOT marked as successful if oplog wasn't uploaded
     """
-    result = cluster.exec_pbm_cli("config --set storage.s3.endpointUrl=http://nginx-minio:15380")
+    result = cluster.exec_pbm_cli("config --set storage.s3.endpointUrl=http://nginx-minio:15380 --wait")
     time.sleep(5)
     client = pymongo.MongoClient(cluster.connection)
     collection = client["test"]["bigdata"]
