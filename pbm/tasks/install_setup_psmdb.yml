@@ -95,5 +95,12 @@
 - name: start mongod service
   service: name=mongod state=started
 
+- name: check mongod ready status
+  shell: mongo --eval="printjson(db.serverStatus().ok)"
+  register: mongodbready
+  until: mongodbready.stdout | int == 1
+  retries: 20
+  delay: 1
+
 - name: initiate mongod replica set
   command: mongo --eval 'rs.initiate()'
