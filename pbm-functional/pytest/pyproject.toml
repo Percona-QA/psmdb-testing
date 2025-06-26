@@ -1,0 +1,10 @@
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
+markers = ["jenkins: mark test to run only in Jenkins or with --jenkins flag"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "N", "B", "PT", "I"]
+ignore = ["N802"]
