@@ -1,0 +1,129 @@
+ARG OS=debian:12
+FROM $OS AS toolchain_builder
+ARG toolchain_version=v4
+RUN set -ex; \
+    if [ -f "/usr/bin/yum" ] ; \
+    then \
+        yum -y update && yum install -y wget curl file glibc-devel gmp-devel mpfr-devel libmpc-devel gcc gcc-c++ bzip2 bzip2-devel openssl-devel zlib-devel libffi-devel xz-devel make tzdata ; \
+    else \
+        apt-get update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl file libgmp-dev libmpfr-dev libmpc-dev gcc g++ bzip2 libbz2-dev libssl-dev zlib1g-dev libreadline-dev libffi-dev make tzdata ; \
+    fi
+RUN set -ex; \
+    if [ "$toolchain_version" = "v3" ]; then \
+        wget https://gcc.gnu.org/pub/gcc/releases/gcc-8.5.0/gcc-8.5.0.tar.gz -O gcc.tar.gz; \
+    fi; \
+    if [ "$toolchain_version" = "v4" ]; then \
+        wget https://gcc.gnu.org/pub/gcc/releases/gcc-11.3.0/gcc-11.3.0.tar.gz -O gcc.tar.gz; \
+    fi; \
+    mkdir -p /opt/src/gcc && tar -xf gcc.tar.gz -C /opt/src/gcc --strip-components=1; \
+    cd /opt/src/gcc && ./contrib/download_prerequisites; \
+    mkdir /opt/objdir && cd /opt/objdir; \
+    CFLAGS="-O2" CXXFLAGS="-O2" /opt/src/gcc/configure --disable-multilib --prefix=/opt/gcc --enable-languages=c,c++; \
+    make -j "$(nproc)"; \
+    make install-strip; \
+    cd /opt && rm -rf /opt/src/gcc && rm -rf /opt/gcc.tar.gz && rm -rf /opt/objdir    
+ENV PATH="/opt/gcc/bin:${PATH}"
+RUN set -ex; \
+    if [ "$toolchain_version" = "v3" ]; then \
+        wget https://www.python.org/ftp/python/3.8.19/Python-3.8.19.tgz -O /opt/python.tgz ; \    
+    fi; \
+    if [ "$toolchain_version" = "v4" ]; then \
+        wget https://www.python.org/ftp/python/3.11.13/Python-3.11.13.tgz -O /opt/python.tgz; \
+    fi; \
+    mkdir -p /opt/src/python && tar -xzf /opt/python.tgz -C /opt/src/python --strip-components=1 ; \
+    cd /opt/src/python; \
+    ./configure --prefix=/opt/python --enable-optimizations; \
+    make -j "$(nproc)"; \
+    make install; \    
+    cd /opt/ && rm -rf /opt/src/python && rm -rf /opt/python.tgz
+
+ARG OS=debian:12
+FROM $OS AS base_image
+ARG branch=v8.0
+ARG psm_ver=8.0.3
+ARG psm_release=1
+ARG repo=https://github.com/percona/percona-server-mongodb.git
+RUN set -ex; \
+    if [ -f "/usr/bin/yum" ] ; then \
+        yum -y update && yum install -y wget git curl cmake lld binutils glibc-devel tzdata; \
+    else \
+        apt-get update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl git cmake binutils lld tzdata; \
+    fi
+COPY --from=toolchain_builder /opt /opt
+ENV PATH="/opt/python/bin:/opt/gcc/bin:${PATH}"
+RUN pip3 install --upgrade pip && pip3 install virtualenv && python3 -m venv /opt/venv
+ENV VIRTUAL_ENV /opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
+RUN cd /opt && git clone $repo && \
+    cd percona-server-mongodb/ && \
+    git checkout $branch && git pull && \
+    REVISION_LONG=$(git rev-parse HEAD) && \
+    /usr/bin/echo -e "{\n\
+  \"version\": \"$psm_ver-$psm_release\",\n\
+  \"githash\": \"${REVISION_LONG}\"\n\
+}" > version.json && \
+    echo "mongo_version: \"$psm_ver-$psm_release\"" > .resmoke_mongo_version.yml && \
+    rm -rf /opt/percona-server-mongodb/.git && mkdir -p /data/db
+WORKDIR /opt/percona-server-mongodb
+ENV POETRY_VIRTUALENVS_CREATE=false
+ENV POETRY_INSTALLER_MAX_WORKERS=10
+ENV PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
+ENV GLIBC_TUNABLES=glibc.pthread.rseq=0
+RUN set -ex; \
+    if [ -f "/usr/bin/yum" ] ; then \
+         yum install -y cmake openssl-devel openldap-devel krb5-devel libcurl-devel cyrus-sasl-devel bzip2-devel zlib-devel lz4-devel xz-devel e2fsprogs-devel iproute; \
+    else \
+         DEBIAN_FRONTEND=noninteractive apt-get -y install cmake libssl-dev libldap2-dev libkrb5-dev libcurl4-openssl-dev libsasl2-dev liblz4-dev libbz2-dev libsnappy-dev zlib1g-dev libzlcore-dev liblzma-dev e2fslibs-dev iproute2; \
+    fi 
+RUN set -ex; \
+    pip install --upgrade pip; \
+    VER=$(echo $psm_ver | cut -d"." -f1) && \
+    if [ $VER -ge 8 ]; then \
+        pip install 'poetry==1.5.1' && \
+        for i in $(seq 5); do \
+            poetry install --no-root --sync && break || sleep 1 ; \
+            echo "Python failed install required deps with poetry, retrying..." ; \
+        done; \
+    else \
+        pip install --upgrade PyYAML==5.3.1 && \
+        pip install --upgrade referencing==0.35.1 && \
+        pip install -r etc/pip/dev-requirements.txt; \        
+    fi 
+ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
+ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
+ENV AWS_LIBS=/opt/aws
+ARG AWS_VERSION=1.9.379
+RUN cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
+    mkdir -p /opt/aws && \
+    cd aws-sdk-cpp && git checkout $AWS_VERSION && git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="$AWS_LIBS" -DAUTORUN_UNIT_TESTS=OFF && \
+    make install && cd /opt && rm -rf aws-sdk-cpp
+RUN /usr/bin/echo -e "\n\
+CC = \"/opt/gcc/bin/gcc\"\n\
+CXX = \"/opt/gcc/bin/g++\"\n\
+CPPPATH = \"/opt/aws/include\"\n\
+LIBPATH = \"/opt/aws/lib /opt/aws/lib64\"\n\
+" > gcc.vars
+
+FROM base_image AS psmdb_builder
+ENV SCONS_TARGETS="install-mongod install-mongos install-mongo install-dbtest build/install/bin/mongobridge build/install/bin/wt"
+ARG pro=""
+RUN set -ex; \
+    buildscripts/scons.py --variables-files=gcc.vars -j"$(nproc)" --disable-warnings-as-errors \
+    --ssl --opt=on $pro --use-sasl-client --wiredtiger --audit --inmemory --hotbackup $SCONS_TARGETS 
+RUN find build/install/bin -type f | xargs strip --strip-debug || true 
+
+FROM base_image
+COPY --from=psmdb_builder /opt/percona-server-mongodb/build/install/bin/* /usr/bin/
+RUN find jstests -type f | xargs chmod 400 && \
+    cp /usr/bin/dbtest . || true && \
+    support-files/ldap-sasl/deploy_ldap_and_sasl.sh || true && \
+    echo "START=yes" >> /etc/default/saslauthd || true   
+ENV PATH="${PATH}:/data/multiversion"
+ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
+ENV TZ=America/New_York
+ENV PORTABLE=1
+ENV USE_SSE=1
+ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/resmoke2junit.py .
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
