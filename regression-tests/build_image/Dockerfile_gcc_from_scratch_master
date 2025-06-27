@@ -111,6 +111,7 @@ ENV SCONS_TARGETS="install-mongod install-mongos install-mongo install-dbtest bu
 ARG pro=""
 RUN set -ex; \
     buildscripts/scons.py --variables-files=gcc.vars -j"$(nproc)" --disable-warnings-as-errors \
+    VERBOSE=0 BAZEL_FLAGS="--config=local --verbose_failures" \
     --ssl --opt=on $pro --use-sasl-client --wiredtiger --audit --inmemory --hotbackup $SCONS_TARGETS 
 RUN find build/install/bin -type f | xargs strip --strip-debug || true 
 
