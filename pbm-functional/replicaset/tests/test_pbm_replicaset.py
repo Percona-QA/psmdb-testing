@@ -218,8 +218,12 @@ def setup_pitr(node,port):
     print(store_out)
 
 def test_1_setup_storage():
-    result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
+    if STORAGE != "gcp-hmac":
+        result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
+    else:
+        result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json storage.gcs.chunkSize=' + CHUNK_SIZE)
     store_out = json.loads(result)
+    print("\n\n\nKEITH TEST " + str(store_out) + "\n\n\n")
     if STORAGE == "minio":
         assert store_out['storage']['type'] == 's3'
         assert store_out['storage']['s3']['region'] == 'us-east-1'
@@ -230,9 +234,8 @@ def test_1_setup_storage():
         assert store_out['storage']['s3']['bucket'] == 'pbm-testing-west'
     if STORAGE == "gcp-hmac":
         assert store_out['storage']['type'] == 'gcs'
-        assert store_out['storage']['gcs']['chinkSize'] == 'us-west-2'
         assert store_out['storage']['gcs']['prefix'] == 'pbm/test'
-        assert store_out['storage']['gcs']['bucket'] == 'pbm-testing-west'
+        assert store_out['storage']['gcs']['bucket'] == 'keith-test'
     d = {'numDownloadWorkers': numDownloadWorkers,'maxDownloadBufferMb': maxDownloadBufferMb,'downloadChunkMb': downloadChunkMb }
     for k, v in d.items():
         if int(v):
