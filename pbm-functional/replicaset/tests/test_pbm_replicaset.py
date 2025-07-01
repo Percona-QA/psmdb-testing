@@ -25,7 +25,7 @@ STORAGE = os.getenv("STORAGE")
 BACKUP_TYPE = os.getenv("BACKUP_TYPE")
 EXISTING_BACKUP = os.getenv("EXISTING_BACKUP",default = "no")
 CHECK_PITR = os.getenv("CHECK_PITR",default = "yes")
-CHUNK_SIZE = int(os.getenv("CHUNK_SIZE",default = 16777216))
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE",default = "16777216"))
 numDownloadWorkers = os.getenv("RESTORE_NUMDOWNLOADWORKERS",default = '0')
 maxDownloadBufferMb = os.getenv("RESTORE_NUMDOWNLOADBUFFERMB",default = '0')
 downloadChunkMb = os.getenv("RESTORE_DOWNLOADCHUNKMB",default = '0')
@@ -221,7 +221,7 @@ def test_1_setup_storage():
     if STORAGE != "gcp-hmac":
         result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
     else:
-        result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json storage.gcs.chunkSize=' + CHUNK_SIZE)
+        result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json storage.gcs.chunkSize=' + str(CHUNK_SIZE))
     store_out = json.loads(result)
     print("\n\n\nKEITH TEST " + str(store_out) + "\n\n\n")
     if STORAGE == "minio":
