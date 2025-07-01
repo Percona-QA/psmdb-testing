@@ -25,6 +25,7 @@ STORAGE = os.getenv("STORAGE")
 BACKUP_TYPE = os.getenv("BACKUP_TYPE")
 EXISTING_BACKUP = os.getenv("EXISTING_BACKUP",default = "no")
 CHECK_PITR = os.getenv("CHECK_PITR",default = "yes")
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE",default = 16777216))
 numDownloadWorkers = os.getenv("RESTORE_NUMDOWNLOADWORKERS",default = '0')
 maxDownloadBufferMb = os.getenv("RESTORE_NUMDOWNLOADBUFFERMB",default = '0')
 downloadChunkMb = os.getenv("RESTORE_DOWNLOADCHUNKMB",default = '0')
@@ -227,6 +228,11 @@ def test_1_setup_storage():
         assert store_out['storage']['type'] == 's3'
         assert store_out['storage']['s3']['region'] == 'us-west-2'
         assert store_out['storage']['s3']['bucket'] == 'pbm-testing-west'
+    if STORAGE == "gcp-hmac":
+        assert store_out['storage']['type'] == 'gcs'
+        assert store_out['storage']['gcs']['chinkSize'] == 'us-west-2'
+        assert store_out['storage']['gcs']['prefix'] == 'pbm/test'
+        assert store_out['storage']['gcs']['bucket'] == 'pbm-testing-west'
     d = {'numDownloadWorkers': numDownloadWorkers,'maxDownloadBufferMb': maxDownloadBufferMb,'downloadChunkMb': downloadChunkMb }
     for k, v in d.items():
         if int(v):
