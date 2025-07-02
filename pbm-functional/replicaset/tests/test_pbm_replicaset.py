@@ -218,10 +218,10 @@ def setup_pitr(node,port):
     print(store_out)
 
 def test_1_setup_storage():
-    if STORAGE != "gcp-hmac":
-        result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
-    else:
-        result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json storage.gcs.chunkSize=' + str(CHUNK_SIZE))
+    # if STORAGE != "gcp-hmac":
+    result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
+    # else:
+    #     result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json storage.gcs.chunkSize=' + CHUNK_SIZE)
     store_out = json.loads(result)
     print("\n\n\nKEITH TEST " + str(store_out) + "\n\n\n")
     if STORAGE == "minio":
