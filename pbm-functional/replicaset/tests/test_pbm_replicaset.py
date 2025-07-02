@@ -218,16 +218,13 @@ def setup_pitr(node,port):
     print(store_out)
 
 def test_1_setup_storage():
-    if STORAGE != "gcp-hmac":
-        result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
-    else:
-        result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
-        resultChunkSize = primary_rs.check_output(
-            f"pbm config --mongodb-uri=mongodb://localhost:27017/ --set storage.gcs.chunkSize={CHUNK_SIZE} --out=json"
+    primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
+    if STORAGE == "gcp-hmac":
+        primary_rs.check_output(
+            f"pbm config --mongodb-uri=mongodb://localhost:27017/ --set storage.gcs.chunkSize={CHUNK_SIZE} --set storage.gcs.prefix=pbm/test --out=json"
         )
-    store_out = json.loads(result)
+    store_out = json.loads(primary_rs.check_output("pbm config --list --out=json"))
     print("\n\n\nKEITH TEST " + str(store_out) + "\n\n\n")
-    print("\n\n\nKEITH TEST 2" + str(resultChunkSize) + "\n\n\n")
     if STORAGE == "minio":
         assert store_out['storage']['type'] == 's3'
         assert store_out['storage']['s3']['region'] == 'us-east-1'
@@ -238,8 +235,8 @@ def test_1_setup_storage():
         assert store_out['storage']['s3']['bucket'] == 'pbm-testing-west'
     if STORAGE == "gcp-hmac":
         assert store_out['storage']['type'] == 'gcs'
-        assert store_out['storage']['gcs']['prefix'] == 'pbm/test'
-        assert store_out['storage']['gcs']['bucket'] == 'keith-test'
+        assert store_out['storage']['gcs']['chunkSize'] == 'pbm/test'
+        assert store_out['storage']['gcs']['prefix'] == 'keith-test'
     d = {'numDownloadWorkers': numDownloadWorkers,'maxDownloadBufferMb': maxDownloadBufferMb,'downloadChunkMb': downloadChunkMb }
     for k, v in d.items():
         if int(v):
