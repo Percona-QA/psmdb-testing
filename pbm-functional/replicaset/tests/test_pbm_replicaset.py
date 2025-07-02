@@ -223,7 +223,7 @@ def test_1_setup_storage():
         primary_rs.check_output(
             f"pbm config --mongodb-uri=mongodb://localhost:27017/ --set storage.gcs.chunkSize={CHUNK_SIZE} --set storage.gcs.prefix=pbm/test --out=json"
         )
-    store_out = json.loads(primary_rs.check_output("pbm config --list --out=json"))
+    store_out = json.loads(primary_rs.check_output("pbm config --mongodb-uri=mongodb://localhost:27017/ --list --out=json"))
     print("\n\n\nKEITH TEST " + str(store_out) + "\n\n\n")
     if STORAGE == "minio":
         assert store_out['storage']['type'] == 's3'
