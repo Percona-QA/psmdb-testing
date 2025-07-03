@@ -66,6 +66,8 @@ def check_status(node,port):
 def check_pitr(node,port):
     status = node.check_output('pbm status --mongodb-uri=mongodb://localhost:' + port + '/ --out=json 2>/dev/null')
     running = json.loads(status)['pitr']['run']
+    print("KEITH TEST 1 :" + json.loads(status))
+    print("KEITH TEST 2 :" + running)
     return bool(running)
 
 def check_agents_status(node,port):
