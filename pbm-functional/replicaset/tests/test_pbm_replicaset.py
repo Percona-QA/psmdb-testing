@@ -271,7 +271,7 @@ def test_4_setup_pitr():
                 print("pitr enabled")
                 break
         assert check_pitr(primary_rs,"27017") == True
-        time.sleep(10)
+        time.sleep(3600)
     else:
         result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --out=json')
     store_out = json.loads(result)
