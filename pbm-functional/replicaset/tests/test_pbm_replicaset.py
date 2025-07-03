@@ -235,8 +235,8 @@ def test_1_setup_storage():
         assert store_out['storage']['s3']['bucket'] == 'pbm-testing-west'
     if STORAGE == "gcp-hmac" or STORAGE == "gcp":
         assert store_out['storage']['type'] == 'gcs'
-        assert store_out['storage']['gcs']['chunkSize'] == 'pbm/test'
-        assert store_out['storage']['gcs']['prefix'] == 'keith-test'
+        assert store_out['storage']['gcs']['chunkSize'] == CHUNK_SIZE
+        assert store_out['storage']['gcs']['prefix'] == 'pbm/test'
     d = {'numDownloadWorkers': numDownloadWorkers,'maxDownloadBufferMb': maxDownloadBufferMb,'downloadChunkMb': downloadChunkMb }
     for k, v in d.items():
         if int(v):
