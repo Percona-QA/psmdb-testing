@@ -273,7 +273,9 @@ class Cluster:
                     detach=True,
                     network='test',
                     environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
-                                 "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                                 "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
+                                 "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                                 "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + mongod_args,
                                  "GOCOVERDIR=/gocoverdir/reports"],
                     volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
@@ -307,8 +309,11 @@ class Cluster:
                         detach=True,
                         network='test',
                         environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
-                                     "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
-                                     "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + mongod_args, "KRB5_TRACE=/dev/stderr",
+                                     "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, 
+                                     "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                                     "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
+                                     "KRB5_TRACE=/dev/stderr",
+                                     "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + mongod_args,
                                      "GOCOVERDIR=/gocoverdir/reports"],
                         volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
                     )
@@ -339,7 +344,10 @@ class Cluster:
                     detach=True,
                     network='test',
                     environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
-                                 "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                                 "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
+                                 "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                                 "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
+                                 "KRB5_TRACE=/dev/stderr",
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
                                  self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + mongod_args,
                                  "GOCOVERDIR=/gocoverdir/reports"],
