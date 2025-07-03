@@ -128,16 +128,6 @@
           - "27017:27017"
         command: "--port=27017 --replSet rs0 --bind_ip_all"
 
-    - name: Create Source Secondary PSMDB container
-      community.docker.docker_container:
-        name: source-secondary
-        image: percona/percona-server-mongodb:{{ psmdb_version }}
-        state: started
-        restart_policy: unless-stopped
-        published_ports:
-          - "29017:27017"
-        command: "--port=27017 --replSet rs0 --bind_ip_all"
-
     - name: Create Destination PSMDB container
       community.docker.docker_container:
         name: destination
@@ -148,19 +138,19 @@
           - "28017:27017"
         command: "--port=27017 --replSet rs1 --bind_ip_all"
 
+    - name: Create Destination Secondary PSMDB container
+      community.docker.docker_container:
+        name: destination-secondary
+        image: percona/percona-server-mongodb:{{ psmdb_version }}
+        state: started
+        restart_policy: unless-stopped
+        published_ports:
+          - "29017:27017"
+        command: "--port=27017 --replSet rs1 --bind_ip_all"
+
     - name: Wait for mongodb to be ready on source container
       community.docker.docker_container_exec:
         container: source
-        command: >
-          bash -c "until mongosh --quiet --eval 'db.runCommand({ ping: 1 })' > /dev/null 2>&1; do sleep 2; done"
-      retries: 10
-      delay: 3
-      register: wait_mongo
-      until: wait_mongo.rc == 0
-
-    - name: Wait for mongodb to be ready on source-secondary container
-      community.docker.docker_container_exec:
-        container: source-secondary
         command: >
           bash -c "until mongosh --quiet --eval 'db.runCommand({ ping: 1 })' > /dev/null 2>&1; do sleep 2; done"
       retries: 10
@@ -178,32 +168,42 @@
       register: wait_mongo
       until: wait_mongo.rc == 0
 
+    - name: Wait for mongodb to be ready on destination-secondary container
+      community.docker.docker_container_exec:
+        container: destination-secondary
+        command: >
+          bash -c "until mongosh --quiet --eval 'db.runCommand({ ping: 1 })' > /dev/null 2>&1; do sleep 2; done"
+      retries: 10
+      delay: 3
+      register: wait_mongo
+      until: wait_mongo.rc == 0
+
     - name: Get info about the Source container
       community.docker.docker_container_info:
         name: source
       register: source_container
-
-    - name: Get info about the Source Secondary container
-      community.docker.docker_container_info:
-        name: source-secondary
-      register: source_secondary_container
 
     - name: Get info about the Destination container
       community.docker.docker_container_info:
         name: destination
       register: destination_container
 
+    - name: Get info about the Destination Secondary container
+      community.docker.docker_container_info:
+        name: destination-secondary
+      register: destination_secondary_container
+
     - name: Store the Source Container IP
       set_fact:
         source_ip: "{{ source_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
 
-    - name: Store the Source Secondary Container IP
-      set_fact:
-        source_secondary_ip: "{{ source_secondary_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
-
     - name: Store the Destination Container IP
       set_fact:
         destination_ip: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
+
+    - name: Store the Destination Secondary Container IP
+      set_fact:
+        destination_secondary_ip: "{{ destination_secondary_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
 
     - name: Initiate source replicaset
       community.docker.docker_container_exec:
@@ -233,21 +233,21 @@
         create: yes
       loop:
         - { ip: "{{ source_ip }}", hostname: "source" }
-        - { ip: "{{ source_secondary_ip }}", hostname: "source-secondary" }
         - { ip: "{{ destination_ip }}", hostname: "destination" }
+        - { ip: "{{ destination_secondary_ip }}", hostname: "destination-secondary" }
       become: true
 
-    - name: Add secondary to source replicaset
+    - name: Add secondary to destination replicaset
       community.docker.docker_container_exec:
-        container: source
+        container: destination
         command: >
           mongosh --quiet --eval 'try {
-            rs.add("{{ source_secondary_ip }}:27017")
+            rs.add("{{ destination_secondary_ip }}:27017")
           } catch (e) { print(e); quit(1); }'
-      register: add_secondary_result
+      register: add_dest_secondary_result
       retries: 2
       delay: 5
-      until: add_secondary_result.rc == 0
+      until: add_dest_secondary_result.rc == 0
 
     - name: Update PLM_SOURCE_URI
       lineinfile:
