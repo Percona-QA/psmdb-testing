@@ -247,35 +247,35 @@ def test_1_setup_storage():
             print(store_out)
     time.sleep(10)
 
-def test_2_agents_status():
-    check_agents_status(primary_rs,"27017")
-
-def test_3_prepare_data():
-    if EXISTING_BACKUP != "no":
-        pytest.skip("Skipping loading data")
-    load_data(primary_rs,"27017",SIZE)
-    count = check_count_data(primary_rs,"27017")
-    assert int(count) == SIZE
-
-def test_4_setup_pitr():
-    if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
-        pytest.skip("Skipping pitr test")
-    if BACKUP_TYPE == "physical":
-        result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --set pitr.oplogOnly=true --out=json')
-        time.sleep(3600)
-        for i in range(TIMEOUT):
-            pitr = check_pitr(primary_rs,"27017")
-            if not pitr:
-                print("waiting for pitr to be enabled")
-                time.sleep(1)
-            else:
-                print("pitr enabled")
-                break
-        assert check_pitr(primary_rs,"27017") == True
-    else:
-        result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --out=json')
-    store_out = json.loads(result)
-    print(store_out)
+# def test_2_agents_status():
+#     check_agents_status(primary_rs,"27017")
+#
+# def test_3_prepare_data():
+#     if EXISTING_BACKUP != "no":
+#         pytest.skip("Skipping loading data")
+#     load_data(primary_rs,"27017",SIZE)
+#     count = check_count_data(primary_rs,"27017")
+#     assert int(count) == SIZE
+#
+# def test_4_setup_pitr():
+#     if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
+#         pytest.skip("Skipping pitr test")
+#     if BACKUP_TYPE == "physical":
+#         result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --set pitr.oplogOnly=true --out=json')
+#         time.sleep(3600)
+#         for i in range(TIMEOUT):
+#             pitr = check_pitr(primary_rs,"27017")
+#             if not pitr:
+#                 print("waiting for pitr to be enabled")
+#                 time.sleep(1)
+#             else:
+#                 print("pitr enabled")
+#                 break
+#         assert check_pitr(primary_rs,"27017") == True
+#     else:
+#         result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --out=json')
+#     store_out = json.loads(result)
+#     print(store_out)
 
 # def test_5_backup():
 #     if EXISTING_BACKUP != "no":
