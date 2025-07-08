@@ -262,7 +262,6 @@ def test_4_setup_pitr():
         pytest.skip("Skipping pitr test")
     if BACKUP_TYPE == "physical":
         pytest.backup_name = make_backup(primary_rs, "27017", BACKUP_TYPE)
-        time.sleep(3600)
         result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --set pitr.oplogOnly=true --out=json')
         for i in range(TIMEOUT):
             pitr = check_pitr(primary_rs,"27017")
