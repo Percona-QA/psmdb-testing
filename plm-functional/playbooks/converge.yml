@@ -198,6 +198,10 @@
       set_fact:
         private_destination_ip: "{{ hostvars['jenkins-plm-destination']['ansible_default_ipv4']['address'] }}"
 
+    - name: Get private secondary IP address
+      set_fact:
+        private_secondary_ip: "{{ hostvars['jenkins-plm-secondary']['ansible_default_ipv4']['address'] }}"
+
     - name: Get private plm ip address
       set_fact:
         private_perconalink_ip: "{{ hostvars['jenkins-plm-perconalink']['ansible_default_ipv4']['address'] }}"
@@ -369,6 +373,18 @@
         members:
           - host: "{{ private_destination_ip }}:27017"
             priority: 1
+        validate: no
+      when: inventory_hostname == "jenkins-plm-destination"
+
+    - name: Add jenkins-plm-secondary to jenkins-plm-destination replicaset
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs
+        login_host: "{{ private_destination_ip }}"
+        members:
+          - host: "{{ private_destination_ip }}:27017"
+            priority: 1
+          - host: "{{ private_secondary_ip }}:27017"
+            priority: 0
         validate: no
       when: inventory_hostname == "jenkins-plm-destination"
 
