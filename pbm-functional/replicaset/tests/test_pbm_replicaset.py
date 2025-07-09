@@ -1,3 +1,4 @@
+import logging
 import os
 import pytest
 import testinfra
@@ -340,6 +341,8 @@ def test_9_pitr_restore():
         count = check_count_data(primary_rs,"27017")
         assert int(count) == 10
     if BACKUP_TYPE == "physical":
+        logging.debug("KEITH TEST")
+        time.sleep(3600)
         print("performing pitr replay from  " + pytest.pitr_start + " to " + pytest.pitr_end)
         make_pitr_replay(primary_rs,"27017",pytest.pitr_start,pytest.pitr_end)
         count = check_count_data(primary_rs,"27017")
