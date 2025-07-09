@@ -345,3 +345,6 @@ def test_9_pitr_restore():
         make_pitr_restore(primary_rs,"27017",pytest.backup_name,pytest.pitr_end)
         count = check_count_data(primary_rs,"27017")
         assert int(count) == 10
+
+def test_10_test():
+    time.sleep(3600)
