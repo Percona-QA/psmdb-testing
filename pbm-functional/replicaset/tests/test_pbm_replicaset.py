@@ -332,6 +332,9 @@ def test_8_restore():
     count = check_count_data(primary_rs,"27017")
     assert int(count) == SIZE
 
+def test_10_wait():
+    time.sleep(3600)
+
 def test_9_pitr_restore():
     if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
         pytest.skip("Skipping pitr test")
@@ -345,6 +348,3 @@ def test_9_pitr_restore():
         make_pitr_restore(primary_rs,"27017",pytest.backup_name,pytest.pitr_end)
         count = check_count_data(primary_rs,"27017")
         assert int(count) == 10
-
-def test_10_test():
-    time.sleep(3600)
