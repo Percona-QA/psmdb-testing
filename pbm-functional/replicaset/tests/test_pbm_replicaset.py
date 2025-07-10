@@ -277,24 +277,24 @@ def test_4_setup_pitr():
         result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --out=json')
     store_out = json.loads(result)
     print(store_out)
-#
-# def test_5_backup():
-#     if EXISTING_BACKUP != "no":
-#         pytest.skip("Skipping backup test")
-#     now = datetime.utcnow()
-#     pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
-#     print("pitr start time: " + pytest.pitr_start)
-#     pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
-#     if CHECK_PITR != "no":
-#         for i in range(TIMEOUT):
-#             pitr = check_pitr(primary_rs,"27017")
-#             if not pitr:
-#                 print("waiting for pitr to be enabled")
-#                 time.sleep(1)
-#             else:
-#                 print("pitr enabled")
-#                 break
-#         assert check_pitr(primary_rs,"27017") == True
+
+def test_5_backup():
+    if EXISTING_BACKUP != "no":
+        pytest.skip("Skipping backup test")
+    now = datetime.utcnow()
+    pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
+    print("pitr start time: " + pytest.pitr_start)
+    pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
+    if CHECK_PITR != "no":
+        for i in range(TIMEOUT):
+            pitr = check_pitr(primary_rs,"27017")
+            if not pitr:
+                print("waiting for pitr to be enabled")
+                time.sleep(1)
+            else:
+                print("pitr enabled")
+                break
+        assert check_pitr(primary_rs,"27017") == True
 #
 # def test_6_modify_data():
 #     if EXISTING_BACKUP != "no":
