@@ -222,7 +222,7 @@ def setup_pitr(node,port):
 
 def test_1_setup_storage():
     primary_rs.check_output(f'pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-{STORAGE}.conf --out=json')
-    if STORAGE == "gcp-hmac":
+    if STORAGE == "gcp-hmac" or STORAGE == "gcp":
         primary_rs.check_output(
             f"pbm config --mongodb-uri=mongodb://localhost:27017/ --set storage.gcs.chunkSize={CHUNK_SIZE} --set storage.gcs.prefix=pbm/test --out=json"
         )
