@@ -278,6 +278,9 @@ def test_4_setup_pitr():
     store_out = json.loads(result)
     print(store_out)
 
+def test_10_wait():
+    time.sleep(3600)
+
 # def test_5_backup():
 #     if EXISTING_BACKUP != "no":
 #         pytest.skip("Skipping backup test")
@@ -295,9 +298,6 @@ def test_4_setup_pitr():
 #                 print("pitr enabled")
 #                 break
 #         assert check_pitr(primary_rs,"27017") == True
-
-# def test_10_wait():
-#     time.sleep(3600)
 
 # def test_6_modify_data():
 #     if EXISTING_BACKUP != "no":
