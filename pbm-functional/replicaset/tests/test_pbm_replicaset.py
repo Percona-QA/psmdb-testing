@@ -328,6 +328,7 @@ def test_7_disable_pitr():
 def test_8_restore():
     if EXISTING_BACKUP != "no":
         pytest.backup_name = EXISTING_BACKUP
+    time.sleep(3600)
     make_restore(secondary1_rs,"27017",pytest.backup_name)
     count = check_count_data(primary_rs,"27017")
     assert int(count) == SIZE
