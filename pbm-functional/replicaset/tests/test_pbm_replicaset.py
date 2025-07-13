@@ -278,6 +278,7 @@ def test_4_setup_pitr():
         result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --out=json')
     store_out = json.loads(result)
     print(store_out)
+    assert False
 
 def test_5_backup():
     if EXISTING_BACKUP != "no":
@@ -297,6 +298,7 @@ def test_5_backup():
                 print("pitr enabled")
                 break
         assert check_pitr(primary_rs,"27017") == True
+    assert False
 
 # def test_6_modify_data():
 #     if EXISTING_BACKUP != "no":
