@@ -240,7 +240,6 @@ def test_1_setup_storage():
         assert store_out['storage']['type'] == 'gcs'
         assert store_out['storage']['gcs']['chunkSize'] == CHUNK_SIZE
         assert store_out['storage']['gcs']['prefix'] == 'pbm/test'
-        time.sleep(3600)
     d = {'numDownloadWorkers': numDownloadWorkers,'maxDownloadBufferMb': maxDownloadBufferMb,'downloadChunkMb': downloadChunkMb }
     for k, v in d.items():
         if int(v):
