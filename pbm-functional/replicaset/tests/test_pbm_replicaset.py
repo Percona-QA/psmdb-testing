@@ -299,60 +299,60 @@ def test_4_setup_pitr():
     store_out = json.loads(result)
     print(store_out)
 
-# def test_5_backup():
-#     if EXISTING_BACKUP != "no":
-#         pytest.skip("Skipping backup test")
-#     now = datetime.utcnow()
-#     pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
-#     print("pitr start time: " + pytest.pitr_start)
-#     pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
-#     print("KEITH TEST!!!! " + str(pytest.backup_name))
-#     if CHECK_PITR != "no":
-#         for i in range(TIMEOUT):
-#             pitr = check_pitr(primary_rs,"27017")
-#             if not pitr:
-#                 print("waiting for pitr to be enabled")
-#                 time.sleep(1)
-#             else:
-#                 print("pitr enabled")
-#                 break
-#         assert check_pitr(primary_rs,"27017") == True
-#
-# def test_6_modify_data():
-#     if EXISTING_BACKUP != "no":
-#         pytest.skip("Skipping backup test")
-#     drop_database(primary_rs,"27017")
-#     load_data(primary_rs,"27017",10)
-#     count = check_count_data(primary_rs,"27017")
-#     assert int(count) == 10
-#     time.sleep(60)
-#     now = datetime.utcnow()
-#     pytest.pitr_end = now.strftime("%Y-%m-%dT%H:%M:%S")
-#     print("pitr end time: " + pytest.pitr_end)
-#
-# def test_7_disable_pitr():
-#     if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
-#         pytest.skip("Skipping pitr test")
-#     result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=false --out=json')
-#     store_out = json.loads(result)
-#     print(store_out)
-#     time.sleep(60)
-#     for i in range(TIMEOUT):
-#         pitr = check_pitr(primary_rs,"27017")
-#         if pitr:
-#             time.sleep(1)
-#             print("waiting for pitr to be disabled")
-#         else:
-#             print("pitr disabled")
-#             break
-#     assert check_pitr(primary_rs,"27017") == False
-#
-# def test_8_restore():
-#     if EXISTING_BACKUP != "no":
-#         pytest.backup_name = EXISTING_BACKUP
-#     make_restore(secondary1_rs,"27017",pytest.backup_name)
-#     count = check_count_data(primary_rs,"27017")
-#     assert int(count) == SIZE
+def test_5_backup():
+    if EXISTING_BACKUP != "no":
+        pytest.skip("Skipping backup test")
+    now = datetime.utcnow()
+    pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
+    print("pitr start time: " + pytest.pitr_start)
+    pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
+    print("KEITH TEST!!!! " + str(pytest.backup_name))
+    if CHECK_PITR != "no":
+        for i in range(TIMEOUT):
+            pitr = check_pitr(primary_rs,"27017")
+            if not pitr:
+                print("waiting for pitr to be enabled")
+                time.sleep(1)
+            else:
+                print("pitr enabled")
+                break
+        assert check_pitr(primary_rs,"27017") == True
+
+def test_6_modify_data():
+    if EXISTING_BACKUP != "no":
+        pytest.skip("Skipping backup test")
+    drop_database(primary_rs,"27017")
+    load_data(primary_rs,"27017",10)
+    count = check_count_data(primary_rs,"27017")
+    assert int(count) == 10
+    time.sleep(60)
+    now = datetime.utcnow()
+    pytest.pitr_end = now.strftime("%Y-%m-%dT%H:%M:%S")
+    print("pitr end time: " + pytest.pitr_end)
+
+def test_7_disable_pitr():
+    if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
+        pytest.skip("Skipping pitr test")
+    result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=false --out=json')
+    store_out = json.loads(result)
+    print(store_out)
+    time.sleep(60)
+    for i in range(TIMEOUT):
+        pitr = check_pitr(primary_rs,"27017")
+        if pitr:
+            time.sleep(1)
+            print("waiting for pitr to be disabled")
+        else:
+            print("pitr disabled")
+            break
+    assert check_pitr(primary_rs,"27017") == False
+
+def test_8_restore():
+    if EXISTING_BACKUP != "no":
+        pytest.backup_name = EXISTING_BACKUP
+    make_restore(secondary1_rs,"27017",pytest.backup_name)
+    count = check_count_data(primary_rs,"27017")
+    assert int(count) == SIZE
 
 # def test_9_pitr_restore():
 #     if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
