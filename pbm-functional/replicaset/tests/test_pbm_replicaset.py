@@ -298,6 +298,7 @@ def test_5_backup():
                 print("pitr enabled")
                 break
         assert check_pitr(primary_rs,"27017") == True
+    assert False
 
 # def test_6_modify_data():
 #     if EXISTING_BACKUP != "no":
