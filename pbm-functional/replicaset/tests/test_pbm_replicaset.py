@@ -280,37 +280,36 @@ def setup_pitr(node,port):
 #     print(store_out)
 #     assert False
 #
-def test_5_backup():
-    if EXISTING_BACKUP != "no":
-        pytest.skip("Skipping backup test")
-    now = datetime.utcnow()
-    pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
-    print("pitr start time: " + pytest.pitr_start)
-    pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
-    print("KEITH TEST!!!! " + str(pytest.backup_name))
-    if CHECK_PITR != "no":
-        for i in range(TIMEOUT):
-            pitr = check_pitr(primary_rs,"27017")
-            if not pitr:
-                print("waiting for pitr to be enabled")
-                time.sleep(1)
-            else:
-                print("pitr enabled")
-                break
-        assert check_pitr(primary_rs,"27017") == True
-    assert False
-
-# def test_6_modify_data():
+# def test_5_backup():
 #     if EXISTING_BACKUP != "no":
 #         pytest.skip("Skipping backup test")
-#     drop_database(primary_rs,"27017")
-#     load_data(primary_rs,"27017",10)
-#     count = check_count_data(primary_rs,"27017")
-#     assert int(count) == 10
-#     time.sleep(60)
 #     now = datetime.utcnow()
-#     pytest.pitr_end = now.strftime("%Y-%m-%dT%H:%M:%S")
-#     print("pitr end time: " + pytest.pitr_end)
+#     pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
+#     print("pitr start time: " + pytest.pitr_start)
+#     pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
+#     print("KEITH TEST!!!! " + str(pytest.backup_name))
+#     if CHECK_PITR != "no":
+#         for i in range(TIMEOUT):
+#             pitr = check_pitr(primary_rs,"27017")
+#             if not pitr:
+#                 print("waiting for pitr to be enabled")
+#                 time.sleep(1)
+#             else:
+#                 print("pitr enabled")
+#                 break
+#         assert check_pitr(primary_rs,"27017") == True
+
+def test_6_modify_data():
+    if EXISTING_BACKUP != "no":
+        pytest.skip("Skipping backup test")
+    drop_database(primary_rs,"27017")
+    load_data(primary_rs,"27017",10)
+    count = check_count_data(primary_rs,"27017")
+    assert int(count) == 10
+    time.sleep(60)
+    now = datetime.utcnow()
+    pytest.pitr_end = now.strftime("%Y-%m-%dT%H:%M:%S")
+    print("pitr end time: " + pytest.pitr_end)
 #
 # def test_7_disable_pitr():
 #     if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
