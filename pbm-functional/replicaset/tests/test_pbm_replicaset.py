@@ -328,23 +328,23 @@ def setup_pitr(node,port):
 #             break
 #     assert check_pitr(primary_rs,"27017") == False
 #
-def test_8_restore():
-    if EXISTING_BACKUP != "no":
-        pytest.backup_name = EXISTING_BACKUP
-    make_restore(secondary1_rs,"27017","2025-07-14T07:15:53Z")
-    count = check_count_data(primary_rs,"27017")
-    assert int(count) == SIZE
+# def test_8_restore():
+#     if EXISTING_BACKUP != "no":
+#         pytest.backup_name = EXISTING_BACKUP
+#     make_restore(secondary1_rs,"27017","2025-07-14T07:15:53Z")
+#     count = check_count_data(primary_rs,"27017")
+#     assert int(count) == SIZE
 
-# def test_9_pitr_restore():
-#     if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
-#         pytest.skip("Skipping pitr test")
-#     if BACKUP_TYPE == "logical":
-#         print("performing pitr restore from backup " + pytest.backup_name + " to timestamp " + pytest.pitr_end)
-#         make_pitr_restore(secondary1_rs,"27017",pytest.backup_name,pytest.pitr_end)
-#         count = check_count_data(primary_rs,"27017")
-#         assert int(count) == 10
-#     if BACKUP_TYPE == "physical":
-#         print("performing pitr replay from  " + pytest.pitr_start + " to " + pytest.pitr_end)
-#         make_pitr_restore(primary_rs,"27017",pytest.backup_name,pytest.pitr_end)
-#         count = check_count_data(primary_rs,"27017")
-#         assert int(count) == 10
+def test_9_pitr_restore():
+    if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
+        pytest.skip("Skipping pitr test")
+    if BACKUP_TYPE == "logical":
+        print("performing pitr restore from backup " + pytest.backup_name + " to timestamp " + pytest.pitr_end)
+        make_pitr_restore(secondary1_rs,"27017",pytest.backup_name,pytest.pitr_end)
+        count = check_count_data(primary_rs,"27017")
+        assert int(count) == 10
+    if BACKUP_TYPE == "physical":
+        print("performing pitr replay from  " + pytest.pitr_start + " to " + pytest.pitr_end)
+        make_pitr_restore(primary_rs,"27017",pytest.backup_name,pytest.pitr_end)
+        count = check_count_data(primary_rs,"27017")
+        assert int(count) == 10
