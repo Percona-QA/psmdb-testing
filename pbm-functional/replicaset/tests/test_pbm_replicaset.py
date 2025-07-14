@@ -256,6 +256,7 @@ def test_3_prepare_data():
         pytest.skip("Skipping loading data")
     load_data(primary_rs,"27017",SIZE)
     count = check_count_data(primary_rs,"27017")
+    time.sleep(3600)
     assert int(count) == SIZE
 
 def test_4_setup_pitr():
