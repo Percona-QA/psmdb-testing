@@ -287,7 +287,7 @@ def test_5_backup():
     pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
     print("pitr start time: " + pytest.pitr_start)
     pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
-    print(str(pytest.backup_name))
+    print("KEITH TEST!!!! " + str(pytest.backup_name))
     if CHECK_PITR != "no":
         for i in range(TIMEOUT):
             pitr = check_pitr(primary_rs,"27017")
