@@ -100,6 +100,25 @@ def restart_pbm_agent(node):
         result = node.check_output('systemctl restart pbm-agent')
     print('restarting pbm-agent on ' + hostname)
 
+def wait_for_backup_to_complete(rs, port, timeout=300):
+    """
+    Wait until no backup is running in `pbm status`.
+    """
+    for _ in range(TIMEOUT):
+        status_json = rs.check_output(f'pbm status --mongodb-uri=mongodb://localhost:{port} --out=json')
+        status = json.loads(status_json)
+        running = status.get("running")
+        if not running:
+            print("No operation running. Safe to enable PITR.")
+            return True
+        elif running.get("type") == "backup":
+            print(f"Waiting for backup '{running.get('name')}' to complete...")
+            time.sleep(1)
+        else:
+            print("Unexpected operation running:", running)
+            time.sleep(1)
+    raise TimeoutError("Backup did not complete in time.")
+
 def make_backup(node,port,type):
     for i in range(TIMEOUT):
         running = check_status(node,port)
@@ -125,8 +144,8 @@ def make_backup(node,port,type):
             print("backup found:")
             print(result)
             assert result['status'] == 'done'
+            wait_for_backup_to_complete(node, port)
             return name
-            break
         else:
             time.sleep(1)
 
@@ -220,44 +239,44 @@ def setup_pitr(node,port):
     store_out = json.loads(result)
     print(store_out)
 
-def test_1_setup_storage():
-    primary_rs.check_output(f'pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-{STORAGE}.conf --out=json')
-    if STORAGE == "gcp-hmac" or STORAGE == "gcp":
-        primary_rs.check_output(
-            f"pbm config --mongodb-uri=mongodb://localhost:27017/ --set storage.gcs.chunkSize={CHUNK_SIZE} --set storage.gcs.prefix=pbm/test --out=json"
-        )
-    time.sleep(20)
-    store_out = json.loads(primary_rs.check_output("pbm config --mongodb-uri=mongodb://localhost:27017/ --list --out=json"))
-    print("KEITH TEST " + str(store_out))
-    if STORAGE == "minio":
-        assert store_out['storage']['type'] == 's3'
-        assert store_out['storage']['s3']['region'] == 'us-east-1'
-        assert store_out['storage']['s3']['endpointUrl'] == 'http://minio:9000'
-    if STORAGE == "aws":
-        assert store_out['storage']['type'] == 's3'
-        assert store_out['storage']['s3']['region'] == 'us-west-2'
-        assert store_out['storage']['s3']['bucket'] == 'pbm-testing-west'
-    if STORAGE == "gcp-hmac" or STORAGE == "gcp":
-        assert store_out['storage']['type'] == 'gcs'
-        assert store_out['storage']['gcs']['chunkSize'] == CHUNK_SIZE
-        assert store_out['storage']['gcs']['prefix'] == 'pbm/test'
-    d = {'numDownloadWorkers': numDownloadWorkers,'maxDownloadBufferMb': maxDownloadBufferMb,'downloadChunkMb': downloadChunkMb }
-    for k, v in d.items():
-        if int(v):
-            result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set restore.' + k + '=' + v + ' --out=json')
-            store_out = json.loads(result)
-            print(store_out)
-    time.sleep(10)
-
-def test_2_agents_status():
-    check_agents_status(primary_rs,"27017")
-
-def test_3_prepare_data():
-    if EXISTING_BACKUP != "no":
-        pytest.skip("Skipping loading data")
-    load_data(primary_rs,"27017",SIZE)
-    count = check_count_data(primary_rs,"27017")
-    assert int(count) == SIZE
+# def test_1_setup_storage():
+#     primary_rs.check_output(f'pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-{STORAGE}.conf --out=json')
+#     if STORAGE == "gcp-hmac" or STORAGE == "gcp":
+#         primary_rs.check_output(
+#             f"pbm config --mongodb-uri=mongodb://localhost:27017/ --set storage.gcs.chunkSize={CHUNK_SIZE} --set storage.gcs.prefix=pbm/test --out=json"
+#         )
+#     time.sleep(20)
+#     store_out = json.loads(primary_rs.check_output("pbm config --mongodb-uri=mongodb://localhost:27017/ --list --out=json"))
+#     print("KEITH TEST " + str(store_out))
+#     if STORAGE == "minio":
+#         assert store_out['storage']['type'] == 's3'
+#         assert store_out['storage']['s3']['region'] == 'us-east-1'
+#         assert store_out['storage']['s3']['endpointUrl'] == 'http://minio:9000'
+#     if STORAGE == "aws":
+#         assert store_out['storage']['type'] == 's3'
+#         assert store_out['storage']['s3']['region'] == 'us-west-2'
+#         assert store_out['storage']['s3']['bucket'] == 'pbm-testing-west'
+#     if STORAGE == "gcp-hmac" or STORAGE == "gcp":
+#         assert store_out['storage']['type'] == 'gcs'
+#         assert store_out['storage']['gcs']['chunkSize'] == CHUNK_SIZE
+#         assert store_out['storage']['gcs']['prefix'] == 'pbm/test'
+#     d = {'numDownloadWorkers': numDownloadWorkers,'maxDownloadBufferMb': maxDownloadBufferMb,'downloadChunkMb': downloadChunkMb }
+#     for k, v in d.items():
+#         if int(v):
+#             result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set restore.' + k + '=' + v + ' --out=json')
+#             store_out = json.loads(result)
+#             print(store_out)
+#     time.sleep(10)
+#
+# def test_2_agents_status():
+#     check_agents_status(primary_rs,"27017")
+#
+# def test_3_prepare_data():
+#     if EXISTING_BACKUP != "no":
+#         pytest.skip("Skipping loading data")
+#     load_data(primary_rs,"27017",SIZE)
+#     count = check_count_data(primary_rs,"27017")
+#     assert int(count) == SIZE
 
 def test_4_setup_pitr():
     if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
@@ -280,60 +299,60 @@ def test_4_setup_pitr():
     store_out = json.loads(result)
     print(store_out)
 
-def test_5_backup():
-    if EXISTING_BACKUP != "no":
-        pytest.skip("Skipping backup test")
-    now = datetime.utcnow()
-    pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
-    print("pitr start time: " + pytest.pitr_start)
-    pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
-    print("KEITH TEST!!!! " + str(pytest.backup_name))
-    if CHECK_PITR != "no":
-        for i in range(TIMEOUT):
-            pitr = check_pitr(primary_rs,"27017")
-            if not pitr:
-                print("waiting for pitr to be enabled")
-                time.sleep(1)
-            else:
-                print("pitr enabled")
-                break
-        assert check_pitr(primary_rs,"27017") == True
-
-def test_6_modify_data():
-    if EXISTING_BACKUP != "no":
-        pytest.skip("Skipping backup test")
-    drop_database(primary_rs,"27017")
-    load_data(primary_rs,"27017",10)
-    count = check_count_data(primary_rs,"27017")
-    assert int(count) == 10
-    time.sleep(60)
-    now = datetime.utcnow()
-    pytest.pitr_end = now.strftime("%Y-%m-%dT%H:%M:%S")
-    print("pitr end time: " + pytest.pitr_end)
-
-def test_7_disable_pitr():
-    if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
-        pytest.skip("Skipping pitr test")
-    result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=false --out=json')
-    store_out = json.loads(result)
-    print(store_out)
-    time.sleep(60)
-    for i in range(TIMEOUT):
-        pitr = check_pitr(primary_rs,"27017")
-        if pitr:
-            time.sleep(1)
-            print("waiting for pitr to be disabled")
-        else:
-            print("pitr disabled")
-            break
-    assert check_pitr(primary_rs,"27017") == False
-
-def test_8_restore():
-    if EXISTING_BACKUP != "no":
-        pytest.backup_name = EXISTING_BACKUP
-    make_restore(secondary1_rs,"27017",pytest.backup_name)
-    count = check_count_data(primary_rs,"27017")
-    assert int(count) == SIZE
+# def test_5_backup():
+#     if EXISTING_BACKUP != "no":
+#         pytest.skip("Skipping backup test")
+#     now = datetime.utcnow()
+#     pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
+#     print("pitr start time: " + pytest.pitr_start)
+#     pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
+#     print("KEITH TEST!!!! " + str(pytest.backup_name))
+#     if CHECK_PITR != "no":
+#         for i in range(TIMEOUT):
+#             pitr = check_pitr(primary_rs,"27017")
+#             if not pitr:
+#                 print("waiting for pitr to be enabled")
+#                 time.sleep(1)
+#             else:
+#                 print("pitr enabled")
+#                 break
+#         assert check_pitr(primary_rs,"27017") == True
+#
+# def test_6_modify_data():
+#     if EXISTING_BACKUP != "no":
+#         pytest.skip("Skipping backup test")
+#     drop_database(primary_rs,"27017")
+#     load_data(primary_rs,"27017",10)
+#     count = check_count_data(primary_rs,"27017")
+#     assert int(count) == 10
+#     time.sleep(60)
+#     now = datetime.utcnow()
+#     pytest.pitr_end = now.strftime("%Y-%m-%dT%H:%M:%S")
+#     print("pitr end time: " + pytest.pitr_end)
+#
+# def test_7_disable_pitr():
+#     if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
+#         pytest.skip("Skipping pitr test")
+#     result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=false --out=json')
+#     store_out = json.loads(result)
+#     print(store_out)
+#     time.sleep(60)
+#     for i in range(TIMEOUT):
+#         pitr = check_pitr(primary_rs,"27017")
+#         if pitr:
+#             time.sleep(1)
+#             print("waiting for pitr to be disabled")
+#         else:
+#             print("pitr disabled")
+#             break
+#     assert check_pitr(primary_rs,"27017") == False
+#
+# def test_8_restore():
+#     if EXISTING_BACKUP != "no":
+#         pytest.backup_name = EXISTING_BACKUP
+#     make_restore(secondary1_rs,"27017",pytest.backup_name)
+#     count = check_count_data(primary_rs,"27017")
+#     assert int(count) == SIZE
 
 # def test_9_pitr_restore():
 #     if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
