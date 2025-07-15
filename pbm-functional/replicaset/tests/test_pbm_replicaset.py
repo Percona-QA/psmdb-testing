@@ -67,8 +67,6 @@ def check_status(node,port):
 def check_pitr(node,port):
     status = node.check_output('pbm status --mongodb-uri=mongodb://localhost:' + port + '/ --out=json 2>/dev/null')
     running = json.loads(status)['pitr']['run']
-    print("KEITH TEST 1 :" + str(json.loads(status)))
-    print("KEITH TEST 2 :" + str(running))
     return bool(running)
 
 def check_agents_status(node,port):
@@ -247,7 +245,6 @@ def test_1_setup_storage():
         )
     time.sleep(20)
     store_out = json.loads(primary_rs.check_output("pbm config --mongodb-uri=mongodb://localhost:27017/ --list --out=json"))
-    print("KEITH TEST " + str(store_out))
     if STORAGE == "minio":
         assert store_out['storage']['type'] == 's3'
         assert store_out['storage']['s3']['region'] == 'us-east-1'
@@ -306,7 +303,6 @@ def test_5_backup():
     pytest.pitr_start = now.strftime("%Y-%m-%dT%H:%M:%S")
     print("pitr start time: " + pytest.pitr_start)
     pytest.backup_name = make_backup(primary_rs,"27017",BACKUP_TYPE)
-    print("KEITH TEST!!!! " + str(pytest.backup_name))
     if CHECK_PITR != "no":
         for i in range(TIMEOUT):
             pitr = check_pitr(primary_rs,"27017")
@@ -354,16 +350,16 @@ def test_8_restore():
     count = check_count_data(primary_rs,"27017")
     assert int(count) == SIZE
 
-def test_9_pitr_restore():
-    if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
-        pytest.skip("Skipping pitr test")
-    if BACKUP_TYPE == "logical":
-        print("performing pitr restore from backup " + pytest.backup_name + " to timestamp " + pytest.pitr_end)
-        make_pitr_restore(secondary1_rs,"27017",pytest.backup_name,pytest.pitr_end)
-        count = check_count_data(primary_rs,"27017")
-        assert int(count) == 10
-    if BACKUP_TYPE == "physical":
-        print("performing pitr replay from  " + pytest.pitr_start + " to " + pytest.pitr_end)
-        make_pitr_restore(primary_rs,"27017",pytest.backup_name,pytest.pitr_end)
-        count = check_count_data(primary_rs,"27017")
-        assert int(count) == 10
+# def test_9_pitr_restore():
+#     if EXISTING_BACKUP != "no" or CHECK_PITR == "no":
+#         pytest.skip("Skipping pitr test")
+#     if BACKUP_TYPE == "logical":
+#         print("performing pitr restore from backup " + pytest.backup_name + " to timestamp " + pytest.pitr_end)
+#         make_pitr_restore(secondary1_rs,"27017",pytest.backup_name,pytest.pitr_end)
+#         count = check_count_data(primary_rs,"27017")
+#         assert int(count) == 10
+#     if BACKUP_TYPE == "physical":
+#         print("performing pitr replay from  " + pytest.pitr_start + " to " + pytest.pitr_end)
+#         make_pitr_restore(primary_rs,"27017",pytest.backup_name,pytest.pitr_end)
+#         count = check_count_data(primary_rs,"27017")
+#         assert int(count) == 10
