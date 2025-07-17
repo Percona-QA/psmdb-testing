@@ -26,7 +26,7 @@ def config():
 
 @pytest.fixture(scope="package")
 def pbm_mongodb_uri():
-    return 'mongodb://pbm%40PERCONATEST.COM:pbmkrbpass@127.0.0.1:27017/?authSource=%24external&authMechanism=GSSAPI'
+    return 'mongodb://pbm%40PERCONATEST.COM@127.0.0.1:27017/?authSource=%24external&authMechanism=GSSAPI'
 
 @pytest.fixture(scope="package")
 def mongod_extra_args():
@@ -45,13 +45,21 @@ def start_cluster(cluster,request):
         kerberos=testinfra.get_host("docker://kerberos")
         kerberos.check_output("rm -rf /keytabs/*")
         for host in cluster.mongod_hosts:
+            kerberos.check_output("mkdir -p /keytabs/" + host)
             logs = kerberos.check_output("kadmin.local -q \"addprinc -pw mongodb mongodb/" + host + "\"")
             Cluster.log(logs)
-            kerberos.check_output("mkdir -p /keytabs/" + host)
             logs = kerberos.check_output("kadmin.local -q \"ktadd -k /keytabs/" + host + "/mongodb.keytab mongodb/" + host + "@PERCONATEST.COM\"")
             Cluster.log(logs)
+        # create principal for pbm  
         logs = kerberos.check_output("kadmin.local -q 'addprinc -pw pbmkrbpass pbm'")
         Cluster.log(logs)
+        # create keytab for pbm user
+        logs = kerberos.check_output("kadmin.local -q \"ktadd -k /keytabs/pbm.keytab pbm@PERCONATEST.COM\"")
+        for host in cluster.mongod_hosts:
+            # share keytab for pbm to all hosts in cluster
+            kerberos.check_output("cp -r /keytabs/pbm.keytab /keytabs/" + host + "/pbm.keytab")
+        Cluster.log(logs)
+
         docker.from_env().containers.get('kerberos').restart()
 
         cluster.create()
@@ -72,4 +80,3 @@ def test_logical_PBM_T202(start_cluster,cluster):
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     Cluster.log("Finished successfully")
-

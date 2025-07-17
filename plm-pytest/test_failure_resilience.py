@@ -180,17 +180,7 @@ def test_rs_plink_PML_T47(reset_state, srcRS, dstRS, plink, fail_node):
             all_threads += operation_threads_5
         for thread in all_threads:
             thread.join()
-    if not plink.wait_for_zero_lag():
-        stable_start = time.time()
-        while time.time() - stable_start < 3:
-            status = plink.status()
-            assert not status['data']['ok']
-            assert status['data']['state'] != 'running'
-            assert status['data']['initialSync']['completed']
-            assert status['data']['initialSync']['cloneCompleted']
-            time.sleep(0.5)
-        plink.resume(from_failure=True)
-        assert plink.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
+    assert plink.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
     assert plink.finalize(), "Failed to finalize plink service"
     time.sleep(5)
     result, summary = compare_data_rs(srcRS, dstRS)
@@ -231,17 +221,7 @@ def test_rs_plink_PML_T48(reset_state, srcRS, dstRS, plink, fail_node):
         for t in bg_threads:
             if t and t.is_alive():
                 t.join()
-    if not plink.wait_for_zero_lag():
-        stable_start = time.time()
-        while time.time() - stable_start < 3:
-            status = plink.status()
-            assert not status['data']['ok']
-            assert status['data']['state'] != 'running'
-            assert status['data']['initialSync']['completed']
-            assert status['data']['initialSync']['cloneCompleted']
-            time.sleep(0.5)
-        plink.resume(from_failure=True)
-        assert plink.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
+    assert plink.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
     assert plink.finalize(), "Failed to finalize plink service"
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
@@ -275,17 +255,7 @@ def test_rs_plink_PML_T49(reset_state, srcRS, dstRS, plink, fail_node):
         for t in bg_threads:
             if t and t.is_alive():
                 t.join()
-    if not plink.wait_for_zero_lag():
-        stable_start = time.time()
-        while time.time() - stable_start < 3:
-            status = plink.status()
-            assert not status['data']['ok']
-            assert status['data']['state'] != 'running'
-            assert status['data']['initialSync']['completed']
-            assert status['data']['initialSync']['cloneCompleted']
-            time.sleep(0.5)
-        plink.resume(from_failure=True)
-        assert plink.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
+    assert plink.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
     assert plink.finalize(), "Failed to finalize plink service"
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
