@@ -171,39 +171,40 @@ def test_rs_plink_PML_T34(reset_state, srcRS, dstRS, plink, id_type):
         db.create_collection(meta["name"], **meta["options"])
         meta["collection"] = db[meta["name"]]
 
-    batch_size = 5000
-    num_batches = 80
-    for meta in collections_meta:
-        collection = meta["collection"]
-        nan_id = float("nan") if id_type == "float" else Decimal128("NaN")
-        collection.insert_one({"_id": nan_id, "payload": "x" * 5000})
-        for _ in range(num_batches):
-            docs = []
-            for _ in range(batch_size):
-                _id = (
-                    random.uniform(1e5, 1e10)
-                    if id_type == "float"
-                    else Decimal128(str(random.uniform(1e5, 1e10))))
-                doc = {
-                    "_id": _id,
-                    "payload": "x" * 5000,
-                    "timestamp": datetime.datetime.now(datetime.timezone.utc),
-                    "rand": random.random()}
-                docs.append(doc)
-            try:
-                collection.insert_many(docs, ordered=False, bypass_document_validation=True)
-            except pymongo.errors.BulkWriteError as e:
-                Cluster.log(f"Insert failed in {meta['name']}: {e.details}")
-
+    def add_data():
+        batch_size = 5000
+        num_batches = 80
+        for meta in collections_meta:
+            collection = meta["collection"]
+            nan_id = float("nan") if id_type == "float" else Decimal128("NaN")
+            collection.insert_one({"_id": nan_id, "payload": "x" * 5000})
+            for _ in range(num_batches):
+                docs = []
+                for _ in range(batch_size):
+                    _id = (
+                        random.uniform(1e5, 1e10)
+                        if id_type == "float"
+                        else Decimal128(str(random.uniform(1e5, 1e10))))
+                    doc = {
+                        "_id": _id,
+                        "payload": "x" * 5000,
+                        "timestamp": datetime.datetime.now(datetime.timezone.utc),
+                        "rand": random.random()}
+                    docs.append(doc)
+                try:
+                    collection.insert_many(docs, ordered=False, bypass_document_validation=True)
+                except pymongo.errors.BulkWriteError as e:
+                    Cluster.log(f"Insert failed in {meta['name']}: {e.details}")
+    add_data()
     assert plink.start(), "Failed to start plink service"
     assert plink.wait_for_repl_stage(), "Failed to start replication stage"
+    add_data()
     assert plink.wait_for_zero_lag(), "Failed to catch up on replication"
     assert plink.finalize(), "Failed to finalize plink service"
 
     expected_mismatches = [
         ("stress_test_db", "hash mismatch"),
-        ("stress_test_db.regular_coll", "hash mismatch"),
-        ("stress_test_db.regular_coll", "record count mismatch")]
+        ("stress_test_db.regular_coll", "hash mismatch")]
 
     result, summary = compare_data_rs(srcRS, dstRS)
     if not result:
@@ -212,8 +213,6 @@ def test_rs_plink_PML_T34(reset_state, srcRS, dstRS, plink, id_type):
 
         if unexpected:
             assert False, f"Unexpected mismatches found: {unexpected}"
-        if not unexpected and not missing_expected:
-            pytest.xfail("Known issue: PLM-126")
         if missing_expected:
             assert False, f"Expected mismatches missing: {missing_expected}"
 
