@@ -40,9 +40,9 @@ tasks:
       update_cache: yes
     vars:
       packages:
-      - make
-      - wget
-      - git
+        - make
+        - wget
+        - git
     when: ansible_os_family == "RedHat"
 
   - name: Install deps
@@ -52,10 +52,10 @@ tasks:
       update_cache: yes
     vars:
       packages:
-      - make
-      - wget
-      - git
-      - iputils-ping
+        - make
+        - wget
+        - git
+        - iputils-ping
     when: ansible_os_family == "Debian"
 
   - name: Install Go from official tarball on PML host
@@ -70,7 +70,7 @@ tasks:
         get_url:
           url: "{{ go_url }}"
           dest: "/tmp/{{ go_tarball }}"
-          mode: '0644'
+          mode: "0644"
 
       - name: Extract Go
         unarchive:
@@ -90,7 +90,7 @@ tasks:
   - name: Clone PML repo
     timeout: 180
     git:
-      repo: 'https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git'
+      repo: "https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git"
       dest: /tmp/percona-mongolink
       version: "{{ pml_branch }}"
     when: inventory_hostname == "jenkins-pml-mongolink"
@@ -109,13 +109,13 @@ tasks:
     copy:
       src: /tmp/percona-mongolink/bin/percona-mongolink
       dest: /usr/local/bin/
-      mode: '0755'
+      mode: "0755"
       remote_src: true
     when: inventory_hostname == "jenkins-pml-mongolink"
 
   - name: Clone Mgodatagen repo
     git:
-      repo: 'https://github.com/feliixx/mgodatagen.git'
+      repo: "https://github.com/feliixx/mgodatagen.git"
       dest: /tmp/mgodatagen
       version: "master"
     when: inventory_hostname == "jenkins-pml-source"
@@ -134,7 +134,7 @@ tasks:
     copy:
       src: /tmp/mgodatagen/
       dest: /usr/local/bin/
-      mode: '0755'
+      mode: "0755"
       remote_src: true
     when: inventory_hostname == "jenkins-pml-source"
 
@@ -198,10 +198,10 @@ tasks:
       state: latest
     vars:
       packages:
-      - percona-server-mongodb
-      - percona-server-mongodb-server
-      - percona-server-mongodb-mongos
-      - percona-server-mongodb-tools
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-tools
     when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
 
   - name: Install latest psmdb rpm packages on redhat
@@ -211,10 +211,10 @@ tasks:
       state: latest
     vars:
       packages:
-      - percona-server-mongodb
-      - percona-server-mongodb-server
-      - percona-server-mongodb-mongos
-      - percona-server-mongodb-tools
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-tools
     when: ansible_os_family == "RedHat" and psmdb_version == "latest" and inventory_hostname in groups['psmdb']
 
   - name: Install less than latest psmdb rpm packages on redhat
@@ -224,10 +224,10 @@ tasks:
       state: latest
     vars:
       packages:
-      - percona-server-mongodb-{{ psmdb_version }}
-      - percona-server-mongodb-server-{{ psmdb_version }}
-      - percona-server-mongodb-mongos-{{ psmdb_version }}
-      - percona-server-mongodb-tools-{{ psmdb_version }}
+        - percona-server-mongodb-{{ psmdb_version }}
+        - percona-server-mongodb-server-{{ psmdb_version }}
+        - percona-server-mongodb-mongos-{{ psmdb_version }}
+        - percona-server-mongodb-tools-{{ psmdb_version }}
     when: ansible_os_family == "RedHat" and psmdb_version != "latest" and inventory_hostname in groups['psmdb']
 
   - name: Install mongo shell deb package
@@ -236,7 +236,7 @@ tasks:
       update_cache: yes
     vars:
       packages:
-      - percona-server-mongodb-shell
+        - percona-server-mongodb-shell
     when: ansible_os_family == "Debian" and psmdb_mongosh < "6" and inventory_hostname in groups['psmdb']
 
   - name: Install mongosh deb package
@@ -245,7 +245,7 @@ tasks:
       update_cache: yes
     vars:
       packages:
-      - percona-mongodb-mongosh
+        - percona-mongodb-mongosh
     when: ansible_os_family == "Debian" and psmdb_mongosh >= "6" and inventory_hostname in groups['psmdb']
 
   - name: install mongo shell rpm package
@@ -254,7 +254,7 @@ tasks:
       state: latest
     vars:
       packages:
-      - percona-server-mongodb-shell
+        - percona-server-mongodb-shell
     when: ansible_os_family == "RedHat" and psmdb_mongosh < "6"
 
   - name: Install mongosh rpm package
@@ -263,7 +263,7 @@ tasks:
       state: latest
     vars:
       packages:
-      - percona-mongodb-mongosh
+        - percona-mongodb-mongosh
     when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6" and inventory_hostname in groups['psmdb']
 
   - name: Copy mongosh binary to mongo path for test scripts
@@ -281,7 +281,7 @@ tasks:
     file:
       path: /mnt/data/db
       state: directory
-      mode: '0755'
+      mode: "0755"
       owner: mongod
       group: mongod
     when: inventory_hostname in groups['psmdb']
@@ -289,22 +289,22 @@ tasks:
   - name: Switch mongod to new dbPath
     replace:
       path: /etc/mongod.conf
-      regexp: '^  dbPath: /var/lib/mongo(?:db)?'
-      replace: '  dbPath: /mnt/data/db'
+      regexp: "^  dbPath: /var/lib/mongo(?:db)?"
+      replace: "  dbPath: /mnt/data/db"
     when: inventory_hostname in groups['psmdb']
 
   - name: Add replica set name into mongod config
     replace:
       path: /etc/mongod.conf
-      regexp: '^#replication:'
+      regexp: "^#replication:"
       replace: 'replication:\n  replSetName: "rs"'
     when: inventory_hostname in groups['psmdb']
 
   - name: Bind mongod to 0.0.0.0
     replace:
       path: /etc/mongod.conf
-      regexp: '^  bindIp: 127.0.0.1'
-      replace: '  bindIp: 0.0.0.0'
+      regexp: "^  bindIp: 127.0.0.1"
+      replace: "  bindIp: 0.0.0.0"
     when: inventory_hostname in groups['psmdb']
 
   - name: start mongod service
@@ -347,7 +347,7 @@ tasks:
         [Unit]
         Description=Percona MongoLink Service
         After=network.target
-        
+
         [Service]
         ExecStart=/usr/local/bin/percona-mongolink --source mongodb://{{ private_source_ip }}:27017 --target mongodb://{{ private_destination_ip }}:27017
         Restart=on-failure
@@ -357,7 +357,7 @@ tasks:
         WantedBy=multi-user.target
       owner: root
       group: root
-      mode: '0644'
+      mode: "0644"
     when: inventory_hostname == "jenkins-pml-mongolink"
 
   - name: Reload systemd and start PML service
