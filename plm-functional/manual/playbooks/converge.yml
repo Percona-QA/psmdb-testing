@@ -339,7 +339,7 @@
           After=network.target
   
           [Service]
-          ExecStart=/usr/local/bin/percona-mongolink --source mongodb://{{ private_source_ip }}:27017 --target mongodb://{{ private_destination_ip }}:27017
+          ExecStart=/usr/local/bin/plm --source mongodb://{{ private_source_ip }}:27017 --target mongodb://{{ private_destination_ip }}:27017
           Restart=on-failure
           User=root
   
