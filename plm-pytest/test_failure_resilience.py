@@ -189,8 +189,6 @@ def test_rs_plink_PML_T47(reset_state, srcRS, dstRS, plink, fail_node):
         has_critical = any(mismatch[1] in critical_mismatches for mismatch in summary)
         if has_critical:
             pytest.fail("Critical mismatch found:\n" + "\n".join(str(m) for m in summary))
-        else:
-            pytest.xfail("Known issue: PLM-155")
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
