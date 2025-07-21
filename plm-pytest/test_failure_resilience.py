@@ -183,14 +183,8 @@ def test_rs_plink_PML_T47(reset_state, srcRS, dstRS, plink, fail_node):
     assert plink.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
     assert plink.finalize(), "Failed to finalize plink service"
     time.sleep(5)
-    result, summary = compare_data_rs(srcRS, dstRS)
-    if not result:
-        critical_mismatches = {"hash mismatch", "record count mismatch", "missing in dst DB", "missing in src DB"}
-        has_critical = any(mismatch[1] in critical_mismatches for mismatch in summary)
-        if has_critical:
-            pytest.fail("Critical mismatch found:\n" + "\n".join(str(m) for m in summary))
-        else:
-            pytest.xfail("Known issue: PLM-155")
+    result = compare_data_rs(srcRS, dstRS)
+    assert result is True, "Data mismatch after synchronization"
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
