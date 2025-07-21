@@ -20,11 +20,11 @@
         psmdb_mongosh: "{{ psmdb_to_test.split('-')[1].split('.')[0] }}"
 
     - set_fact:
-        # Branch of pml branch to test
-        pml_branch: "{{ lookup('env', 'PML_BRANCH') | default('main', true) }}"
+        # Branch of plm branch to test
+        plm_branch: "{{ lookup('env', 'plm_BRANCH') | default('main', true) }}"
 
     - set_fact:
-        # Branch of pml branch to test
+        # Branch of plm branch to test
         golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.2', true) }}"
 
     - name: Prerequisite for debian 11
@@ -58,7 +58,7 @@
           - iputils-ping
       when: ansible_os_family == "Debian"
 
-    - name: Install Go from official tarball on PML host
+    - name: Install Go from official tarball on plm host
       become: yes
       vars:
         go_version: "{{ golang_version }}"
@@ -77,7 +77,7 @@
             src: "/tmp/{{ go_tarball }}"
             dest: "{{ go_install_dir }}"
             remote_src: yes
-      when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-plm-mongolink" or inventory_hostname == "jenkins-plm-source"
 
     - name: Check Go is available
       command: go version
@@ -85,17 +85,17 @@
         PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
       register: go_version_output
       ignore_errors: true
-      when: inventory_hostname == "jenkins-pml-mongolink" or inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-plm-mongolink" or inventory_hostname == "jenkins-plm-source"
 
-    - name: Clone PML repo
+    - name: Clone plm repo
       timeout: 180
       git:
         repo: "https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git"
         dest: /tmp/percona-mongolink
-        version: "{{ pml_branch }}"
-      when: inventory_hostname == "jenkins-pml-mongolink"
+        version: "{{ plm_branch }}"
+      when: inventory_hostname == "jenkins-plm-mongolink"
 
-    - name: Build PML
+    - name: Build plm
       command: make build
       args:
         chdir: /tmp/percona-mongolink
@@ -103,7 +103,7 @@
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
         GOBIN: /usr/local/go/bin
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-plm-mongolink"
 
     - name: Move mongolink binary to /usr/local/bin
       copy:
@@ -111,14 +111,14 @@
         dest: /usr/local/bin/
         mode: "0755"
         remote_src: true
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-plm-mongolink"
 
     - name: Clone Mgodatagen repo
       git:
         repo: "https://github.com/feliixx/mgodatagen.git"
         dest: /tmp/mgodatagen
         version: "master"
-      when: inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-plm-source"
 
     - name: Build Mgodatagen
       command: go build
@@ -128,7 +128,7 @@
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
         GOBIN: /usr/local/go/bin
-      when: inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-plm-source"
 
     - name: Move mgodatagen binary to /usr/local/bin
       copy:
@@ -136,27 +136,27 @@
         dest: /usr/local/bin/
         mode: "0755"
         remote_src: true
-      when: inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-plm-source"
 
     - name: Get private source ip address
       set_fact:
-        private_source_ip: "{{ hostvars['jenkins-pml-source']['ansible_default_ipv4']['address'] }}"
+        private_source_ip: "{{ hostvars['jenkins-plm-source']['ansible_default_ipv4']['address'] }}"
 
     - name: Get private destination ip address
       set_fact:
-        private_destination_ip: "{{ hostvars['jenkins-pml-destination']['ansible_default_ipv4']['address'] }}"
+        private_destination_ip: "{{ hostvars['jenkins-plm-destination']['ansible_default_ipv4']['address'] }}"
 
     - name: Show source IP (Debug)
       debug:
         var: public_source_ip
-      when: public_source_ip is defined and inventory_hostname == "jenkins-pml-source"
+      when: public_source_ip is defined and inventory_hostname == "jenkins-plm-source"
 
     - name: Show destination IP (Debug)
       debug:
         var: public_destination_ip
-      when: public_destination_ip is defined and inventory_hostname == "jenkins-pml-destination"
+      when: public_destination_ip is defined and inventory_hostname == "jenkins-plm-destination"
 
-    - name: Add source and destination to /etc/hosts in pml
+    - name: Add source and destination to /etc/hosts in plm
       blockinfile:
         path: /etc/hosts
         block: |
@@ -164,7 +164,7 @@
           {{ public_destination_ip }}    destination
         create: false
         unsafe_writes: true
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-plm-mongolink"
 
     - name: Install GPG key for epel 8
       rpm_key:
@@ -323,7 +323,7 @@
           - host: "{{ public_source_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "jenkins-pml-source"
+      when: inventory_hostname == "jenkins-plm-source"
 
     - name: Create a replicaset rs
       community.mongodb.mongodb_replicaset:
@@ -333,16 +333,16 @@
           - host: "{{ public_destination_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "jenkins-pml-destination"
+      when: inventory_hostname == "jenkins-plm-destination"
 
     - name: Reload systemd
       systemd:
         daemon_reload: yes
       when: inventory_hostname in groups['psmdb']
 
-    - name: Create PML system unit file
+    - name: Create plm system unit file
       ansible.builtin.copy:
-        dest: /etc/systemd/system/pml.service
+        dest: /etc/systemd/system/plm.service
         content: |
           [Unit]
           Description=Percona MongoLink Service
@@ -358,11 +358,11 @@
         owner: root
         group: root
         mode: "0644"
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-plm-mongolink"
 
-    - name: Reload systemd and start PML service
+    - name: Reload systemd and start plm service
       ansible.builtin.service:
         daemon_reload: yes
-        name: pml.service
+        name: plm.service
         state: started
-      when: inventory_hostname == "jenkins-pml-mongolink"
+      when: inventory_hostname == "jenkins-plm-mongolink"
