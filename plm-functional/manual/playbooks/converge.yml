@@ -150,8 +150,8 @@
       blockinfile:
         path: /etc/hosts
         block: |
-          {{ public_source_ip }}    source
-          {{ public_destination_ip }}    destination
+          {{ private_source_ip }}    source
+          {{ private_destination_ip }}    destination
         create: false
         unsafe_writes: true
       when: inventory_hostname == "jenkins-plm-mongolink"
