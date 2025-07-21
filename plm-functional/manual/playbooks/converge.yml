@@ -90,7 +90,7 @@
     - name: Clone plm repo
       timeout: 180
       git:
-        repo: "https://{{ token }}@github.com/Percona-Lab/percona-mongolink.git"
+        repo: "https://{{ token }}@github.com/Percona-Lab/percona-link-mongodb.git"
         dest: /tmp/percona-mongolink
         version: "{{ plm_branch }}"
       when: inventory_hostname == "jenkins-plm-mongolink"
@@ -107,7 +107,7 @@
 
     - name: Move mongolink binary to /usr/local/bin
       copy:
-        src: /tmp/percona-mongolink/bin/percona-mongolink
+        src: /tmp/percona-mongolink/bin/plm
         dest: /usr/local/bin/
         mode: "0755"
         remote_src: true
