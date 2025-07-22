@@ -566,7 +566,7 @@ class Cluster:
             try:
                 timeout = time.time() + 30
                 self.disable_pitr()
-                result=self.exec_pbm_cli("delete-pitr --all --force --yes ")
+                result=self.exec_pbm_cli("delete-pitr --all --force --yes --wait")
                 Cluster.log(result.stdout + result.stderr)
                 while True:
                     if not self.get_status()['running'] or time.time() > timeout:
@@ -646,17 +646,23 @@ class Cluster:
         if time_param:
             target_time = int(datetime.fromisoformat(time_param).timestamp())
             pitr_end = 0
-
+            timeout = time.time() + 180
             while pitr_end < target_time:
+                if time.time() > timeout:
+                    raise TimeoutError("Timed out while waiting for PITR chunk to reach restore time")
                 result = n.check_output("pbm s -s backups -o json")
                 backups = json.loads(result)
-                if 'backups' in backups and 'pitrChunks' in backups['backups'] and 'pitrChunks' in backups['backups']['pitrChunks']:
-                   pitr_end_cur = backups['backups']['pitrChunks']['pitrChunks'][0].get('range', {}).get('end', None)
-                   if pitr_end_cur is not None:
-                        pitr_end = pitr_end_cur
+                pitr_data = backups.get("backups", {}).get("pitrChunks", {})
+                chunks = pitr_data.get("pitrChunks", [])
+                if chunks:
+                    pitr_end = max(chunk.get("range", {}).get("end", 0)
+                        for chunk in chunks if "range" in chunk and "end" in chunk["range"])
+                else:
+                    pitr_end = 0
                 if pitr_end < target_time:
                     time.sleep(1)
-
+                else:
+                    break
         result = n.check_output(
             "pbm config --set pitr.enabled=false --wait --out json")
         Cluster.log("Disabling PITR: " + result)
