@@ -1,0 +1,223 @@
+- name: Converge
+  hosts: mongo
+  become: true
+  become_method: sudo
+  tasks:
+    - set_fact:
+        psmdb_to_test: "{{ lookup('env', 'PSMDB') | default('psmdb-80', true) }}"
+
+    - set_fact:
+        repo: "{{ lookup('env', 'REPO') | default('release', true) }}"
+
+    - set_fact:
+        pro_build: "{{ lookup('env', 'GATED_BUILD') | default('false', true) }}"
+
+    - set_fact:
+        wt_cache_size: "{{ lookup('env', 'WT_CACHE_SIZE') | default('default', true) }}"
+
+    - set_fact:
+        initial_sync: "{{ lookup('env', 'INIT_SYNC') | default('fileCopyBased', true) }}"
+
+    - set_fact:
+        psmdb_mongosh: "{{ psmdb_to_test.split('-')[1].split('.')[0] }}"
+
+    - name: Install deps
+      yum:
+        name: "{{ packages }}"
+      vars:
+        packages:
+        - wget
+        - git
+        - iproute
+        - tar
+      when: ansible_os_family == "RedHat"
+
+    - name: Install deps
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+      vars:
+        packages:
+        - wget
+        - git
+        - iproute2
+      when: ansible_os_family == "Debian"
+
+    - name: Gather facts
+      ansible.builtin.setup:
+        gather_subset:
+          - all
+
+    - name: get primary ip adrress
+      set_fact:
+        rs_primary_ip: "{{ hostvars[inventory_hostname]['ansible_facts']['default_ipv4']['address'] }}"
+      when: inventory_hostname in groups['primary']
+
+    - name: debug primary ip adress
+      debug:
+        msg: "{{rs_primary_ip}}"
+      when: inventory_hostname in groups['primary']
+
+    - name: get secondaries ip adresses
+      set_fact:
+        rs_secondary_ips: "{% for host in groups['secondary'] %}{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+    - name: debug secondaries ip adresses
+      debug:
+        msg: "{{rs_secondary_ips}}"
+
+    - name: Install percona release package
+      include_tasks: ../../tasks/install_percona_release.yml
+
+    - name: enable psmdb repo
+      command: percona-release enable {{ psmdb_to_test }} {{ repo }}
+      when: pro_build != true
+
+    - name: Create yum repo for PRO build
+      blockinfile:
+        path: /etc/yum.repos.d/percona-pro.repo
+        mode: '0640'
+        create: true
+        block: |
+          [percona-pro]
+          name=[{{ psmdb_to_test }}-pro-{{ repo }}-{{ ansible_architecture }}]
+          baseurl=https://repo.percona.com/private/{{ client_id }}-{{ client_token }}/{{ psmdb_to_test }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/{{ ansible_architecture }}
+          enabled=1
+          gpgcheck=0
+          sslverify=0
+      vars:
+        client_id: "{{ lookup('env', 'USERNAME') }}"
+        client_token: "{{ lookup('env', 'PASSWORD') }}"
+      when: ansible_os_family == "RedHat" and pro_build == true
+
+    - name: create apt repo for PRO build
+      apt_repository: repo='deb http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/{{ psmdb_to_test }}-pro/apt/ {{ ansible_distribution_release }} {{ repo }}' state=present update_cache=yes
+      vars:
+        client_id: "{{ lookup('env', 'USERNAME') }}"
+        client_token: "{{ lookup('env', 'PASSWORD') }}"
+        deb_repo: "{{ 'main' if repo  == 'release' else repo }}"
+        version: "{{ lookup('env', 'PSMDB_VERSION') }}"
+      when: ansible_os_family == "Debian" and pro_build == true
+
+    - name: install psmdb deb packages
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-tools
+        - percona-mongodb-mongosh
+      when: ansible_os_family == "Debian"
+
+    - name: install psmdb rpm packages
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-tools
+        - percona-mongodb-mongosh
+      when: ansible_os_family == "RedHat" and pro_build != true
+
+    - name: install psmdb rpm packages
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb-pro
+        - percona-server-mongodb-server-pro
+        - percona-server-mongodb-mongos-pro
+        - percona-server-mongodb-tools
+        - percona-mongodb-mongosh
+      register: result
+      retries: 10
+      until: result is succeeded
+      delay: 5
+      when: ansible_os_family == "RedHat" and pro_build == true
+
+    - name: stop mongod service
+      service: name=mongod state=stopped
+
+    - name: create data directory for mongod
+      file:
+        path: /mnt/data/db
+        state: directory
+        mode: '0755'
+        owner: mongod
+        group: mongod
+
+    - name: switch mongod to new dbPath
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  dbPath: /var/lib/mongo'
+        replace: '  dbPath: /mnt/data/db'
+
+    - name: add replica set name into mongod config
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#replication:'
+        replace: 'replication:\n  replSetName: "rs"'
+
+    - name: bind mongod to 0.0.0.0
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  bindIp: 127.0.0.1'
+        replace: '  bindIp: 0.0.0.0'
+
+    - name: set wiredtiger cache size
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#  wiredTiger:'
+        replace: '  wiredTiger:\n    engineConfig:\n        cacheSizeGB: {{ wt_cache_size }}'
+      when: wt_cache_size != 'default'
+
+    - name: set initial sync method
+      replace:
+        path: /etc/mongod.conf
+        regexp: '#setParameter:'
+        replace: 'setParameter:\n  initialSyncMethod: fileCopyBased'
+      when: initial_sync == 'fileCopyBased'
+
+    - name: start mongod service
+      service: name=mongod state=started
+
+    - name: install pymongo
+      pip:
+        name: pymongo
+
+    - name: Create a replicaset rs
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs
+        login_host: "{{ rs_primary_ip }}"
+        members:
+        - host: "{{ rs_primary_ip }}:27017"
+          priority: 1
+        - host: "{{ rs_secondary_ips.split(',')[0] }}:27017"
+          priority: 0.5
+        - host: "{{ rs_secondary_ips.split(',')[1] }}:27017"
+          priority: 0.5
+      when: inventory_hostname in groups['primary']
+
+    - name: Download mgodatagen
+      get_url:
+        url: 'https://github.com/feliixx/mgodatagen/releases/download/v0.11.2/mgodatagen_0.11.2_Linux_x86_64.tar.gz'
+        dest: /tmp/mgodatagen.tar.gz
+        mode: '0644'
+      when: inventory_hostname in groups['primary']
+
+    - name: Unpack mgodatagen
+      unarchive:
+        src: /tmp/mgodatagen.tar.gz
+        dest: /usr/bin/
+        remote_src: yes
+      when: inventory_hostname in groups['primary']
