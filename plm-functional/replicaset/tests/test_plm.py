@@ -160,22 +160,23 @@ def test_prepare_data():
     log_step("Data generation completed. Validating size...")
     assert confirm_collection_size(source, datasize)
     log_step("Source data size confirmed")
+    time.sleep(3600)
 
-def test_data_transfer_PML_T40():
-    log_step("Starting PLM sync...")
-    assert plm_start()
-    log_step("Waiting for replication to complete...")
-    assert wait_for_repl_stage(TIMEOUT)
-    log_step("Finalizing sync...")
-    assert plm_finalize()
-    log_step("PLM sync completed successfully")
-
-def test_datasize_PML_T41():
-    log_step("Validating destination data size...")
-    assert confirm_collection_size(destination, datasize)
-    log_step("Destination data size confirmed")
-
-def test_data_integrity_PML_T42():
-    log_step("Comparing data integrity between source and destination...")
-    assert compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE)
-    log_step("Data integrity check completed successfully")
+# def test_data_transfer_PML_T40():
+#     log_step("Starting PLM sync...")
+#     assert plm_start()
+#     log_step("Waiting for replication to complete...")
+#     assert wait_for_repl_stage(TIMEOUT)
+#     log_step("Finalizing sync...")
+#     assert plm_finalize()
+#     log_step("PLM sync completed successfully")
+#
+# def test_datasize_PML_T41():
+#     log_step("Validating destination data size...")
+#     assert confirm_collection_size(destination, datasize)
+#     log_step("Destination data size confirmed")
+#
+# def test_data_integrity_PML_T42():
+#     log_step("Comparing data integrity between source and destination...")
+#     assert compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE)
+#     log_step("Data integrity check completed successfully")

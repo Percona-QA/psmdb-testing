@@ -8,7 +8,7 @@ platforms:
     region: us-west-2
     image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
     vpc_subnet_id: subnet-0dc7518100473f19d
-    instance_type: t2.micro
+    instance_type: i3.large
     ssh_user: ubuntu
     root_device_name: /dev/sda1
     instance_tags:
