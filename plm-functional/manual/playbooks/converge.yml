@@ -146,6 +146,10 @@
       set_fact:
         private_destination_ip: "{{ hostvars['jenkins-plm-destination']['ansible_default_ipv4']['address'] }}"
 
+    - name: Get private destination2 ip address
+      set_fact:
+        private_destination_ip: "{{ hostvars['jenkins-plm-destination2']['ansible_default_ipv4']['address'] }}"
+
     - name: Add source and destination to /etc/hosts in plm
       blockinfile:
         path: /etc/hosts
@@ -323,7 +327,7 @@
           - host: "{{ private_destination_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "jenkins-plm-destination"
+      when: inventory_hostname == "jenkins-plm-destination" or inventory_hostname == "jenkins-plm-destination2"
 
     - name: Reload systemd
       systemd:

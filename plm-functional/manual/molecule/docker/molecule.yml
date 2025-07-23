@@ -41,6 +41,19 @@ platforms:
     pre_build_image: true
     networks:
       - name: test
+  - name: jenkins-plm-destination2
+    groups:
+      - psmdb
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    cgroupns_mode: host
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ssh_user: test-user
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: test
 provisioner:
   name: ansible
   log: true
