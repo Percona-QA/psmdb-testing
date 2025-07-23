@@ -146,10 +146,6 @@
       set_fact:
         private_destination_ip: "{{ hostvars['jenkins-plm-destination']['ansible_default_ipv4']['address'] }}"
 
-    - name: Get private destination2 ip address
-      set_fact:
-        private_destination_ip2: "{{ hostvars['jenkins-plm-destination2']['ansible_default_ipv4']['address'] }}"
-
     - name: Add source and destination to /etc/hosts in plm
       blockinfile:
         path: /etc/hosts
@@ -328,16 +324,6 @@
             priority: 1
         validate: no
       when: inventory_hostname == "jenkins-plm-destination"
-
-    - name: Create a replicaset rs
-      community.mongodb.mongodb_replicaset:
-        replica_set: rs
-        login_host: "{{ private_destination_ip2 }}"
-        members:
-          - host: "{{ private_destination_ip2 }}:27017"
-            priority: 1
-        validate: no
-      when: inventory_hostname == "jenkins-plm-destination2"
 
     - name: Reload systemd
       systemd:
