@@ -30,7 +30,7 @@ platforms:
     pre_build_image: true
     networks:
        - name: test
-  - name: jenkins-plm-perconalink
+  - name: jenkins-plm-mongolink
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
