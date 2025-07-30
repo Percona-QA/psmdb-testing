@@ -6,7 +6,7 @@ driver:
 platforms:
   - name: ujammy-arm-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
-    image: "${MOLECULE_UJAMMY_ARM_AMI:-ami-07534e46c9116761b}"
+    image: "${MOLECULE_UJAMMY_ARM_AMI:-ami-0fdd2ebda3a620f3a}"
     vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: c6g.large
     ssh_user: ubuntu
