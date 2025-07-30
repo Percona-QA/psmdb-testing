@@ -6,7 +6,7 @@ driver:
 platforms:
   - name: debian11-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
-    image: "${MOLECULE_DEBIAN11_AMI:-ami-05f9dcaa9ddb9a15e}"
+    image: "${MOLECULE_DEBIAN11_AMI:-ami-02d0122d25353b012}"
     vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: t3.small
     ssh_user: admin
