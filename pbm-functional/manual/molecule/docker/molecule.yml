@@ -9,11 +9,11 @@ platforms:
       - mongo
       - primary
       - mc
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
     pre_build_image: true
     networks:
@@ -22,11 +22,11 @@ platforms:
     groups:
       - mongo
       - secondary
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
     pre_build_image: true
     networks:
@@ -35,11 +35,11 @@ platforms:
     groups:
       - mongo
       - secondary
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
     pre_build_image: true
     networks:
