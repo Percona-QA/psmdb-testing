@@ -120,11 +120,17 @@ LIBPATH = \"/opt/aws/lib /opt/aws/lib64 /opt/e2fs/lib /opt/e2fs/lib64\"\n\
 " > gcc.vars
 
 FROM base_image AS psmdb_builder
-ENV SCONS_TARGETS="install-mongod install-mongos install-mongo install-dbtest build/install/bin/mongobridge build/install/bin/wt"
+ARG psm_ver=8.0.3
 ARG pro=""
 RUN set -ex; \
+    VER=$(echo $psm_ver | cut -d"." -f1) && \
+    if [ $VER -ge 8 ]; then \
+        SCONS_TARGETS="install-mongod install-mongos install-mongo install-dbtest build/install/bin/mongobridge build/install/bin/wt build/install/bin/mongotmock" ;\
+    else \
+        SCONS_TARGETS="install-mongod install-mongos install-mongo install-dbtest build/install/bin/mongobridge build/install/bin/wt" ;\
+    fi; \
     buildscripts/scons.py --variables-files=gcc.vars -j"$(nproc)" --disable-warnings-as-errors \
-    --ssl --opt=on $pro --use-sasl-client --wiredtiger --audit --inmemory --hotbackup $SCONS_TARGETS 
+    --ssl --opt=on $pro --use-sasl-client --wiredtiger --audit --inmemory --hotbackup ${SCONS_TARGETS} 
 RUN find build/install/bin -type f | xargs strip --strip-debug || true 
 
 FROM base_image
