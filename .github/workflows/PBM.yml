@@ -25,11 +25,12 @@ jobs:
       PSMDB: ${{ github.event.inputs.psmdb || 'percona/percona-server-mongodb' }}
       PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'dev' }}
       GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
-      MAKE_TARGET: 'build-cover'      
+      MAKE_TARGET: 'build-cover'
     steps:
     - uses: actions/checkout@v4
     - name: Setup environment with PSMDB ${{ env.PSMDB }} and PBM branch ${{ env.PBM_BRANCH }}
       run: |
+        docker compose build easyrsa
         docker compose build
         docker compose up -d
       working-directory: ./pbm-functional/pytest
