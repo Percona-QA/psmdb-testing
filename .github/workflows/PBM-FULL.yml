@@ -32,6 +32,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: Setup environment with PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
       run: |
+        PSMDB=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build easyrsa
         PSMDB=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build
         docker compose up -d
       working-directory: ./pbm-functional/pytest
