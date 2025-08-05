@@ -288,6 +288,7 @@ multiversion_sanity_check|wiredTiger|python buildscripts/setup_multiversion_mong
 no_passthrough|wiredTiger
 no_passthrough_with_mongod|wiredTiger
 ocsp --jobs=1|wiredTiger|pip uninstall -y oscrypto --break-system-packages && pip install -I git+https://github.com/wbond/oscrypto.git --break-system-packages
+oidc|wiredTiger
 parallel|wiredTiger
 percona_no_passthrough_with_mongod|wiredTiger
 pretty-printer-tests|wiredTiger
