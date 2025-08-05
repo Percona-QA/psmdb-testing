@@ -20,10 +20,12 @@ secondary2 = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('secondary2-rs-initsync')
 
 DOC_SIZE = int(os.getenv("DOC_SIZE",1024))
+FILE_SIZE = os.getenv("FILE_SIZE",1024)
 IDX_COUNT = int(os.getenv("IDX_COUNT",2))
 DOC_COUNT = int(os.getenv("DOC_COUNT",1000 * 1000))
 DB_COUNT = int(os.getenv("DB_COUNT",10))
 TIMEOUT = int(os.getenv("TIMEOUT",3600))
+GENERATOR = os.getenv("GENERATOR",'mongofiles')
 
 def check_mongod_service(node):
     with node.sudo():
@@ -98,9 +100,19 @@ def load_data(doc_size,idx_count,doc_count,db_count):
     primary.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
     primary.run_test('mgodatagen --uri=mongodb://127.0.0.1:27017/ -f /tmp/generated_config.json')
 
+def load_files(file_size,doc_count,db_count):
+    primary.check_output('dd if=/dev/urandom of=random_file.bin bs=1M count=' + file_size)
+    for i in range(db_count):
+        db_name = 'test' + str(i)
+        for j in range(doc_count):
+             primary.check_output('mongofiles --quiet -d ' + db_name + ' put random_file.bin')
+
 def test_1_prepare_base_data():
     print('\nLoad base data')
-    load_data(DOC_SIZE,IDX_COUNT,DOC_COUNT,DB_COUNT)
+    if GENERATOR == "mongofiles":
+        load_files(FILE_SIZE,DOC_COUNT,DB_COUNT)
+    else:
+        load_data(DOC_SIZE,IDX_COUNT,DOC_COUNT,DB_COUNT)
 
 def test_2_get_db_size():
     print('\nGet data size')
