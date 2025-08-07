@@ -39,7 +39,7 @@
     - name: Create Source PSMDB container
       containers.podman.podman_container:
         name: source
-        image: percona/percona-server-mongodb:{{ psmdb_version }}
+        image: docker.io/percona/percona-server-mongodb:{{ psmdb_version }}
         state: started
         restart_policy: unless-stopped
         published_ports:
@@ -49,7 +49,7 @@
     - name: Create Destination PSMDB container
       containers.podman.podman_container:
         name: destination
-        image: percona/percona-server-mongodb:{{ psmdb_version }}
+        image: docker.io/percona/percona-server-mongodb:{{ psmdb_version }}
         state: started
         restart_policy: unless-stopped
         published_ports:
