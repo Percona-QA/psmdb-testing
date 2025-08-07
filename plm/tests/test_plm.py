@@ -197,8 +197,8 @@ def test_plm_version(host):
     result = plm_version(host)
     lines = result.stderr.split("\n")
     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
-    expected_version = f"v{version}" if install_repo == "release" else "main"
-    assert parsed_config['Version'] == expected_version, "Failed, actual version is " + parsed_config['Version']
+    # expected_version = f"v{version}" if version == "release" else "main"
+    assert parsed_config['Version'] == f"v{version}", "Failed, actual version is " + parsed_config['Version']
     assert parsed_config['Platform'], "Failed, actual platform is " + parsed_config['Platform']
     assert parsed_config['GitCommit'] == get_git_commit(), "Failed, actual git commit is " + parsed_config['GitCommit']
     assert parsed_config['GitBranch'] == f"release-{version}", "Failed, actual git branch is " + parsed_config['GitBranch']
