@@ -4,7 +4,7 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: rhel9-${BUILD_NUMBER}-${JOB_NAME}
+  - name: rhel10-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
     image: "${MOLECULE_RHEL10_AMI:-ami-0987e9d53da324257}"
     vpc_subnet_id: subnet-0dc7518100473f19d
@@ -30,7 +30,7 @@ verifier:
     s: true
     junitxml: report.xml
 scenario:
-  name: rhel9
+  name: rhel10
   destroy_sequence:
     - destroy
   test_sequence:
