@@ -56,25 +56,25 @@
           - "28017:27017"
         command: "--port=27017 --replSet rs1 --bind_ip_all"
 
-    - name: Wait for mongodb to be ready on source container
+    - name: Wait for MongoDB to be ready on source container
       containers.podman.podman_container_exec:
         container: source
         command: >
           bash -c "until mongosh --quiet --eval 'db.runCommand({ ping: 1 })' > /dev/null 2>&1; do sleep 2; done"
+      register: wait_mongo
       retries: 10
       delay: 3
-      register: wait_mongo
-      until: wait_mongo.rc == 0
+      until: wait_mongo is succeeded
 
-    - name: Wait for mongodb to be ready on destination container
+    - name: Wait for MongoDB to be ready on destination container
       containers.podman.podman_container_exec:
         container: destination
         command: >
           bash -c "until mongosh --quiet --eval 'db.runCommand({ ping: 1 })' > /dev/null 2>&1; do sleep 2; done"
+      register: wait_mongo
       retries: 10
       delay: 3
-      register: wait_mongo
-      until: wait_mongo.rc == 0
+      until: wait_mongo is succeeded
 
     - name: Get info about the Source container
       containers.podman.podman_container_info:
