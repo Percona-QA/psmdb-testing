@@ -37,7 +37,7 @@
         state: latest
 
     - name: Create Source PSMDB container
-      community.docker.docker_container:
+      containers.podman.podman_container:
         name: source
         image: percona/percona-server-mongodb:{{ psmdb_version }}
         state: started
@@ -47,7 +47,7 @@
         command: "--port=27017 --replSet rs0 --bind_ip_all"
 
     - name: Create Destination PSMDB container
-      community.docker.docker_container:
+      containers.podman.podman_container:
         name: destination
         image: percona/percona-server-mongodb:{{ psmdb_version }}
         state: started
@@ -57,7 +57,7 @@
         command: "--port=27017 --replSet rs1 --bind_ip_all"
 
     - name: Wait for mongodb to be ready on source container
-      community.docker.docker_container_exec:
+      containers.podman.podman_container_exec:
         container: source
         command: >
           bash -c "until mongosh --quiet --eval 'db.runCommand({ ping: 1 })' > /dev/null 2>&1; do sleep 2; done"
@@ -67,7 +67,7 @@
       until: wait_mongo.rc == 0
 
     - name: Wait for mongodb to be ready on destination container
-      community.docker.docker_container_exec:
+      containers.podman.podman_container_exec:
         container: destination
         command: >
           bash -c "until mongosh --quiet --eval 'db.runCommand({ ping: 1 })' > /dev/null 2>&1; do sleep 2; done"
@@ -77,12 +77,12 @@
       until: wait_mongo.rc == 0
 
     - name: Get info about the Source container
-      community.docker.docker_container_info:
+      containers.podman.podman_container_info:
         name: source
       register: source_container
 
     - name: Get info about the Destination container
-      community.docker.docker_container_info:
+      containers.podman.podman_container_info:
         name: destination
       register: destination_container
 
@@ -95,7 +95,7 @@
         destination_ip: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
 
     - name: Initiate source replicaset
-      community.docker.docker_container_exec:
+      containers.podman.podman_container_exec:
         container: source
         command: >
           mongosh --quiet --eval 'try { rs.initiate({_id: "rs0", members: [{ _id: 0, host: "{{ source_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
@@ -105,7 +105,7 @@
       until: rs_source_result.rc == 0
 
     - name: Initiate destination replicaset
-      community.docker.docker_container_exec:
+      containers.podman.podman_container_exec:
         container: destination
         command: >
           mongosh --quiet --eval 'try { rs.initiate({_id: "rs1", members: [{ _id: 0, host: "{{ destination_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
