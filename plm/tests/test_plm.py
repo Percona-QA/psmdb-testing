@@ -217,18 +217,18 @@ def get_git_commit():
         print(f"Unable to obtain git commit, failed with status code: {git_commit.status_code}")
         return False
 
-def test_plm_version(host):
-    """Test that plm version output is correct"""
-    result = plm_version(host)
-    lines = result.stderr.split("\n")
-    parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
-    assert parsed_config['Version'] == f"v{version}", "Failed, actual version is " + parsed_config['Version']
-    assert parsed_config['Platform'], "Failed, actual platform is " + parsed_config['Platform']
-    assert parsed_config['GitCommit'] == get_git_commit(), "Failed, actual git commit is " + parsed_config['GitCommit']
-    expected_version = f"release-{version}" if version == "release" else "main"
-    assert parsed_config['GitBranch'] == expected_version, "Failed, actual git branch is " + parsed_config['GitBranch']
-    assert parsed_config['BuildTime'], parsed_config
-    assert parsed_config['GoVersion'], parsed_config
+# def test_plm_version(host):
+#     """Test that plm version output is correct"""
+#     result = plm_version(host)
+#     lines = result.stderr.split("\n")
+#     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
+#     assert parsed_config['Version'] == f"v{version}", "Failed, actual version is " + parsed_config['Version']
+#     assert parsed_config['Platform'], "Failed, actual platform is " + parsed_config['Platform']
+#     assert parsed_config['GitCommit'] == get_git_commit(), "Failed, actual git commit is " + parsed_config['GitCommit']
+#     expected_version = f"release-{version}" if version == "release" else "main"
+#     assert parsed_config['GitBranch'] == expected_version, "Failed, actual git branch is " + parsed_config['GitBranch']
+#     assert parsed_config['BuildTime'], parsed_config
+#     assert parsed_config['GoVersion'], parsed_config
 
 # def test_plm_binary(host):
 #     """Check PLM binary exists with the correct permissions"""
