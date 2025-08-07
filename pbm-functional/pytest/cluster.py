@@ -23,7 +23,7 @@ import re
 class Cluster:
     def __init__(self, config, **kwargs):
         self.config = config
-        self.mongod_extra_args = kwargs.get('mongod_extra_args', "")
+        self.mongod_extra_args = kwargs.get('mongod_extra_args', " --setParameter=logicalSessionRefreshMillis=10000")
         self.mongod_datadir = kwargs.get('mongod_datadir', "/var/lib/mongo")
         self.pbm_mongodb_uri = kwargs.get('pbm_mongodb_uri', "mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin")
 
