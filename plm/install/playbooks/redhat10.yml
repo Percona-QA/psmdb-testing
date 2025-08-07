@@ -12,34 +12,6 @@
         # User to log into each AWS Instance
         ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
 
-    - name: Remove podman-docker if present
-      yum:
-        name: podman-docker
-        state: absent
-      when: ansible_os_family == "RedHat"
-
-    - name: Install dnf plugins
-      yum:
-        name: dnf-plugins-core
-        state: present
-      when: ansible_os_family == "RedHat"
-
-    - name: Add Docker CE repository
-      get_url:
-        url: https://download.docker.com/linux/centos/docker-ce.repo
-        dest: /etc/yum.repos.d/docker-ce.repo
-        mode: '0644'
-      when:
-        - ansible_os_family == "RedHat"
-
-    - name: Force release server to use 9 in Docker repo for AL2023 compatibility
-      replace:
-        path: /etc/yum.repos.d/docker-ce.repo
-        regexp: '\$releasever'
-        replace: '9'
-      when:
-        - ansible_distribution == "Amazon"
-
     - name: Install dependencies
       yum:
         name: "{{ packages }}"
@@ -50,9 +22,6 @@
           - git
           - python3-pip
           - wget
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
       when: ansible_os_family == "RedHat"
 
     - name: Install Percona Release
@@ -66,51 +35,6 @@
         name: percona-link-mongodb
         update_cache: yes
         state: latest
-
-    - name: Enable and start Docker service
-      service:
-        name: docker
-        state: started
-        enabled: true
-
-    - name: Set runc binary URL based on architecture
-      set_fact:
-        runc_url: >-
-          https://github.com/opencontainers/runc/releases/download/v1.1.12/{{
-            'runc.arm64' if ansible_architecture == 'aarch64' else 'runc.amd64'
-          }}
-
-    - name: Download correct runc binary
-      get_url:
-        url: "{{ runc_url }}"
-        dest: /usr/local/bin/runc
-        mode: '0755'
-
-    - name: Move runc to /usr/bin
-      copy:
-        src: /usr/local/bin/runc
-        dest: /usr/bin/runc
-        remote_src: yes
-        mode: '0755'
-        force: yes
-
-    - name: Ensure docker group exists
-      group:
-        name: docker
-        state: present
-
-    - name: Add user ssh-user to docker group
-      user:
-        name: "{{ ssh_user }}"
-        groups: docker
-        append: yes
-
-    - name: Ensure pip is installed on Amazon Linux
-      package:
-        name: python3-pip
-        state: present
-      when:
-        - ansible_distribution == "Amazon"
 
     - name: Create Source PSMDB container
       community.docker.docker_container:

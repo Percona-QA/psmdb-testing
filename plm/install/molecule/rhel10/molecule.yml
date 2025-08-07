@@ -21,7 +21,7 @@ provisioner:
     create: ../../../../playbooks/create.yml
     destroy: ../../../../playbooks/destroy.yml
     prepare: ../../playbooks/prepare.yml
-    converge: ../../playbooks/redhat.yml
+    converge: ../../playbooks/redhat10.yml
 verifier:
   name: testinfra
   directory: ../../../tests/
