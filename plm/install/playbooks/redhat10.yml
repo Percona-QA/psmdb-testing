@@ -96,23 +96,23 @@
 
     - name: Initiate source replicaset
       containers.podman.podman_container_exec:
-        container: source
+        name: source
         command: >
           mongosh --quiet --eval 'try { rs.initiate({_id: "rs0", members: [{ _id: 0, host: "{{ source_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
       register: rs_source_result
-      retries: 2
-      delay: 5
-      until: rs_source_result.rc == 0
+      retries: 10
+      delay: 3
+      until: rs_source_result is succeeded
 
     - name: Initiate destination replicaset
       containers.podman.podman_container_exec:
-        container: destination
+        name: destination
         command: >
           mongosh --quiet --eval 'try { rs.initiate({_id: "rs1", members: [{ _id: 0, host: "{{ destination_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
       register: rs_dest_result
-      retries: 2
-      delay: 5
-      until: rs_dest_result.rc == 0
+      retries: 10
+      delay: 3
+      until: rs_dest_result is succeeded
 
     - name: Add container IPs to /etc/hosts
       lineinfile:
