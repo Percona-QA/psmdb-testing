@@ -105,13 +105,13 @@ def plm_version(host):
 
 def plm_add_db_row(host):
     """Adds a test row to source database"""
-    result = host.run("sudo docker exec -i source mongosh testdb --eval 'db.test.insertOne({ name: \"testUser\", age: 42 })'")
+    result = host.run("sudo podman exec -i source mongosh testdb --eval 'db.test.insertOne({ name: \"testUser\", age: 42 })'")
     assert result.rc == 0
     return True
 
 def plm_confirm_db_row(host):
     """Captures and returns output on a query on the destination database"""
-    result = host.run("sudo docker exec -i destination mongosh testdb --eval 'db.test.findOne()'")
+    result = host.run("sudo podman exec -i destination mongosh testdb --eval 'db.test.findOne()'")
     assert result.rc == 0
     return result
 
