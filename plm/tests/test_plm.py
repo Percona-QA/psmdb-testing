@@ -110,8 +110,10 @@ def plm_add_db_row(host):
     release = host.system_info.release.split('.')[0]
 
     if distro == "redhat" and release == "10":
+        print("RUNNING PODMAN")
         runtime = "podman"
     else:
+        print("RUNNING DOCKER")
         runtime = "docker"
 
     # Run the appropriate command
@@ -126,8 +128,10 @@ def plm_confirm_db_row(host):
     release = host.system_info.release.split('.')[0]
 
     if distro == "redhat" and release == "10":
+        print("RUNNING PODMAN")
         runtime = "podman"
     else:
+        print("RUNNING DOCKER")
         runtime = "docker"
 
     result = host.run(f"sudo {runtime} exec -i destination mongosh testdb --eval 'db.test.findOne()'")
