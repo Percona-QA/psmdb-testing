@@ -180,6 +180,7 @@ def get_git_commit():
     headers = {'Authorization': 'token ' + os.environ.get("MONGO_REPO_TOKEN")}
     url = f"https://api.github.com/repos/percona/percona-link-mongodb/commits/release-{version}"
     git_commit = requests.get(url, headers=headers)
+    print("KEITH TEST COMMIT CODE: " + str(git_commit.status_code))
 
     if git_commit.status_code == 200:
         print("KEITH TEST SHA: " + str(git_commit.json()["sha"]))
