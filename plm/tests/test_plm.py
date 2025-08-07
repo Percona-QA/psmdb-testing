@@ -177,11 +177,12 @@ def start_plm_service(host):
     return start_plm
 
 def get_git_commit():
-    print(os.environ.get("MONGO_REPO_TOKEN"))
     headers = {'Authorization': 'token ' + str(os.environ.get("MONGO_REPO_TOKEN"))}
-    url = f"https://api.github.com/repos/percona/percona-link-mongodb/commits/release-{version}"
+    if version == "release":
+        url = f"https://api.github.com/repos/percona/percona-link-mongodb/commits/release-{version}"
+    else:
+        url = f"https://api.github.com/repos/percona/percona-link-mongodb/commits/main"
     git_commit = requests.get(url, headers=headers)
-    print("KEITH TEST COMMIT CODE: " + str(git_commit.status_code))
 
     if git_commit.status_code == 200:
         print("KEITH TEST SHA: " + str(git_commit.json()["sha"]))
