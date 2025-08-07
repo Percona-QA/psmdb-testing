@@ -105,13 +105,32 @@ def plm_version(host):
 
 def plm_add_db_row(host):
     """Adds a test row to source database"""
-    result = host.run("sudo podman exec -i source mongosh testdb --eval 'db.test.insertOne({ name: \"testUser\", age: 42 })'")
+
+    distro = host.system_info.distribution.lower()
+    release = host.system_info.release.split('.')[0]
+
+    if distro == "redhat" and release == "10":
+        runtime = "podman"
+    else:
+        runtime = "docker"
+
+    # Run the appropriate command
+    result = host.run(f"sudo {runtime} exec -i source mongosh testdb --eval 'db.test.insertOne({{ name: \"testUser\", age: 42 }})'")
+
     assert result.rc == 0
     return True
 
 def plm_confirm_db_row(host):
     """Captures and returns output on a query on the destination database"""
-    result = host.run("sudo podman exec -i destination mongosh testdb --eval 'db.test.findOne()'")
+    distro = host.system_info.distribution.lower()
+    release = host.system_info.release.split('.')[0]
+
+    if distro == "redhat" and release == "10":
+        runtime = "podman"
+    else:
+        runtime = "docker"
+
+    result = host.run(f"sudo {runtime} exec -i destination mongosh testdb --eval 'db.test.findOne()'")
     assert result.rc == 0
     return result
 
