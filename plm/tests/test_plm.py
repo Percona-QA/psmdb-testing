@@ -10,6 +10,7 @@ plm = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
 version = os.getenv("plm_version")
+install_repo = os.getenv("install_repo")
 
 def plm_start(host, timeout=60, interval=2):
     """Starts PLM and waits until the endpoint is ready
@@ -178,7 +179,7 @@ def start_plm_service(host):
 
 def get_git_commit():
     headers = {'Authorization': 'token ' + str(os.environ.get("MONGO_REPO_TOKEN"))}
-    if version == "release":
+    if install_repo == "release":
         url = f"https://api.github.com/repos/percona/percona-link-mongodb/commits/release-{version}"
     else:
         url = f"https://api.github.com/repos/percona/percona-link-mongodb/commits/main"
@@ -196,12 +197,11 @@ def test_plm_version(host):
     result = plm_version(host)
     lines = result.stderr.split("\n")
     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
-    print("KEITH TEST: " + str(parsed_config))
-    print("KEITH TEST: " + f"v{version}")
-    assert parsed_config['Version'] == f"v{version}", parsed_config
-    assert parsed_config['Platform'], parsed_config
-    assert parsed_config['GitCommit'] == get_git_commit(), parsed_config
-    assert parsed_config['GitBranch'] == f"release-{version}", parsed_config
+    expected_version = f"v{version}" if install_repo == "release" else "main"
+    assert parsed_config['Version'] == expected_version, "Failed, actual version is " + parsed_config['Version']
+    assert parsed_config['Platform'], "Failed, actual platform is " + parsed_config['Platform']
+    assert parsed_config['GitCommit'] == get_git_commit(), "Failed, actual git commit is " + parsed_config['GitCommit']
+    assert parsed_config['GitBranch'] == f"release-{version}", "Failed, actual git branch is " + parsed_config['GitBranch']
     assert parsed_config['BuildTime'], parsed_config
     assert parsed_config['GoVersion'], parsed_config
 
