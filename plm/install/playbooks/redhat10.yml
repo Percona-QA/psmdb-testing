@@ -58,7 +58,7 @@
 
     - name: Wait for MongoDB to be ready on source container
       containers.podman.podman_container_exec:
-        container: source
+        name: source
         command: >
           bash -c "until mongosh --quiet --eval 'db.runCommand({ ping: 1 })' > /dev/null 2>&1; do sleep 2; done"
       register: wait_mongo
@@ -68,7 +68,7 @@
 
     - name: Wait for MongoDB to be ready on destination container
       containers.podman.podman_container_exec:
-        container: destination
+        name: destination
         command: >
           bash -c "until mongosh --quiet --eval 'db.runCommand({ ping: 1 })' > /dev/null 2>&1; do sleep 2; done"
       register: wait_mongo
