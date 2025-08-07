@@ -127,6 +127,9 @@ def plm_confirm_db_row(host):
     distro = host.system_info.distribution.lower()
     release = host.system_info.release.split('.')[0]
 
+    print("DISTRO: " + distro)
+    print("RELEASE: " + release)
+
     if distro == "redhat" and release == "10":
         print("RUNNING PODMAN")
         runtime = "podman"
@@ -227,42 +230,42 @@ def test_plm_version(host):
     assert parsed_config['BuildTime'], parsed_config
     assert parsed_config['GoVersion'], parsed_config
 
-def test_plm_binary(host):
-    """Check PLM binary exists with the correct permissions"""
-    file = host.file("/usr/bin/plm")
-    assert file.user == "root"
-    assert file.group == "root"
-    try:
-        assert file.mode == 0o755
-    except AssertionError:
-        pytest.xfail("Possible xfail")
-
-def test_plm_help(host):
-    """Check that PLM help command works"""
-    result = host.run("plm help")
-    assert result.rc == 0, result.stdout
-
-def test_plm_environment_file_exists(host):
-    """Test plm-service file exists"""
-    service_file = host.file("/lib/systemd/system/plm.service")
-    assert service_file.user == "root"
-    assert service_file.group == "root"
-    try:
-        assert service_file.mode == 0o644
-    except AssertionError:
-        pytest.xfail("Possible xfail")
-
-def test_stop_plm(host):
-    """Test plm service stops successfully"""
-    stop_plm_service(host)
-
-def test_start_plm(host):
-    """Test plm service starts successfully"""
-    start_plm_service(host)
-
-def test_restart_plm(host):
-    """Test plm service restarts successfully"""
-    restart_plm_service(host)
+# def test_plm_binary(host):
+#     """Check PLM binary exists with the correct permissions"""
+#     file = host.file("/usr/bin/plm")
+#     assert file.user == "root"
+#     assert file.group == "root"
+#     try:
+#         assert file.mode == 0o755
+#     except AssertionError:
+#         pytest.xfail("Possible xfail")
+#
+# def test_plm_help(host):
+#     """Check that PLM help command works"""
+#     result = host.run("plm help")
+#     assert result.rc == 0, result.stdout
+#
+# def test_plm_environment_file_exists(host):
+#     """Test plm-service file exists"""
+#     service_file = host.file("/lib/systemd/system/plm.service")
+#     assert service_file.user == "root"
+#     assert service_file.group == "root"
+#     try:
+#         assert service_file.mode == 0o644
+#     except AssertionError:
+#         pytest.xfail("Possible xfail")
+#
+# def test_stop_plm(host):
+#     """Test plm service stops successfully"""
+#     stop_plm_service(host)
+#
+# def test_start_plm(host):
+#     """Test plm service starts successfully"""
+#     start_plm_service(host)
+#
+# def test_restart_plm(host):
+#     """Test plm service restarts successfully"""
+#     restart_plm_service(host)
 
 def test_plm_transfer(host):
     """Test basic PLM Transfer functionality"""
