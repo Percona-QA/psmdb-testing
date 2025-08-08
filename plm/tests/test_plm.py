@@ -112,7 +112,7 @@ def plm_add_db_row(host):
     print("DISTRO: " + distro)
     print("RELEASE: " + release)
 
-    if distro == "redhat" and release == "10":
+    if distro == "rhel" and release == "10":
         print("RUNNING PODMAN")
         runtime = "podman"
     else:
