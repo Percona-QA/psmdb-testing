@@ -243,3 +243,10 @@
         name: plm
         state: started
         enabled: yes
+
+    - name: Remove bullseye-backports entries from apt sources
+      replace:
+        path: /etc/apt/sources.list
+        regexp: '^(deb.*bullseye-backports)'
+        replace: '# \1'
+      when: ansible_distribution_release == 'bullseye'
