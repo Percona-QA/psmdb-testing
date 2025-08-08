@@ -131,7 +131,7 @@ def plm_confirm_db_row(host):
     else:
         runtime = "docker"
 
-    result = host.run(f"sudo {determine_release()} exec -i destination mongosh testdb --eval 'db.test.findOne()'")
+    result = host.run(f"sudo {determine_release(host)} exec -i destination mongosh testdb --eval 'db.test.findOne()'")
     assert result.rc == 0
     return result
 
