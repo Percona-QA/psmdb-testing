@@ -103,21 +103,20 @@ def plm_version(host):
     assert result.rc == 0, result.stdout
     return result
 
-def plm_add_db_row(host):
-    """Adds a test row to source database"""
-
+def determine_release():
     distro = host.system_info.distribution.lower()
     release = host.system_info.release.split('.')[0]
 
     if distro == "rhel" and release == "10":
-        print("RUNNING PODMAN")
-        runtime = "podman"
+        return "podman"
     else:
-        print("RUNNING DOCKER")
-        runtime = "docker"
+        return "docker"
+
+def plm_add_db_row(host):
+    """Adds a test row to source database"""
 
     # Run the appropriate command
-    result = host.run(f"sudo {runtime} exec -i source mongosh testdb --eval 'db.test.insertOne({{ name: \"testUser\", age: 42 }})'")
+    result = host.run(f"sudo {determine_release()} exec -i source mongosh testdb --eval 'db.test.insertOne({{ name: \"testUser\", age: 42 }})'")
 
     assert result.rc == 0
     return True
@@ -128,13 +127,11 @@ def plm_confirm_db_row(host):
     release = host.system_info.release.split('.')[0]
 
     if distro == "rhel" and release == "10":
-        print("RUNNING PODMAN")
         runtime = "podman"
     else:
-        print("RUNNING DOCKER")
         runtime = "docker"
 
-    result = host.run(f"sudo {runtime} exec -i destination mongosh testdb --eval 'db.test.findOne()'")
+    result = host.run(f"sudo {determine_release()} exec -i destination mongosh testdb --eval 'db.test.findOne()'")
     assert result.rc == 0
     return result
 
