@@ -220,55 +220,55 @@ def get_git_commit():
         print(f"Unable to obtain git commit, failed with status code: {git_commit.status_code}")
         return False
 
-# def test_plm_version(host):
-#     """Test that plm version output is correct"""
-#     result = plm_version(host)
-#     lines = result.stderr.split("\n")
-#     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
-#     assert parsed_config['Version'] == f"v{version}", "Failed, actual version is " + parsed_config['Version']
-#     assert parsed_config['Platform'], "Failed, actual platform is " + parsed_config['Platform']
-#     assert parsed_config['GitCommit'] == get_git_commit(), "Failed, actual git commit is " + parsed_config['GitCommit']
-#     expected_version = f"release-{version}" if version == "release" else "main"
-#     assert parsed_config['GitBranch'] == expected_version, "Failed, actual git branch is " + parsed_config['GitBranch']
-#     assert parsed_config['BuildTime'], parsed_config
-#     assert parsed_config['GoVersion'], parsed_config
+def test_plm_version(host):
+    """Test that plm version output is correct"""
+    result = plm_version(host)
+    lines = result.stderr.split("\n")
+    parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
+    assert parsed_config['Version'] == f"v{version}", "Failed, actual version is " + parsed_config['Version']
+    assert parsed_config['Platform'], "Failed, actual platform is " + parsed_config['Platform']
+    assert parsed_config['GitCommit'] == get_git_commit(), "Failed, actual git commit is " + parsed_config['GitCommit']
+    expected_version = f"release-{version}" if version == "release" else "main"
+    assert parsed_config['GitBranch'] == expected_version, "Failed, actual git branch is " + parsed_config['GitBranch']
+    assert parsed_config['BuildTime'], parsed_config
+    assert parsed_config['GoVersion'], parsed_config
 
-# def test_plm_binary(host):
-#     """Check PLM binary exists with the correct permissions"""
-#     file = host.file("/usr/bin/plm")
-#     assert file.user == "root"
-#     assert file.group == "root"
-#     try:
-#         assert file.mode == 0o755
-#     except AssertionError:
-#         pytest.xfail("Possible xfail")
-#
-# def test_plm_help(host):
-#     """Check that PLM help command works"""
-#     result = host.run("plm help")
-#     assert result.rc == 0, result.stdout
-#
-# def test_plm_environment_file_exists(host):
-#     """Test plm-service file exists"""
-#     service_file = host.file("/lib/systemd/system/plm.service")
-#     assert service_file.user == "root"
-#     assert service_file.group == "root"
-#     try:
-#         assert service_file.mode == 0o644
-#     except AssertionError:
-#         pytest.xfail("Possible xfail")
-#
-# def test_stop_plm(host):
-#     """Test plm service stops successfully"""
-#     stop_plm_service(host)
-#
-# def test_start_plm(host):
-#     """Test plm service starts successfully"""
-#     start_plm_service(host)
-#
-# def test_restart_plm(host):
-#     """Test plm service restarts successfully"""
-#     restart_plm_service(host)
+def test_plm_binary(host):
+    """Check PLM binary exists with the correct permissions"""
+    file = host.file("/usr/bin/plm")
+    assert file.user == "root"
+    assert file.group == "root"
+    try:
+        assert file.mode == 0o755
+    except AssertionError:
+        pytest.xfail("Possible xfail")
+
+def test_plm_help(host):
+    """Check that PLM help command works"""
+    result = host.run("plm help")
+    assert result.rc == 0, result.stdout
+
+def test_plm_environment_file_exists(host):
+    """Test plm-service file exists"""
+    service_file = host.file("/lib/systemd/system/plm.service")
+    assert service_file.user == "root"
+    assert service_file.group == "root"
+    try:
+        assert service_file.mode == 0o644
+    except AssertionError:
+        pytest.xfail("Possible xfail")
+
+def test_stop_plm(host):
+    """Test plm service stops successfully"""
+    stop_plm_service(host)
+
+def test_start_plm(host):
+    """Test plm service starts successfully"""
+    start_plm_service(host)
+
+def test_restart_plm(host):
+    """Test plm service restarts successfully"""
+    restart_plm_service(host)
 
 def test_plm_transfer(host):
     """Test basic PLM Transfer functionality"""
