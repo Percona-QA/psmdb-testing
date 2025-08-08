@@ -53,3 +53,10 @@
         regexp: '^%sudo'
         line: '%sudo ALL=(ALL) NOPASSWD: ALL'
       when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'Debian'
+
+    - name: Remove bullseye-backports entries from apt sources
+      replace:
+        path: /etc/apt/sources.list
+        regexp: '^(deb.*bullseye-backports)'
+        replace: '# \1'
+      when: ansible_distribution_release == 'bullseye'
