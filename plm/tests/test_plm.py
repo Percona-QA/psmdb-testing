@@ -200,10 +200,7 @@ def start_plm_service(host):
 
 def get_git_commit():
     headers = {'Authorization': 'token ' + str(os.environ.get("MONGO_REPO_TOKEN"))}
-    if install_repo == "release":
-        url = f"https://api.github.com/repos/percona/percona-link-mongodb/commits/release-{version}"
-    else:
-        url = f"https://api.github.com/repos/percona/percona-link-mongodb/commits/main"
+    url = f"https://api.github.com/repos/percona/percona-link-mongodb/commits/release-{version}"
     git_commit = requests.get(url, headers=headers)
 
     if git_commit.status_code == 200:
