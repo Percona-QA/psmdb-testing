@@ -103,7 +103,7 @@ def plm_version(host):
     assert result.rc == 0, result.stdout
     return result
 
-def determine_release():
+def determine_release(host):
     distro = host.system_info.distribution.lower()
     release = host.system_info.release.split('.')[0]
 
