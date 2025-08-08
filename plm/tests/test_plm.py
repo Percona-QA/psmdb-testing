@@ -109,9 +109,6 @@ def plm_add_db_row(host):
     distro = host.system_info.distribution.lower()
     release = host.system_info.release.split('.')[0]
 
-    print("DISTRO: " + distro)
-    print("RELEASE: " + release)
-
     if distro == "rhel" and release == "10":
         print("RUNNING PODMAN")
         runtime = "podman"
@@ -129,9 +126,6 @@ def plm_confirm_db_row(host):
     """Captures and returns output on a query on the destination database"""
     distro = host.system_info.distribution.lower()
     release = host.system_info.release.split('.')[0]
-
-    print("DISTRO: " + distro)
-    print("RELEASE: " + release)
 
     if distro == "rhel" and release == "10":
         print("RUNNING PODMAN")
