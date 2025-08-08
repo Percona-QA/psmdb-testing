@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 
@@ -223,7 +224,7 @@ def test_plm_version(host):
     try:
         assert parsed_config['GitBranch'] == f"release-{version}"
     except AssertionError:
-        pytest.xfail(f"Non-blocking failure: GitBranch mismatch. Got '{parsed_config['GitBranch']}'")
+        logging.warning(f"Non-blocking failure: GitBranch mismatch. Got '{parsed_config['GitBranch']}'", RuntimeWarning)
     assert parsed_config['BuildTime'], parsed_config
     assert parsed_config['GoVersion'], parsed_config
 
