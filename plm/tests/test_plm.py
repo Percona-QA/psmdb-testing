@@ -116,7 +116,7 @@ def plm_add_db_row(host):
     """Adds a test row to source database"""
 
     # Run the appropriate command
-    result = host.run(f"sudo {determine_release()} exec -i source mongosh testdb --eval 'db.test.insertOne({{ name: \"testUser\", age: 42 }})'")
+    result = host.run(f"sudo {determine_release(host)} exec -i source mongosh testdb --eval 'db.test.insertOne({{ name: \"testUser\", age: 42 }})'")
 
     assert result.rc == 0
     return True
