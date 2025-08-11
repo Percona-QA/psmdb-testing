@@ -1,0 +1,42 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: ec2
+platforms:
+  - name: rhel10-arm-${BUILD_NUMBER}-${JOB_NAME}
+    region: us-west-2
+    image: "${MOLECULE_RHEL10_ARM_AMI:-ami-0ee25ba03b69968c5}"
+    vpc_subnet_id: subnet-03136d8c244f56036
+    instance_type: c6g.large
+    ssh_user: ec2-user
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+      job-name: ${JOB_NAME}
+provisioner:
+  name: ansible
+  log: True
+  playbooks:
+    create: ../../../../playbooks/create.yml
+    destroy: ../../../../playbooks/destroy.yml
+    prepare: ../../playbooks/prepare.yml
+    converge: ../../playbooks/redhat10.yml
+verifier:
+  name: testinfra
+  directory: ../../../tests/
+  options:
+    verbose: true
+    s: true
+    junitxml: report.xml
+scenario:
+  name: rhel10-arm
+  destroy_sequence:
+    - destroy
+  test_sequence:
+    - destroy
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy
