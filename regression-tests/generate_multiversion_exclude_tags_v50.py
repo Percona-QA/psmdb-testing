@@ -15,7 +15,8 @@ import click
 import structlog
 
 from buildscripts.resmokelib.core.programs import get_path_env_var
-from buildscripts.resmokelib.multiversionconstants import LAST_LTS_MONGO_BINARY, REQUIRES_FCV_TAG
+from buildscripts.resmokelib.multiversionconstants import (
+    LAST_LTS_MONGO_BINARY, REQUIRES_FCV_TAG)
 from buildscripts.resmokelib.utils import is_windows
 from buildscripts.util.cmdutils import enable_logging
 from buildscripts.util.fileops import read_yaml_file
@@ -47,25 +48,26 @@ def get_backports_required_hash_for_shell_version(mongo_shell_path=None):
     if is_windows():
         mongo_shell = mongo_shell_path + ".exe"
 
-    shell_version = check_output(f"{mongo_shell} --version", shell=True, env=env_vars).decode("utf-8")
+    shell_version = check_output(f"{mongo_shell} --version", shell=True,
+                                 env=env_vars).decode('utf-8')
     for line in shell_version.splitlines():
         if "gitVersion" in line:
-            version_line = line.split(":")[1]
+            version_line = line.split(':')[1]
             # We identify the commit hash as the string enclosed by double quotation marks.
             result = re.search(r'"(.*?)"', version_line)
             if result:
                 commit_hash = result.group().strip('"')
                 if not commit_hash.isalnum():
-                    raise ValueError(
-                        f"Error parsing commit hash. Expected an alpha-numeric string but got: {commit_hash}"
-                    )
+                    raise ValueError(f"Error parsing commit hash. Expected an "
+                                     f"alpha-numeric string but got: {commit_hash}")
                 return commit_hash
             else:
                 break
     raise ValueError("Could not find a valid commit hash from the last-lts mongo binary.")
 
 
-def get_installation_access_token(app_id: int, private_key: str, installation_id: int) -> Optional[str]:  # noqa: D406,D407,D413
+def get_installation_access_token(app_id: int, private_key: str,
+                                  installation_id: int) -> Optional[str]:  # noqa: D406,D407,D413
     """
     Obtain an installation access token using JWT.
 
@@ -91,8 +93,8 @@ def get_last_lts_yaml(commit_hash, expansions_file):
     LOGGER.info(f"Downloading file from commit hash of last-lts branch {commit_hash}")
 
     response = requests.get(
-        f"{BACKPORTS_REQUIRED_BASE_URL}/{commit_hash}/{ETC_DIR}/{BACKPORTS_REQUIRED_FILE}",
-    )
+        f'{BACKPORTS_REQUIRED_BASE_URL}/{commit_hash}/{ETC_DIR}/{BACKPORTS_REQUIRED_FILE}',
+        )
 
     # If the response was successful, no exception will be raised.
     response.raise_for_status()
@@ -113,20 +115,10 @@ def main():
 
 
 @main.command("generate-exclude-tags")
-@click.option(
-    "--output",
-    type=str,
-    default=os.path.join(CONFIG_DIR, EXCLUDE_TAGS_FILE),
-    show_default=True,
-    help="Where to output the generated tags.",
-)
-@click.option(
-    "--expansions-file",
-    type=str,
-    default="../expansions.yml",
-    show_default=True,
-    help="Location of evergreen expansions file.",
-)
+@click.option("--output", type=str, default=os.path.join(CONFIG_DIR, EXCLUDE_TAGS_FILE),
+              show_default=True, help="Where to output the generated tags.")
+@click.option("--expansions-file", type=str, default="../expansions.yml", show_default=True,
+              help="Location of evergreen expansions file.")
 def generate_exclude_yaml(output: str, expansions_file: str) -> None:
     # pylint: disable=too-many-locals
     """
@@ -148,7 +140,8 @@ def generate_exclude_yaml(output: str, expansions_file: str) -> None:
     # Get the state of the backports_required_for_multiversion_tests.yml file for the last-lts
     # binary we are running tests against. We do this by using the commit hash from the last-lts
     # mongo shell executable.
-    last_lts_commit_hash = get_backports_required_hash_for_shell_version(mongo_shell_path=LAST_LTS_MONGO_BINARY)
+    last_lts_commit_hash = get_backports_required_hash_for_shell_version(
+        mongo_shell_path=LAST_LTS_MONGO_BINARY)
 
     # Get the yaml contents from the last-lts commit.
     backports_required_last_lts = get_last_lts_yaml(last_lts_commit_hash, expansions_file)
@@ -162,12 +155,13 @@ def generate_exclude_yaml(output: str, expansions_file: str) -> None:
     # This variable and all branches where it's not set can be deleted after backporting the change.
     change_backported = "last-lts" in backports_required_last_lts.keys()
     if change_backported:
-        always_exclude = diff(
-            backports_required_latest["last-lts"]["all"], backports_required_last_lts["last-lts"]["all"]
-        )
-        suites_last_lts: defaultdict = defaultdict(list, backports_required_last_lts["last-lts"]["suites"])
+        always_exclude = diff(backports_required_latest["last-lts"]["all"],
+                              backports_required_last_lts["last-lts"]["all"])
+        suites_last_lts: defaultdict = defaultdict(
+            list, backports_required_last_lts["last-lts"]["suites"])
     else:
-        always_exclude = diff(backports_required_latest["last-lts"]["all"], backports_required_last_lts["all"])
+        always_exclude = diff(backports_required_latest["last-lts"]["all"],
+                              backports_required_last_lts["all"])
         suites_last_lts: defaultdict = defaultdict(list, backports_required_last_lts["suites"])
 
     tags = _tags.TagsConfig()
@@ -185,8 +179,9 @@ def generate_exclude_yaml(output: str, expansions_file: str) -> None:
             tags.add_tag("js_test", test, f"{suite}_{BACKPORT_REQUIRED_TAG}")
 
     LOGGER.info(f"Writing exclude tags to {output}.")
-    tags.write_file(filename=output, preamble="Tag file that specifies exclusions from multiversion suites.")
+    tags.write_file(filename=output,
+                    preamble="Tag file that specifies exclusions from multiversion suites.")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()  # pylint: disable=no-value-for-parameter

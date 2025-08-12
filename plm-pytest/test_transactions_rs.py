@@ -15,21 +15,17 @@ from data_integrity_check import compare_data_rs
 def docker_client():
     return docker.from_env()
 
-
 @pytest.fixture(scope="module")
 def dstRS():
-    return Cluster({"_id": "rs2", "members": [{"host": "rs201"}]})
-
+    return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]})
 
 @pytest.fixture(scope="module")
 def srcRS():
-    return Cluster({"_id": "rs1", "members": [{"host": "rs101"}]})
-
+    return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]})
 
 @pytest.fixture(scope="module")
-def plink(srcRS, dstRS):
-    return Perconalink("plink", srcRS.plink_connection, dstRS.plink_connection)
-
+def plink(srcRS,dstRS):
+    return Perconalink('plink',srcRS.plink_connection, dstRS.plink_connection)
 
 @pytest.fixture(scope="module")
 def start_cluster(srcRS, dstRS, plink, request):
@@ -45,17 +41,14 @@ def start_cluster(srcRS, dstRS, plink, request):
         dstRS.destroy()
         plink.destroy()
 
-
 @pytest.fixture(scope="function")
 def reset_state(srcRS, dstRS, plink, request):
     src_client = pymongo.MongoClient(srcRS.connection)
     dst_client = pymongo.MongoClient(dstRS.connection)
-
     def print_logs():
         if request.config.getoption("--verbose"):
             logs = plink.logs()
             print(f"\n\nplink Last 50 Logs for plink:\n{logs}\n\n")
-
     request.addfinalizer(print_logs)
     plink.destroy()
     for db_name in src_client.list_database_names():
@@ -65,7 +58,6 @@ def reset_state(srcRS, dstRS, plink, request):
         if db_name not in {"admin", "local", "config"}:
             dst_client.drop_database(db_name)
     plink.create()
-
 
 def perform_transaction(src, session, db_name, coll_name, docs, commit=False, abort=False):
     collection = src[db_name][coll_name]
@@ -82,8 +74,7 @@ def perform_transaction(src, session, db_name, coll_name, docs, commit=False, ab
             session.abort_transaction()
         raise e
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T22(reset_state, srcRS, dstRS, plink):
     """
@@ -98,14 +89,10 @@ def test_rs_plink_PML_T22(reset_state, srcRS, dstRS, plink):
 
         # Verify transactions started before sync and committed during data clone stage / before sync finalize
         session0 = src.start_session()
-        perform_transaction(
-            src, session0, "transaction_db", "before_sync_v0", [{"_id": 1, "value": "txn"}], commit=False
-        )
+        perform_transaction(src, session0, "transaction_db", "before_sync_v0", [{"_id": 1, "value": "txn"}], commit=False)
 
         session1 = src.start_session()
-        perform_transaction(
-            src, session1, "transaction_db", "before_sync_v1", [{"_id": 1, "value": "txn"}], commit=False
-        )
+        perform_transaction(src, session1, "transaction_db", "before_sync_v1", [{"_id": 1, "value": "txn"}], commit=False)
 
         result = plink.start()
         assert result is True, "Failed to start plink service"
@@ -190,8 +177,7 @@ def test_rs_plink_PML_T22(reset_state, srcRS, dstRS, plink):
     plink_error, error_logs = plink.check_plink_errors()
     assert plink_error is True, f"Plimk reported errors in logs: {error_logs}"
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T23(reset_state, srcRS, dstRS, plink):
     """
@@ -231,8 +217,7 @@ def test_rs_plink_PML_T23(reset_state, srcRS, dstRS, plink):
     plink_error, error_logs = plink.check_plink_errors()
     assert plink_error is True, f"Plimk reported errors in logs: {error_logs}"
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T24(reset_state, srcRS, dstRS, plink):
     """
@@ -274,8 +259,7 @@ def test_rs_plink_PML_T24(reset_state, srcRS, dstRS, plink):
     plink_error, error_logs = plink.check_plink_errors()
     assert plink_error is True, f"Plimk reported errors in logs: {error_logs}"
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T25(reset_state, srcRS, dstRS, plink):
     """
@@ -320,8 +304,7 @@ def test_rs_plink_PML_T25(reset_state, srcRS, dstRS, plink):
     plink_error, error_logs = plink.check_plink_errors()
     assert plink_error is True, f"Plimk reported errors in logs: {error_logs}"
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T26(reset_state, srcRS, dstRS, plink):
     """
@@ -362,16 +345,13 @@ def test_rs_plink_PML_T26(reset_state, srcRS, dstRS, plink):
     unexpected_doc_id = 2
 
     assert expected_doc["_id"] in docs_in_dst, f"Expected document missing: {expected_doc}"
-    assert docs_in_dst.get(expected_doc["_id"]) == expected_doc, (
-        f"Mismatch in expected document: {docs_in_dst.get(expected_doc['_id'])}"
-    )
+    assert docs_in_dst.get(expected_doc["_id"]) == expected_doc, f"Mismatch in expected document: {docs_in_dst.get(expected_doc['_id'])}"
     assert unexpected_doc_id not in docs_in_dst, f"Unexpected document found: {docs_in_dst.get(unexpected_doc_id)}"
 
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T27(reset_state, srcRS, dstRS, plink):
     """
@@ -390,11 +370,8 @@ def test_rs_plink_PML_T27(reset_state, srcRS, dstRS, plink):
 
     stop_generation = threading.Event()
     try:
-        dummy_thread = threading.Thread(
-            target=generate_dummy_data, args=(srcRS.connection, "dummy", 20, 150000, 500, stop_generation, 0.05)
-        )
+        dummy_thread = threading.Thread(target=generate_dummy_data,args=(srcRS.connection, "dummy", 20, 150000, 500, stop_generation, 0.05))
         dummy_thread.start()
-
         def keep_transaction_alive(session, db_name, coll_name):
             coll = src[db_name][coll_name]
             while session.in_transaction:
@@ -403,7 +380,6 @@ def test_rs_plink_PML_T27(reset_state, srcRS, dstRS, plink):
                     time.sleep(0.1)
                 except pymongo.errors.PyMongoError:
                     break
-
         def commit_with_retries(session):
             for attempt in range(5):
                 try:
@@ -416,17 +392,12 @@ def test_rs_plink_PML_T27(reset_state, srcRS, dstRS, plink):
                         time.sleep(1)
                     else:
                         break
-
         with src.start_session() as session1, src.start_session() as session2:
             session1.start_transaction()
             session2.start_transaction()
 
-            keep_alive_thread1 = threading.Thread(
-                target=keep_transaction_alive, args=(session1, "rollover_db", "transaction_coll1"), daemon=True
-            )
-            keep_alive_thread2 = threading.Thread(
-                target=keep_transaction_alive, args=(session2, "rollover_db", "transaction_coll2"), daemon=True
-            )
+            keep_alive_thread1 = threading.Thread(target=keep_transaction_alive, args=(session1, "rollover_db", "transaction_coll1"), daemon=True)
+            keep_alive_thread2 = threading.Thread(target=keep_transaction_alive, args=(session2, "rollover_db", "transaction_coll2"), daemon=True)
 
             keep_alive_thread1.start()
             keep_alive_thread2.start()

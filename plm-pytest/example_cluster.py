@@ -14,37 +14,32 @@ There is the way not to close the connection but return known or unknown error t
 See the examples in jstests/core/failcommand_failpoint.js
 """
 
-dstRS = Cluster({"_id": "rs2", "members": [{"host": "rs201"}]}, mongod_extra_args="--setParameter enableTestCommands=1")
-srcRS = Cluster({"_id": "rs1", "members": [{"host": "rs101"}]}, mongod_extra_args="--setParameter enableTestCommands=1")
-plink = Perconalink("plink", srcRS.plink_connection + "&appName=plm", dstRS.plink_connection + "&appName=plm")
+dstRS = Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]},mongod_extra_args='--setParameter enableTestCommands=1')
+srcRS = Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]},mongod_extra_args='--setParameter enableTestCommands=1')
+plink = Perconalink('plink',srcRS.plink_connection + '&appName=plm', dstRS.plink_connection + '&appName=plm')
 
-
-def configure_failpoint_failcommand(connection, commands, mode):
+def configure_failpoint_failcommand(connection,commands,mode):
     client = pymongo.MongoClient(connection)
-    data = {"closeConnection": True, "failCommands": commands, "appName": "plm"}
-    result = client.admin.command({"configureFailPoint": "failCommand", "mode": mode, "data": data})
+    data = { 'closeConnection': True, 'failCommands': commands, 'appName': 'plm'}
+    result = client.admin.command({'configureFailPoint': 'failCommand', 'mode': mode, 'data': data})
     Cluster.log(result)
 
-
-def configure_failpoint_fulldisk(connection, commands, mode):
+def configure_failpoint_fulldisk(connection,commands,mode):
     client = pymongo.MongoClient(connection)
-    data = {"errorCode": 14031, "failCommands": commands, "appName": "plm"}
-    result = client.admin.command({"configureFailPoint": "failCommand", "mode": mode, "data": data})
+    data = { 'errorCode': 14031, 'failCommands': commands, 'appName': 'plm'}
+    result = client.admin.command({'configureFailPoint': 'failCommand', 'mode': mode, 'data': data})
     Cluster.log(result)
 
-
-def configure_failpoint_delay(connection, commands, mode, timeout):
+def configure_failpoint_delay(connection,commands,mode,timeout):
     client = pymongo.MongoClient(connection)
-    data = {"failCommands": commands, "appName": "plm", "blockConnection": True, "blockTimeMS": timeout}
-    result = client.admin.command({"configureFailPoint": "failCommand", "mode": mode, "data": data})
+    data = {'failCommands': commands, 'appName': 'plm', 'blockConnection': True, 'blockTimeMS': timeout}
+    result = client.admin.command({'configureFailPoint': 'failCommand', 'mode': mode, 'data': data})
 
-
-def handler(signum, frame):
+def handler(signum,frame):
     plink.destroy()
     srcRS.destroy()
     dstRS.destroy()
     exit(0)
-
 
 srcRS.destroy()
 dstRS.destroy()
@@ -52,11 +47,10 @@ plink.destroy()
 srcRS.create()
 dstRS.create()
 plink.create()
-configure_failpoint_delay(
-    srcRS.connection, ["find", "listIndexes", "listDatabases", "listCollections"], "alwaysOn", 30000
-)
-# configure_failpoint_fulldisk(dstRS.connection,['insert','update','bulkWrite'],'alwaysOn')
+configure_failpoint_delay(srcRS.connection,['find','listIndexes','listDatabases','listCollections'],'alwaysOn',30000)
+#configure_failpoint_fulldisk(dstRS.connection,['insert','update','bulkWrite'],'alwaysOn')
 
-signal.signal(signal.SIGINT, handler)
+signal.signal(signal.SIGINT,handler)
 print("\nCluster is prepared and ready to use")
 print("\nPress CTRL-C to destroy and exit")
+

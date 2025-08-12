@@ -1,7 +1,6 @@
 import os
 import pytest
 import yaml
-
 try:
     from StringIO import StringIO
 except ImportError:
@@ -9,13 +8,11 @@ except ImportError:
 
 import testinfra.utils.ansible_runner
 
-testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(os.environ["MOLECULE_INVENTORY_FILE"]).get_hosts("all")
+testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
+    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
-storage_configs = [
-    "/etc/pbm-agent-storage.conf",
-    "/etc/pbm-agent-storage-gcp.conf",
-    "/etc/pbm-agent-storage-local.conf",
-]
+storage_configs = ['/etc/pbm-agent-storage.conf', '/etc/pbm-agent-storage-gcp.conf',
+                   '/etc/pbm-agent-storage-local.conf']
 
 VERSION = os.getenv("VERSION").split("-")[0]
 PBM_VERSION = float(".".join(os.getenv("VERSION").split(".")[0:2]))
@@ -40,7 +37,7 @@ def start_stop_pbm(host):
     :return:
     """
     operating_system = host.system_info.distribution
-    if operating_system.lower() == "centos" and "6" in host.system_info.release:
+    if operating_system.lower() == "centos" and '6' in host.system_info.release:
         with host.sudo("root"):
             cmd = "sudo service pbm-agent stop"
             result = host.run(cmd)
@@ -64,9 +61,10 @@ def start_stop_pbm(host):
 
 @pytest.fixture()
 def restart_pbm_agent(host):
-    """Restart pbm-agent service"""
+    """Restart pbm-agent service
+    """
     operating_system = host.system_info.distribution
-    if operating_system.lower() == "centos" and "6" in host.system_info.release:
+    if operating_system.lower() == "centos" and '6' in host.system_info.release:
         cmd = "sudo service pbm-agent restart"
         result = host.run(cmd)
         assert result.rc == 0, result.stdout
@@ -109,7 +107,8 @@ def show_store(host, set_store):
 
 
 def test_package(host):
-    """Check pbm package"""
+    """Check pbm package
+    """
     with host.sudo("root"):
         package = host.package("percona-backup-mongodb")
         assert package.is_installed
@@ -117,15 +116,16 @@ def test_package(host):
 
 
 def test_service(host):
-    """Check pbm-agent service"""
+    """Check pbm-agent service
+    """
     with host.sudo("root"):
         service = host.service("pbm-agent")
         assert service.is_enabled
         assert service.is_running
 
-
 def test_pbm_binary(host):
-    """Check pbm binary"""
+    """Check pbm binary
+    """
     file = host.file("/usr/bin/pbm")
     assert file.user == "root"
     assert file.group == "root"
@@ -136,7 +136,8 @@ def test_pbm_binary(host):
 
 
 def test_pbm_agent_binary(host):
-    """Check pbm agent binary"""
+    """Check pbm agent binary
+    """
     file = host.file("/usr/bin/pbm-agent")
     assert file.user == "root"
     assert file.group == "root"
@@ -147,7 +148,8 @@ def test_pbm_agent_binary(host):
 
 
 def test_pbm_agent_entrypoint(host):
-    """Check pbm agent binary"""
+    """Check pbm agent binary
+    """
     file = host.file("/usr/bin/pbm-agent-entrypoint")
     assert file.user == "root"
     assert file.group == "root"
@@ -156,9 +158,9 @@ def test_pbm_agent_entrypoint(host):
     except AssertionError:
         pytest.xfail("Possible xfail")
 
-
 def test_pbm_storage_default_config(host):
-    """Check pbm agent binary"""
+    """Check pbm agent binary
+    """
     file = host.file("/etc/pbm-storage.conf")
     if PBM_VERSION < 1.7:
         assert file.user == "pbm"
@@ -182,7 +184,7 @@ def test_start_stop_service(start_stop_pbm, host):
     assert start_stop_pbm.rc == 0, start_stop_pbm.stdout
     operating_system = host.system_info.distribution
     if operating_system.lower() == "centos":
-        if "6" in host.system_info.release:
+        if '6' in host.system_info.release:
             assert "running" in start_stop_pbm.stdout, start_stop_pbm.stdout
     else:
         assert "active" in start_stop_pbm.stdout, start_stop_pbm.stdout
@@ -196,7 +198,7 @@ def test_restart_service(restart_pbm_agent, host):
     assert restart_pbm_agent.rc == 0, restart_pbm_agent.stdout
     operating_system = host.system_info.distribution
     if operating_system.lower() == "centos":
-        if "6" in host.system_info.release:
+        if '6' in host.system_info.release:
             assert "running" in restart_pbm_agent.stdout, restart_pbm_agent.stdout
     else:
         assert "active" in restart_pbm_agent.stdout, restart_pbm_agent.stdout
@@ -210,7 +212,6 @@ def test_pbm_process(host):
         else:
             assert process.user == "mongod"
 
-
 def test_pbm_version(host):
     """Check that pbm version is not empty strings
 
@@ -221,12 +222,12 @@ def test_pbm_version(host):
     assert result.rc == 0, result.stdout
     lines = result.stdout.split("\n")
     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
-    assert parsed_config["Version"] == VERSION, parsed_config
-    assert parsed_config["Platform"], parsed_config
-    assert parsed_config["GitCommit"], parsed_config
-    assert parsed_config["GitBranch"], parsed_config
-    assert parsed_config["BuildTime"], parsed_config
-    assert parsed_config["GoVersion"], parsed_config
+    assert parsed_config['Version'] == VERSION, parsed_config
+    assert parsed_config['Platform'], parsed_config
+    assert parsed_config['GitCommit'], parsed_config
+    assert parsed_config['GitBranch'], parsed_config
+    assert parsed_config['BuildTime'], parsed_config
+    assert parsed_config['GoVersion'], parsed_config
 
 
 def test_pbm_help(host):
@@ -250,9 +251,9 @@ def test_set_store(set_store):
         store_out = parse_yaml_string("\n".join(set_store.stdout.split("\n")[2:-2]))
     else:
         store_out = parse_yaml_string(set_store.stdout)
-    assert store_out["storage"]["type"] == "s3"
-    assert store_out["storage"]["s3"]["region"] == "us-east-1"
-    assert store_out["storage"]["s3"]["bucket"] == "operator-testing"
+    assert store_out['storage']['type'] == 's3'
+    assert store_out['storage']['s3']['region'] == 'us-east-1'
+    assert store_out['storage']['s3']['bucket'] == 'operator-testing'
 
 
 def test_show_store(show_store):
@@ -261,6 +262,6 @@ def test_show_store(show_store):
     :param show_store:
     :return:
     """
-    assert show_store["storage"]["s3"]
-    assert show_store["storage"]["s3"]["region"] == "us-east-1"
-    assert show_store["storage"]["s3"]["bucket"] == "operator-testing"
+    assert show_store['storage']['s3']
+    assert show_store['storage']['s3']['region'] == 'us-east-1'
+    assert show_store['storage']['s3']['bucket'] == 'operator-testing'

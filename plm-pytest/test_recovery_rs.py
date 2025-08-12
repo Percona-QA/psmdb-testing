@@ -8,26 +8,21 @@ from perconalink import Perconalink
 from data_generator import create_all_types_db, generate_dummy_data, stop_all_crud_operations
 from data_integrity_check import compare_data_rs
 
-
 @pytest.fixture(scope="module")
 def docker_client():
     return docker.from_env()
 
-
 @pytest.fixture(scope="module")
 def dstRS():
-    return Cluster({"_id": "rs2", "members": [{"host": "rs201"}]})
-
+    return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]})
 
 @pytest.fixture(scope="module")
 def srcRS():
-    return Cluster({"_id": "rs1", "members": [{"host": "rs101"}]})
-
+    return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]})
 
 @pytest.fixture(scope="module")
-def plink(srcRS, dstRS):
-    return Perconalink("plink", srcRS.plink_connection, dstRS.plink_connection)
-
+def plink(srcRS,dstRS):
+    return Perconalink('plink',srcRS.plink_connection, dstRS.plink_connection)
 
 @pytest.fixture(scope="module")
 def start_cluster(srcRS, dstRS, plink, request):
@@ -43,17 +38,14 @@ def start_cluster(srcRS, dstRS, plink, request):
         dstRS.destroy()
         plink.destroy()
 
-
 @pytest.fixture(scope="function")
 def reset_state(srcRS, dstRS, plink, request):
     src_client = pymongo.MongoClient(srcRS.connection)
     dst_client = pymongo.MongoClient(dstRS.connection)
-
     def print_logs():
         if request.config.getoption("--verbose"):
             logs = plink.logs()
             print(f"\n\nplink Last 50 Logs for plink:\n{logs}\n\n")
-
     request.addfinalizer(print_logs)
     plink.destroy()
     for db_name in src_client.list_database_names():
@@ -64,8 +56,7 @@ def reset_state(srcRS, dstRS, plink, request):
             dst_client.drop_database(db_name)
     plink.create()
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T28(reset_state, srcRS, dstRS, plink):
     """
@@ -117,8 +108,7 @@ def test_rs_plink_PML_T28(reset_state, srcRS, dstRS, plink):
         if unexpected:
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T29(reset_state, srcRS, dstRS, plink):
     """
@@ -169,8 +159,7 @@ def test_rs_plink_PML_T29(reset_state, srcRS, dstRS, plink):
         if unexpected:
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T37(reset_state, srcRS, dstRS, plink):
     """
@@ -204,11 +193,10 @@ def test_rs_plink_PML_T37(reset_state, srcRS, dstRS, plink):
     if not result:
         assert "oplog history is lost" in plink.logs()
     status = plink.status()
-    assert status["data"]["ok"] == False
-    assert status["data"]["state"] != "running"
+    assert status['data']['ok'] == False
+    assert status['data']['state'] != 'running'
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T38(reset_state, srcRS, dstRS, plink):
     """
@@ -227,7 +215,7 @@ def test_rs_plink_PML_T38(reset_state, srcRS, dstRS, plink):
     assert result is True, "Perconalink failed to save checkpoint"
     src["test_db1"].test_collection.insert_one({"a": {"b": []}, "words": "omnibus"})
     src["test_db1"].test_collection.delete_one({"a.b": [], "words": "omnibus"})
-    src["test_db1"].test_collection.create_index([("a.b", 1), ("words", "text")], name="my_custom_index1")
+    src["test_db1"].test_collection.create_index([("a.b", 1), ("words", "text")],name="my_custom_index1")
     result = plink.restart()
     assert result is True, "Failed to restart plink service"
     result = plink.wait_for_zero_lag()

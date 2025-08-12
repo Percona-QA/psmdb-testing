@@ -12,26 +12,21 @@ from perconalink import Perconalink
 from data_generator import create_all_types_db, generate_dummy_data, stop_all_crud_operations
 from data_integrity_check import compare_data_rs
 
-
 @pytest.fixture(scope="module")
 def docker_client():
     return docker.from_env()
 
-
 @pytest.fixture(scope="module")
 def dstRS():
-    return Cluster({"_id": "rs2", "members": [{"host": "rs201"}, {"host": "rs202"}, {"host": "rs203"}]})
-
+    return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}, {"host":"rs202"}, {"host":"rs203"}]})
 
 @pytest.fixture(scope="module")
 def srcRS():
-    return Cluster({"_id": "rs1", "members": [{"host": "rs101"}, {"host": "rs102"}, {"host": "rs103"}]})
-
+    return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}, {"host":"rs102"}, {"host":"rs103"}]})
 
 @pytest.fixture(scope="module")
-def plink(srcRS, dstRS):
-    return Perconalink("plink", srcRS.plink_connection, dstRS.plink_connection)
-
+def plink(srcRS,dstRS):
+    return Perconalink('plink',srcRS.plink_connection, dstRS.plink_connection)
 
 @pytest.fixture(scope="module")
 def start_cluster(srcRS, dstRS, plink, request):
@@ -47,7 +42,6 @@ def start_cluster(srcRS, dstRS, plink, request):
         dstRS.destroy()
         plink.destroy()
 
-
 @pytest.fixture(scope="function")
 def reset_state(srcRS, dstRS, plink, request):
     log_level = "debug"
@@ -60,12 +54,10 @@ def reset_state(srcRS, dstRS, plink, request):
         env_vars = env_marker.args[0]
     src_client = pymongo.MongoClient(srcRS.connection)
     dst_client = pymongo.MongoClient(dstRS.connection)
-
     def print_logs():
         if request.config.getoption("--verbose"):
             logs = plink.logs()
             print(f"\n\nplink Last 50 Logs for plink:\n{logs}\n\n")
-
     request.addfinalizer(print_logs)
     plink.destroy()
     for db_name in src_client.list_database_names():
@@ -75,7 +67,6 @@ def reset_state(srcRS, dstRS, plink, request):
         if db_name not in {"admin", "local", "config"}:
             dst_client.drop_database(db_name)
     plink.create(log_level=log_level, env_vars=env_vars)
-
 
 def add_data(connection_string, db_name, stop_event=None):
     def worker():
@@ -88,25 +79,19 @@ def add_data(connection_string, db_name, stop_event=None):
                 if coll_name not in db.list_collection_names():
                     db.create_collection(coll_name)
                 collection = db[coll_name]
-                collection.insert_one(
-                    {"_id": ObjectId(), "ts": datetime.datetime.now(datetime.timezone.utc), "value": "test"}
-                )
-                collection.insert_many(
-                    [{"ts": datetime.datetime.now(datetime.timezone.utc), "value": f"entry_{i}"} for i in range(3)]
-                )
+                collection.insert_one({"_id": ObjectId(), "ts": datetime.datetime.now(datetime.timezone.utc), "value": "test"})
+                collection.insert_many([{"ts": datetime.datetime.now(datetime.timezone.utc), "value": f"entry_{i}"} for i in range(3)])
                 counter += 1
             except pymongo.errors.PyMongoError as e:
                 if "already exists" in str(e):
                     counter += 1
                 else:
                     time.sleep(0.1)
-
     thread = threading.Thread(target=worker, daemon=True)
     thread.start()
     return thread
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 @pytest.mark.plink_log_level("trace")
 @pytest.mark.parametrize("fail_node", ["src", "dst"])
@@ -118,19 +103,16 @@ def test_rs_plink_PML_T46(reset_state, srcRS, dstRS, plink, fail_node):
     try:
         generate_dummy_data(srcRS.connection)
         _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
-
         def start_plink():
             assert plink.start() is True, "Failed to start plink service"
-
         def restart_primary():
             log_stream = plink.logs(stream=True)
-            pattern = re.compile(r"read batch")
+            pattern = re.compile(r'read batch')
             for raw_line in log_stream:
                 line = raw_line.decode("utf-8").strip()
                 if pattern.search(line):
                     break
             target.restart_primary(2, force=True)
-
         t1 = threading.Thread(target=start_plink)
         t2 = threading.Thread(target=restart_primary)
         t1.start()
@@ -163,8 +145,7 @@ def test_rs_plink_PML_T46(reset_state, srcRS, dstRS, plink, fail_node):
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 @pytest.mark.parametrize("fail_node", ["src", "dst"])
 def test_rs_plink_PML_T47(reset_state, srcRS, dstRS, plink, fail_node):
@@ -205,8 +186,7 @@ def test_rs_plink_PML_T47(reset_state, srcRS, dstRS, plink, fail_node):
     result = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 @pytest.mark.parametrize("fail_node", ["src", "dst"])
 def test_rs_plink_PML_T48(reset_state, srcRS, dstRS, plink, fail_node):
@@ -240,8 +220,7 @@ def test_rs_plink_PML_T48(reset_state, srcRS, dstRS, plink, fail_node):
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
 
-
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 @pytest.mark.parametrize("fail_node", ["src", "dst"])
 def test_rs_plink_PML_T49(reset_state, srcRS, dstRS, plink, fail_node):

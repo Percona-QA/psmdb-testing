@@ -2,10 +2,10 @@ import os
 
 import testinfra.utils.ansible_runner
 
-testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(os.environ["MOLECULE_INVENTORY_FILE"]).get_hosts("all")
+testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
+    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
 layout = os.environ.get("LAYOUT_TYPE")
-
 
 def test_ycsb_run(host):
     if layout == "replicaset":
@@ -16,3 +16,4 @@ def test_ycsb_run(host):
         result = host.run(cmd)
     for line in result.stdout.splitlines():
         print(line)
+

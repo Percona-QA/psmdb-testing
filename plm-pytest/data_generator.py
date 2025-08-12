@@ -10,10 +10,7 @@ from data_types.extended_collection_types import create_diff_coll_types
 
 stop_operations_map = {}
 
-
-def create_all_types_db(
-    connection_string, db_name="init_test_db", create_ts=False, drop_before_creation=False, start_crud=False
-):
+def create_all_types_db(connection_string, db_name="init_test_db", create_ts=False, drop_before_creation=False, start_crud=False):
     client = pymongo.MongoClient(connection_string)
     db = client[db_name]
 
@@ -28,13 +25,13 @@ def create_all_types_db(
         stop_operations_map[db_name].clear()
 
         operation_thread = threading.Thread(
-            target=continuous_crud_ops_collection_background, args=(collection_metadata, stop_operations_map[db_name])
+            target=continuous_crud_ops_collection_background,
+            args=(collection_metadata, stop_operations_map[db_name])
         )
         operation_thread.start()
         return db, [operation_thread]
 
     return db, []
-
 
 def continuous_crud_ops_collection_background(collection_metadata, stop_event):
     while not stop_event.is_set():
@@ -45,27 +42,16 @@ def continuous_crud_ops_collection_background(collection_metadata, stop_event):
                 time.sleep(0.1)
         time.sleep(0.1)
 
-
 def stop_db_crud_operations(db_name):
     if db_name in stop_operations_map:
         stop_operations_map[db_name].set()
-
 
 def stop_all_crud_operations():
     for db_name, stop_event in stop_operations_map.items():
         stop_event.set()
 
-
-def generate_dummy_data(
-    connection_string,
-    db_name="dummy",
-    num_collections=5,
-    doc_size=150000,
-    batch_size=10000,
-    stop_event=None,
-    sleep_between_batches=0,
-    drop_before_creation=True,
-):
+def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, doc_size=150000,
+                        batch_size=10000, stop_event=None, sleep_between_batches=0, drop_before_creation=True):
     """
     With default parameters generates ~500MB of data within 10 seconds
     If stop_event is provided, it can be used to stop generation early.

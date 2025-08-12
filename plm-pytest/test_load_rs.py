@@ -16,17 +16,14 @@ from data_integrity_check import compare_data_rs
 # 4. To remove running MongoDB instances run as following:
 # docker-compose run --env CLEANUP=true test pytest -s test_load.py
 
-
 @pytest.fixture(scope="session")
 def docker_client():
     return docker.from_env()
-
 
 @pytest.fixture(scope="session")
 def plink(cluster_manager):
     srcRS, dstRS = cluster_manager
     return Perconalink("plink", srcRS.plink_connection, dstRS.plink_connection)
-
 
 @pytest.fixture(scope="session")
 def cluster_manager():
@@ -42,13 +39,11 @@ def cluster_manager():
         srcRS.destroy()
         dstRS.destroy()
 
-
 def initialize_data(srcRS):
     generate_dummy_data(srcRS.connection, "dummy1", 7, 1000000, 10000)
     generate_dummy_data(srcRS.connection, "dummy2", 7, 200000, 10000)
     generate_dummy_data(srcRS.connection, "dummy3", 7, 1500000, 10000)
     generate_dummy_data(srcRS.connection, "dummy4", 7, 100000, 10000)
-
 
 def sample_rs_plink_PML_T1000(cluster_manager, plink):
     if os.environ.get("SETUP", "").lower() == "true":

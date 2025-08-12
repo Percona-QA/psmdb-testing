@@ -7,7 +7,6 @@ import os
 from cluster import Cluster
 from threading import Thread, Event, Lock
 
-
 def collect_metrics(event, interval=0.5):
     client = docker.from_env()
     data = {}
@@ -17,19 +16,17 @@ def collect_metrics(event, interval=0.5):
     def collect_container_metrics(container):
         while not event.is_set():
             stats = container.stats(stream=False)
-            cpu_delta = (
-                stats["cpu_stats"]["cpu_usage"]["total_usage"] - stats["precpu_stats"]["cpu_usage"]["total_usage"]
-            )
-            system_delta = stats["cpu_stats"]["system_cpu_usage"] - stats["precpu_stats"]["system_cpu_usage"]
-            cpu_usage = (cpu_delta / system_delta) * stats["cpu_stats"]["online_cpus"] * 100 if system_delta > 0 else 0
-            memory_usage = stats["memory_stats"]["usage"] / (1024 * 1024)
+            cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - stats['precpu_stats']['cpu_usage']['total_usage']
+            system_delta = stats['cpu_stats']['system_cpu_usage'] - stats['precpu_stats']['system_cpu_usage']
+            cpu_usage = (cpu_delta / system_delta) * stats['cpu_stats']['online_cpus'] * 100 if system_delta > 0 else 0
+            memory_usage = stats['memory_stats']['usage'] / (1024 * 1024)
 
             with lock:
                 if container.name not in data:
-                    data[container.name] = {"time": [], "cpu": [], "memory": []}
-                data[container.name]["time"].append(time.time() - start_time)
-                data[container.name]["cpu"].append(cpu_usage)
-                data[container.name]["memory"].append(memory_usage)
+                    data[container.name] = {'time': [], 'cpu': [], 'memory': []}
+                data[container.name]['time'].append(time.time() - start_time)
+                data[container.name]['cpu'].append(cpu_usage)
+                data[container.name]['memory'].append(memory_usage)
 
             time.sleep(interval)
 
@@ -50,30 +47,28 @@ def collect_metrics(event, interval=0.5):
 
     return data
 
-
 def plot_metrics(data, test_name):
     fig, axes = plt.subplots(2, 1, figsize=(10, 8))
     for container, metrics in data.items():
         df = pd.DataFrame(metrics)
-        axes[0].plot(df["time"], df["cpu"], label=container)
-        axes[1].plot(df["time"], df["memory"], label=container)
+        axes[0].plot(df['time'], df['cpu'], label=container)
+        axes[1].plot(df['time'], df['memory'], label=container)
 
-    axes[0].set_title(f"CPU Usage (%) - {test_name}")
-    axes[0].set_xlabel("Time (s)")
-    axes[0].set_ylabel("CPU (%)")
+    axes[0].set_title(f'CPU Usage (%) - {test_name}')
+    axes[0].set_xlabel('Time (s)')
+    axes[0].set_ylabel('CPU (%)')
     axes[0].legend()
 
-    axes[1].set_title(f"Memory Usage (MB) - {test_name}")
-    axes[1].set_xlabel("Time (s)")
-    axes[1].set_ylabel("Memory (MB)")
+    axes[1].set_title(f'Memory Usage (MB) - {test_name}')
+    axes[1].set_xlabel('Time (s)')
+    axes[1].set_ylabel('Memory (MB)')
     axes[1].legend()
 
     plt.tight_layout()
-    filename = f"graphs/metrics_{test_name}.png"
+    filename= f'graphs/metrics_{test_name}.png'
     plt.savefig(filename)
     os.chmod(filename, 0o666)
     plt.close()
-
 
 @pytest.fixture(scope="function")
 def metrics_collector(request):

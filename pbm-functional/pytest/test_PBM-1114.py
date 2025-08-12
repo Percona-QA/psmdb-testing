@@ -6,25 +6,23 @@ from cluster import Cluster
 
 documents = [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
 
-
 @pytest.fixture(scope="package")
 def docker_client():
     return docker.from_env()
 
-
 @pytest.fixture(scope="package")
 def config():
-    return {
-        "mongos": "mongos",
-        "configserver": {"_id": "rscfg", "members": [{"host": "rscfg01"}]},
-        "shards": [{"_id": "rs1", "members": [{"host": "rs101"}]}, {"_id": "rs2", "members": [{"host": "rs201"}]}],
-    }
-
+    return {"mongos": "mongos",
+            "configserver":
+            {"_id": "rscfg", "members": [{"host": "rscfg01"}]},
+            "shards": [
+                {"_id": "rs1", "members": [{"host": "rs101"}]},
+                {"_id": "rs2", "members": [{"host": "rs201"}]}
+            ]}
 
 @pytest.fixture(scope="package")
 def cluster(config):
     return Cluster(config)
-
 
 @pytest.fixture(scope="function")
 def start_cluster(cluster, request):
@@ -43,7 +41,6 @@ def start_cluster(cluster, request):
         if request.config.getoption("--verbose"):
             cluster.get_logs()
         cluster.destroy()
-
 
 @pytest.mark.timeout(300, func_only=True)
 def test_logical_PBM_T266(start_cluster, cluster):

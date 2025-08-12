@@ -1,7 +1,7 @@
 import json
 
-
 def compare_data_rs(db1, db2, port, full_comparison):
+
     all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port)
     mismatch_summary = []
 
@@ -31,31 +31,28 @@ def compare_data_rs(db1, db2, port, full_comparison):
     print(f"Mismatched databases, collections, or indexes found: {mismatch_summary}")
     return False, mismatch_summary
 
-
 def compare_database_hashes(db1, db2, port):
     query = (
-        "db.getMongo().getDBNames().forEach(function(dbName) { "
+        'db.getMongo().getDBNames().forEach(function(dbName) { '
         '    if (!["admin", "local", "config", "percona_link_mongodb"].includes(dbName)) { '
-        "        var collections = []; "
-        "        db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { "
+        '        var collections = []; '
+        '        db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
         '            if ((!coll.type || coll.type !== "view") && !(dbName === "test" && coll.name === "system.profile")) { '
-        "                collections.push(coll.name); "
-        "            } "
-        "        }); "
-        "        if (collections.length > 0) { "
-        "            var result = db.getSiblingDB(dbName).runCommand({ dbHash: 1, collections: collections }); "
-        "            print(JSON.stringify({ db: dbName, md5: result.md5, collections: result.collections })); "
-        "        } else { "
-        "            print(JSON.stringify({ db: dbName, md5: null, collections: {} })); "
-        "        } "
-        "    } "
-        "});"
+        '                collections.push(coll.name); '
+        '            } '
+        '        }); '
+        '        if (collections.length > 0) { '
+        '            var result = db.getSiblingDB(dbName).runCommand({ dbHash: 1, collections: collections }); '
+        '            print(JSON.stringify({ db: dbName, md5: result.md5, collections: result.collections })); '
+        '        } else { '
+        '            print(JSON.stringify({ db: dbName, md5: null, collections: {} })); '
+        '        } '
+        '    } '
+        '});'
     )
 
     def get_db_hashes_and_collections(db):
-        response = db.check_output(
-            "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet"
-        )
+        response = db.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
 
         db_hashes = {}
         collection_hashes = {}
@@ -99,9 +96,7 @@ def compare_database_hashes(db1, db2, port):
             print(f"Collection '{coll_name}' exists in source_DB but not in destination_DB")
         elif db1_collections[coll_name] != db2_collections[coll_name]:
             mismatched_collections.append((coll_name, "hash mismatch"))
-            print(
-                f"Collection '{coll_name}' hash mismatch: {db1_collections[coll_name]} != {db2_collections[coll_name]}"
-            )
+            print(f"Collection '{coll_name}' hash mismatch: {db1_collections[coll_name]} != {db2_collections[coll_name]}")
 
     for coll_name in db2_collections:
         if coll_name not in db1_collections:
@@ -110,32 +105,29 @@ def compare_database_hashes(db1, db2, port):
 
     return db1_collections.keys() | db2_collections.keys(), mismatched_dbs, mismatched_collections
 
-
 def compare_entries_number(db1, db2, port):
     query = (
-        "db.getMongo().getDBNames().forEach(function(i) { "
+        'db.getMongo().getDBNames().forEach(function(i) { '
         '  if (!["admin", "local", "config", "percona_link_mongodb"].includes(i)) { '
-        "    var collections = db.getSiblingDB(i).runCommand({ listCollections: 1 }).cursor.firstBatch "
-        "      .filter(function(coll) { "
+        '    var collections = db.getSiblingDB(i).runCommand({ listCollections: 1 }).cursor.firstBatch '
+        '      .filter(function(coll) { '
         '        return (!coll.type || coll.type !== "view") && coll.name !== "system.profile"; '
-        "      }) "
-        "      .map(function(coll) { return coll.name; }); "
-        "    collections.forEach(function(coll) { "
+        '      }) '
+        '      .map(function(coll) { return coll.name; }); '
+        '    collections.forEach(function(coll) { '
         '      if (!(i === "test" && coll === "system.profile")) { '
-        "        try { "
-        "          var count = db.getSiblingDB(i).getCollection(coll).countDocuments({}); "
-        "          print(JSON.stringify({ db: i, collection: coll, count: count })); "
-        "        } catch (err) {} "
-        "      } "
-        "    }); "
-        "  } "
-        "});"
+        '        try { '
+        '          var count = db.getSiblingDB(i).getCollection(coll).countDocuments({}); '
+        '          print(JSON.stringify({ db: i, collection: coll, count: count })); '
+        '        } catch (err) {} '
+        '      } '
+        '    }); '
+        '  } '
+        '});'
     )
 
     def get_collection_counts(db):
-        response = db.check_output(
-            "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet"
-        )
+        response = db.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
 
         collection_counts = {}
 
@@ -171,7 +163,6 @@ def compare_entries_number(db1, db2, port):
 
     return db1_counts.keys() | db2_counts.keys(), mismatched_dbs, mismatched_collections
 
-
 def compare_collection_metadata(db1, db2, port):
     print("Comparing collection metadata...")
     mismatched_metadata = []
@@ -204,26 +195,24 @@ def compare_collection_metadata(db1, db2, port):
 
     return mismatched_metadata
 
-
 def get_all_collection_metadata(db, port):
     query = (
-        "db.getMongo().getDBNames().forEach(function(dbName) { "
+        'db.getMongo().getDBNames().forEach(function(dbName) { '
         '    if (!["admin", "local", "config", "percona_link_mongodb"].includes(dbName)) { '
-        "        var collections = db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch "
-        "            .filter(function(coll) { "
+        '        var collections = db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch '
+        '            .filter(function(coll) { '
         '                return !(dbName === "test" && coll.name === "system.profile"); '
-        "            }) "
-        "            .map(function(coll) { "
-        "                return { db: dbName, name: coll.name, type: coll.type, options: coll.options }; "
-        "            }); "
-        "        print(JSON.stringify(collections)); "
-        "    } "
-        "});"
+        '            }) '
+        '            .map(function(coll) { '
+        '                return { db: dbName, name: coll.name, type: coll.type, options: coll.options }; '
+        '            }); '
+        '        print(JSON.stringify(collections)); '
+        '    } '
+        '});'
     )
 
     response = db.check_output(
-        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet"
-    )
+        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
 
     try:
         metadata_list = []
@@ -234,7 +223,6 @@ def get_all_collection_metadata(db, port):
         print("Error: Unable to parse JSON collection metadata response")
         print(f"Raw response: {response}")
         return []
-
 
 def compare_collection_indexes(db1, db2, all_collections, port):
     print("Comparing collection indexes...")
@@ -262,23 +250,10 @@ def compare_collection_indexes(db1, db2, all_collections, port):
             index2 = db2_index_dict[index_name]
 
             fields_to_compare = [
-                "key",
-                "unique",
-                "sparse",
-                "hidden",
-                "storageEngine",
-                "collation",
-                "partialFilterExpression",
-                "expireAfterSeconds",
-                "weights",
-                "default_language",
-                "language_override",
-                "textIndexVersion",
-                "2dsphereIndexVersion",
-                "bits",
-                "min",
-                "max",
-                "wildcardProjection",
+                "key", "unique", "sparse", "hidden", "storageEngine", "collation",
+                "partialFilterExpression", "expireAfterSeconds", "weights",
+                "default_language", "language_override", "textIndexVersion",
+                "2dsphereIndexVersion", "bits", "min", "max", "wildcardProjection"
             ]
 
             index1_filtered = {k: index1[k] for k in fields_to_compare if k in index1}
@@ -292,14 +267,12 @@ def compare_collection_indexes(db1, db2, all_collections, port):
 
     return mismatched_indexes
 
-
 def get_indexes(db, collection_name, port):
     db_name, coll_name = collection_name.split(".", 1)
 
     query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
     response = db.check_output(
-        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --json --eval '" + query + "' --quiet"
-    )
+        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --json --eval '" + query + "' --quiet")
 
     try:
         indexes = json.loads(response)
@@ -313,33 +286,29 @@ def get_indexes(db, collection_name, port):
                 return int(index_key["$numberInt"])
             return index_key
 
-        return sorted(
-            [
-                {
-                    "name": index.get("name"),
-                    "key": normalize_key(index.get("key")),
-                    "unique": index.get("unique", False),
-                    "sparse": index.get("sparse", False),
-                    "hidden": index.get("hidden", False),
-                    "storageEngine": index.get("storageEngine"),
-                    "collation": index.get("collation"),
-                    "partialFilterExpression": index.get("partialFilterExpression"),
-                    "expireAfterSeconds": index.get("expireAfterSeconds"),
-                    "weights": index.get("weights"),
-                    "default_language": index.get("default_language"),
-                    "language_override": index.get("language_override"),
-                    "textIndexVersion": index.get("textIndexVersion"),
-                    "2dsphereIndexVersion": index.get("2dsphereIndexVersion"),
-                    "bits": index.get("bits"),
-                    "min": index.get("min"),
-                    "max": index.get("max"),
-                    "wildcardProjection": index.get("wildcardProjection"),
-                }
-                for index in indexes
-                if "key" in index and "name" in index
-            ],
-            key=lambda x: x["name"],
-        )
+        return sorted([
+            {
+                "name": index.get("name"),
+                "key": normalize_key(index.get("key")),
+                "unique": index.get("unique", False),
+                "sparse": index.get("sparse", False),
+                "hidden": index.get("hidden", False),
+                "storageEngine": index.get("storageEngine"),
+                "collation": index.get("collation"),
+                "partialFilterExpression": index.get("partialFilterExpression"),
+                "expireAfterSeconds": index.get("expireAfterSeconds"),
+                "weights": index.get("weights"),
+                "default_language": index.get("default_language"),
+                "language_override": index.get("language_override"),
+                "textIndexVersion": index.get("textIndexVersion"),
+                "2dsphereIndexVersion": index.get("2dsphereIndexVersion"),
+                "bits": index.get("bits"),
+                "min": index.get("min"),
+                "max": index.get("max"),
+                "wildcardProjection": index.get("wildcardProjection"),
+            }
+            for index in indexes if "key" in index and "name" in index
+        ], key=lambda x: x["name"])
 
     except json.JSONDecodeError:
         print(f"Error: Unable to parse JSON index response for {collection_name}")

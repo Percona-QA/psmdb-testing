@@ -71,7 +71,10 @@ def test_physical_PBM_T279(start_cluster, cluster):
     cluster.disable_pitr()
     time.sleep(10)
     cluster.make_restore(backup, restart_cluster=True, check_pbm_status=True)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 10
+    assert (
+        pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
+        == 10
+    )
     Cluster.log("Finished successfully")
 
 
@@ -103,5 +106,8 @@ def test_logical_PBM_T280(start_cluster, cluster):
     cluster.disable_pitr()
     time.sleep(10)
     cluster.make_restore(backup, check_pbm_status=True)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 10
+    assert (
+        pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
+        == 10
+    )
     Cluster.log("Finished successfully")

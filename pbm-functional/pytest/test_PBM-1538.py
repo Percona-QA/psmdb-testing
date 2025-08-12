@@ -8,36 +8,31 @@ import json
 
 from cluster import Cluster
 
-
 @pytest.fixture(scope="package")
 def docker_client():
     return docker.from_env()
 
-
 @pytest.fixture(scope="package")
 def config():
-    return {"_id": "rs1", "members": [{"host": "rs101"}]}
-
+    return {"_id": "rs1", "members": [{"host":"rs101"}]}
 
 @pytest.fixture(scope="package")
 def cluster(config):
     return Cluster(config)
 
-
 @pytest.fixture(scope="function")
-def start_cluster(cluster, request):
+def start_cluster(cluster,request):
     try:
         cluster.destroy()
         cluster.create()
         cluster.setup_pbm()
-        os.chmod("/backups", 0o777)
+        os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
         yield True
     finally:
         if request.config.getoption("--verbose"):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
-
 
 @pytest.mark.timeout(300, func_only=True)
 def test_logical_PBM_T298(start_cluster, cluster):
@@ -52,7 +47,6 @@ def test_logical_PBM_T298(start_cluster, cluster):
     total_size_mb = 200
     total_docs = (total_size_mb * 1024) // doc_size_kb
     batch_size = 1000
-
     def insert_random_data(count):
         Cluster.log(f"Inserting {count} documents")
         for i in range(0, count, batch_size):
@@ -63,7 +57,6 @@ def test_logical_PBM_T298(start_cluster, cluster):
             collection.insert_many(batch)
             time.sleep(0.2)
         Cluster.log(f"Inserted {count} documents")
-
     insert_thread = threading.Thread(target=insert_random_data, args=(total_docs,))
     insert_thread.start()
     result = cluster.exec_pbm_cli("backup --out json")
