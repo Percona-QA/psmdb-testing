@@ -5,58 +5,65 @@ import docker
 
 from cluster import Cluster
 
-documents=[{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
+documents = [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
+
 
 @pytest.fixture(scope="package")
 def docker_client():
     return docker.from_env()
 
+
 @pytest.fixture(scope="package")
 def config():
-    return { "mongos": "mongos",
-             "configserver":
-                            {"_id": "rscfg", "members": [{"host": "rscfg01"}]},
-             "shards":[
-                            {"_id": "rs1", "members": [{"host":"rs101"}]}
-                      ]}
+    return {
+        "mongos": "mongos",
+        "configserver": {"_id": "rscfg", "members": [{"host": "rscfg01"}]},
+        "shards": [{"_id": "rs1", "members": [{"host": "rs101"}]}],
+    }
+
 
 @pytest.fixture(scope="package")
 def pbm_mongodb_uri():
-    return 'mongodb://pbm%40PERCONATEST.COM@127.0.0.1:27017/?authSource=%24external&authMechanism=GSSAPI'
+    return "mongodb://pbm%40PERCONATEST.COM@127.0.0.1:27017/?authSource=%24external&authMechanism=GSSAPI"
+
 
 @pytest.fixture(scope="package")
 def mongod_extra_args():
-    return ' --setParameter=authenticationMechanisms=SCRAM-SHA-1,GSSAPI'
+    return " --setParameter=authenticationMechanisms=SCRAM-SHA-1,GSSAPI"
+
 
 @pytest.fixture(scope="package")
-def cluster(config,pbm_mongodb_uri,mongod_extra_args):
+def cluster(config, pbm_mongodb_uri, mongod_extra_args):
     return Cluster(config, pbm_mongodb_uri=pbm_mongodb_uri, mongod_extra_args=mongod_extra_args)
 
+
 @pytest.fixture(scope="function")
-def start_cluster(cluster,request):
+def start_cluster(cluster, request):
     try:
         cluster.destroy()
 
         ## add principals into krb and create respective keytabs
-        kerberos=testinfra.get_host("docker://kerberos")
+        kerberos = testinfra.get_host("docker://kerberos")
         kerberos.check_output("rm -rf /keytabs/*")
         for host in cluster.mongod_hosts:
             kerberos.check_output("mkdir -p /keytabs/" + host)
-            logs = kerberos.check_output("kadmin.local -q \"addprinc -pw mongodb mongodb/" + host + "\"")
+            logs = kerberos.check_output('kadmin.local -q "addprinc -pw mongodb mongodb/' + host + '"')
             Cluster.log(logs)
-            logs = kerberos.check_output("kadmin.local -q \"ktadd -k /keytabs/" + host + "/mongodb.keytab mongodb/" + host + "@PERCONATEST.COM\"")
+            logs = kerberos.check_output(
+                'kadmin.local -q "ktadd -k /keytabs/' + host + "/mongodb.keytab mongodb/" + host + '@PERCONATEST.COM"'
+            )
             Cluster.log(logs)
-        # create principal for pbm  
+        # create principal for pbm
         logs = kerberos.check_output("kadmin.local -q 'addprinc -pw pbmkrbpass pbm'")
         Cluster.log(logs)
         # create keytab for pbm user
-        logs = kerberos.check_output("kadmin.local -q \"ktadd -k /keytabs/pbm.keytab pbm@PERCONATEST.COM\"")
+        logs = kerberos.check_output('kadmin.local -q "ktadd -k /keytabs/pbm.keytab pbm@PERCONATEST.COM"')
         for host in cluster.mongod_hosts:
             # share keytab for pbm to all hosts in cluster
             kerberos.check_output("cp -r /keytabs/pbm.keytab /keytabs/" + host + "/pbm.keytab")
         Cluster.log(logs)
 
-        docker.from_env().containers.get('kerberos').restart()
+        docker.from_env().containers.get("kerberos").restart()
 
         cluster.create()
         cluster.setup_pbm()
@@ -66,13 +73,14 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.timeout(300,func_only=True)
-def test_logical_PBM_T202(start_cluster,cluster):
+
+@pytest.mark.timeout(300, func_only=True)
+def test_logical_PBM_T202(start_cluster, cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
-    backup=cluster.make_backup("logical")
-    result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
+    backup = cluster.make_backup("logical")
+    result = pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
     assert int(result.deleted_count) == len(documents)
-    cluster.make_restore(backup,check_pbm_status=True)
+    cluster.make_restore(backup, check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     Cluster.log("Finished successfully")

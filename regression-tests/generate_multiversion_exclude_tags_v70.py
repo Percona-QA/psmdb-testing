@@ -1,4 +1,5 @@
 """Generate multiversion exclude tags file."""
+
 import logging
 import os
 import re
@@ -24,8 +25,7 @@ BACKPORTS_REQUIRED_FILE = "backports_required_for_multiversion_tests.yml"
 BACKPORTS_REQUIRED_BASE_URL = "https://raw.githubusercontent.com/percona/percona-server-mongodb"
 
 
-def get_installation_access_token(app_id: int, private_key: str,
-                                  installation_id: int) -> Optional[str]:  # noqa: D406,D407,D413
+def get_installation_access_token(app_id: int, private_key: str, installation_id: int) -> Optional[str]:  # noqa: D406,D407,D413
     """
     Obtain an installation access token using JWT.
 
@@ -55,31 +55,30 @@ def get_backports_required_hash_for_shell_version(mongo_shell_path=None):
     if is_windows():
         mongo_shell = mongo_shell_path + ".exe"
 
-    shell_version = check_output(f"{mongo_shell} --version", shell=True,
-                                 env=env_vars).decode('utf-8')
+    shell_version = check_output(f"{mongo_shell} --version", shell=True, env=env_vars).decode("utf-8")
     for line in shell_version.splitlines():
         if "gitVersion" in line:
-            version_line = line.split(':')[1]
+            version_line = line.split(":")[1]
             # We identify the commit hash as the string enclosed by double quotation marks.
             result = re.search(r'"(.*?)"', version_line)
             if result:
                 commit_hash = result.group().strip('"')
                 if not commit_hash.isalnum():
-                    raise ValueError(f"Error parsing commit hash. Expected an "
-                                     f"alpha-numeric string but got: {commit_hash}")
+                    raise ValueError(
+                        f"Error parsing commit hash. Expected an alpha-numeric string but got: {commit_hash}"
+                    )
                 return commit_hash
             else:
                 break
-    raise ValueError(
-        f"Could not find a valid commit hash from the {mongo_shell_path} mongo binary.")
+    raise ValueError(f"Could not find a valid commit hash from the {mongo_shell_path} mongo binary.")
 
 
 def get_old_yaml(commit_hash, expansions_file):
     """Download BACKPORTS_REQUIRED_FILE from the old commit and return the yaml."""
 
     response = requests.get(
-        f'{BACKPORTS_REQUIRED_BASE_URL}/{commit_hash}/{ETC_DIR}/{BACKPORTS_REQUIRED_FILE}',
-        )
+        f"{BACKPORTS_REQUIRED_BASE_URL}/{commit_hash}/{ETC_DIR}/{BACKPORTS_REQUIRED_FILE}",
+    )
 
     # If the response was successful, no exception will be raised.
     response.raise_for_status()
@@ -94,8 +93,7 @@ def get_old_yaml(commit_hash, expansions_file):
     return backports_required_old
 
 
-def generate_exclude_yaml(old_bin_version: str, output: str, expansions_file: str,
-                          logger: logging.Logger) -> None:
+def generate_exclude_yaml(old_bin_version: str, output: str, expansions_file: str, logger: logging.Logger) -> None:
     """
     Create a tag file associating multiversion tests to tags for exclusion.
 
@@ -121,8 +119,7 @@ def generate_exclude_yaml(old_bin_version: str, output: str, expansions_file: st
         MultiversionOptions.LAST_CONTINUOUS: multiversionconstants.LAST_CONTINUOUS_MONGOD_BINARY,
     }[old_bin_version]
 
-    old_version_commit_hash = get_backports_required_hash_for_shell_version(
-        mongo_shell_path=shell_version)
+    old_version_commit_hash = get_backports_required_hash_for_shell_version(mongo_shell_path=shell_version)
 
     # Get the yaml contents from the old commit.
     logger.info(f"Downloading file from commit hash of old branch {old_version_commit_hash}")
@@ -132,26 +129,23 @@ def generate_exclude_yaml(old_bin_version: str, output: str, expansions_file: st
         return [elem for elem in (list1 or []) if elem not in (list2 or [])]
 
     def get_suite_exclusions(version_key):
-
         _suites_latest = backports_required_latest[version_key]["suites"] or {}
         # Check if the changed syntax for etc/backports_required_for_multiversion_tests.yml has been
         # backported.
         # This variable and all branches where it's not set can be deleted after backporting the change.
         change_backported = version_key in backports_required_old.keys()
         if change_backported:
-            _always_exclude = diff(backports_required_latest[version_key]["all"],
-                                   backports_required_old[version_key]["all"])
-            _suites_old: defaultdict = defaultdict(
-                list, backports_required_old[version_key]["suites"] or {})
+            _always_exclude = diff(
+                backports_required_latest[version_key]["all"], backports_required_old[version_key]["all"]
+            )
+            _suites_old: defaultdict = defaultdict(list, backports_required_old[version_key]["suites"] or {})
         else:
-            _always_exclude = diff(backports_required_latest[version_key]["all"],
-                                   backports_required_old["all"])
+            _always_exclude = diff(backports_required_latest[version_key]["all"], backports_required_old["all"])
             _suites_old: defaultdict = defaultdict(list, backports_required_old["suites"] or {})
 
         return _suites_latest, _suites_old, _always_exclude
 
-    suites_latest, suites_old, always_exclude = get_suite_exclusions(
-        old_bin_version.replace("_", "-"))
+    suites_latest, suites_old, always_exclude = get_suite_exclusions(old_bin_version.replace("_", "-"))
 
     tags = _tags.TagsConfig()
 
@@ -168,5 +162,4 @@ def generate_exclude_yaml(old_bin_version: str, output: str, expansions_file: st
             tags.add_tag("js_test", test, f"{suite}_{BACKPORT_REQUIRED_TAG}")
 
     logger.info(f"Writing exclude tags to {output}.")
-    tags.write_file(filename=output,
-                    preamble="Tag file that specifies exclusions from multiversion suites.")
+    tags.write_file(filename=output, preamble="Tag file that specifies exclusions from multiversion suites.")

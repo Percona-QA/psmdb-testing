@@ -11,13 +11,14 @@ from cluster import Cluster
 # src = mongodb uri for -source option
 # dst = mongodb uri for -target option
 
+
 class Perconalink:
     def __init__(self, name, src, dst, **kwargs):
         self.name = name
         self.src = src
         self.dst = dst
-        self.src_internal = kwargs.get('src_internal')
-        self.plink_image = kwargs.get('perconalink_image', "perconalink/local")
+        self.src_internal = kwargs.get("src_internal")
+        self.plink_image = kwargs.get("perconalink_image", "perconalink/local")
 
     @property
     def container(self):
@@ -43,7 +44,7 @@ class Perconalink:
             detach=True,
             network="test",
             environment=env_vars if env_vars is not None else {},
-            command=cmd
+            command=cmd,
         )
         Cluster.log(f"Plink '{self.name}' started successfully")
 
@@ -147,7 +148,7 @@ class Perconalink:
                 log_stream = self.container.logs(stream=True, follow=True, since=start_log_time)
                 start_time = time.time()
                 for line in log_stream:
-                    log_line = line.decode('utf-8').strip()
+                    log_line = line.decode("utf-8").strip()
                     if "Checking Recovery Data" in log_line:
                         Cluster.log("Plink restarted successfully")
                         return True
@@ -187,9 +188,9 @@ class Perconalink:
     def resume(self, from_failure=False):
         try:
             if from_failure:
-                cmd = 'curl -s -d \'{"fromFailure": true}\' -X POST http://localhost:2242/resume'
+                cmd = "curl -s -d '{\"fromFailure\": true}' -X POST http://localhost:2242/resume"
             else:
-                cmd = 'curl -s -X POST http://localhost:2242/resume'
+                cmd = "curl -s -X POST http://localhost:2242/resume"
             exec_result = self.container.exec_run(cmd)
             response = exec_result.output.decode("utf-8").strip()
             status_code = exec_result.exit_code
@@ -229,8 +230,11 @@ class Perconalink:
                     start_time = time.time()
                     while time.time() - start_time < timeout:
                         status_response = self.status()
-                        if status_response.get("success") and status_response["data"].get("ok") \
-                                                and status_response["data"].get("state") == "finalized":
+                        if (
+                            status_response.get("success")
+                            and status_response["data"].get("ok")
+                            and status_response["data"].get("state") == "finalized"
+                        ):
                             Cluster.log("Sync finalized successfully")
                             return True
                         time.sleep(interval)
@@ -273,11 +277,13 @@ class Perconalink:
 
         ansi_escape_re = re.compile(r"\x1b\[[0-9;]*m")
         error_pattern = re.compile(r"\b(?:ERROR|ERR|error|err)\b")
+
         def error_lines():
             for line in logs.splitlines():
                 clean = ansi_escape_re.sub("", line)
                 if error_pattern.search(clean):
                     yield clean
+
         errors_found = list(error_lines())
         return not bool(errors_found), errors_found
 
@@ -336,9 +342,11 @@ class Perconalink:
                 if last_events_processed is not None and current_events_processed == last_events_processed:
                     counter += 1
                     if counter >= 5:
-                        Cluster.log(f"Src and dst are in sync: 1s lag detected but no new events, "
-                                f"last repl TS {last_ts}, cluster time {cluster_time}, "
-                                f"eventsProcessed={current_events_processed}, last_eventsProcessed={last_events_processed}")
+                        Cluster.log(
+                            f"Src and dst are in sync: 1s lag detected but no new events, "
+                            f"last repl TS {last_ts}, cluster time {cluster_time}, "
+                            f"eventsProcessed={current_events_processed}, last_eventsProcessed={last_events_processed}"
+                        )
                         return True
                 else:
                     counter = 0
@@ -403,10 +411,9 @@ class Perconalink:
             try:
                 collection_names = dst_client["percona_link_mongodb"].list_collection_names()
                 if "checkpoints" in collection_names:
-                    doc = dst_client["percona_link_mongodb"]["checkpoints"].find_one({
-                        "_id": "plm",
-                        "data.clone.finishTime": {"$exists": True}
-                    })
+                    doc = dst_client["percona_link_mongodb"]["checkpoints"].find_one(
+                        {"_id": "plm", "data.clone.finishTime": {"$exists": True}}
+                    )
                     if doc:
                         return True
                 time.sleep(1)

@@ -15,17 +15,21 @@ from data_integrity_check import compare_data_rs
 def docker_client():
     return docker.from_env()
 
+
 @pytest.fixture(scope="module")
 def dstRS():
-    return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]})
+    return Cluster({"_id": "rs2", "members": [{"host": "rs201"}]})
+
 
 @pytest.fixture(scope="module")
 def srcRS():
-    return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]})
+    return Cluster({"_id": "rs1", "members": [{"host": "rs101"}]})
+
 
 @pytest.fixture(scope="module")
-def plink(srcRS,dstRS):
-    return Perconalink('plink',srcRS.plink_connection, dstRS.plink_connection)
+def plink(srcRS, dstRS):
+    return Perconalink("plink", srcRS.plink_connection, dstRS.plink_connection)
+
 
 @pytest.fixture(scope="module")
 def start_cluster(srcRS, dstRS, plink, request):
@@ -41,6 +45,7 @@ def start_cluster(srcRS, dstRS, plink, request):
         dstRS.destroy()
         plink.destroy()
 
+
 @pytest.fixture(scope="function")
 def reset_state(srcRS, dstRS, plink, request):
     log_level = "debug"
@@ -53,10 +58,12 @@ def reset_state(srcRS, dstRS, plink, request):
         env_vars = env_marker.args[0]
     src_client = pymongo.MongoClient(srcRS.connection)
     dst_client = pymongo.MongoClient(dstRS.connection)
+
     def print_logs():
         if request.config.getoption("--verbose"):
             logs = plink.logs()
             print(f"\n\nplink Last 50 Logs for plink:\n{logs}\n\n")
+
     request.addfinalizer(print_logs)
     plink.destroy()
     for db_name in src_client.list_database_names():
@@ -67,7 +74,8 @@ def reset_state(srcRS, dstRS, plink, request):
             dst_client.drop_database(db_name)
     plink.create(log_level=log_level, env_vars=env_vars)
 
-@pytest.mark.timeout(300,func_only=True)
+
+@pytest.mark.timeout(300, func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T9(reset_state, srcRS, dstRS, plink):
     """
@@ -78,7 +86,7 @@ def test_rs_plink_PML_T9(reset_state, srcRS, dstRS, plink):
 
     for i in range(5):
         src["dummy"].create_collection(f"collection_{i}", capped=True, size=2147483648, max=500000)
-    generate_dummy_data(srcRS.connection, 'dummy', 5, 500000, drop_before_creation=False)
+    generate_dummy_data(srcRS.connection, "dummy", 5, 500000, drop_before_creation=False)
     for i in range(5):
         src["dummy"][f"collection_{i}"].create_index([("array", 1)])
 
@@ -104,11 +112,14 @@ def test_rs_plink_PML_T9(reset_state, srcRS, dstRS, plink):
     plink_error, error_logs = plink.check_plink_errors()
     expected_errors = ["NamespaceNotFound", "IndexNotFound", "collection not found", "No indexes to create"]
     if not plink_error:
-        unexpected = [line for line in error_logs if all(expected_error not in line for expected_error in expected_errors)]
+        unexpected = [
+            line for line in error_logs if all(expected_error not in line for expected_error in expected_errors)
+        ]
         if unexpected:
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
-@pytest.mark.timeout(300,func_only=True)
+
+@pytest.mark.timeout(300, func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T10(reset_state, srcRS, dstRS, plink):
     """
@@ -129,8 +140,9 @@ def test_rs_plink_PML_T10(reset_state, srcRS, dstRS, plink):
         repl_test_db, _ = create_all_types_db(srcRS.connection, "repl_test_db", create_ts=True)
 
         # Re-create data during replication phase by dropping and re-creating the collections
-        repl_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db",
-                                                                drop_before_creation=True, start_crud=True)
+        repl_test_db, operation_threads_2 = create_all_types_db(
+            srcRS.connection, "repl_test_db", drop_before_creation=True, start_crud=True
+        )
         time.sleep(5)
 
     except Exception:
@@ -156,7 +168,8 @@ def test_rs_plink_PML_T10(reset_state, srcRS, dstRS, plink):
     plink_error, error_logs = plink.check_plink_errors()
     assert plink_error is True, f"Plimk reported errors in logs: {error_logs}"
 
-@pytest.mark.timeout(300,func_only=True)
+
+@pytest.mark.timeout(300, func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 @pytest.mark.plink_env({"PLM_CLONE_NUM_PARALLEL_COLLECTIONS": "5"})
 @pytest.mark.plink_log_level("trace")
@@ -174,14 +187,16 @@ def test_rs_plink_PML_T11(reset_state, srcRS, dstRS, plink):
         def start_plink():
             result = plink.start()
             assert result is True, "Failed to start plink service"
+
         def delayed_drop():
             log_stream = plink.logs(stream=True)
-            pattern = re.compile(r'read batch.*ns=init_test_db\.collection_0.*s=copy')
+            pattern = re.compile(r"read batch.*ns=init_test_db\.collection_0.*s=copy")
             for raw_line in log_stream:
                 line = raw_line.decode("utf-8").strip()
                 if pattern.search(line):
                     break
             src.drop_database("init_test_db")
+
         t1 = threading.Thread(target=start_plink)
         t2 = threading.Thread(target=delayed_drop)
         t1.start()
@@ -214,13 +229,16 @@ def test_rs_plink_PML_T11(reset_state, srcRS, dstRS, plink):
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
     plink_error, error_logs = plink.check_plink_errors()
-    expected_errors = ["QueryPlanKilled","RetryableWrite"]
+    expected_errors = ["QueryPlanKilled", "RetryableWrite"]
     if not plink_error:
-        unexpected = [line for line in error_logs if all(expected_error not in line for expected_error in expected_errors)]
+        unexpected = [
+            line for line in error_logs if all(expected_error not in line for expected_error in expected_errors)
+        ]
         if unexpected:
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
-@pytest.mark.timeout(300,func_only=True)
+
+@pytest.mark.timeout(300, func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T12(reset_state, srcRS, dstRS, plink):
     """

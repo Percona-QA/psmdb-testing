@@ -4,6 +4,7 @@ from pymongo.errors import PyMongoError
 
 from cluster import Cluster
 
+
 def compare_data_rs(db1, db2):
     def resolve_container_or_uri(db):
         if hasattr(db, "connection"):
@@ -41,6 +42,7 @@ def compare_data_rs(db1, db2):
     Cluster.log(f"Mismatched databases, collections, or indexes found: {mismatch_summary}")
     return False, mismatch_summary
 
+
 def compare_data_sharded(db1, db2):
     db1_container = db1.connection
     db2_container = db2.connection
@@ -55,6 +57,7 @@ def compare_data_sharded(db1, db2):
     else:
         Cluster.log("Mismatched databases, collections, or indexes found")
     return False
+
 
 def compare_database_hashes(db1_container, db2_container):
     def get_db_hashes_and_collections(uri):
@@ -106,7 +109,9 @@ def compare_database_hashes(db1_container, db2_container):
             Cluster.log(f"Collection '{coll_name}' exists in source_DB but not in destination_DB")
         elif db1_collections[coll_name] != db2_collections[coll_name]:
             mismatched_collections.append((coll_name, "hash mismatch"))
-            Cluster.log(f"Collection '{coll_name}' hash mismatch: {db1_collections[coll_name]} != {db2_collections[coll_name]}")
+            Cluster.log(
+                f"Collection '{coll_name}' hash mismatch: {db1_collections[coll_name]} != {db2_collections[coll_name]}"
+            )
 
     for coll_name in db2_collections:
         if coll_name not in db1_collections:
@@ -114,6 +119,7 @@ def compare_database_hashes(db1_container, db2_container):
             Cluster.log(f"Collection '{coll_name}' exists in destination_DB but not in source_DB")
 
     return db1_collections.keys() | db2_collections.keys(), mismatched_dbs, mismatched_collections
+
 
 def compare_entries_number(db1_container, db2_container):
     def get_collection_counts(uri):
@@ -146,7 +152,9 @@ def compare_entries_number(db1_container, db2_container):
             Cluster.log(f"Collection '{coll_name}' exists in source_DB but not in destination_DB")
         elif db1_counts[coll_name] != db2_counts[coll_name]:
             mismatched_collections.append((coll_name, "record count mismatch"))
-            Cluster.log(f"Collection '{coll_name}' record count mismatch: {db1_counts[coll_name]} != {db2_counts[coll_name]}")
+            Cluster.log(
+                f"Collection '{coll_name}' record count mismatch: {db1_counts[coll_name]} != {db2_counts[coll_name]}"
+            )
 
     for coll_name in db2_counts:
         if coll_name not in db1_counts:
@@ -154,6 +162,7 @@ def compare_entries_number(db1_container, db2_container):
             Cluster.log(f"Collection '{coll_name}' exists in destination_DB but not in source_DB")
 
     return db1_counts.keys() | db2_counts.keys(), mismatched_dbs, mismatched_collections
+
 
 def compare_collection_metadata(db1_container, db2_container):
     Cluster.log("Comparing collection metadata...")
@@ -187,6 +196,7 @@ def compare_collection_metadata(db1_container, db2_container):
 
     return mismatched_metadata
 
+
 def get_all_collection_metadata(uri):
     client = MongoClient(uri)
     metadata_list = []
@@ -197,17 +207,20 @@ def get_all_collection_metadata(uri):
         db = client[db_name]
         try:
             for coll in db.list_collections():
-                metadata_list.append({
-                    "db": db_name,
-                    "name": coll["name"],
-                    "type": coll.get("type"),
-                    "options": coll.get("options"),
-                    "idIndex": coll.get("idIndex")
-                })
+                metadata_list.append(
+                    {
+                        "db": db_name,
+                        "name": coll["name"],
+                        "type": coll.get("type"),
+                        "options": coll.get("options"),
+                        "idIndex": coll.get("idIndex"),
+                    }
+                )
         except PyMongoError as e:
             Cluster.log(f"Warning: Could not access metadata for DB '{db_name}': {str(e)}")
             return []
     return metadata_list
+
 
 def compare_collection_indexes(db1_container, db2_container, all_collections):
     Cluster.log("Comparing collection indexes...")
@@ -223,22 +236,39 @@ def compare_collection_indexes(db1_container, db2_container, all_collections):
         for index_name, index_details in db1_index_dict.items():
             if index_name not in db2_index_dict:
                 mismatched_indexes.append((coll_name, index_name))
-                Cluster.log(f"Collection '{coll_name}': Index '{index_name}' exists in source_DB but not in destination_DB")
+                Cluster.log(
+                    f"Collection '{coll_name}': Index '{index_name}' exists in source_DB but not in destination_DB"
+                )
 
         for index_name in db2_index_dict.keys():
             if index_name not in db1_index_dict:
                 mismatched_indexes.append((coll_name, index_name))
-                Cluster.log(f"Collection '{coll_name}': Index '{index_name}' exists in destination_DB but not in source_DB")
+                Cluster.log(
+                    f"Collection '{coll_name}': Index '{index_name}' exists in destination_DB but not in source_DB"
+                )
 
         for index_name in set(db1_index_dict.keys()).intersection(db2_index_dict.keys()):
             index1 = db1_index_dict[index_name]
             index2 = db2_index_dict[index_name]
 
             fields_to_compare = [
-                "key", "unique", "sparse", "hidden", "storageEngine", "collation",
-                "partialFilterExpression", "expireAfterSeconds", "weights",
-                "default_language", "language_override", "textIndexVersion",
-                "2dsphereIndexVersion", "bits", "min", "max", "wildcardProjection"
+                "key",
+                "unique",
+                "sparse",
+                "hidden",
+                "storageEngine",
+                "collation",
+                "partialFilterExpression",
+                "expireAfterSeconds",
+                "weights",
+                "default_language",
+                "language_override",
+                "textIndexVersion",
+                "2dsphereIndexVersion",
+                "bits",
+                "min",
+                "max",
+                "wildcardProjection",
             ]
 
             index1_filtered = {k: index1[k] for k in fields_to_compare if k in index1}
@@ -252,34 +282,39 @@ def compare_collection_indexes(db1_container, db2_container, all_collections):
 
     return mismatched_indexes
 
+
 def get_indexes(uri, collection_name):
     db_name, coll_name = collection_name.split(".", 1)
 
     client = MongoClient(uri)
     try:
         indexes = list(client[db_name][coll_name].list_indexes())
-        return sorted([
-            {
-                "name": index.get("name"),
-                "key": index.get("key"),
-                "unique": index.get("unique", False),
-                "sparse": index.get("sparse", False),
-                "hidden": index.get("hidden", False),
-                "storageEngine": index.get("storageEngine"),
-                "collation": index.get("collation"),
-                "partialFilterExpression": index.get("partialFilterExpression"),
-                "expireAfterSeconds": index.get("expireAfterSeconds"),
-                "weights": index.get("weights"),
-                "default_language": index.get("default_language"),
-                "language_override": index.get("language_override"),
-                "textIndexVersion": index.get("textIndexVersion"),
-                "2dsphereIndexVersion": index.get("2dsphereIndexVersion"),
-                "bits": index.get("bits"),
-                "min": index.get("min"),
-                "max": index.get("max"),
-                "wildcardProjection": index.get("wildcardProjection"),
-            }
-            for index in indexes if "key" in index and "name" in index
-        ], key=lambda x: x["name"])
+        return sorted(
+            [
+                {
+                    "name": index.get("name"),
+                    "key": index.get("key"),
+                    "unique": index.get("unique", False),
+                    "sparse": index.get("sparse", False),
+                    "hidden": index.get("hidden", False),
+                    "storageEngine": index.get("storageEngine"),
+                    "collation": index.get("collation"),
+                    "partialFilterExpression": index.get("partialFilterExpression"),
+                    "expireAfterSeconds": index.get("expireAfterSeconds"),
+                    "weights": index.get("weights"),
+                    "default_language": index.get("default_language"),
+                    "language_override": index.get("language_override"),
+                    "textIndexVersion": index.get("textIndexVersion"),
+                    "2dsphereIndexVersion": index.get("2dsphereIndexVersion"),
+                    "bits": index.get("bits"),
+                    "min": index.get("min"),
+                    "max": index.get("max"),
+                    "wildcardProjection": index.get("wildcardProjection"),
+                }
+                for index in indexes
+                if "key" in index and "name" in index
+            ],
+            key=lambda x: x["name"],
+        )
     except PyMongoError:
         return []
