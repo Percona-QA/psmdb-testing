@@ -1,6 +1,5 @@
 import pytest
 import pymongo
-import bson
 import testinfra
 import time
 import os

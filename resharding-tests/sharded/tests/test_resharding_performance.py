@@ -1,7 +1,5 @@
 import os
-import pytest
 import testinfra
-import subprocess
 import json
 import time
 import testinfra.utils.ansible_runner

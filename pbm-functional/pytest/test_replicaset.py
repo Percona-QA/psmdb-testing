@@ -1,13 +1,8 @@
 import pytest
 import pymongo
-import bson
-import testinfra
 import time
 import os
 import docker
-import concurrent.futures
-import random
-import json
 
 from datetime import datetime
 from cluster import Cluster

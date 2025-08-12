@@ -1,11 +1,7 @@
 import pymongo
-import random
-import string
-import datetime
 import threading
 import time
-import uuid
-from bson import Binary, ObjectId, Decimal128
+from bson import ObjectId
 
 from cluster import Cluster
 from data_types.basic_collection_types import create_collection_types, perform_crud_ops_collection
@@ -42,7 +38,7 @@ def continuous_crud_ops_collection_background(collection_metadata, stop_event):
         for metadata in collection_metadata:
             try:
                 perform_crud_ops_collection(metadata["collection"], metadata["capped"], metadata["timeseries"])
-            except Exception as e:
+            except Exception:
                 time.sleep(0.1)
         time.sleep(0.1)
 

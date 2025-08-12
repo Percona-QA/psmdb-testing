@@ -3,7 +3,6 @@ import re
 import requests
 import pytest
 import json
-from packaging import version
 
 PBM_VER = os.environ.get("PBM_VERSION")
 SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','source','jammy','noble','redhat/2023']

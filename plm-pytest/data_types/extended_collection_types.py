@@ -1,7 +1,3 @@
-import pymongo
-import datetime
-import uuid
-import bson
 from gridfs import GridFS
 
 def create_diff_coll_types(db, drop_before_creation=False):

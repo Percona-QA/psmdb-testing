@@ -1,6 +1,4 @@
 import os
-import pytest
-import testinfra
 import time
 
 TIMEOUT = int(os.getenv("TIMEOUT"))

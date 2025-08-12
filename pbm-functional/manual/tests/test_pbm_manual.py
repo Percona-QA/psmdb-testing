@@ -1,11 +1,5 @@
 import os
-import pytest
-import testinfra
-import subprocess
-import json
 import time
-import testinfra.utils.ansible_runner
-from datetime import datetime
 
 TIMEOUT = int(os.getenv("TIMEOUT"))
 

@@ -140,7 +140,7 @@ def test_rs_plink_PML_T45(reset_state, srcRS, dstRS, plink, docker_client):
             client.close()
         _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         time.sleep(5)
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()

@@ -101,7 +101,7 @@ class Perconalink:
             try:
                 json_response = json.loads(response.replace("\n", "").replace("\r", "").strip())
                 return {"success": True, "data": json_response}
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError:
                 return {"success": False, "error": "Invalid JSON response"}
 
         except Exception as e:
@@ -138,7 +138,7 @@ class Perconalink:
                         src_client = pymongo.MongoClient(self.dst)
                         result = src_client["percona_link_mongodb"].checkpoints.delete_many({})
                         assert result.acknowledged
-                    except Exception as e:
+                    except Exception:
                         return False
                 start_log_time = int(time.time())
                 self.container.stop()

@@ -15,7 +15,6 @@ from buildscripts.resmokelib.config import MultiversionOptions
 from buildscripts.resmokelib.core.programs import get_path_env_var
 from buildscripts.resmokelib.utils import is_windows
 from buildscripts.util.fileops import read_yaml_file
-from buildscripts.util.read_config import read_config_file
 
 BACKPORT_REQUIRED_TAG = "backport_required_multiversion"
 

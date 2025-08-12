@@ -1,5 +1,4 @@
 import pytest
-import pymongo
 import time
 import os
 import docker

@@ -1,12 +1,8 @@
 import pytest
 import pymongo
-import bson
-import testinfra
 import time
 import os
 import docker
-import threading
-import json
 
 from datetime import datetime
 from cluster import Cluster

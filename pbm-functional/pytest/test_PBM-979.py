@@ -1,9 +1,6 @@
 import pytest
 import pymongo
-import bson
-import testinfra
 import time
-import os
 import docker
 
 from datetime import datetime

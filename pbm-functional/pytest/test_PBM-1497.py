@@ -4,7 +4,6 @@ import time
 import os
 import docker
 import random
-import string
 import threading
 
 from datetime import datetime

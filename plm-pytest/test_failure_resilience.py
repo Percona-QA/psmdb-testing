@@ -127,7 +127,7 @@ def test_rs_plink_PML_T46(reset_state, srcRS, dstRS, plink, fail_node):
             assert plink.start(), "Failed to restart plink service after repl_stage failure"
             assert plink.wait_for_repl_stage() is True, "Failed to start replication stage"
         _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -163,7 +163,7 @@ def test_rs_plink_PML_T47(reset_state, srcRS, dstRS, plink, fail_node):
         target.restart_primary(5, force=False)
         _, operation_threads_5 = create_all_types_db(srcRS.connection, "repl_test_db3", start_crud=True)
         target.restart_primary(5, force=True)
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
