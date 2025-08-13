@@ -1,0 +1,81 @@
+name: PLM-FULL
+
+on:
+  workflow_dispatch:
+    inputs:
+      plm_branch:
+        description: "plm branch"
+        required: false
+      go_ver:
+        description: "golang version"
+        required: false
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'plm-pytest/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        psmdb: ["6.0", "7.0", "8.0"]
+        test: [logical, physical, incremental, external]
+    env:
+      PLM_BRANCH: ${{ github.event.inputs.plm_branch || 'dev' }}
+      GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup environment with PSMDB ${{ matrix.psmdb }} and PLM branch ${{ env.PLM_BRANCH }}
+      run: |
+        PSMDB=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build easyrsa
+        PSMDB=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build
+        docker compose up -d
+      working-directory: ./plm-pytest
+    - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PLM_BRANCH }}
+      run: |
+        docker compose run --rm test pytest -s --junitxml=junit.xml -k ${{ matrix.test }}
+      working-directory: ./plm-pytest
+    - name: Print Azurite logs
+      if: failure()
+      run: |
+        docker logs azurite
+    - name: Publish Test Report
+      uses: mikepenz/action-junit-report@v4
+      if: success() || failure()
+      with:
+        report_paths: '**/junit.xml'
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: pip install ruff uv
+
+      - name: Get changed Python files
+        id: changed-files
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep '\.py$' || true)
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+
+      - name: Run ruff only on changed files
+        run: |
+          FILES="${{ steps.changed-files.outputs.files }}"
+          if [ -z "$FILES" ]; then
+            echo "No changed Python files."
+            exit 0
+          fi
+          echo "Linting changed files:"
+          echo "$FILES"
+          uv run ruff check $FILES
