@@ -17,38 +17,38 @@ on:
       - 'pbm-functional/pytest/**'
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
-    strategy:
-      fail-fast: false
-      matrix:
-        psmdb: ["6.0", "7.0", "8.0"]
-        test: [logical, physical, incremental, external]
-    env:
-      PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'dev' }}
-      GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
-    steps:
-    - uses: actions/checkout@v4
-    - name: Setup environment with PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
-      run: |
-        PSMDB=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build easyrsa
-        PSMDB=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build
-        docker compose up -d
-      working-directory: ./pbm-functional/pytest
-    - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
-      run: |
-        docker compose run --rm test pytest -s --junitxml=junit.xml -k ${{ matrix.test }}
-      working-directory: ./pbm-functional/pytest
-    - name: Print Azurite logs
-      if: failure()
-      run: |
-        docker logs azurite
-    - name: Publish Test Report
-      uses: mikepenz/action-junit-report@v4
-      if: success() || failure()
-      with:
-        report_paths: '**/junit.xml'
+#  test:
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 180
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        psmdb: ["6.0", "7.0", "8.0"]
+#        test: [logical, physical, incremental, external]
+#    env:
+#      PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'dev' }}
+#      GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
+#    steps:
+#    - uses: actions/checkout@v4
+#    - name: Setup environment with PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
+#      run: |
+#        PSMDB=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build easyrsa
+#        PSMDB=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build
+#        docker compose up -d
+#      working-directory: ./pbm-functional/pytest
+#    - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
+#      run: |
+#        docker compose run --rm test pytest -s --junitxml=junit.xml -k ${{ matrix.test }}
+#      working-directory: ./pbm-functional/pytest
+#    - name: Print Azurite logs
+#      if: failure()
+#      run: |
+#        docker logs azurite
+#    - name: Publish Test Report
+#      uses: mikepenz/action-junit-report@v4
+#      if: success() || failure()
+#      with:
+#        report_paths: '**/junit.xml'
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 5

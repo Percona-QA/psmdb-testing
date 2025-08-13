@@ -71,7 +71,7 @@ def reset_state(srcRS, dstRS, plink, request):
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T2(reset_state, srcRS, dstRS, plink, metrics_collector):
     """
-    Test to validate basic sync of all data types including time-series. Data is added before sync,
+    Test test to validate basic sync of all data types including time-series. Data is added before sync,
     during data clone and replication phase, also CRUD operations are performed all time during the sync.
     """
     try:
