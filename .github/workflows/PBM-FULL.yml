@@ -54,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # Needed so we can compare to the base branch
+          fetch-depth: 0
       - uses: actions/checkout@v4
 
       - name: Install dependencies
@@ -79,4 +79,3 @@ jobs:
           echo "Linting changed files:"
           echo "$FILES"
           uv run ruff check $FILES
-          
