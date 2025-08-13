@@ -44,7 +44,7 @@ def confirm_collection_size(node, datasize, dbname="test_db"):
         lower_bound = datasize * 0.995
         upper_bound = datasize * 1.005
         return lower_bound <= size_mb <= upper_bound
-    except Exception as e:
+    except Exception:
         return False
 
 def plm_start():
@@ -108,7 +108,7 @@ def status(timeout=45):
         try:
             cleaned_output = json.loads(output.replace("\n", "").replace("\r", "").strip())
             return {"success": True, "data": cleaned_output}
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             return {"success": False, "error": "Invalid JSON response"}
 
     except Exception as e:

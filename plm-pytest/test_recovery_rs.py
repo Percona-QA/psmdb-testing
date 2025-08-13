@@ -82,7 +82,7 @@ def test_rs_plink_PML_T28(reset_state, srcRS, dstRS, plink):
         # restart during replication stage
         plink.restart()
         time.sleep(5)
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -133,7 +133,7 @@ def test_rs_plink_PML_T29(reset_state, srcRS, dstRS, plink):
         time.sleep(5)
         result = plink.resume()
         assert result is True, "Replication is resumed"
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -180,7 +180,7 @@ def test_rs_plink_PML_T37(reset_state, srcRS, dstRS, plink):
         generate_dummy_data(srcRS.connection, "dummy", 15, 300000)
         result = plink.resume()
         assert result is True, "Replication is resumed"
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()

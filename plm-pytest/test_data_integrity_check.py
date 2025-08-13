@@ -1,6 +1,5 @@
 import pytest
 import pymongo
-import time
 import docker
 
 from cluster import Cluster

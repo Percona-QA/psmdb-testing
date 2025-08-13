@@ -1,4 +1,3 @@
-import logging
 import os
 import time
 
@@ -83,7 +82,7 @@ def plm_finalize(host):
 def plm_status(host, timeout=45):
     """Executes plm status command and returns output"""
     try:
-        output = host.check_output(f"plm status")
+        output = host.check_output("plm status")
         json_output = json.loads(output)
 
         if not json_output.get("ok", False):
@@ -92,7 +91,7 @@ def plm_status(host, timeout=45):
         try:
             cleaned_output = json.loads(output.replace("\n", "").replace("\r", "").strip())
             return {"success": True, "data": cleaned_output}
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             return {"success": False, "error": "Invalid JSON response"}
 
     except Exception as e:

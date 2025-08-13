@@ -5,7 +5,6 @@ import os
 import re
 import tempfile
 from collections import defaultdict
-from sys import platform
 
 from typing import Optional
 from subprocess import check_output
@@ -17,12 +16,11 @@ import structlog
 
 from buildscripts.resmokelib.core.programs import get_path_env_var
 from buildscripts.resmokelib.multiversionconstants import (
-    LAST_LTS_MONGO_BINARY, LAST_CONTINUOUS_MONGO_BINARY, REQUIRES_FCV_TAG)
+    LAST_LTS_MONGO_BINARY, REQUIRES_FCV_TAG)
 from buildscripts.resmokelib.utils import is_windows
 from buildscripts.util.cmdutils import enable_logging
 from buildscripts.util.fileops import read_yaml_file
 import buildscripts.ciconfig.tags as _tags
-from buildscripts.util.read_config import read_config_file
 # pylint: disable=len-as-condition
 
 LOGGER = structlog.getLogger(__name__)

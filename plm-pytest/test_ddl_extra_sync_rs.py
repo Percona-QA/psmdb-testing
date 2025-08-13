@@ -5,7 +5,6 @@ import docker
 import threading
 import datetime
 import re
-from pymongo.errors import OperationFailure
 
 from cluster import Cluster
 from perconalink import Perconalink
@@ -102,7 +101,7 @@ def test_rs_plink_PML_T13(reset_state, srcRS, dstRS, plink):
         )
         assert res.get("ok") == 1.0, f"collMod failed: {res}"
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -150,7 +149,7 @@ def test_rs_plink_PML_T14(reset_state, srcRS, dstRS, plink):
             changeStreamPreAndPostImages={"enabled": True})
         assert res.get("ok") == 1.0, f"collMod failed: {res}"
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -209,7 +208,7 @@ def test_rs_plink_PML_T15(reset_state, srcRS, dstRS, plink):
             {"$project": {"user": 1, "description": 1, "_id": 0}}])
         assert res.get("ok") == 1.0, f"collMod failed on view: {res}"
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -258,7 +257,7 @@ def test_rs_plink_PML_T16(reset_state, srcRS, dstRS, plink):
         cappedMax=500)
         assert res.get("ok") == 1.0, f"collMod failed: {res}"
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -335,7 +334,7 @@ def test_rs_plink_PML_T17(reset_state, srcRS, dstRS, plink):
         res = src[db_name].command("collMod", coll_name, index={"keyPattern": {"c": 1}, "unique": True})
         assert res.get("ok") == 1.0
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -398,7 +397,7 @@ def test_rs_plink_PML_T18(reset_state, srcRS, dstRS, plink):
             code_name = e.details.get("codeName") if e.details else None
             assert code_name == "CannotConvertIndexToUnique", f"Unexpected codeName: {code_name}"
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -472,7 +471,7 @@ def test_rs_plink_PML_T19(reset_state, srcRS, dstRS, plink, clone_stage_pattern)
         t2.start()
         t1.join()
         t2.join()
-    except Exception as e:
+    except Exception:
         raise
     assert plink.wait_for_repl_stage() is True, "Failed to finish init sync"
     assert plink.wait_for_zero_lag() is True, "Failed to catch up on replication"
@@ -541,7 +540,7 @@ def test_rs_plink_PML_T20(reset_state, srcRS, dstRS, plink):
         t2.start()
         t1.join()
         t2.join()
-    except Exception as e:
+    except Exception:
         raise
     assert plink.wait_for_repl_stage() is True, "Failed to finish init sync"
     assert plink.wait_for_zero_lag() is True, "Failed to catch up on replication"
@@ -591,7 +590,7 @@ def test_rs_plink_PML_T21(reset_state, srcRS, dstRS, plink):
         assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
         res = src.admin.command("renameCollection", f"{db_name1}.{old_name3}", to=f"{db_name2}.{new_name3}")
         assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()

@@ -10,7 +10,6 @@ from cluster import Cluster
 from perconalink import Perconalink
 from data_generator import create_all_types_db, generate_dummy_data, stop_all_crud_operations
 from data_integrity_check import compare_data_rs
-from metrics_collector import metrics_collector
 
 @pytest.fixture(scope="module")
 def docker_client():
@@ -97,7 +96,7 @@ def test_rs_plink_PML_T2(reset_state, srcRS, dstRS, plink, metrics_collector):
 
         time.sleep(5)
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -200,7 +199,7 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
 
         time.sleep(5)
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -292,7 +291,7 @@ def test_rs_plink_PML_T4(reset_state, srcRS, dstRS, plink):
 
         time.sleep(5)
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -403,7 +402,7 @@ def test_rs_plink_PML_T5(reset_state, srcRS, dstRS, plink):
 
         time.sleep(5)
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -506,7 +505,7 @@ def test_rs_plink_PML_T6(reset_state, srcRS, dstRS, plink):
         create.join()
         drop.join()
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -559,7 +558,7 @@ def test_rs_plink_PML_T7(reset_state, srcRS, dstRS, plink):
         src[db_name][coll_name2].create_index("x", unique=True)
         assert True, "Index creation should succeed"
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -631,7 +630,7 @@ def test_rs_plink_PML_T8(reset_state, srcRS, dstRS, plink):
 
         time.sleep(5)
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()

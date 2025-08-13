@@ -1,8 +1,5 @@
 import pymongo
 import datetime
-import uuid
-from bson import Decimal128, ObjectId, Binary, Code, Timestamp, Int64, DBRef, UUID_SUBTYPE
-from gridfs import GridFS
 
 def create_index_types(db, drop_before_creation=False):
     collections = [

@@ -146,7 +146,7 @@ def test_rs_plink_PML_T44(reset_state, srcRS, dstRS, plink):
         assert_metrics(metrics["data"])
         _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         time.sleep(5)
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()

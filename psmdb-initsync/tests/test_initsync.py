@@ -1,11 +1,8 @@
 import os
-import pytest
 import testinfra
-import subprocess
 import json
 import time
 import testinfra.utils.ansible_runner
-from datetime import datetime
 
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('mongo')

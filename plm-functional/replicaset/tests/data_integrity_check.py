@@ -220,7 +220,7 @@ def get_all_collection_metadata(db, port):
             metadata_list.extend(json.loads(line))
         return metadata_list
     except json.JSONDecodeError:
-        print(f"Error: Unable to parse JSON collection metadata response")
+        print("Error: Unable to parse JSON collection metadata response")
         print(f"Raw response: {response}")
         return []
 

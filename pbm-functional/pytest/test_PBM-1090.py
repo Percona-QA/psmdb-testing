@@ -1,10 +1,6 @@
 import pytest
 import pymongo
-import testinfra
-import time
-import json
 import bson
-import random
 import threading
 import os
 

@@ -2,12 +2,10 @@ import pytest
 import pymongo
 import time
 import threading
-import random
 from bson import ObjectId
 
 from cluster import Cluster
 from perconalink import Perconalink
-from metrics_collector import metrics_collector
 from data_generator import generate_dummy_data
 
 @pytest.fixture(scope="module")

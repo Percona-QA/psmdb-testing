@@ -1,12 +1,9 @@
 import pytest
 import pymongo
-import bson
-import testinfra
 import time
 import os
 import docker
 
-from datetime import datetime
 from cluster import Cluster
 
 documents=[{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]

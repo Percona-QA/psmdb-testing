@@ -1,12 +1,7 @@
 import pytest
 import pymongo
-import bson
-import testinfra
-import time
 import os
-import docker
 
-from datetime import datetime
 from cluster import Cluster
 
 @pytest.fixture(scope="package")

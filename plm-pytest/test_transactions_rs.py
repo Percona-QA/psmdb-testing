@@ -123,7 +123,7 @@ def test_rs_plink_PML_T22(reset_state, srcRS, dstRS, plink):
         session0.commit_transaction()
         session0.end_session()
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -409,7 +409,7 @@ def test_rs_plink_PML_T27(reset_state, srcRS, dstRS, plink):
             commit_with_retries(session1)
             time.sleep(60)
             commit_with_retries(session2)
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_generation.set()

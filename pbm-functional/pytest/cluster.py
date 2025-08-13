@@ -576,7 +576,7 @@ class Cluster:
                 while True:
                     if not self.get_status()['running'] or time.time() > timeout:
                         break
-            except AssertionError as e:
+            except AssertionError:
                 pass
 
         for host in self.all_hosts:

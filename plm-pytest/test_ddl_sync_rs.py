@@ -133,7 +133,7 @@ def test_rs_plink_PML_T10(reset_state, srcRS, dstRS, plink):
                                                                 drop_before_creation=True, start_crud=True)
         time.sleep(5)
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -191,7 +191,7 @@ def test_rs_plink_PML_T11(reset_state, srcRS, dstRS, plink):
         init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
         result = plink.wait_for_repl_stage()
         assert result is True, "Failed to start replication stage"
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -245,7 +245,7 @@ def test_rs_plink_PML_T12(reset_state, srcRS, dstRS, plink):
         repl_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         time.sleep(5)
 
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()

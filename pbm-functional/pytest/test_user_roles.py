@@ -1,11 +1,8 @@
 import pytest
 import pymongo
-import bson
-import testinfra
 import time
 import os
 import docker
-import threading
 
 from datetime import datetime
 from cluster import Cluster
@@ -71,7 +68,7 @@ def start_cluster(cluster, newcluster, request):
             cluster.get_logs()
         try:
             cluster.destroy(cleanup_backups=True)
-        except Exception as e:
+        except Exception:
             newcluster.destroy(cleanup_backups=True)
 
 
