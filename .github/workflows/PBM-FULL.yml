@@ -62,14 +62,20 @@ jobs:
 
       - name: Get changed Python files
         id: changed-files
+        if: github.event_name == 'pull_request'
         run: |
-          # Compare current branch to its base
-          FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep '\.py$' || true)
-          echo "files=$FILES" >> $GITHUB_OUTPUT
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep '\.py$' || true)
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
 
       - name: Run ruff only on changed files
-        if: steps.changed-files.outputs.files != ''
         run: |
+          FILES="${{ steps.changed-files.outputs.files }}"
+          if [ -z "$FILES" ]; then
+            echo "No changed Python files."
+            exit 0
+          fi
           echo "Linting changed files:"
-          echo "${{ steps.changed-files.outputs.files }}"
-          uv run ruff check ${{ steps.changed-files.outputs.files }}
+          echo "$FILES"
+          uv run ruff check $FILES
