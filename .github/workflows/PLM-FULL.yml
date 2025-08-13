@@ -24,7 +24,6 @@ jobs:
       fail-fast: false
       matrix:
         psmdb: ["6.0", "7.0", "8.0"]
-        test: [logical, physical, incremental, external]
     env:
       PLM_BRANCH: ${{ github.event.inputs.plm_branch || 'main' }}
       GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
@@ -38,7 +37,7 @@ jobs:
       working-directory: ./plm-pytest
     - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PLM_BRANCH }}
       run: |
-        docker compose run --rm test pytest -s --junitxml=junit.xml -k ${{ matrix.test }}
+        docker compose run --rm test pytest -s --junitxml=junit.xml
       working-directory: ./plm-pytest
     - name: Print PLM logs
       if: failure()
