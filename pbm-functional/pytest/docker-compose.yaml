@@ -117,6 +117,19 @@ services:
     networks:
       - test
 
+  keycloak:
+    image: keycloak/local
+    build:
+      dockerfile: ./Dockerfile-keycloak
+      context: .
+    container_name: keycloak
+    hostname: keycloak
+    ports:
+      - "8443:8443"
+      - "8080:8080"
+    networks:
+      - test
+
   build_member:
     image: replica_member/local
     build:
