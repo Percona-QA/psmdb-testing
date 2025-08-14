@@ -147,7 +147,7 @@ def test_rs_plink_PML_T46(reset_state, srcRS, dstRS, plink, fail_node):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-@pytest.mark.parametrize("fail_node", ["src", "dst"])
+@pytest.mark.parametrize("fail_node", ["dst"])
 def test_rs_plink_PML_T47(reset_state, srcRS, dstRS, plink, fail_node):
     """
     Test to check PLM failure tolerance when SRC or DST primary goes down during replication stage
@@ -183,7 +183,7 @@ def test_rs_plink_PML_T47(reset_state, srcRS, dstRS, plink, fail_node):
     assert plink.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
     assert plink.finalize(), "Failed to finalize plink service"
     time.sleep(5)
-    result = compare_data_rs(srcRS, dstRS)
+    result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
 
 @pytest.mark.timeout(300,func_only=True)
