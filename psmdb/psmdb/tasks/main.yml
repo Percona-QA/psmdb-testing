@@ -194,3 +194,32 @@
 - name: Make the backup of mongod.conf
   shell: |
     cp -r /etc/mongod.conf /etc/mongod.conf.default
+
+- name: Get OIDC token endpoint from metadata
+  uri:
+    url: "https://percona.oktapreview.com/oauth2/ausoxk7qawOSbws7w1d7/.well-known/openid-configuration"
+    method: GET
+    return_content: yes
+    validate_certs: no
+  register: oidc_metadata
+
+- name: Request OIDC access token
+  uri:
+    url: "{{ oidc_metadata.json.token_endpoint }}"
+    method: POST
+    user: "{{ lookup('env', 'OIDC_CLIENT_ID') }}"
+    password: "{{ lookup('env', 'OIDC_CLIENT_SECRET') }}"
+    force_basic_auth: yes
+    body_format: form-urlencoded
+    body:
+      grant_type: client_credentials
+      scope: offline_access
+    return_content: yes
+    validate_certs: no
+  register: oidc_token
+
+- name: Save OIDC token to file for Testinfra
+  copy:
+    dest: /tmp/oidc_access_token
+    content: "{{ oidc_token.json.access_token }}"
+    mode: '0644'

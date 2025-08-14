@@ -32,6 +32,7 @@
     - "percona-server-mongodb-server{{ psmdb_pkg_name_addon }}={{ psmdb_to_test }}*"
     - "percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}={{ psmdb_to_test }}*"
     - "percona-server-mongodb-tools={{ psmdb_to_test }}*"
+    - "percona-server-mongodb-shell={{ psmdb_to_test }}*"
   register: result
   retries: 10
   until: result is succeeded
@@ -61,6 +62,7 @@
     - "percona-server-mongodb-server{{ psmdb_pkg_name_addon }}-{{ psmdb_to_test }}"
     - "percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}-{{ psmdb_to_test }}"
     - "percona-server-mongodb-tools-{{ psmdb_to_test }}"
+    - "percona-server-mongodb-shell-{{ psmdb_to_test }}"
   register: result
   retries: 10
   until: result is succeeded
@@ -174,6 +176,10 @@
   until: result is succeeded
   delay: 5
   when: ansible_os_family == "RedHat" and psmdb_mongosh >= "6"
+
+- name: backup old mongo CLI binary
+  command: mv -f /usr/bin/mongo /usr/bin/mongo.bcp
+  when: psmdb_mongosh >= "6"
 
 - name: copy mongosh binary to mongo path for test scripts
   file:
