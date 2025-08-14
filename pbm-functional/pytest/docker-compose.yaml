@@ -68,7 +68,7 @@ services:
   pykmip:
     image: pykmip/local
     build:
-      dockerfile: ./Dockerfile-pykmip
+      dockerfile: ./Dockerfile-kmip
       context: .
     container_name: pykmip
     hostname: pykmip
