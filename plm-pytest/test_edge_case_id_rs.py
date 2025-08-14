@@ -67,7 +67,6 @@ def test_rs_plink_PML_T32(reset_state, srcRS, dstRS, plink):
     Test case with various edge cases IDs
     """
     src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
 
     db = src["stress_test_db"]
     collections_meta = [
@@ -161,23 +160,29 @@ def test_rs_plink_PML_T34(reset_state, srcRS, dstRS, plink, id_type):
     Test case with NaN ID
     """
     src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
 
     db = src["stress_test_db"]
     collections_meta = [
-        {"name": "regular_coll", "options": {}, "capped": False, "collation": False},
-        {"name": "capped_coll", "options": {"capped": True, "size": 2147483648}, "capped": True, "collation": False}]
+        {"name": "regular_coll_pre", "options": {}, "capped": False, "collation": False},
+        {"name": "regular_coll_post", "options": {}, "capped": False, "collation": False},
+        {"name": "capped_coll_pre", "options": {"capped": True, "size": 2147483648}, "capped": True, "collation": False},
+        {"name": "capped_coll_post", "options": {"capped": True, "size": 2147483648}, "capped": True, "collation": False}]
+
     for meta in collections_meta:
         db.create_collection(meta["name"], **meta["options"])
         meta["collection"] = db[meta["name"]]
 
-    def add_data():
+    def add_data(target_suffix):
         batch_size = 5000
         num_batches = 80
+
         for meta in collections_meta:
+            if not meta["name"].endswith(target_suffix):
+                continue
             collection = meta["collection"]
             nan_id = float("nan") if id_type == "float" else Decimal128("NaN")
             collection.insert_one({"_id": nan_id, "payload": "x" * 5000})
+
             for _ in range(num_batches):
                 docs = []
                 for _ in range(batch_size):
@@ -195,16 +200,16 @@ def test_rs_plink_PML_T34(reset_state, srcRS, dstRS, plink, id_type):
                     collection.insert_many(docs, ordered=False, bypass_document_validation=True)
                 except pymongo.errors.BulkWriteError as e:
                     Cluster.log(f"Insert failed in {meta['name']}: {e.details}")
-    add_data()
+    add_data(target_suffix="_pre")
     assert plink.start(), "Failed to start plink service"
     assert plink.wait_for_repl_stage(), "Failed to start replication stage"
-    add_data()
+    add_data(target_suffix="_post")
     assert plink.wait_for_zero_lag(), "Failed to catch up on replication"
     assert plink.finalize(), "Failed to finalize plink service"
 
     expected_mismatches = [
         ("stress_test_db", "hash mismatch"),
-        ("stress_test_db.regular_coll", "hash mismatch")]
+        ("stress_test_db.regular_coll_pre", "hash mismatch")]
 
     result, summary = compare_data_rs(srcRS, dstRS)
     if not result:
