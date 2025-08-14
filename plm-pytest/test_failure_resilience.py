@@ -183,7 +183,7 @@ def test_rs_plink_PML_T47(reset_state, srcRS, dstRS, plink, fail_node):
     assert plink.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
     assert plink.finalize(), "Failed to finalize plink service"
     time.sleep(5)
-    result = compare_data_rs(srcRS, dstRS)
+    result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
 
 @pytest.mark.timeout(300,func_only=True)
