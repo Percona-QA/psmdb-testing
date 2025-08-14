@@ -67,6 +67,17 @@ def reset_state(srcRS, dstRS, plink, request):
             dst_client.drop_database(db_name)
     plink.create(log_level=log_level, env_vars=env_vars)
 
+def check_logs(search_line, plink, expected_count):
+    count = 0
+    logs = plink.logs(tail=1000)
+    for log in logs.splitlines():
+        if search_line in log:
+            print("\n\n\nKEITH TEST: " + log + "\n\n\n")
+            count += 1
+    if count == expected_count:
+        return True
+    return False
+
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T2(reset_state, srcRS, dstRS, plink, metrics_collector):
@@ -163,8 +174,10 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
 
         result = plink.start()
         assert result is True, "Failed to start plink service"
+        time.sleep(10)
+        assert check_logs("IndexOptionsConflict", plink, 1)
 
-        # Add data during clone phase
+        print("\n\nAdd data during clone phase\n\n")
         clone_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
         clone_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
@@ -181,7 +194,9 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
 
         result = plink.wait_for_repl_stage()
         assert result is True, "Failed to start replication stage"
+        assert check_logs("One or more indexes failed to create on", plink, 2)
 
+        print("\n\nAdd data during replication phase\n\n")
         # Add data during replication phase
         repl_test_db, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         repl_test_db.invalid_index_collection.create_index(
@@ -198,6 +213,7 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
         )
 
         time.sleep(5)
+        assert check_logs("One or more indexes failed to create on", plink, 3)
 
     except Exception:
         raise
@@ -216,31 +232,13 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
     result = plink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
 
+    print("\n\nFinalizing\n\n")
+
     result = plink.finalize()
     assert result is True, "Failed to finalize plink service"
 
-    expected_mismatches = [
-        ("init_test_db.invalid_index_collection", "compound_test_unique_index"),
-        ("clone_test_db.invalid_index_collection", "compound_test_unique_index"),
-        ("repl_test_db.invalid_index_collection", "compound_test_unique_index")
-    ]
-
     result, summary = compare_data_rs(srcRS, dstRS)
-    assert result is False, "Data mismatch after synchronization"
-
-    missing_mismatches = [index for index in expected_mismatches if index not in summary]
-    unexpected_mismatches = [mismatch for mismatch in summary if mismatch not in expected_mismatches]
-
-    assert not missing_mismatches, f"Expected mismatches missing: {missing_mismatches}"
-    if unexpected_mismatches:
-        pytest.fail("Unexpected mismatches:\n" + "\n".join(unexpected_mismatches))
-
-    plink_error, error_logs = plink.check_plink_errors()
-    expected_error = "ERR One or more indexes failed to create"
-    if not plink_error:
-        unexpected = [line for line in error_logs if expected_error not in line]
-        if unexpected:
-            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
+    assert result is True, "Data mismatch after synchronization"
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
