@@ -37,7 +37,7 @@ jobs:
       working-directory: ./plm-pytest
     - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PLM_BRANCH }}
       run: |
-        docker compose run --rm test pytest -s test_edge_case_id_rs.py::test_rs_plink_PML_T34 --junitxml=junit.xml
+        docker compose run --rm test pytest -s --junitxml=junit.xml
       working-directory: ./plm-pytest
     - name: Print PLM logs
       if: failure()
@@ -65,7 +65,7 @@ jobs:
         run: |
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep '\.py$' || true)
+          FILES="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- '*.py' | tr '\n' ' ' || true)"
           echo "files=$FILES" >> "$GITHUB_OUTPUT"
 
       - name: Run ruff only on changed files
