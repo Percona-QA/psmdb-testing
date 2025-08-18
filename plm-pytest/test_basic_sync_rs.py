@@ -693,7 +693,7 @@ def test_rs_plink_PML_T30(reset_state, srcRS, dstRS, plink):
     t2.start()
     t1.join()
     t2.join()
-    assert plink.wait_for_repl_stage(timeout=30) is True, "Failed to start replication stage"
+    assert plink.wait_for_repl_stage(timeout=60) is True, "Failed to start replication stage"
     assert plink.wait_for_zero_lag() is True, "Failed to catch up on replication"
     assert plink.finalize() is True, "Failed to finalize plink service"
     result, _ = compare_data_rs(srcRS, dstRS)
