@@ -9,7 +9,7 @@ from packaging import version
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
-PRO_FEATURES = ['FIPSMode']
+PRO_FEATURES = ['FIPSMode','FCBIS','OIDC']
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
 toolkit = os.environ.get("ENABLE_TOOLKIT")
@@ -59,7 +59,7 @@ def stop_mongod(node):
     with node.sudo():
         node.check_output('systemctl stop mongod')
         mongod = node.service("mongod")
-        assert mongod.is_running == False
+        assert not mongod.is_running
 
 def check_db_start(node):
     result = node.run('mongo --eval="printjson(db.serverStatus().ok)"')
@@ -96,7 +96,7 @@ def apply_conf(node,conf,clear_data=False,check=True):
     print("Applying config:")
     print(conf_string)
     with node.sudo():
-        node.check_output("echo \'" + conf_string + "\' | tee /etc/mongod.conf")
+        node.check_output("cat > /etc/mongod.conf <<'EOF'\n%s\nEOF" % conf_string)
     if clear_data:
         erase_data(node)
         erase_logs(node)
@@ -231,8 +231,11 @@ def test_profiling(host):
     apply_conf(host,conf,False)
     assert host.file('/tmp/audit.json').exists
 
-@pytest.mark.parametrize("auth", ['LDAP','GSSAPI','MONGODB-AWS'])
+@pytest.mark.parametrize("auth", ['LDAP','GSSAPI','MONGODB-AWS','MONGODB-OIDC'])
 def test_auth(host,auth):
+    if auth == 'MONGODB-OIDC' and pro_build != "true":
+        pytest.skip("Skipping MONGODB-OIDC test for community build")
+
     restore_defaults(host)
 
     #setup config and users
@@ -262,6 +265,20 @@ def test_auth(host,auth):
         conf['setParameter']['authenticationMechanisms'] = 'MONGODB-AWS'
         result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"arn:aws:iam::119175775298:role/jenkins-psmdb-slave",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
         print(result)
+    if auth == 'MONGODB-OIDC':
+        conf['setParameter']['authenticationMechanisms'] = 'MONGODB-OIDC'
+        conf['setParameter']['oidcIdentityProviders'] = json.dumps([
+            {
+                "issuer": "https://percona.oktapreview.com/oauth2/ausoxk7qawOSbws7w1d7",
+                "audience": "0oaoxk03h6o9jFuRZ1d7",
+                "authNamePrefix": "okta",
+                "clientId": "0oaoxk03h6o9jFuRZ1d7",
+                "useAuthorizationClaim": False,
+                "supportsHumanFlows": False
+            }
+        ])
+        result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"okta/0oaoxk03h6o9jFuRZ1d7",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
+        print(result)
 
     #apply config without erasing data
     apply_conf(host,conf,False)
@@ -282,6 +299,15 @@ def test_auth(host,auth):
     if auth == 'MONGODB-AWS':
         hostname = host.check_output('hostname')
         result = host.check_output('mongo --host '+ hostname + ' --authenticationMechanism MONGODB-AWS --authenticationDatabase \'$external\' --quiet --eval "db.runCommand({connectionStatus : 1})"')
+        print(result)
+        assert 'ok: 1' in result or '"ok" : 1' in result
+    if auth == 'MONGODB-OIDC':
+        access_token = host.file('/tmp/oidc_access_token').content_string.strip()
+        hostname = host.check_output('hostname')
+        result = host.check_output(f'/usr/bin/mongo.bcp --host {hostname} --authenticationMechanism MONGODB-OIDC '
+            f'--authenticationDatabase \'$external\' '
+            f'--oidcAccessToken "{access_token}" '
+            '--quiet --eval "db.runCommand({connectionStatus : 1})"')
         print(result)
         assert 'ok: 1' in result or '"ok" : 1' in result
 
