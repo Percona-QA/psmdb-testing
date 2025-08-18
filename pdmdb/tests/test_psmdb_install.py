@@ -35,6 +35,7 @@ def get_mongosh_ver():
 MONGOSH_VER = get_mongosh_ver()
 
 def test_mongod_service(host):
+    test = 0
     mongod = host.service("mongod")
     assert mongod.is_running
 
