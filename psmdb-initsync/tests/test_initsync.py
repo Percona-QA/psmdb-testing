@@ -30,7 +30,6 @@ def check_mongod_service(node):
         assert service.is_running
 
 def restart_mongod(node):
-    test = 1
     with node.sudo():
         result = node.check_output('systemctl restart mongod')
     print('restarting mongod: ' + result)

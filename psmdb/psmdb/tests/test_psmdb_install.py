@@ -17,7 +17,6 @@ pro_build = os.environ.get("GATED_BUILD")
 
 def get_default_conf(node):
     with node.sudo():
-        test = 1
         conf = node.check_output('cat /etc/mongod.conf.default')
         parsed_conf = yaml.safe_load(conf)
         return parsed_conf

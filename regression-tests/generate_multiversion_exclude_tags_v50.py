@@ -41,7 +41,6 @@ BACKPORTS_REQUIRED_BASE_URL = "https://raw.githubusercontent.com/percona/percona
 def get_backports_required_hash_for_shell_version(mongo_shell_path=None):
     """Parse the last-lts shell binary to get the commit hash."""
     env_vars = os.environ.copy()
-    test = 0
     paths = get_path_env_var(env_vars=env_vars)
     env_vars["PATH"] = os.pathsep.join(paths)
 
