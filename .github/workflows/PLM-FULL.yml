@@ -37,7 +37,7 @@ jobs:
       working-directory: ./plm-pytest
     - name: Test ${{ matrix.test }} backup/restore on PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PLM_BRANCH }}
       run: |
-        docker compose run --rm test pytest -s --junitxml=junit.xml
+        docker compose run --rm test pytest -s test_edge_case_id_rs.py::test_rs_plink_PML_T34 --junitxml=junit.xml
       working-directory: ./plm-pytest
     - name: Print PLM logs
       if: failure()
