@@ -176,7 +176,7 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
         time.sleep(10)
         assert check_logs("IndexOptionsConflict", plink, 1)
 
-        print("\n\nAdd data during clone phase\n\n")
+        # Add data during clone phase
         clone_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
         clone_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
@@ -195,7 +195,6 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
         assert result is True, "Failed to start replication stage"
         assert check_logs("One or more indexes failed to create on", plink, 2)
 
-        print("\n\nAdd data during replication phase\n\n")
         # Add data during replication phase
         repl_test_db, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         repl_test_db.invalid_index_collection.create_index(
@@ -230,8 +229,6 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
 
     result = plink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
-
-    print("\n\nFinalizing\n\n")
 
     result = plink.finalize()
     assert result is True, "Failed to finalize plink service"
