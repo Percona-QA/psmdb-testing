@@ -56,6 +56,9 @@ RUN echo -e 'vaulttoken' > /etc/vault/token && \
     chown -R mongodb /etc/vault && chmod 400 /etc/vault/token && \
     chown -R mongodb /etc/x509 && chmod 400 /etc/x509/* && \
     chown -R mongodb /etc/nginx-minio && \
+    mkdir -p /etc/pki/ca-trust/source/anchors && \
+    cp /etc/pykmip/ca.crt /etc/pki/ca-trust/source/anchors/ && \
+    update-ca-trust extract && \
     if [ -f "/usr/bin/mongosh" ] ; then \
         ln -s /usr/bin/mongosh /usr/bin/mongo ; \
     fi && \
