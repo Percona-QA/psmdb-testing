@@ -195,15 +195,6 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
         name="compound_test_sparse_index", sparse=True
         )
 
-        time.sleep(5)
-        plink_error, error_logs = plink.check_plink_errors()
-        expected_error = "IndexOptionsConflict"
-        if not plink_error:
-            unexpected = [line for line in error_logs if expected_error not in line]
-            assert len(error_logs) == 3
-            if unexpected:
-                pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
-
     except Exception:
         raise
     finally:
@@ -226,6 +217,14 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
 
     result, summary = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
+
+    plink_error, error_logs = plink.check_plink_errors()
+    expected_error = "IndexOptionsConflict"
+    if not plink_error:
+        unexpected = [line for line in error_logs if expected_error not in line]
+        if unexpected:
+            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
+    assert len(error_logs) == 3
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
