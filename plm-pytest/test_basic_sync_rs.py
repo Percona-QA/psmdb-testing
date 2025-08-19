@@ -219,7 +219,7 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
     assert result is True, "Data mismatch after synchronization"
 
     plink_error, error_logs = plink.check_plink_errors()
-    expected_error = "IndexOptionsConflict"
+    expected_error = "ERR One or more indexes failed to create"
     if not plink_error:
         unexpected = [line for line in error_logs if expected_error not in line]
         if unexpected:
