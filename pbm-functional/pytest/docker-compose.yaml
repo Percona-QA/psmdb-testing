@@ -78,13 +78,13 @@ services:
       - easyrsa
 
   vault:
-    image: hashicorp/vault
+    image: openbao/openbao
     container_name: vault
     hostname: vault
     ports:
       - "8200:8200"
     environment:
-      - "VAULT_DEV_ROOT_TOKEN_ID=vaulttoken"
+      - "BAO_DEV_ROOT_TOKEN_ID=vaulttoken"
     networks:
       - test
 
