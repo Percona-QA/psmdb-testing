@@ -5,6 +5,7 @@ import docker
 from cluster import Cluster
 from perconalink import Perconalink
 from data_integrity_check import compare_data_sharded
+from data_generator import create_all_types_db, generate_dummy_data, stop_all_crud_operations
 
 @pytest.fixture(scope="module")
 def docker_client():
@@ -14,20 +15,20 @@ def docker_client():
 def src_config():
     return { "mongos": "mongos1",
              "configserver":
-                            {"_id": "rscfg1", "members": [{"host":"rscfg101"},{"host": "rscfg102"},{"host": "rscfg103" }]},
+                            {"_id": "rscfg1", "members": [{"host":"rscfg101"}]},
              "shards":[
-                            {"_id": "rs1", "members": [{"host":"rs101"},{"host": "rs102"},{"host": "rs103" }]},
-                            {"_id": "rs2", "members": [{"host":"rs201"},{"host": "rs202"},{"host": "rs203" }]}
+                            {"_id": "rs1", "members": [{"host":"rs101"}]},
+                            {"_id": "rs2", "members": [{"host":"rs201"}]}
                       ]}
 
 @pytest.fixture(scope="module")
 def dst_config():
     return { "mongos": "mongos2",
              "configserver":
-                            {"_id": "rscfg2", "members": [{"host":"rscfg201"},{"host": "rscfg202"},{"host": "rscfg203" }]},
+                            {"_id": "rscfg2", "members": [{"host":"rscfg201"}]},
              "shards":[
-                            {"_id": "rs3", "members": [{"host":"rs301"},{"host": "rs302"},{"host": "rs303" }]},
-                            {"_id": "rs4", "members": [{"host":"rs401"},{"host": "rs402"},{"host": "rs403" }]}
+                            {"_id": "rs3", "members": [{"host":"rs301"}]},
+                            {"_id": "rs4", "members": [{"host":"rs401"}]}
                       ]}
 
 @pytest.fixture(scope="module")
@@ -57,33 +58,32 @@ def start_cluster(srcCluster, dstCluster, plink, request):
         dstCluster.destroy()
         plink.destroy()
 
+def test_sharded_plink_basic(start_cluster, srcCluster, dstCluster, plink):
+    """
+    Test basic functionality of PLM with sharded clusters
+    """
+    srcRS = pymongo.MongoClient(srcCluster.connection)
+    operation_threads_1, operation_threads_2, operation_threads_3 = [], [], []
+    try:
+        generate_dummy_data(srcCluster.connection)
+        _, operation_threads_1 = create_all_types_db(srcCluster.connection, "init_test_db", create_ts=True, start_crud=True)
+        assert plink.start(), "Failed to start plink service"
+        _, operation_threads_2 = create_all_types_db(srcCluster.connection, "clone_test_db", create_ts=True, start_crud=True)
+        assert plink.wait_for_repl_stage(), "Failed to start replication stage"
+        _, operation_threads_3 = create_all_types_db(srcCluster.connection, "repl_test_db", create_ts=True, start_crud=True)
+    finally:
+        stop_all_crud_operations()
+        for t in operation_threads_1 + operation_threads_2 + operation_threads_3:
+            t.join()
+    assert plink.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
+    assert plink.finalize(), "Failed to finalize plink service"
 
-def example_sharded_plink_basic(start_cluster, srcCluster, dstCluster, plink):
-    src = pymongo.MongoClient(srcCluster.connection)
-    dst = pymongo.MongoClient(dstCluster.connection)
-
-    src["test_db1"]["test_coll11"].insert_many([{"key": i, "data": i} for i in range(10)])
-    src["test_db1"]["test_coll12"].insert_many([{"key": i, "data": i} for i in range(10)])
-    src["test_db2"]["test_coll21"].insert_many([{"key": i, "data": i} for i in range(10)])
-    src["test_db2"]["test_coll22"].insert_many([{"key": i, "data": i} for i in range(10)])
-    src["test_db1"]["test_coll11"].create_index(["key"], name="test_coll11_index_old")
-
-    result = plink.start()
-    assert result is True, "Failed to start plink service"
-    result = plink.finalize()
-    assert result is True, "Failed to finalize plink service"
-
+    # This step is required to ensure that all data is synchronized
+    # except for time-series collections which are not supported
+    databases = ["init_test_db", "clone_test_db", "repl_test_db"]
+    for db in databases:
+        srcRS[db].drop_collection("timeseries_data")
     result = compare_data_sharded(srcCluster, dstCluster)
     assert result is True, "Data mismatch after synchronization"
-
-    src["test_db2"]["test_coll21"].insert_many([{"key": i, "data": i} for i in range(10)])
-    src["test_db3"]["test_coll31"].insert_many([{"key": i, "data": i} for i in range(10)])
-    dst["test_db4"]["test_coll41"].insert_many([{"key": i, "data": i} for i in range(10)])
-
-    src["test_db3"]["test_coll31"].create_index(["key"], name="test_coll31_index_old")
-    dst["test_db1"]["test_coll11"].drop_index('test_coll11_index_old')
-    dst["test_db1"]["test_coll11"].create_index(["data"], name="test_coll11_index_old")
-    dst["test_db1"]["test_coll11"].create_index(["key"], name="test_coll11_index_new")
-
-    result = compare_data_sharded(srcCluster, dstCluster)
-    assert result is False, "Data should not match after modification in dst"
+    no_errors, error_logs = plink.check_plink_errors()
+    assert no_errors is True, f"plink reported errors in logs: {error_logs}"
