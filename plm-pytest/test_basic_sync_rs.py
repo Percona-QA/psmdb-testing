@@ -67,16 +67,6 @@ def reset_state(srcRS, dstRS, plink, request):
             dst_client.drop_database(db_name)
     plink.create(log_level=log_level, env_vars=env_vars)
 
-def check_logs(search_line, plink, expected_count):
-    count = 0
-    logs = plink.logs(tail=1000)
-    for log in logs.splitlines():
-        if search_line in log:
-            count += 1
-    if count == expected_count:
-        return True
-    return False
-
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T2(reset_state, srcRS, dstRS, plink, metrics_collector):
@@ -144,9 +134,7 @@ def test_rs_plink_PML_T2(reset_state, srcRS, dstRS, plink, metrics_collector):
 def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
     """
     Test to validate handling of index creation failures during clone and replication phase due to
-    IndexOptionsConflict error (index with the same key spec already exists with a different name).
-    Since PLM temporarily creates unique indexes as non-unique, creation of index with the same options
-    but different name should fail. It's expected behavior, but all other indexes should be created successfully.
+    IndexOptionsConflict error (index with the same key spec already exists with a different name). The failed index will be created during the finalization stage.
     """
     try:
         src = pymongo.MongoClient(srcRS.connection)
@@ -173,8 +161,6 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
 
         result = plink.start()
         assert result is True, "Failed to start plink service"
-        time.sleep(10)
-        assert check_logs("IndexOptionsConflict", plink, 1)
 
         # Add data during clone phase
         clone_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
@@ -193,7 +179,6 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
 
         result = plink.wait_for_repl_stage()
         assert result is True, "Failed to start replication stage"
-        assert check_logs("One or more indexes failed to create on", plink, 2)
 
         # Add data during replication phase
         repl_test_db, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
@@ -211,7 +196,13 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
         )
 
         time.sleep(5)
-        assert check_logs("One or more indexes failed to create on", plink, 3)
+        plink_error, error_logs = plink.check_plink_errors()
+        expected_error = "IndexOptionsConflict"
+        if not plink_error:
+            unexpected = [line for line in error_logs if expected_error not in line]
+            assert len(error_logs) == 3
+            if unexpected:
+                pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
     except Exception:
         raise
