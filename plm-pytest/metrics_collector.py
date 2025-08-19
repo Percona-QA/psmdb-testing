@@ -72,6 +72,7 @@ def plot_metrics(data, test_name):
 
 @pytest.fixture(scope="function")
 def metrics_collector(request):
+    test = 1
     Cluster.log("Start collecting metrics")
     event = Event()
     metrics_data = {}
