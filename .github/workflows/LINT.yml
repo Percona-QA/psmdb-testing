@@ -1,0 +1,40 @@
+name: LINT
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: pip install ruff uv
+
+      - name: Get changed Python files
+        id: changed-files
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          FILES="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- '*.py' | tr '\n' ' ' || true)"
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+
+      - name: Run ruff only on changed files
+        run: |
+          FILES="${{ steps.changed-files.outputs.files }}"
+          if [ -z "$FILES" ]; then
+            echo "No changed Python files."
+            exit 0
+          fi
+          echo "Linting changed files:"
+          echo "$FILES"
+          uv run ruff check $FILES
