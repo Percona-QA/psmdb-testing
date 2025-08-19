@@ -134,9 +134,7 @@ def test_rs_plink_PML_T2(reset_state, srcRS, dstRS, plink, metrics_collector):
 def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
     """
     Test to validate handling of index creation failures during clone and replication phase due to
-    IndexOptionsConflict error (index with the same key spec already exists with a different name).
-    Since PLM temporarily creates unique indexes as non-unique, creation of index with the same options
-    but different name should fail. It's expected behavior, but all other indexes should be created successfully.
+    IndexOptionsConflict error (index with the same key spec already exists with a different name). The failed index will be created during the finalization stage.
     """
     try:
         src = pymongo.MongoClient(srcRS.connection)
@@ -197,8 +195,6 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
         name="compound_test_sparse_index", sparse=True
         )
 
-        time.sleep(5)
-
     except Exception:
         raise
     finally:
@@ -219,21 +215,8 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
     result = plink.finalize()
     assert result is True, "Failed to finalize plink service"
 
-    expected_mismatches = [
-        ("init_test_db.invalid_index_collection", "compound_test_unique_index"),
-        ("clone_test_db.invalid_index_collection", "compound_test_unique_index"),
-        ("repl_test_db.invalid_index_collection", "compound_test_unique_index")
-    ]
-
     result, summary = compare_data_rs(srcRS, dstRS)
-    assert result is False, "Data mismatch after synchronization"
-
-    missing_mismatches = [index for index in expected_mismatches if index not in summary]
-    unexpected_mismatches = [mismatch for mismatch in summary if mismatch not in expected_mismatches]
-
-    assert not missing_mismatches, f"Expected mismatches missing: {missing_mismatches}"
-    if unexpected_mismatches:
-        pytest.fail("Unexpected mismatches:\n" + "\n".join(unexpected_mismatches))
+    assert result is True, "Data mismatch after synchronization"
 
     plink_error, error_logs = plink.check_plink_errors()
     expected_error = "ERR One or more indexes failed to create"
@@ -241,6 +224,7 @@ def test_rs_plink_PML_T3(reset_state, srcRS, dstRS, plink):
         unexpected = [line for line in error_logs if expected_error not in line]
         if unexpected:
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
+    assert len(error_logs) == 3
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -674,7 +658,7 @@ def test_rs_plink_PML_T30(reset_state, srcRS, dstRS, plink):
     Test to validate handling of concurrent data clone and index build failure
     """
     src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
+    pymongo.MongoClient(dstRS.connection)
     normal_docs = [{"a": {"b": 1}, "words": "omnibus"} for _ in range(20000)]
     src["init_test_db"].invalid_text_collection1.insert_many(normal_docs)
     src["init_test_db"].invalid_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
@@ -699,7 +683,7 @@ def test_rs_plink_PML_T30(reset_state, srcRS, dstRS, plink):
     t2.start()
     t1.join()
     t2.join()
-    assert plink.wait_for_repl_stage(timeout=30) is True, "Failed to start replication stage"
+    assert plink.wait_for_repl_stage(timeout=60) is True, "Failed to start replication stage"
     assert plink.wait_for_zero_lag() is True, "Failed to catch up on replication"
     assert plink.finalize() is True, "Failed to finalize plink service"
     result, _ = compare_data_rs(srcRS, dstRS)

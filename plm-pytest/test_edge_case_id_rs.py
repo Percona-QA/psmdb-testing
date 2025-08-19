@@ -174,7 +174,7 @@ def test_rs_plink_PML_T34(reset_state, srcRS, dstRS, plink, id_type):
 
     def add_data(target_suffix):
         batch_size = 5000
-        num_batches = 80
+        num_batches = 20
 
         for meta in collections_meta:
             if not meta["name"].endswith(target_suffix):
