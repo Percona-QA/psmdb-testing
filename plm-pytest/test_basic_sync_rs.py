@@ -43,7 +43,7 @@ def start_cluster(srcRS, dstRS, plink, request):
 
 @pytest.fixture(scope="function")
 def reset_state(srcRS, dstRS, plink, request):
-    log_level = "debug"
+    log_level = "info"
     env_vars = None
     log_marker = request.node.get_closest_marker("plink_log_level")
     if log_marker and log_marker.args:

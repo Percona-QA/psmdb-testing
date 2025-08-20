@@ -53,15 +53,26 @@ class Perconalink:
         except docker.errors.NotFound:
             pass
 
-    def start(self, include_namespaces=None, exclude_namespaces=None):
+    def start(self, include_namespaces=None, exclude_namespaces=None, mode="http", use_equals=False):
         try:
-            payload = {}
-            if include_namespaces:
-                payload["includeNamespaces"] = include_namespaces
-            if exclude_namespaces:
-                payload["excludeNamespaces"] = exclude_namespaces
-            json_data = json.dumps(payload)
-            exec_result = self.container.exec_run(f"curl -s -X POST http://localhost:2242/start -d '{json_data}'")
+            if mode == "cli":
+                Cluster.log("Using CLI Mode")
+                args = []
+                if include_namespaces:
+                    args.append(f"--include-namespaces{('=' if use_equals else ' ')}{include_namespaces}")
+                if exclude_namespaces:
+                    args.append(f"--exclude-namespaces{('=' if use_equals else ' ')}{exclude_namespaces}")
+                cmd = "plm start " + " ".join(args) if args else "plm start"
+                exec_result = self.container.exec_run(cmd)
+            else:
+                Cluster.log("Using API Mode")
+                payload = {}
+                if include_namespaces:
+                    payload["includeNamespaces"] = include_namespaces
+                if exclude_namespaces:
+                    payload["excludeNamespaces"] = exclude_namespaces
+                json_data = json.dumps(payload)
+                exec_result = self.container.exec_run(f"curl -s -X POST http://localhost:2242/start -d '{json_data}'")
 
             response = exec_result.output.decode("utf-8").strip()
             status_code = exec_result.exit_code
@@ -276,6 +287,7 @@ class Perconalink:
         def error_lines():
             for line in logs.splitlines():
                 clean = ansi_escape_re.sub("", line)
+                print("KEITH TEST: " + clean)
                 if error_pattern.search(clean):
                     yield clean
         errors_found = list(error_lines())
