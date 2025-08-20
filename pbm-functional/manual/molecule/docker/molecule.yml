@@ -9,7 +9,7 @@ platforms:
       - mongo
       - primary
       - mc
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2404-ansible:latest}"
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
@@ -22,7 +22,7 @@ platforms:
     groups:
       - mongo
       - secondary
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2404-ansible:latest}"
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
@@ -35,7 +35,7 @@ platforms:
     groups:
       - mongo
       - secondary
-    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2404-ansible:latest}"
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-centos7-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:

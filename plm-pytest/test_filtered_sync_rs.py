@@ -91,116 +91,116 @@ def check_logs(log_stream, expected_patterns, timeout=30, print_logs=True):
     ]
     pytest.fail(f"Log not found within {timeout} seconds:\n{missing_patterns}")
 
-# @pytest.mark.timeout(300, func_only=True)
-# @pytest.mark.usefixtures("start_cluster")
-# @pytest.mark.parametrize(
-#     "include_namespaces, exclude_namespaces, skip_entries, skip_prefixes",
-#     [
-#         (["init_test_db.*", "repl_test_db.*"], [], [], ['clone_test_db']),
-#         (["clone_test_db.*", "repl_test_db.*"], [], [], ['init_test_db']),
-#         ([], ["init_test_db.*", "clone_test_db.*"], [], ['init_test_db', 'clone_test_db']),
-#         ([], ["clone_test_db.*", "repl_test_db.*"], [], ['clone_test_db', 'repl_test_db']),
-#         (["init_test_db.*"], ["init_test_db.*"], [], ['init_test_db', 'clone_test_db', 'repl_test_db']),
-#         (["repl_test_db.*"], ["repl_test_db.multi_key_indexes"],
-#                             [('repl_test_db', 'hash mismatch')], ['init_test_db', 'clone_test_db', 'repl_test_db.multi_key_indexes']),
-#         ([], ["init_test_db.compound_indexes"],
-#                             [('init_test_db', 'hash mismatch')], ['init_test_db.compound_indexes']),
-#     ])
-# def test_rs_plink_PML_T35(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes):
-#     """
-#     Test to check PLM functionality with include/exclude namespaces
-#     """
-#     try:
-#         _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
-#         result = plink.start(include_namespaces=include_namespaces, exclude_namespaces=exclude_namespaces)
-#         assert result is True, "Failed to start plink service"
-#         _, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
-#         result = plink.wait_for_repl_stage()
-#         assert result is True, "Failed to start replication stage"
-#         _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
-#         time.sleep(5)
-#     except Exception as e:
-#         raise
-#     finally:
-#         stop_all_crud_operations()
-#         all_threads = []
-#         if "operation_threads_1" in locals():
-#             all_threads += operation_threads_1
-#         if "operation_threads_2" in locals():
-#             all_threads += operation_threads_2
-#         if "operation_threads_3" in locals():
-#             all_threads += operation_threads_3
-#         for thread in all_threads:
-#             thread.join()
-#     result = plink.wait_for_zero_lag()
-#     assert result is True, "Failed to catch up on replication"
-#     result = plink.finalize()
-#     assert result is True, "Failed to finalize plink service"
-#     result, mismatches = compare_data_rs(srcRS, dstRS)
-#     filtered_mismatches = [
-#         (name, reason) for name, reason in mismatches
-#         if not (
-#             any(name.startswith(prefix) for prefix in skip_prefixes) or
-#             (name, reason) in skip_entries
-#         )]
-#     result = len(filtered_mismatches) == 0
-#     assert result is True, f"Data mismatch after synchronization: {filtered_mismatches}"
-#     plink_error, error_logs = plink.check_plink_errors()
-#     assert plink_error is True, f"Plimk reported errors in logs: {error_logs}"
-#
-# @pytest.mark.timeout(300, func_only=True)
-# @pytest.mark.usefixtures("start_cluster")
-# def test_rs_plink_PML_T36(reset_state, srcRS, dstRS, plink):
-#     """
-#     Test to check that PLM correctly restores include/exclude filter after restart
-#     """
-#     try:
-#         _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
-#         result = plink.start(include_namespaces=["init_test_db.*", "repl_test_db.*"],
-#                              exclude_namespaces=["init_test_db.compound_indexes"])
-#         assert result is True, "Failed to start plink service"
-#         _, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
-#         result = plink.wait_for_repl_stage()
-#         assert result is True, "Failed to start replication stage"
-#         result = plink.wait_for_checkpoint()
-#         assert result is True, "Perconalink failed to save checkpoint"
-#         _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
-#         plink.restart()
-#         time.sleep(5)
-#     except Exception as e:
-#         raise
-#     finally:
-#         stop_all_crud_operations()
-#         all_threads = []
-#         if "operation_threads_1" in locals():
-#             all_threads += operation_threads_1
-#         if "operation_threads_2" in locals():
-#             all_threads += operation_threads_2
-#         if "operation_threads_3" in locals():
-#             all_threads += operation_threads_3
-#         for thread in all_threads:
-#             thread.join()
-#     result = plink.wait_for_zero_lag()
-#     assert result is True, "Failed to catch up on replication"
-#     result = plink.finalize()
-#     assert result is True, "Failed to finalize plink service"
-#     skip_prefixes = ['clone_test_db','init_test_db.compound_indexes']
-#     skip_entries = [('init_test_db', 'hash mismatch')]
-#     result, mismatches = compare_data_rs(srcRS, dstRS)
-#     filtered_mismatches = [
-#         (name, reason) for name, reason in mismatches
-#         if not (
-#             any(name.startswith(prefix) for prefix in skip_prefixes) or
-#             (name, reason) in skip_entries
-#         )]
-#     result = len(filtered_mismatches) == 0
-#     assert result is True, f"Data mismatch after synchronization: {filtered_mismatches}"
-#     plink_error, error_logs = plink.check_plink_errors()
-#     expected_error = "detected concurrent process"
-#     if not plink_error:
-#         unexpected = [line for line in error_logs if expected_error not in line]
-#         if unexpected:
-#             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
+@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.usefixtures("start_cluster")
+@pytest.mark.parametrize(
+    "include_namespaces, exclude_namespaces, skip_entries, skip_prefixes",
+    [
+        (["init_test_db.*", "repl_test_db.*"], [], [], ['clone_test_db']),
+        (["clone_test_db.*", "repl_test_db.*"], [], [], ['init_test_db']),
+        ([], ["init_test_db.*", "clone_test_db.*"], [], ['init_test_db', 'clone_test_db']),
+        ([], ["clone_test_db.*", "repl_test_db.*"], [], ['clone_test_db', 'repl_test_db']),
+        (["init_test_db.*"], ["init_test_db.*"], [], ['init_test_db', 'clone_test_db', 'repl_test_db']),
+        (["repl_test_db.*"], ["repl_test_db.multi_key_indexes"],
+                            [('repl_test_db', 'hash mismatch')], ['init_test_db', 'clone_test_db', 'repl_test_db.multi_key_indexes']),
+        ([], ["init_test_db.compound_indexes"],
+                            [('init_test_db', 'hash mismatch')], ['init_test_db.compound_indexes']),
+    ])
+def test_rs_plink_PML_T35(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes):
+    """
+    Test to check PLM functionality with include/exclude namespaces
+    """
+    try:
+        _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
+        result = plink.start(include_namespaces=include_namespaces, exclude_namespaces=exclude_namespaces)
+        assert result is True, "Failed to start plink service"
+        _, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
+        result = plink.wait_for_repl_stage()
+        assert result is True, "Failed to start replication stage"
+        _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
+        time.sleep(5)
+    except Exception as e:
+        raise
+    finally:
+        stop_all_crud_operations()
+        all_threads = []
+        if "operation_threads_1" in locals():
+            all_threads += operation_threads_1
+        if "operation_threads_2" in locals():
+            all_threads += operation_threads_2
+        if "operation_threads_3" in locals():
+            all_threads += operation_threads_3
+        for thread in all_threads:
+            thread.join()
+    result = plink.wait_for_zero_lag()
+    assert result is True, "Failed to catch up on replication"
+    result = plink.finalize()
+    assert result is True, "Failed to finalize plink service"
+    result, mismatches = compare_data_rs(srcRS, dstRS)
+    filtered_mismatches = [
+        (name, reason) for name, reason in mismatches
+        if not (
+            any(name.startswith(prefix) for prefix in skip_prefixes) or
+            (name, reason) in skip_entries
+        )]
+    result = len(filtered_mismatches) == 0
+    assert result is True, f"Data mismatch after synchronization: {filtered_mismatches}"
+    plink_error, error_logs = plink.check_plink_errors()
+    assert plink_error is True, f"Plimk reported errors in logs: {error_logs}"
+
+@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.usefixtures("start_cluster")
+def test_rs_plink_PML_T36(reset_state, srcRS, dstRS, plink):
+    """
+    Test to check that PLM correctly restores include/exclude filter after restart
+    """
+    try:
+        _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
+        result = plink.start(include_namespaces=["init_test_db.*", "repl_test_db.*"],
+                             exclude_namespaces=["init_test_db.compound_indexes"])
+        assert result is True, "Failed to start plink service"
+        _, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
+        result = plink.wait_for_repl_stage()
+        assert result is True, "Failed to start replication stage"
+        result = plink.wait_for_checkpoint()
+        assert result is True, "Perconalink failed to save checkpoint"
+        _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
+        plink.restart()
+        time.sleep(5)
+    except Exception as e:
+        raise
+    finally:
+        stop_all_crud_operations()
+        all_threads = []
+        if "operation_threads_1" in locals():
+            all_threads += operation_threads_1
+        if "operation_threads_2" in locals():
+            all_threads += operation_threads_2
+        if "operation_threads_3" in locals():
+            all_threads += operation_threads_3
+        for thread in all_threads:
+            thread.join()
+    result = plink.wait_for_zero_lag()
+    assert result is True, "Failed to catch up on replication"
+    result = plink.finalize()
+    assert result is True, "Failed to finalize plink service"
+    skip_prefixes = ['clone_test_db','init_test_db.compound_indexes']
+    skip_entries = [('init_test_db', 'hash mismatch')]
+    result, mismatches = compare_data_rs(srcRS, dstRS)
+    filtered_mismatches = [
+        (name, reason) for name, reason in mismatches
+        if not (
+            any(name.startswith(prefix) for prefix in skip_prefixes) or
+            (name, reason) in skip_entries
+        )]
+    result = len(filtered_mismatches) == 0
+    assert result is True, f"Data mismatch after synchronization: {filtered_mismatches}"
+    plink_error, error_logs = plink.check_plink_errors()
+    expected_error = "detected concurrent process"
+    if not plink_error:
+        unexpected = [line for line in error_logs if expected_error not in line]
+        if unexpected:
+            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 
 @pytest.mark.timeout(300, func_only=True)
@@ -218,7 +218,7 @@ def check_logs(log_stream, expected_patterns, timeout=30, print_logs=True):
         # ("repl_test_db.*", "repl_test_db.multi_key_indexes", [('repl_test_db', 'hash mismatch')], ['init_test_db', 'clone_test_db', 'repl_test_db.multi_key_indexes'], [], True, []),
         # ("", "init_test_db.compound_indexes", [('init_test_db', 'hash mismatch')], ['init_test_db.compound_indexes'], [], True, []),
     ])
-def test_rs_plink_PML_T35(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, allow_names, use_equals, expected_log):
+def test_keith(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, allow_names, use_equals, expected_log):
     """
     Test to check PLM functionality with include/exclude namespaces
     """
