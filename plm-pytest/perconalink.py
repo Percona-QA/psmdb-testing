@@ -25,7 +25,7 @@ class Perconalink:
         container = client.containers.get(self.name)
         return container
 
-    def create(self, log_level="debug", env_vars=None, extra_args=""):
+    def create(self, log_level="info", env_vars=None, extra_args=""):
         try:
             existing_container = self.container
             Cluster.log(f"Removing existing plink container '{self.name}'...")
@@ -63,6 +63,7 @@ class Perconalink:
                 if exclude_namespaces:
                     args.append(f"--exclude-namespaces{('=' if use_equals else ' ')}{exclude_namespaces}")
                 cmd = "plm start " + " ".join(args) if args else "plm start"
+                print("\n\n\nCOMMAND: " + cmd + "\n\n\n")
                 exec_result = self.container.exec_run(cmd)
             else:
                 Cluster.log("Using API Mode")

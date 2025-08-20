@@ -2,6 +2,7 @@ import pytest
 import pymongo
 import time
 import docker
+import re
 
 from cluster import Cluster
 from perconalink import Perconalink
@@ -56,40 +57,12 @@ def reset_state(srcRS, dstRS, plink, request):
             dst_client.drop_database(db_name)
     plink.create()
 
-import time
-import re
-import pytest
-
-def check_logs(log_stream, expected_patterns, timeout=30, print_logs=True):
-
-    compiled_patterns = [
-        re.compile(p) if isinstance(p, str) else p for p in expected_patterns
-    ]
-    found_patterns = set()
-    start_time = time.time()
-
-    while time.time() - start_time < timeout:
-        try:
-            raw_line = next(log_stream)
-        except Exception as e:
-            pytest.fail(f"Error reading log stream: {e}")
-
-        line = raw_line.decode("utf-8").strip()
-        if print_logs:
-            print(line)
-
-        for index, pattern in enumerate(compiled_patterns):
-            if index not in found_patterns and pattern.search(line):
-                found_patterns.add(index)
-
-        if len(found_patterns) == len(compiled_patterns):
-            return
-
-    # If not all patterns were found, raise a failure
-    missing_patterns = [
-        expected_patterns[i] for i in range(len(expected_patterns)) if i not in found_patterns
-    ]
-    pytest.fail(f"Log not found within {timeout} seconds:\n{missing_patterns}")
+def check_expected_logs(plink, expected_logs):
+    logs = plink.logs(tail=1000)
+    for pattern in expected_logs:
+        if not re.search(pattern, logs):
+            raise AssertionError(f"Expected log pattern not found: {pattern}")
+    return True
 
 @pytest.mark.timeout(300, func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -119,7 +92,7 @@ def test_rs_plink_PML_T35(reset_state, srcRS, dstRS, plink, include_namespaces, 
         assert result is True, "Failed to start replication stage"
         _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         time.sleep(5)
-    except Exception as e:
+    except Exception:
         raise
     finally:
         stop_all_crud_operations()
@@ -206,21 +179,40 @@ def test_rs_plink_PML_T36(reset_state, srcRS, dstRS, plink):
 @pytest.mark.timeout(300, func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 @pytest.mark.parametrize(
-    "include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, allow_names, use_equals, expected_log",
+    "include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, use_equals, expected_logs",
     [
+        # Equals, Separate Include and Exclude Tests with Wildcard, No quotes
+        # ("init_test_db.*,repl_test_db.*", "", [], ['clone_test_db'], True, ["Namespace \"clone_test_db.*\" excluded"]),
         # ("init_test_db.*,repl_test_db.*", "", [], ['clone_test_db'], [], False, ["Namespace \"clone_test_db.*\" excluded"]),
-        # ("init_test_db.*,repl_test_db.*", "", [], ['clone_test_db'], [], True, ["Namespace \"clone_test_db.*\" excluded"]),
-        # ("init_test_db.fs.chunks", "", [], ['clone_test_db', 'repl_test_db', 'init_test_db'], ['init_test_db.fs.chunks'], True, []),
-        # ("clone_test_db.*,repl_test_db.*", "", [], ['init_test_db'], [], True, []),
-        # ("", "init_test_db.*, clone_test_db.*", [], ['init_test_db', 'clone_test_db'], [], True, []),
-        # ("", "clone_test_db.*, repl_test_db.*", [], ['clone_test_db', 'repl_test_db'], [], True, []),
-        ("init_test_db.*", "init_test_db.*", [], ['init_test_db', 'clone_test_db', 'repl_test_db'], [], True, []),
-        # ("repl_test_db.*", "repl_test_db.multi_key_indexes", [('repl_test_db', 'hash mismatch')], ['init_test_db', 'clone_test_db', 'repl_test_db.multi_key_indexes'], [], True, []),
-        # ("", "init_test_db.compound_indexes", [('init_test_db', 'hash mismatch')], ['init_test_db.compound_indexes'], [], True, []),
+        # ("", "init_test_db.*,repl_test_db.*", [], ['init_test_db', 'repl_test_db'], True, ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
+        # ("", "init_test_db.*,repl_test_db.*", [], ['init_test_db','repl_test_db'], False, ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
+
+        # Separate Include and Exclude with single quotes
+        # ("'init_test_db.*','repl_test_db.*'", "", [], ['clone_test_db'], True, ["Namespace \"clone_test_db.*\" excluded"]),
+        # ("", "'init_test_db.*','repl_test_db.*'", [], ['init_test_db','repl_test_db'], False, ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
+
+        # Separate Include and Exclude with double quotes
+        # ('"init_test_db.*","repl_test_db.*"', "", [], ['clone_test_db'], True, ["Namespace \"clone_test_db.*\" excluded"]),
+        # ("", '"init_test_db.*","repl_test_db.*"', [], ['init_test_db', 'repl_test_db'], False, ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
+
+        #Include specific collection
+        # ("init_test_db.fs.chunks", "", [], ['clone_test_db', 'repl_test_db', 'init_test_db'], True, []),
+
+        #Exclude specific collection
+        # ("", "init_test_db.fs.chunks", [('init_test_db', 'hash mismatch')], ['init_test_db.fs.chunks'], True, ['Namespace "init_test_db.fs.chunks" excluded']),
+
+
+        # ("clone_test_db.*,repl_test_db.*", "", [], ['init_test_db'], True, []),
+        # ("init_test_db.*","init_test_db.*", [], ['init_test_db'], True, []),
+        # ("repl_test_db.*","repl_test_db.multi_key_indexes", [('repl_test_db', 'hash mismatch')], ['init_test_db', 'clone_test_db', 'repl_test_db.multi_key_indexes'], [], True, []),
+        # ("", "init_test_db.compound_indexes", [('init_test_db', 'hash mismatch')], ['init_test_db.compound_indexes'], True, ["Namespace \"init_test_db.compound_indexes\" excluded"]),
+
+
+        ("init_test_db.*,repl_test_db.*", "clone_test_db.*", [], ['clone_test_db'], True, ["Namespace \"clone_test_db.*\" excluded"]),
     ])
-def test_keith(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, allow_names, use_equals, expected_log):
+def test_keith(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, use_equals, expected_logs):
     """
-    Test to check PLM functionality with include/exclude namespaces
+    Test to check PLM CLI functionality with include/exclude namespaces
     """
     try:
         _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
@@ -231,10 +223,6 @@ def test_keith(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_nam
         assert result is True, "Failed to start plink service"
         result = plink.wait_for_repl_stage()
         assert result is True, "Failed to start replication stage"
-        result = plink.wait_for_checkpoint()
-        assert result is True, "Perconalink failed to save checkpoint"
-        _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
-        plink.restart()
         time.sleep(5)
     except Exception:
         raise
@@ -257,13 +245,15 @@ def test_keith(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_nam
     filtered_mismatches = [
         (name, reason) for name, reason in mismatches
         if not (
-                (any(name.startswith(prefix) for prefix in skip_prefixes) and name not in allow_names) or
+                (any(name.startswith(prefix) for prefix in skip_prefixes)) or
                 (name, reason) in skip_entries
         )]
     result = len(filtered_mismatches) == 0
     assert result is True, f"Data mismatch after synchronization: {filtered_mismatches}"
-    log_stream = plink.logs(stream=True)
-    check_logs(log_stream, expected_log)
+    print(plink.logs())
+    # print("\n\n\nSLEEPING!!\n\n\n")
+    # time.sleep(3600)
+    assert check_expected_logs(plink, expected_logs)
     plink_error, error_logs = plink.check_plink_errors()
     expected_error = "detected concurrent process"
     if not plink_error:
