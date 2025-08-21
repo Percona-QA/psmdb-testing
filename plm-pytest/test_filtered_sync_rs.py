@@ -181,36 +181,36 @@ def test_rs_plink_PML_T36(reset_state, srcRS, dstRS, plink):
 @pytest.mark.parametrize(
     "include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, use_equals, expected_logs",
     [
-        # Equals, Separate Include and Exclude Tests with Wildcard, No quotes
-        # ("init_test_db.*,repl_test_db.*", "", [], ['clone_test_db'], True, ["Namespace \"clone_test_db.*\" excluded"]),
-        # ("init_test_db.*,repl_test_db.*", "", [], ['clone_test_db'], [], False, ["Namespace \"clone_test_db.*\" excluded"]),
-        # ("", "init_test_db.*,repl_test_db.*", [], ['init_test_db', 'repl_test_db'], True, ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
-        # ("", "init_test_db.*,repl_test_db.*", [], ['init_test_db','repl_test_db'], False, ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
+        # Equals True
+        # Equals False
+        # Separate Include and Exclude Tests
+        # Wildcard
+        # No quotes
+        # Trailing commas
+        # Exclude specific collection
+        ("init_test_db.*,repl_test_db.*,", "repl_test_db.wildcard_indexes", [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], True, ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
+        ("init_test_db.*,repl_test_db.*", "repl_test_db.wildcard_indexes", [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], False, ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
+        ("", "init_test_db.*,repl_test_db.*,", [], ['init_test_db', 'repl_test_db'], True, ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
+        ("", "init_test_db.*,repl_test_db.*", [], ['init_test_db','repl_test_db'], False, ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
 
-        # Separate Include and Exclude with single quotes
-        # ("'init_test_db.*','repl_test_db.*'", "", [], ['clone_test_db'], True, ["Namespace \"clone_test_db.*\" excluded"]),
-        # ("", "'init_test_db.*','repl_test_db.*'", [], ['init_test_db','repl_test_db'], False, ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
+        # Include and Exclude with single quotes
+        ("'init_test_db.*,repl_test_db.*'", "'repl_test_db.wildcard_indexes'", [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], True, ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
 
-        # Separate Include and Exclude with double quotes
-        # ('"init_test_db.*","repl_test_db.*"', "", [], ['clone_test_db'], True, ["Namespace \"clone_test_db.*\" excluded"]),
-        # ("", '"init_test_db.*","repl_test_db.*"', [], ['init_test_db', 'repl_test_db'], False, ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
+        # Include and Exclude with double quotes
+        ('"init_test_db.*,repl_test_db.*"', '"repl_test_db.wildcard_indexes"', [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], True, ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
 
-        #Include specific collection
-        # ("init_test_db.fs.chunks", "", [], ['clone_test_db', 'repl_test_db', 'init_test_db'], True, []),
+        # Exclude takes priority
+        ("init_test_db.fs.chunks,", "init_test_db.*,", [('init_test_db', 'missing in dst DB')], ['init_test_db'], True, ['Namespace "init_test_db.fs.chunks" excluded']),
+        ("init_test_db.*", "init_test_db.fs.chunks", [('init_test_db', 'missing in dst DB')], ['init_test_db'], True, ['Namespace "init_test_db.fs.chunks" excluded']),
 
-        #Exclude specific collection
-        # ("", "init_test_db.fs.chunks", [('init_test_db', 'hash mismatch')], ['init_test_db.fs.chunks'], True, ['Namespace "init_test_db.fs.chunks" excluded']),
-
-
-        # ("clone_test_db.*,repl_test_db.*", "", [], ['init_test_db'], True, []),
-        # ("init_test_db.*","init_test_db.*", [], ['init_test_db'], True, []),
-        # ("repl_test_db.*","repl_test_db.multi_key_indexes", [('repl_test_db', 'hash mismatch')], ['init_test_db', 'clone_test_db', 'repl_test_db.multi_key_indexes'], [], True, []),
-        # ("", "init_test_db.compound_indexes", [('init_test_db', 'hash mismatch')], ['init_test_db.compound_indexes'], True, ["Namespace \"init_test_db.compound_indexes\" excluded"]),
+        # No include argument
+        (" ", "", [], [], True, ['Collection "init_test_db.*" cloned', 'Collection "clone_test_db.*" cloned', 'Collection "repl_test_db.*" cloned']),
+        ("", " ", [], [], True, ['Collection "init_test_db.*" cloned', 'Collection "clone_test_db.*" cloned', 'Collection "repl_test_db.*" cloned']),
+        (" ", " ", [], [], True, ['Collection "init_test_db.*" cloned', 'Collection "clone_test_db.*" cloned', 'Collection "repl_test_db.*" cloned']),
 
 
-        ("init_test_db.*,repl_test_db.*", "clone_test_db.*", [], ['clone_test_db'], True, ["Namespace \"clone_test_db.*\" excluded"]),
     ])
-def test_keith(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, use_equals, expected_logs):
+def test_rs_plink_PML_T55(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, use_equals, expected_logs):
     """
     Test to check PLM CLI functionality with include/exclude namespaces
     """
@@ -228,7 +228,7 @@ def test_keith(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_nam
         raise
     finally:
         stop_all_crud_operations()
-        all_threads = []
+        all_threads = []test_rs_plink_PML_T36
         if "operation_threads_1" in locals():
             all_threads += operation_threads_1
         if "operation_threads_2" in locals():
@@ -251,11 +251,11 @@ def test_keith(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_nam
     result = len(filtered_mismatches) == 0
     assert result is True, f"Data mismatch after synchronization: {filtered_mismatches}"
     print(plink.logs())
-    # print("\n\n\nSLEEPING!!\n\n\n")
-    # time.sleep(3600)
     assert check_expected_logs(plink, expected_logs)
     plink_error, error_logs = plink.check_plink_errors()
     expected_error = "detected concurrent process"
+    # print("\n\n\nSLEEPING!!\n\n\n")
+    # time.sleep(3600)
     if not plink_error:
         unexpected = [line for line in error_logs if expected_error not in line]
         if unexpected:
