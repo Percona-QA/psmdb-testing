@@ -37,7 +37,7 @@ class Perconalink:
         client = docker.from_env()
 
         cmd = f"plm --source {self.src} --target {self.dst} --log-level={log_level} --no-color {extra_args}".strip()
-        container = client.containers.run(
+        client.containers.run(
             image=self.plink_image,
             name=self.name,
             detach=True,

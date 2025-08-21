@@ -228,7 +228,7 @@ def test_rs_plink_PML_T55(reset_state, srcRS, dstRS, plink, include_namespaces, 
         raise
     finally:
         stop_all_crud_operations()
-        all_threads = []test_rs_plink_PML_T36
+        all_threads = []
         if "operation_threads_1" in locals():
             all_threads += operation_threads_1
         if "operation_threads_2" in locals():
