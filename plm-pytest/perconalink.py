@@ -25,7 +25,7 @@ class Perconalink:
         container = client.containers.get(self.name)
         return container
 
-    def create(self, log_level="info", env_vars=None, extra_args=""):
+    def create(self, log_level="debug", env_vars=None, extra_args=""):
         try:
             existing_container = self.container
             Cluster.log(f"Removing existing plink container '{self.name}'...")
@@ -288,7 +288,6 @@ class Perconalink:
         def error_lines():
             for line in logs.splitlines():
                 clean = ansi_escape_re.sub("", line)
-                print("KEITH TEST: " + clean)
                 if error_pattern.search(clean):
                     yield clean
         errors_found = list(error_lines())
