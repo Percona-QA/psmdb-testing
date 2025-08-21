@@ -37,7 +37,7 @@ def start_cluster(cluster,request):
         ("restore", "Error: specify a backup name, --time, or --external"),
         ("restore restore 2025-08-01T15:00:49Z --time 2025-08-01T15:00:00", "Error: backup name and --time cannot be used together")
     ])
-def test_logical_PBM_T298(start_cluster, cluster, command, output):
+def test_restore_validation_PBM_T302(start_cluster, cluster, command, output):
     """
     A test to verify correct validation message is displayed if restore command is incorrectly used.
     """
