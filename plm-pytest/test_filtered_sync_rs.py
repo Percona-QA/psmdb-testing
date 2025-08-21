@@ -210,7 +210,7 @@ def test_rs_plink_PML_T36(reset_state, srcRS, dstRS, plink):
 
 
     ])
-def test_rs_plink_PML_T55(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, use_equals, expected_logs):
+def test_rs_plink_PML_T57(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, use_equals, expected_logs):
     """
     Test to check PLM CLI functionality with include/exclude namespaces
     """
@@ -254,8 +254,6 @@ def test_rs_plink_PML_T55(reset_state, srcRS, dstRS, plink, include_namespaces, 
     assert check_expected_logs(plink, expected_logs)
     plink_error, error_logs = plink.check_plink_errors()
     expected_error = "detected concurrent process"
-    # print("\n\n\nSLEEPING!!\n\n\n")
-    # time.sleep(3600)
     if not plink_error:
         unexpected = [line for line in error_logs if expected_error not in line]
         if unexpected:
