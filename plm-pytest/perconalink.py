@@ -37,7 +37,7 @@ class Perconalink:
         client = docker.from_env()
 
         cmd = f"plm --source {self.src} --target {self.dst} --log-level={log_level} --no-color {extra_args}".strip()
-        container = client.containers.run(
+        client.containers.run(
             image=self.plink_image,
             name=self.name,
             detach=True,
@@ -53,15 +53,26 @@ class Perconalink:
         except docker.errors.NotFound:
             pass
 
-    def start(self, include_namespaces=None, exclude_namespaces=None):
+    def start(self, include_namespaces=None, exclude_namespaces=None, mode="http"):
         try:
-            payload = {}
-            if include_namespaces:
-                payload["includeNamespaces"] = include_namespaces
-            if exclude_namespaces:
-                payload["excludeNamespaces"] = exclude_namespaces
-            json_data = json.dumps(payload)
-            exec_result = self.container.exec_run(f"curl -s -X POST http://localhost:2242/start -d '{json_data}'")
+            if mode == "cli":
+                Cluster.log("Using CLI Mode")
+                args = []
+                if include_namespaces:
+                    args.append(f"--include-namespaces {include_namespaces}")
+                if exclude_namespaces:
+                    args.append(f"--exclude-namespaces {exclude_namespaces}")
+                cmd = "plm start " + " ".join(args) if args else "plm start"
+                exec_result = self.container.exec_run(cmd)
+            else:
+                Cluster.log("Using API Mode")
+                payload = {}
+                if include_namespaces:
+                    payload["includeNamespaces"] = include_namespaces
+                if exclude_namespaces:
+                    payload["excludeNamespaces"] = exclude_namespaces
+                json_data = json.dumps(payload)
+                exec_result = self.container.exec_run(f"curl -s -X POST http://localhost:2242/start -d '{json_data}'")
 
             response = exec_result.output.decode("utf-8").strip()
             status_code = exec_result.exit_code

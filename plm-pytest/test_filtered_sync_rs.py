@@ -2,6 +2,7 @@ import pytest
 import pymongo
 import time
 import docker
+import re
 
 from cluster import Cluster
 from perconalink import Perconalink
@@ -55,6 +56,13 @@ def reset_state(srcRS, dstRS, plink, request):
         if db_name not in {"admin", "local", "config"}:
             dst_client.drop_database(db_name)
     plink.create()
+
+def check_expected_logs(plink, expected_logs):
+    logs = plink.logs(tail=1000)
+    for pattern in expected_logs:
+        if not re.search(pattern, logs):
+            raise AssertionError(f"Expected log pattern not found: {pattern}")
+    return True
 
 @pytest.mark.timeout(300, func_only=True)
 @pytest.mark.usefixtures("start_cluster")
@@ -160,6 +168,78 @@ def test_rs_plink_PML_T36(reset_state, srcRS, dstRS, plink):
         )]
     result = len(filtered_mismatches) == 0
     assert result is True, f"Data mismatch after synchronization: {filtered_mismatches}"
+    plink_error, error_logs = plink.check_plink_errors()
+    expected_error = "detected concurrent process"
+    if not plink_error:
+        unexpected = [line for line in error_logs if expected_error not in line]
+        if unexpected:
+            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
+
+
+@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.usefixtures("start_cluster")
+@pytest.mark.parametrize(
+    "include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, expected_logs",
+    [
+        # Wildcard
+        # No quotes
+        # Trailing commas
+        ("init_test_db.*,repl_test_db.*,", "repl_test_db.wildcard_indexes", [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
+        ("", "init_test_db.*,repl_test_db.*,", [], ['init_test_db', 'repl_test_db'], ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
+
+        # Include and Exclude with single quotes
+        # Exclude takes priority
+        ("'init_test_db.*,repl_test_db.*'", "'repl_test_db.wildcard_indexes'", [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
+
+        # Include and Exclude with double quotes
+        ('"init_test_db.*,repl_test_db.*"', '"repl_test_db.wildcard_indexes"', [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
+
+        # No arguments
+        (" ", " ", [], [], ['Collection "init_test_db.*" cloned', 'Collection "clone_test_db.*" cloned', 'Collection "repl_test_db.*" cloned'])
+
+    ])
+def test_rs_plink_PML_T57(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, expected_logs):
+    """
+    Test to check PLM CLI functionality with include/exclude namespaces
+    """
+    try:
+        _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
+        _, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
+        _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
+        time.sleep(5)
+        result = plink.start(include_namespaces=include_namespaces, exclude_namespaces=exclude_namespaces, mode="cli")
+        assert result is True, "Failed to start plink service"
+        result = plink.wait_for_repl_stage()
+        assert result is True, "Failed to start replication stage"
+        time.sleep(5)
+    except Exception:
+        raise
+    finally:
+        stop_all_crud_operations()
+        all_threads = []
+        if "operation_threads_1" in locals():
+            all_threads += operation_threads_1
+        if "operation_threads_2" in locals():
+            all_threads += operation_threads_2
+        if "operation_threads_3" in locals():
+            all_threads += operation_threads_3
+        for thread in all_threads:
+            thread.join()
+    result = plink.wait_for_zero_lag()
+    assert result is True, "Failed to catch up on replication"
+    result = plink.finalize()
+    assert result is True, "Failed to finalize plink service"
+    result, mismatches = compare_data_rs(srcRS, dstRS)
+    filtered_mismatches = [
+        (name, reason) for name, reason in mismatches
+        if not (
+                (any(name.startswith(prefix) for prefix in skip_prefixes)) or
+                (name, reason) in skip_entries
+        )]
+    result = len(filtered_mismatches) == 0
+    assert result is True, f"Data mismatch after synchronization: {filtered_mismatches}"
+    print(plink.logs())
+    assert check_expected_logs(plink, expected_logs)
     plink_error, error_logs = plink.check_plink_errors()
     expected_error = "detected concurrent process"
     if not plink_error:
