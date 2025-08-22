@@ -179,38 +179,26 @@ def test_rs_plink_PML_T36(reset_state, srcRS, dstRS, plink):
 @pytest.mark.timeout(300, func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 @pytest.mark.parametrize(
-    "include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, use_equals, expected_logs",
+    "include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, expected_logs",
     [
-        # Equals True
-        # Equals False
-        # Separate Include and Exclude Tests
         # Wildcard
         # No quotes
         # Trailing commas
-        # Exclude specific collection
-        ("init_test_db.*,repl_test_db.*,", "repl_test_db.wildcard_indexes", [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], True, ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
-        ("init_test_db.*,repl_test_db.*", "repl_test_db.wildcard_indexes", [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], False, ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
-        ("", "init_test_db.*,repl_test_db.*,", [], ['init_test_db', 'repl_test_db'], True, ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
-        ("", "init_test_db.*,repl_test_db.*", [], ['init_test_db','repl_test_db'], False, ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
+        ("init_test_db.*,repl_test_db.*,", "repl_test_db.wildcard_indexes", [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
+        ("", "init_test_db.*,repl_test_db.*,", [], ['init_test_db', 'repl_test_db'], ['Namespace "init_test_db.*" excluded', 'Namespace "repl_test_db.*" excluded']),
 
         # Include and Exclude with single quotes
-        ("'init_test_db.*,repl_test_db.*'", "'repl_test_db.wildcard_indexes'", [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], True, ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
+        # Exclude takes priority
+        ("'init_test_db.*,repl_test_db.*'", "'repl_test_db.wildcard_indexes'", [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
 
         # Include and Exclude with double quotes
-        ('"init_test_db.*,repl_test_db.*"', '"repl_test_db.wildcard_indexes"', [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], True, ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
+        ('"init_test_db.*,repl_test_db.*"', '"repl_test_db.wildcard_indexes"', [('repl_test_db', 'hash mismatch')], ['repl_test_db.wildcard_indexes'], ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
 
-        # Exclude takes priority
-        ("init_test_db.fs.chunks,", "init_test_db.*,", [('init_test_db', 'missing in dst DB')], ['init_test_db'], True, ['Namespace "init_test_db.fs.chunks" excluded']),
-        ("init_test_db.*", "init_test_db.fs.chunks", [('init_test_db', 'missing in dst DB')], ['init_test_db'], True, ['Namespace "init_test_db.fs.chunks" excluded']),
-
-        # No include argument
-        (" ", "", [], [], True, ['Collection "init_test_db.*" cloned', 'Collection "clone_test_db.*" cloned', 'Collection "repl_test_db.*" cloned']),
-        ("", " ", [], [], True, ['Collection "init_test_db.*" cloned', 'Collection "clone_test_db.*" cloned', 'Collection "repl_test_db.*" cloned']),
-        (" ", " ", [], [], True, ['Collection "init_test_db.*" cloned', 'Collection "clone_test_db.*" cloned', 'Collection "repl_test_db.*" cloned']),
-
+        # No arguments
+        (" ", " ", [], [], ['Collection "init_test_db.*" cloned', 'Collection "clone_test_db.*" cloned', 'Collection "repl_test_db.*" cloned'])
 
     ])
-def test_rs_plink_PML_T57(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, use_equals, expected_logs):
+def test_rs_plink_PML_T57(reset_state, srcRS, dstRS, plink, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, expected_logs):
     """
     Test to check PLM CLI functionality with include/exclude namespaces
     """
@@ -219,7 +207,7 @@ def test_rs_plink_PML_T57(reset_state, srcRS, dstRS, plink, include_namespaces, 
         _, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
         _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         time.sleep(5)
-        result = plink.start(include_namespaces=include_namespaces, exclude_namespaces=exclude_namespaces, mode="cli", use_equals=use_equals)
+        result = plink.start(include_namespaces=include_namespaces, exclude_namespaces=exclude_namespaces, mode="cli")
         assert result is True, "Failed to start plink service"
         result = plink.wait_for_repl_stage()
         assert result is True, "Failed to start replication stage"

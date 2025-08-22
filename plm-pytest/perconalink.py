@@ -53,17 +53,16 @@ class Perconalink:
         except docker.errors.NotFound:
             pass
 
-    def start(self, include_namespaces=None, exclude_namespaces=None, mode="http", use_equals=False):
+    def start(self, include_namespaces=None, exclude_namespaces=None, mode="http"):
         try:
             if mode == "cli":
                 Cluster.log("Using CLI Mode")
                 args = []
                 if include_namespaces:
-                    args.append(f"--include-namespaces{('=' if use_equals else ' ')}{include_namespaces}")
+                    args.append(f"--include-namespaces {include_namespaces}")
                 if exclude_namespaces:
-                    args.append(f"--exclude-namespaces{('=' if use_equals else ' ')}{exclude_namespaces}")
+                    args.append(f"--exclude-namespaces {exclude_namespaces}")
                 cmd = "plm start " + " ".join(args) if args else "plm start"
-                print("\n\n\nCOMMAND: " + cmd + "\n\n\n")
                 exec_result = self.container.exec_run(cmd)
             else:
                 Cluster.log("Using API Mode")

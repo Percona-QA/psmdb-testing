@@ -1,0 +1,69 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: jenkins-plm-source
+    groups:
+      - psmdb
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    cgroupns_mode: host
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ssh_user: test-user
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: test
+  - name: jenkins-plm-destination
+    groups:
+      - psmdb
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    cgroupns_mode: host
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ssh_user: test-user
+    privileged: true
+    pre_build_image: true
+    networks:
+       - name: test
+  - name: jenkins-plm-mongolink
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    cgroupns_mode: host
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ssh_user: test-user
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: test
+provisioner:
+  name: ansible
+  log: true
+  playbooks:
+    converge: ../../playbooks/converge.yml
+    cleanup: ../../playbooks/cleanup.yml
+    side_effect: ../../playbooks/side-effect.yml
+verifier:
+  name: testinfra
+  directory: ../../tests/
+  options:
+    verbose: true
+    s: true
+    junitxml: report.xml
+scenario:
+  name: docker
+  test_sequence:
+    - create
+    - converge
+    - verify
+    - cleanup
+    - destroy
+  destroy_sequence:
+    - destroy
+  cleanup_sequence:
+    - cleanup
