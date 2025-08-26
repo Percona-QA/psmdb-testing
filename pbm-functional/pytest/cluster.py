@@ -390,7 +390,13 @@ class Cluster:
         n = testinfra.get_host("docker://" + host)
         result = n.check_output('pbm config --file=' + file + ' --wait')
         Cluster.log("Setup PBM:\n" + result)
-        time.sleep(3)
+        for i in range(10):
+            try:
+                self.check_pbm_status()
+                break
+            except AssertionError:
+                time.sleep(1)
+        self.check_pbm_status()
 
     # pbm --force-resync
     def make_resync(self):
