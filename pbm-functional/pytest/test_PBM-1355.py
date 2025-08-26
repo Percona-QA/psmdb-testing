@@ -8,7 +8,6 @@ from datetime import datetime
 from cluster import Cluster
 from packaging import version
 
-
 @pytest.fixture(scope="package")
 def mongod_version():
     return docker.from_env().containers.run(
@@ -24,18 +23,18 @@ def config(mongod_version):
     else:
         return { "mongos": "mongos",
                  "configserver":
-                            {"_id": "rscfg", "members": [{"host":"rscfg01"},{"host": "rscfg02"},{"host": "rscfg03" }]},
+                            {"_id": "rscfg", "members": [{"host":"rscfg01"}]},
                  "shards":[
-                            {"_id": "rs1", "members": [{"host":"rs101"},{"host": "rs102"},{"host": "rs103" }]}
+                            {"_id": "rs1", "members": [{"host":"rs101"}]}
                       ]}
 
 @pytest.fixture(scope="package")
 def newconfig():
     return { "mongos": "mongos",
              "configserver":
-                   {"_id": "newrscfg", "members": [{"host":"newrscfg01"},{"host": "newrscfg02"},{"host": "newrscfg03" }]},
+                   {"_id": "newrscfg", "members": [{"host":"newrscfg01"}]},
              "shards":[
-                   {"_id": "newrs1", "members": [{"host":"newrs101"},{"host": "newrs102"},{"host": "newrs103" }]}
+                   {"_id": "newrs1", "members": [{"host":"newrs101"}]}
            ]}
 
 @pytest.fixture(scope="package")
@@ -87,15 +86,15 @@ def test_general_PBM_T257(start_cluster,cluster,backup_type,restore_type):
         assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 600
         assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     else:
-        cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+        cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
         for i in range(600):
             client['test']['test'].insert_one({"doc":i})
             time.sleep(0.1)
-        time.sleep(60)
+        time.sleep(10)
         pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
         Cluster.log("Time for PITR is: " + pitr)
         pitr_backup="--time=" + pitr
-        time.sleep(60)
+        time.sleep(10)
         pymongo.MongoClient(cluster.connection).drop_database('test')
         cluster.make_restore(pitr_backup,restart_cluster=restart,check_pbm_status=True,make_resync=False)
         assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 1200
@@ -135,7 +134,6 @@ def test_incremental_PBM_T258(start_cluster,cluster):
     cluster.make_backup("incremental --base")
     for i in range(600):
         client['test']['test'].insert_one({"doc":i})
-        time.sleep(0.1)
     time.sleep(10)
     backup=cluster.make_backup("incremental")
     pymongo.MongoClient(cluster.connection).drop_database('test')

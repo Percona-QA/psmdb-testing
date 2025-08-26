@@ -150,8 +150,8 @@ def test_logical_timeseries_PBM_T224(start_cluster,cluster):
         pymongo.MongoClient(cluster.connection)["test"]["test1"].insert_one({"timestamp": datetime.now(), "data": i})
         time.sleep(0.1)
     cluster.make_backup("logical")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
-    time.sleep(30)
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
+    time.sleep(10)
     #create new timeseries collection
     pymongo.MongoClient(cluster.connection)["test"].create_collection('test2',timeseries={'timeField':'timestamp','metaField': 'data'})
     for i in range(10):
@@ -162,7 +162,7 @@ def test_logical_timeseries_PBM_T224(start_cluster,cluster):
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(30)
+    time.sleep(10)
     pymongo.MongoClient(cluster.connection).drop_database('test')
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test1"].count_documents({}) == 20

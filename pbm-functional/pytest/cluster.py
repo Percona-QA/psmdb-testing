@@ -283,7 +283,7 @@ class Cluster:
                 if "arbiterOnly" in host:
                     if host['arbiterOnly']:
                         self.__delete_pbm(host['host'])
-            time.sleep(5)
+            time.sleep(2)
             Cluster.setup_replicaset(self.config)
             Cluster.setup_authorization(self.config['members'][0]['host'],self.pbm_mongodb_uri)
         else:
@@ -359,7 +359,7 @@ class Cluster:
                 conn = conn + host['host'] + ':27017,'
             conn = conn[:-1]
             configdb = conn
-            time.sleep(5)
+            time.sleep(2)
             self.__setup_replicasets(
                 self.config['shards'] + [self.config['configserver']])
             self.__setup_authorizations(self.config['shards'])
@@ -373,7 +373,7 @@ class Cluster:
                 detach=True,
                 network='test'
             )
-            time.sleep(1)
+            time.sleep(5)
             Cluster.setup_authorization(self.config['mongos'],self.pbm_mongodb_uri)
             connection = self.connection
             client = pymongo.MongoClient(connection)
@@ -388,25 +388,15 @@ class Cluster:
     def setup_pbm(self,file="/etc/pbm.conf"):
         host = self.pbm_cli
         n = testinfra.get_host("docker://" + host)
-        result = n.check_output('pbm config --file=' + file + ' --wait --out=json')
+        result = n.check_output('pbm config --file=' + file + ' --wait')
         Cluster.log("Setup PBM:\n" + result)
-        time.sleep(5)
+        time.sleep(3)
 
     # pbm --force-resync
     def make_resync(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output('pbm config --force-resync --wait --out json')
-        parsed_result = json.loads(result)
-        Cluster.log('Started resync: ' + result)
-        timeout = time.time() + 30
-        while True:
-            logs = self.__find_event_msg("resync", "succeed")
-            if logs:
-                break
-            if time.time() > timeout:
-                assert False
-            time.sleep(1)
-        time.sleep(10)
+        result = n.check_output('pbm config --force-resync --wait')
+        Cluster.log("Resync storage:\n" + result)
 
     # creates backup based on type (no checking input - it's hack for situation like 'incremental --base')
     def make_backup(self, type):
@@ -540,7 +530,7 @@ class Cluster:
         if restart_cluster:
             self.restart()
             self.restart_pbm_agents()
-            time.sleep(10)
+            time.sleep(3)
             self.check_initsync()
 
         make_resync=kwargs.get('make_resync', True)
@@ -782,7 +772,7 @@ class Cluster:
                 Cluster.log("Waiting for " + host + " to became primary")
             if time.time() > timeout:
                 assert False
-            time.sleep(3)
+            time.sleep(1)
 
     def wait_for_primaries(self):
         Cluster.log(self.primary_hosts)
@@ -846,7 +836,7 @@ class Cluster:
         with concurrent.futures.ProcessPoolExecutor() as executor:
             for host in self.pbm_hosts:
                 executor.submit(Cluster.restart_pbm_agent, host)
-        time.sleep(5)
+        time.sleep(1)
 
     @staticmethod
     def downgrade_single(host,**kwargs):

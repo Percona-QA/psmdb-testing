@@ -3,15 +3,10 @@ import pymongo
 import testinfra
 import time
 import os
-import docker
 import threading
 
 from datetime import datetime
 from cluster import Cluster
-
-@pytest.fixture(scope="package")
-def docker_client():
-    return docker.from_env()
 
 @pytest.fixture(scope="package")
 def config():
@@ -61,7 +56,6 @@ def test_logical_PBM_T255(start_cluster,cluster):
     if not cluster.check_pitr():
         logs=cluster.exec_pbm_cli("logs -sD -t0")
         assert False, logs.stdout
-
 
     Cluster.log("Start inserting docs in the background")
     background_insert = threading.Thread(target=insert_docs)

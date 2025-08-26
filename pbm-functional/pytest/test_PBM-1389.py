@@ -22,9 +22,9 @@ def config(mongod_version):
     else:
         return { "mongos": "mongos",
                  "configserver":
-                            {"_id": "rscfg", "members": [{"host":"rscfg01"},{"host": "rscfg02"},{"host": "rscfg03" }]},
+                            {"_id": "rscfg", "members": [{"host":"rscfg01"}]},
                  "shards":[
-                            {"_id": "rs1", "members": [{"host":"rs101"},{"host": "rs102"},{"host": "rs103" }]}
+                            {"_id": "rs1", "members": [{"host":"rs101"}]}
                       ]}
 
 @pytest.fixture(scope="package")

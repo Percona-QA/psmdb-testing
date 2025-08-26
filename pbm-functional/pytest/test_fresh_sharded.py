@@ -1,34 +1,29 @@
 import pytest
 import pymongo
 import os
-import docker
 
 from cluster import Cluster
 
 documents=[{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
 
 @pytest.fixture(scope="package")
-def docker_client():
-    return docker.from_env()
-
-@pytest.fixture(scope="package")
 def config():
     return { "mongos": "mongos",
              "configserver":
-                            {"_id": "rscfg", "members": [{"host":"rscfg01"},{"host": "rscfg02"},{"host": "rscfg03" }]},
+                            {"_id": "rscfg", "members": [{"host":"rscfg01"}]},
              "shards":[
-                            {"_id": "rs1", "members": [{"host":"rs101"},{"host": "rs102"},{"host": "rs103" }]},
-                            {"_id": "rs2", "members": [{"host":"rs201"},{"host": "rs202"},{"host": "rs203" }]}
+                            {"_id": "rs1", "members": [{"host":"rs101"}]},
+                            {"_id": "rs2", "members": [{"host":"rs201"}]}
                       ]}
 
 @pytest.fixture(scope="package")
 def newconfig():
     return { "mongos": "newmongos",
              "configserver":
-                            {"_id": "rscfg", "members": [{"host":"newrscfg01"},{"host": "newrscfg02"},{"host": "newrscfg03" }]},
+                            {"_id": "rscfg", "members": [{"host":"newrscfg01"}]},
              "shards":[
-                            {"_id": "rs1", "members": [{"host":"newrs101"},{"host": "newrs102"},{"host": "newrs103" }]},
-                            {"_id": "rs2", "members": [{"host":"newrs201"},{"host": "newrs202"},{"host": "newrs203" }]}
+                            {"_id": "rs1", "members": [{"host":"newrs101"}]},
+                            {"_id": "rs2", "members": [{"host":"newrs201"}]}
                       ]}
 
 @pytest.fixture(scope="package")

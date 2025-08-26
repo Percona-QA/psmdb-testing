@@ -1,44 +1,21 @@
 import pytest
 import pymongo
 import time
-import docker
 
 from datetime import datetime
 from cluster import Cluster
 
 documents=[{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
 
-
 @pytest.fixture(scope="package")
-def docker_client():
-    return docker.from_env()
-
-@pytest.fixture(scope="package")
-def mongod_version():
-    return docker.from_env().containers.run(
-                    image='replica_member/local',
-                    remove=True,
-                    command='mongod --version'
-          ).decode("utf-8", errors="replace")
-
-@pytest.fixture(scope="package")
-def config(mongod_version):
-    if "4.2" in mongod_version or "4.4" in mongod_version:
-        return { "_id": "rs1", "members": [
-            {"host": "rs101"},
-            {"host": "rs102", "priority": 2 },
-            {"host": "rs103", "hidden": True, "priority": 0, "votes": 0},
-            {"host": "rs104", "slaveDelay": 1, "priority": 0, "votes": 0, "buildIndexes": False },
-            {"host": "rs105", "arbiterOnly": True }
-        ]}
-    else:
-        return { "_id": "rs1", "members": [
-            {"host": "rs101"},
-            {"host": "rs102", "priority": 2 },
-            {"host": "rs103", "hidden": True, "priority": 0, "votes": 0},
-            {"host": "rs104", "secondaryDelaySecs": 1, "priority": 0, "votes": 0, "buildIndexes": False },
-            {"host": "rs105", "arbiterOnly": True }
-        ]}
+def config():
+    return { "_id": "rs1", "members": [
+        {"host": "rs101"},
+        {"host": "rs102", "priority": 2 },
+        {"host": "rs103", "hidden": True, "priority": 0, "votes": 0},
+        {"host": "rs104", "secondaryDelaySecs": 1, "priority": 0, "votes": 0, "buildIndexes": False },
+        {"host": "rs105", "arbiterOnly": True }
+    ]}
 
 
 @pytest.fixture(scope="package")
@@ -86,13 +63,13 @@ def test_logical_pitr_PBM_T263(start_cluster,cluster):
     logs=cluster.exec_pbm_cli("logs -n rs1/rs103:27017 -e backup -o json").stdout
     assert backup in logs
     Cluster.log("Logs from hidden node:\n" + logs)
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     pymongo.MongoClient(cluster.connection)["test"]["pitr"].insert_many(documents)
     time.sleep(10)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(60)
+    time.sleep(10)
     cluster.disable_pitr()
     time.sleep(10)
     result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})

@@ -1,15 +1,10 @@
 import pytest
 import pymongo
 import os
-import docker
 import random
 import string
 
 from cluster import Cluster
-
-@pytest.fixture(scope="package")
-def docker_client():
-    return docker.from_env()
 
 @pytest.fixture(scope="package")
 def config():

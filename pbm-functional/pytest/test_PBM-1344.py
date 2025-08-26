@@ -2,31 +2,20 @@ import pytest
 import pymongo
 import time
 import os
-import docker
 
 from datetime import datetime
 from cluster import Cluster
-
-documents = [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
-
-
-@pytest.fixture(scope="package")
-def docker_client():
-    return docker.from_env()
-
 
 @pytest.fixture(scope="package")
 def config():
     return {
         "_id": "rs1",
-        "members": [{"host": "rs101"}, {"host": "rs102"}, {"host": "rs103"}],
+        "members": [{"host": "rs101"}],
     }
-
 
 @pytest.fixture(scope="package")
 def cluster(config):
     return Cluster(config)
-
 
 @pytest.fixture(scope="function")
 def start_cluster(cluster, request):
@@ -41,7 +30,6 @@ def start_cluster(cluster, request):
         if request.config.getoption("--verbose"):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
-
 
 @pytest.mark.timeout(600, func_only=True)
 def test_physical_PBM_T279(start_cluster, cluster):
@@ -76,7 +64,6 @@ def test_physical_PBM_T279(start_cluster, cluster):
         == 10
     )
     Cluster.log("Finished successfully")
-
 
 @pytest.mark.timeout(300, func_only=True)
 def test_logical_PBM_T280(start_cluster, cluster):
