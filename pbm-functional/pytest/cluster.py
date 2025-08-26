@@ -545,6 +545,12 @@ class Cluster:
 
         check_pbm_status=kwargs.get('check_pbm_status', True)
         if check_pbm_status:
+            for i in range(10):
+                try:
+                    self.check_pbm_status()
+                    break
+                except AssertionError:
+                    time.sleep(1)
             self.check_pbm_status()
 
         if self.layout == "sharded":
