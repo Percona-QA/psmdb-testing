@@ -37,30 +37,28 @@ def start_cluster(cluster,request):
     finally:
         if request.config.getoption("--verbose"):
             cluster.get_logs()
-        cluster.destroy(cleanup_backups=True)
+#        cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(300,func_only=True)
 def test_logical_PBM_T221(start_cluster,cluster):
     cluster.make_backup("logical")
-    cluster.enable_pitr()
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
 
     client = pymongo.MongoClient(cluster.connection)
     db = client.test
     collection = db.test
     for i in range(50):
-        collection.insert_one({})
-    time.sleep(10)
+        collection.insert_one({"a":i})
 
     with client.start_session() as session:
         with session.start_transaction():
             for i in range(50):
-                collection.insert_one({}, session=session)
+                collection.insert_one({"b":i}, session=session)
             session.commit_transaction()
     time.sleep(10)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(10)
 
     cluster.disable_pitr(pitr)
     cluster.make_restore(backup,check_pbm_status=True)
@@ -69,24 +67,24 @@ def test_logical_PBM_T221(start_cluster,cluster):
     folder="/backups/pbmPitr/rs1/" + datetime.utcnow().strftime("%Y%m%d") + "/"
     for entry in os.scandir(folder):
         file = entry.path
-    with open(file, "rb") as f:
-        data= f.read()
-        docs = bson.decode_all(data)
+        with open(file, "rb") as f:
+            data= f.read()
+            docs = bson.decode_all(data)
         for doc in docs:
             if "commitTransaction" in doc["o"]:
                 if doc["o"]["commitTransaction"] == 1:
                     Cluster.log("Oplog entry with commitTransaction: \n" + str(doc))
                     index = docs.index(doc)
                     Cluster.log("Index: " + str(index))
+                    Cluster.log("Modifying oplog backup for shard rs1")
+                    Cluster.log("Removing oplog entry with commitTransaction and all entries after it")
+                    del docs[index:]
+                    with open(file, "wb") as f:
+                        f.truncate()
+                    with open(file, "ab") as f:
+                        for doc in docs:
+                            f.write(bson.encode(doc))
 
-    Cluster.log("Modifying oplog backup for shard rs1")
-    Cluster.log("Removing oplog entry with commitTransaction and all entries after it")
-    del docs[index:]
-    with open(file, "wb") as f:
-        f.truncate()
-    with open(file, "ab") as f:
-        for doc in docs:
-            f.write(bson.encode(doc))
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 100
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)

@@ -77,7 +77,6 @@ def test_logical_selective_PBM_T218(start_cluster, cluster):
     backup_full = cluster.make_backup("logical")
     backup_partial = cluster.make_backup("logical --ns=test1.test_coll11,test2.*")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
-    time.sleep(5)
     client["test1"]["test_coll11"].drop_index('test_coll11_index_old')
     client["test1"]["test_coll11"].delete_many({})
     for i in range(10):
@@ -86,10 +85,9 @@ def test_logical_selective_PBM_T218(start_cluster, cluster):
     client["test2"]["test_coll22"].create_index("data", name="test_coll22_index_new")
     time.sleep(5)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
-    pitr = " --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     cluster.disable_pitr(pitr)
-    time.sleep(5)
+    pitr = " --time=" + pitr
     client.drop_database("test1")
     client.drop_database("test2")
     backup_partial = " --base-snapshot=" + backup_partial + pitr
@@ -136,7 +134,6 @@ def test_logical_pitr_PBM_T194(start_cluster,cluster):
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
-    time.sleep(5)
     # make several following backups and then remove them to check the continuity of PITR timeframe
     pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_many(documents)
     backup_l2 = cluster.make_backup("logical")
@@ -184,7 +181,6 @@ def test_physical_pitr_PBM_T244(start_cluster,cluster):
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(5)
     cluster.disable_pitr(pitr)
-    time.sleep(5)
     cluster.make_restore(backup,restart_cluster=True,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(cluster.connection)["test"]["test2"].count_documents({}) == len(documents)

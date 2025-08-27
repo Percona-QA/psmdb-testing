@@ -39,7 +39,6 @@ def start_cluster(cluster,request):
 def test_logical_pitr_crud_PBM_T270(start_cluster,cluster,collection):
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
-    time.sleep(5)
     for i in range(10):
         client = pymongo.MongoClient(cluster.connection)
         client["test"]["inserts"].insert_one({"key": i+10, "data": i+10})
@@ -50,11 +49,10 @@ def test_logical_pitr_crud_PBM_T270(start_cluster,cluster,collection):
     client["test"]["indexes"].create_index("data",name="new_index")
     time.sleep(5)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
-    pitr=" --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(5)
     cluster.disable_pitr(pitr)
-    time.sleep(5)
+    pitr=" --time=" + pitr
     backup_to_fail=pitr + " --ns-from=test." + collection + " --ns-to=test.test"
     result=cluster.exec_pbm_cli("restore" + backup_to_fail + " --wait")
     assert result.rc != 0
@@ -91,7 +89,6 @@ def test_logical_pitr_crud_PBM_T270(start_cluster,cluster,collection):
 def test_logical_pitr_with_txn_PBM_T271(start_cluster,cluster,collection):
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
-    time.sleep(5)
     for i in range(10):
         client = pymongo.MongoClient(cluster.connection)
         with client.start_session() as session:
@@ -103,11 +100,10 @@ def test_logical_pitr_with_txn_PBM_T271(start_cluster,cluster,collection):
             session.commit_transaction()
     time.sleep(5)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
-    pitr=" --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(5)
     cluster.disable_pitr(pitr)
-    time.sleep(5)
+    pitr=" --time=" + pitr
     backup_to_fail=pitr + " --ns-from=test." + collection + " --ns-to=test.test"
     result=cluster.exec_pbm_cli("restore" + backup_to_fail + " --wait")
     assert result.rc != 0
@@ -139,7 +135,6 @@ def test_logical_pitr_with_txn_PBM_T271(start_cluster,cluster,collection):
 def test_logical_pitr_ddl_PBM_T273(start_cluster,cluster):
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
-    time.sleep(5)
     client = pymongo.MongoClient(cluster.connection)
     client.drop_database('test')
     for i in range(10):
@@ -147,11 +142,10 @@ def test_logical_pitr_ddl_PBM_T273(start_cluster,cluster):
     client["test"]["indexes"].create_index("data",name="new_index")
     time.sleep(5)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
-    pitr=" --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(10)
-    cluster.disable_pitr(pitr)
     time.sleep(5)
+    cluster.disable_pitr(pitr)
+    pitr=" --time=" + pitr
     backup=pitr + " --ns-from=test.indexes --ns-to=restored.indexes"
     cluster.make_restore(backup)
     client = pymongo.MongoClient(cluster.connection)

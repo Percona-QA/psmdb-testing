@@ -21,6 +21,7 @@ def start_cluster(cluster,request):
         cluster.create()
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
+        pymongo.MongoClient(cluster.connection).admin.command( { "setParameter": 1, "wiredTigerEngineRuntimeConfig": "cache_size=4G"} )
         cluster.setup_pbm("/etc/pbm-fs.conf")
         yield True
     finally:
