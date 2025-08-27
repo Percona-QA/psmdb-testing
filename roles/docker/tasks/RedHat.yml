@@ -53,3 +53,4 @@
     name: "{{ ssh_user }}"
     groups: docker
     append: yes
+    
