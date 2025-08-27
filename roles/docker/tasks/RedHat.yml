@@ -1,0 +1,55 @@
+- set_fact:
+    # User to log into each AWS Instance
+    ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
+
+- name: Remove podman-docker if present
+  yum:
+    name: podman-docker
+    state: absent
+  when: ansible_os_family == "RedHat"
+
+- name: Add Docker CE repository
+  get_url:
+    url: https://download.docker.com/linux/centos/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: '0644'
+  when:
+    - ansible_os_family == "RedHat"
+
+- name: Force release server to use 9 in Docker repo for AL2023 compatibility
+  replace:
+    path: /etc/yum.repos.d/docker-ce.repo
+    regexp: '\$releasever'
+    replace: '9'
+  when:
+    - ansible_distribution == "Amazon"
+
+- name: Install dependencies
+  yum:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+      - wget
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+  when: ansible_os_family == "RedHat"
+
+- name: Enable and start Docker service
+  service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Ensure docker group exists
+  group:
+    name: docker
+    state: present
+
+- name: Add user ssh-user to docker group
+  user:
+    name: "{{ ssh_user }}"
+    groups: docker
+    append: yes
