@@ -37,44 +37,11 @@
       - containerd.io
   when: ansible_os_family == "RedHat"
 
-- name: Install Percona Release
-  include_tasks: ../../../tasks/install_percona_release.yml
-
-- name: Setup plm repo with percona-release
-  command: percona-release enable plm {{ lookup('env', 'install_repo') }}
-
-- name: Install PLM
-  yum:
-    name: percona-link-mongodb
-    update_cache: yes
-    state: latest
-
 - name: Enable and start Docker service
   service:
     name: docker
     state: started
     enabled: true
-
-- name: Set runc binary URL based on architecture
-  set_fact:
-    runc_url: >-
-      https://github.com/opencontainers/runc/releases/download/v1.1.12/{{
-        'runc.arm64' if ansible_architecture == 'aarch64' else 'runc.amd64'
-      }}
-
-- name: Download correct runc binary
-  get_url:
-    url: "{{ runc_url }}"
-    dest: /usr/local/bin/runc
-    mode: '0755'
-
-- name: Move runc to /usr/bin
-  copy:
-    src: /usr/local/bin/runc
-    dest: /usr/bin/runc
-    remote_src: yes
-    mode: '0755'
-    force: yes
 
 - name: Ensure docker group exists
   group:
