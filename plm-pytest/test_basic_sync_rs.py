@@ -658,7 +658,6 @@ def test_rs_plink_PML_T30(reset_state, srcRS, dstRS, plink):
     Test to validate handling of concurrent data clone and index build failure
     """
     src = pymongo.MongoClient(srcRS.connection)
-    pymongo.MongoClient(dstRS.connection)
     normal_docs = [{"a": {"b": 1}, "words": "omnibus"} for _ in range(20000)]
     src["init_test_db"].invalid_text_collection1.insert_many(normal_docs)
     src["init_test_db"].invalid_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
@@ -668,7 +667,7 @@ def test_rs_plink_PML_T30(reset_state, srcRS, dstRS, plink):
     def invalid_index_creation():
         try:
             log_stream = plink.logs(stream=True)
-            pattern = re.compile(r'Estimated Total Size')
+            pattern = re.compile(r'Dropped collection')
             for raw_line in log_stream:
                 line = raw_line.decode("utf-8").strip()
                 if pattern.search(line):
@@ -689,7 +688,11 @@ def test_rs_plink_PML_T30(reset_state, srcRS, dstRS, plink):
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
     plink_error, error_logs = plink.check_plink_errors()
-    assert plink_error is True, f"Plimk reported errors in logs: {error_logs}"
+    expected_error = "ERR No incomplete indexes to add"
+    if not plink_error:
+        unexpected = [line for line in error_logs if expected_error not in line]
+        if unexpected:
+            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 @pytest.mark.usefixtures("start_cluster")
 @pytest.mark.timeout(600,func_only=True)

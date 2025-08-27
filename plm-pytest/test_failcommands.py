@@ -77,7 +77,7 @@ def test_rs_plink_PML_T33(start_cluster, srcRS, dstRS, plink):
     Configured oplogSize on the source 20 Mb
     Configured load - 5 million records, ~5.5 GB
     """
-    configure_failpoint_delay(dstRS.connection,['bulkWrite'],'alwaysOn',10000)
+    configure_failpoint_delay(dstRS.connection,['bulkWrite'],'alwaysOn',15000)
     plink.start()
     generate_dummy_data(srcRS.connection, "dummy", 5, 1000000, 10000)
     plink.wait_for_zero_lag(120)
@@ -87,7 +87,7 @@ def test_rs_plink_PML_T33(start_cluster, srcRS, dstRS, plink):
         if not status['data']['ok'] and status['data']['state'] == 'failed':
             break
         time.sleep(1)
-    assert status['data']['ok'] == False
+    assert not status['data']['ok']
     assert status['data']['state'] != 'running'
     assert status['data']['error'] == "change replication: oplog history is lost"
 
@@ -131,6 +131,6 @@ def test_rs_plink_PML_T39(start_cluster, srcRS, dstRS, plink):
             if not status['data']['ok'] and status['data']['state'] == 'failed':
                 break
             time.sleep(1)
-    assert status['data']['ok'] == False
+    assert not status['data']['ok']
     assert status['data']['state'] != 'running'
     assert status['data']['error'] == "change replication: oplog history is lost"
