@@ -47,4 +47,6 @@ jobs:
       if: success() || failure()
       with:
         report_paths: '**/junit.xml'
+        include_passed: True
         detailed_summary: True
+        include_time_in_summary: True
