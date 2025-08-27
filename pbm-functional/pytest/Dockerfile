@@ -38,6 +38,7 @@ COPY --from=easyrsa /etc/x509/ /etc/x509/
 COPY --from=easyrsa /etc/nginx-minio/ca.crt /etc/nginx-minio/ca.crt
 COPY conf/supervisord.d/ /etc/supervisord.d/
 COPY conf/pbm/minio.yaml /etc/pbm.conf
+COPY conf/pbm/fs.yaml /etc/pbm-fs.conf
 COPY conf/pbm/pbm-1525.yaml /etc/pbm-1525.conf
 COPY conf/pbm/pbm-1043.yaml /etc/pbm-1043.conf
 COPY conf/pbm/pbm-1211.yaml /etc/pbm-1211.conf

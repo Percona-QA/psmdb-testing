@@ -50,18 +50,14 @@ def start_cluster(cluster,newcluster,request):
     try:
         newcluster.destroy()
         cluster.destroy()
+        cluster.create()
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
-        cluster.create()
+        cluster.setup_pbm("/etc/pbm-fs.conf")
         client=pymongo.MongoClient(cluster.connection)
         Cluster.log(client.admin.command({'transitionFromDedicatedConfigServer': 1}))
         client.admin.command("enableSharding", "test")
         client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
-        cluster.setup_pbm()
-        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups "
-                                    "--set backup.compression=none --wait")
-        assert result.rc == 0
-        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
         yield True
     finally:
         if request.config.getoption("--verbose"):
@@ -103,7 +99,6 @@ def test_general_PBM_T257(start_cluster,cluster,backup_type,restore_type):
 @pytest.mark.timeout(900,func_only=True)
 @pytest.mark.parametrize('backup_type',['logical','physical'])
 def test_remap_PBM_T265(start_cluster,cluster,newcluster,backup_type):
-    cluster.check_pbm_status()
     client=pymongo.MongoClient(cluster.connection)
     for i in range(600):
         client['test']['test'].insert_one({"doc":i})
@@ -115,10 +110,7 @@ def test_remap_PBM_T265(start_cluster,cluster,newcluster,backup_type):
     newcluster.create()
     client=pymongo.MongoClient(newcluster.connection)
     Cluster.log(client.admin.command({'transitionFromDedicatedConfigServer': 1}))
-    newcluster.setup_pbm()
-    result = newcluster.exec_pbm_cli("config --set storage.type=filesystem "
-            "--set storage.filesystem.path=/backups --set backup.compression=none --wait")
-    assert result.rc == 0
+    newcluster.setup_pbm("/etc/pbm-fs.conf")
 
     restart = True if backup_type == 'physical' else False
     newcluster.make_restore(backup,restart_cluster=restart,check_pbm_status=True,make_resync=False)
@@ -127,7 +119,6 @@ def test_remap_PBM_T265(start_cluster,cluster,newcluster,backup_type):
 
 @pytest.mark.timeout(900,func_only=True)
 def test_incremental_PBM_T258(start_cluster,cluster):
-    cluster.check_pbm_status()
     client=pymongo.MongoClient(cluster.connection)
     for i in range(600):
         client['test']['test'].insert_one({"doc":i})
@@ -143,11 +134,9 @@ def test_incremental_PBM_T258(start_cluster,cluster):
 
 @pytest.mark.parametrize('command',['config --force-resync','backup'])
 def test_disabled_cli_PBM_T260(start_cluster,cluster,command):
-    cluster.check_pbm_status()
     result = cluster.exec_pbm_cli(command + ' --wait')
     assert result.rc == 0, result.stderr
     Cluster.log(result.stdout)
-
 
 @pytest.mark.timeout(900,func_only=True)
 @pytest.mark.parametrize('restore_ns',['sharded','unsharded'])
@@ -181,11 +170,10 @@ def test_load_selective_PBM_T259(start_cluster,cluster,backup_type,restore_type,
         assert pymongo.MongoClient(cluster.connection)["test"][collection].count_documents({}) == 600
         assert pymongo.MongoClient(cluster.connection)["test"][empty_collection].count_documents({}) == 0
     else:
-        cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+        cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
         for i in range(600):
             client['test']['test'].insert_one({"doc":i})
             client['test']['test1'].insert_one({"doc":i})
-            time.sleep(0.1)
         time.sleep(10)
         pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
         Cluster.log("Time for PITR is: " + pitr)

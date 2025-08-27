@@ -28,14 +28,10 @@ def cluster(config):
 def start_cluster(cluster,request):
     try:
         cluster.destroy()
+        cluster.create()
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
-        cluster.create()
-        cluster.setup_pbm()
-        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups "
-                                    "--set backup.compression=none --out json --wait")
-        assert result.rc == 0
-        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
+        cluster.setup_pbm("/etc/pbm-fs.conf")
         client=pymongo.MongoClient(cluster.connection)
         client.admin.command("enableSharding", "test")
         client.admin.command("shardCollection", "test.test", key={"_id": 1})
@@ -61,7 +57,6 @@ def insert_docs(connection,duration):
 
 @pytest.mark.timeout(360,func_only=True)
 def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster):
-    cluster.check_pbm_status()
     cluster.make_backup('logical')
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
 
@@ -109,7 +104,6 @@ def test_load_chunks_migration_base_PBM_T285(start_cluster,cluster):
         background_insert[i].start()
     time.sleep(30)
 
-    cluster.check_pbm_status()
     backup=cluster.make_backup("logical")
 
     expected_docs_count = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})

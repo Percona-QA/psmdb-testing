@@ -390,13 +390,7 @@ class Cluster:
         n = testinfra.get_host("docker://" + host)
         result = n.check_output('pbm config --file=' + file + ' --wait')
         Cluster.log("Setup PBM:\n" + result)
-        for i in range(10):
-            try:
-                self.check_pbm_status()
-                break
-            except AssertionError:
-                time.sleep(1)
-        self.check_pbm_status()
+        self.wait_pbm_status()
 
     # pbm --force-resync
     def make_resync(self):
@@ -544,14 +538,7 @@ class Cluster:
             self.make_resync()
 
         check_pbm_status=kwargs.get('check_pbm_status', True)
-        if check_pbm_status:
-            for i in range(10):
-                try:
-                    self.check_pbm_status()
-                    break
-                except AssertionError:
-                    time.sleep(1)
-            self.check_pbm_status()
+        self.wait_pbm_status()
 
         if self.layout == "sharded":
             self.start_mongos()
@@ -692,7 +679,7 @@ class Cluster:
         Cluster.log("Setup replicaset " + json.dumps(rs) + ":\n" + result)
 
     def __setup_replicasets(self, replicasets):
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
             for rs in replicasets:
                 executor.submit(Cluster.setup_replicaset, rs)
 
@@ -760,7 +747,7 @@ class Cluster:
             #Cluster.log(logs)
 
     def __setup_authorizations(self, replicasets):
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
             for rs in replicasets:
                 executor.submit(Cluster.setup_authorization,
                                 rs['members'][0]['host'], self.pbm_mongodb_uri)
@@ -788,7 +775,7 @@ class Cluster:
 
     def wait_for_primaries(self):
         Cluster.log(self.primary_hosts)
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
             for primary in self.primary_hosts:
                 executor.submit(Cluster.wait_for_primary, primary,
                                 "mongodb://root:root@127.0.0.1:27017")
@@ -837,6 +824,15 @@ class Cluster:
                     assert host['ok'] == True
         assert len(hosts) == len(self.pbm_hosts)
 
+    def wait_pbm_status(self,wait=10):
+        for i in range(wait):
+            try:
+                self.check_pbm_status()
+                break
+            except AssertionError:
+                time.sleep(1)
+        self.check_pbm_status()
+
     @staticmethod
     def restart_pbm_agent(host):
         Cluster.log("Restarting pbm-agent on host " + host)
@@ -845,7 +841,7 @@ class Cluster:
         assert n.supervisor('pbm-agent').is_running
 
     def restart_pbm_agents(self):
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
             for host in self.pbm_hosts:
                 executor.submit(Cluster.restart_pbm_agent, host)
         time.sleep(1)
@@ -910,7 +906,7 @@ class Cluster:
         assert "INITSYNC" not in result, 'INITSYNC found on ' + host + ' :\n' + result
 
     def check_initsync(self):
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
             for host in self.pbm_hosts:
                 executor.submit(Cluster.check_initsync_single, host)
 
@@ -1041,7 +1037,7 @@ class Cluster:
         self.restart()
         self.restart_pbm_agents()
         self.make_resync()
-        self.check_pbm_status()
+        self.wait_pbm_status()
         if self.layout == "sharded":
             self.start_mongos()
             client = pymongo.MongoClient(self.connection)

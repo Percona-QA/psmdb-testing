@@ -19,14 +19,9 @@ def start_cluster(cluster,request):
     try:
         cluster.destroy()
         cluster.create()
-        cluster.setup_pbm()
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
-        pymongo.MongoClient(cluster.connection).admin.command( { "setParameter": 1, "wiredTigerEngineRuntimeConfig": "cache_size=4G"} )
-        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups "
-                                    "--set backup.compression=none --out json --wait")
-        assert result.rc == 0
-        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
+        cluster.setup_pbm("/etc/pbm-fs.conf")
         yield True
     finally:
         if request.config.getoption("--verbose"):

@@ -35,18 +35,14 @@ def cluster(config):
 def start_cluster(cluster,request):
     try:
         cluster.destroy()
+        cluster.create()
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
-        cluster.create()
+        cluster.setup_pbm("/etc/pbm-fs.conf")
         client=pymongo.MongoClient(cluster.connection)
         Cluster.log(client.admin.command({'transitionFromDedicatedConfigServer': 1}))
         client.admin.command("enableSharding", "test")
         client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
-        cluster.setup_pbm()
-        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups "
-                                    "--set backup.compression=none --wait")
-        assert result.rc == 0
-        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
         yield True
     finally:
         if request.config.getoption("--verbose"):
@@ -55,9 +51,8 @@ def start_cluster(cluster,request):
 
 @pytest.mark.timeout(300,func_only=True)
 def test_logical_selective_PBM_T267(start_cluster,cluster):
-    cluster.check_pbm_status()
     client=pymongo.MongoClient(cluster.connection)
-    for i in range(100):
+    for i in range(10):
         client['test']['test'].insert_one({"doc":i})
         client['test']['test1'].insert_one({"doc":i})
 
@@ -65,3 +60,4 @@ def test_logical_selective_PBM_T267(start_cluster,cluster):
     assert result.rc != 0, result.stdout + result.stderr
     result = cluster.exec_pbm_cli("logical --ns=test.test1 --wait")
     assert result.rc != 0, result.stdout + result.stderr
+

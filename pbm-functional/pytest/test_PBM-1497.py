@@ -28,15 +28,10 @@ def cluster(config):
 def start_cluster(cluster,request):
     try:
         cluster.destroy()
+        cluster.create()
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
-        cluster.create()
-        cluster.setup_pbm()
-        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups "
-                                    "--set backup.compression=none --out json --wait")
-        assert result.rc == 0
-        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
-        time.sleep(5)
+        cluster.setup_pbm("/etc/pbm-fs.conf")
         yield True
 
     finally:
@@ -56,7 +51,6 @@ def insert_docs(connection,duration):
 
 @pytest.mark.timeout(600,func_only=True)
 def test_load_shard_collection_pitr_PBM_T289(start_cluster,cluster):
-    cluster.check_pbm_status()
     cluster.make_backup('logical')
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     Cluster.log("Start loading data")

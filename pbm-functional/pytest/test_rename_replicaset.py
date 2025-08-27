@@ -20,11 +20,6 @@ def start_cluster(cluster,request):
         cluster.destroy()
         cluster.create()
         cluster.setup_pbm()
-        os.chmod("/backups",0o777)
-        os.system("rm -rf /backups/*")
-#        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups --set backup.compression=none --out json")
-#        assert result.rc == 0
-#        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
         client=pymongo.MongoClient(cluster.connection)
         for i in range(10):
             client["test"]["test"].insert_one({"key": i, "data": i})
@@ -43,7 +38,6 @@ def start_cluster(cluster,request):
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.parametrize('collection',['inserts','replaces','updates','deletes','indexes'])
 def test_logical_pitr_crud_PBM_T270(start_cluster,cluster,collection):
-    cluster.check_pbm_status()
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     time.sleep(5)
@@ -96,7 +90,6 @@ def test_logical_pitr_crud_PBM_T270(start_cluster,cluster,collection):
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.parametrize('collection',['inserts','replaces','updates','deletes'])
 def test_logical_pitr_with_txn_PBM_T271(start_cluster,cluster,collection):
-    cluster.check_pbm_status()
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     time.sleep(5)
@@ -145,7 +138,6 @@ def test_logical_pitr_with_txn_PBM_T271(start_cluster,cluster,collection):
 
 @pytest.mark.timeout(300,func_only=True)
 def test_logical_pitr_ddl_PBM_T273(start_cluster,cluster):
-    cluster.check_pbm_status()
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     time.sleep(5)
