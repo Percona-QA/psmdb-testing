@@ -33,8 +33,6 @@ def start_cluster(cluster, request):
 
 @pytest.mark.timeout(600, func_only=True)
 def test_physical_PBM_T279(start_cluster, cluster):
-    cluster.check_pbm_status()
-    client = pymongo.MongoClient(cluster.connection)
     backup = cluster.make_backup("physical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
     for i in range(10):
@@ -46,10 +44,8 @@ def test_physical_PBM_T279(start_cluster, cluster):
 
     cluster.create()
     cluster.setup_pbm()
-    time.sleep(10)
-    cluster.check_pbm_status()
     backup = cluster.make_backup("physical")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     for i in range(10):
         pymongo.MongoClient(cluster.connection)["test"]["test"].insert_one({"doc": i})
     time.sleep(5)
@@ -67,10 +63,8 @@ def test_physical_PBM_T279(start_cluster, cluster):
 
 @pytest.mark.timeout(300, func_only=True)
 def test_logical_PBM_T280(start_cluster, cluster):
-    cluster.check_pbm_status()
-    client = pymongo.MongoClient(cluster.connection)
     backup = cluster.make_backup("logical")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     for i in range(10):
         pymongo.MongoClient(cluster.connection)["test"]["test"].insert_one({"doc": i})
     cluster.disable_pitr()
@@ -80,10 +74,8 @@ def test_logical_PBM_T280(start_cluster, cluster):
 
     cluster.create()
     cluster.setup_pbm()
-    time.sleep(10)
-    cluster.check_pbm_status()
     backup = cluster.make_backup("logical")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     for i in range(10):
         pymongo.MongoClient(cluster.connection)["test"]["test"].insert_one({"doc": i})
     time.sleep(5)

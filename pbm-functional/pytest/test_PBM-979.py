@@ -72,8 +72,8 @@ def test_logical_pitr_PBM_T263(start_cluster,cluster):
     time.sleep(10)
     cluster.disable_pitr()
     time.sleep(10)
-    result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
-    result=pymongo.MongoClient(cluster.connection)["test"]["pitr"].delete_many({})
+    pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
+    pymongo.MongoClient(cluster.connection)["test"]["pitr"].delete_many({})
     cluster.make_restore(backup)
     time.sleep(5) # wait for delayed node
     cluster.check_pbm_status()

@@ -320,7 +320,7 @@ class Cluster:
                     if 'arbiterOnly' in host:
                         if host['arbiterOnly']:
                             self.__delete_pbm(host['host'])
-                    if 'hidden' not in host or host['hidden'] != True:
+                    if 'hidden' not in host or not host['hidden']:
                         conn = conn + host['host'] + ':27017,'
                 conn = conn[:-1]
                 shards.append(conn)
@@ -538,7 +538,8 @@ class Cluster:
             self.make_resync()
 
         check_pbm_status=kwargs.get('check_pbm_status', True)
-        self.wait_pbm_status()
+        if check_pbm_status:
+            self.wait_pbm_status()
 
         if self.layout == "sharded":
             self.start_mongos()
@@ -732,19 +733,19 @@ class Cluster:
             "mongo -u root -p root --quiet --eval " + init_pbm_user)
         logs = primary.check_output(
             "mongo -u root -p root --quiet --eval " + init_pbm_t_user)
-        #Cluster.log(logs)
+        Cluster.log(logs)
         if "authMechanism=MONGODB-X509" in uri:
             logs = primary.check_output(
                 "mongo -u root -p root --quiet --eval " + x509_pbm_user)
-            #Cluster.log(logs)
+            Cluster.log(logs)
         if "authMechanism=GSSAPI" in uri:
             logs = primary.check_output(
                 "mongo -u root -p root --quiet --eval " + krb_pbm_user)
-            #Cluster.log(logs)
+            Cluster.log(logs)
         if "authMechanism=PLAIN" in uri:
             logs = primary.check_output(
                 "mongo -u root -p root --quiet --eval " + ldap_mongo_grp)
-            #Cluster.log(logs)
+            Cluster.log(logs)
 
     def __setup_authorizations(self, replicasets):
         with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
@@ -821,7 +822,7 @@ class Cluster:
             for host in replicaset['nodes']:
                 if host['role'] != "A":
                     hosts.append(host)
-                    assert host['ok'] == True
+                    assert host['ok']
         assert len(hosts) == len(self.pbm_hosts)
 
     def wait_pbm_status(self,wait=10):

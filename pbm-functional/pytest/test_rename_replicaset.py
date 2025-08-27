@@ -1,7 +1,6 @@
 import pytest
 import pymongo
 import time
-import os
 
 from datetime import datetime
 from cluster import Cluster
@@ -53,7 +52,7 @@ def test_logical_pitr_crud_PBM_T270(start_cluster,cluster,collection):
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     pitr=" --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(10)
+    time.sleep(5)
     cluster.disable_pitr()
     time.sleep(5)
     backup_to_fail=pitr + " --ns-from=test." + collection + " --ns-to=test.test"
@@ -106,7 +105,7 @@ def test_logical_pitr_with_txn_PBM_T271(start_cluster,cluster,collection):
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     pitr=" --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(10)
+    time.sleep(5)
     cluster.disable_pitr()
     time.sleep(5)
     backup_to_fail=pitr + " --ns-from=test." + collection + " --ns-to=test.test"

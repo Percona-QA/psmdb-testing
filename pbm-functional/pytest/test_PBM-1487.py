@@ -1,6 +1,7 @@
 import pytest
 import pymongo
 import os
+import docker
 
 from cluster import Cluster
 

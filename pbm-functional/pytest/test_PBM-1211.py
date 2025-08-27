@@ -25,10 +25,7 @@ def start_cluster(cluster,request):
     try:
         cluster.destroy()
         cluster.create()
-        result = cluster.exec_pbm_cli('config --file=/etc/pbm-1211.conf --out=json')
-        assert result.rc == 0
-        Cluster.log("Setup PBM:\n" + result.stdout)
-        time.sleep(5)
+        cluster.setup_pbm('/etc/pbm-1211.conf')
         client=pymongo.MongoClient(cluster.connection)
         client.admin.command("enableSharding", "test")
         client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
@@ -48,8 +45,7 @@ def test_pitr_PBM_T268(start_cluster,cluster,backup_type):
             client['test']['test'].insert_one({"doc":i})
             time.sleep(0.1)
 
-    cluster.check_pbm_status()
-    base_backup=cluster.make_backup(backup_type)
+    cluster.make_backup(backup_type)
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     Cluster.log("Start inserting docs in the background")
     background_insert = threading.Thread(target=insert_docs)
@@ -80,7 +76,6 @@ def test_pitr_PBM_T268(start_cluster,cluster,backup_type):
 
 @pytest.mark.timeout(600,func_only=True)
 def test_incremental_PBM_T269(start_cluster,cluster):
-    cluster.check_pbm_status()
     cluster.make_backup("incremental --base")
     client=pymongo.MongoClient(cluster.connection)
     for i in range(100):

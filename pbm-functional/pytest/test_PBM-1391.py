@@ -38,7 +38,6 @@ def start_cluster(cluster, request):
         os.system("rm -rf /backups/*")
         cluster.create()
         cluster.setup_pbm()
-        client = pymongo.MongoClient(cluster.connection)
         yield True
 
     finally:
@@ -49,7 +48,6 @@ def start_cluster(cluster, request):
 
 @pytest.mark.timeout(600, func_only=True)
 def test_physical_PBM_T278(start_cluster, cluster):
-    cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
     client.admin.command("enableSharding", "test")
     client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})

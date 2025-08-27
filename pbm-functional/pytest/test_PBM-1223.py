@@ -38,7 +38,6 @@ def start_cluster(cluster,request):
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
         cluster.setup_pbm("/etc/pbm-fs.conf")
-        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
         client=pymongo.MongoClient(cluster.connection)
         client.admin.command("enableSharding", "test")
         client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
