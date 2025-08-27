@@ -1,0 +1,103 @@
+- set_fact:
+    ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
+
+- name: Create keyrings directory
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  when:
+    - ansible_os_family == "Debian"
+
+- name: Download Docker GPG key to keyring
+  get_url:
+    url: https://download.docker.com/linux/debian/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+  when:
+    - ansible_os_family == "Debian"
+
+- name: Map architecture for Docker APT repo
+  set_fact:
+    docker_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else
+                  'arm64' if ansible_architecture == 'aarch64' }}"
+
+- name: Add Docker APT repository
+  copy:
+    content: |
+      deb [arch={{ docker_arch }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
+    dest: /etc/apt/sources.list.d/docker.list
+    mode: '0644'
+  when:
+    - ansible_os_family == "Debian"
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  when:
+    - ansible_os_family == "Debian"
+
+- name: Install dependencies
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+      - git
+      - python3-pip
+      - wget
+      - iputils-ping
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+  when: ansible_os_family == "Debian"
+
+- name: Install Percona Release
+  include_tasks: ../../../tasks/install_percona_release.yml
+
+- name: Setup plm repo with percona-release
+  command: percona-release enable plm {{ lookup('env', 'install_repo') }}
+
+- name: Enable and start Docker service
+  service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Set runc binary URL based on architecture
+  set_fact:
+    runc_url: >-
+      https://github.com/opencontainers/runc/releases/download/v1.1.12/{{
+        'runc.arm64' if ansible_architecture == 'aarch64' else 'runc.amd64'
+      }}
+
+- name: Download correct Runc binary
+  get_url:
+    url: "{{ runc_url }}"
+    dest: /usr/local/bin/runc
+    mode: '0755'
+
+- name: Move runc to /usr/bin
+  copy:
+    src: /usr/local/bin/runc
+    dest: /usr/bin/runc
+    remote_src: yes
+    mode: '0755'
+    force: yes
+
+- name: Ensure docker group exists
+  group:
+    name: docker
+    state: present
+
+- name: Add user ssh-user to docker group
+  user:
+    name: "{{ ssh_user }}"
+    groups: docker
+    append: yes
