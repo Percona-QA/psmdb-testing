@@ -619,44 +619,39 @@ class Cluster:
         n = testinfra.get_host("docker://" + self.pbm_cli)
         pitr_extra_args = kwargs.get('pitr_extra_args', "")
         result = n.check_output(
-            "pbm config --set pitr.enabled=true --set pitr.compression=none --wait --out json " + pitr_extra_args)
+            "pbm config --set pitr.enabled=true --set pitr.compression=none --wait  " + pitr_extra_args)
         Cluster.log("Enabling PITR: " + result)
-        timeout = time.time() + 150
-        while True:
-            if self.check_pitr():
-                break
-            if time.time() > timeout:
-                status=self.get_status()['pitr']
-                assert False, status
-            time.sleep(1)
+        self.wait_pitr()
 
     # disables PITR
-    def disable_pitr(self, time_param=None):
+    def disable_pitr(self, time_param=None, wait=120):
         n = testinfra.get_host("docker://" + self.pbm_cli)
         if time_param:
             target_time = int(datetime.fromisoformat(time_param).timestamp())
             pitr_end = 0
-
-            while pitr_end < target_time:
+            Cluster.log('Wait for the chunks with timestamp:' + str(target_time))
+            for i in range(wait):
                 result = n.check_output("pbm s -s backups -o json")
                 backups = json.loads(result)
                 if 'backups' in backups and 'pitrChunks' in backups['backups'] and 'pitrChunks' in backups['backups']['pitrChunks']:
-                   pitr_end_cur = backups['backups']['pitrChunks']['pitrChunks'][0].get('range', {}).get('end', None)
+                   chunks = []
+                   for j in backups['backups']['pitrChunks']['pitrChunks']:
+                       chunks.append(j.get('range', {}).get('end', None))
+                   pitr_end_cur = max(chunks)
+                   # pitr_end_cur = backups['backups']['pitrChunks']['pitrChunks'][0].get('range', {}).get('end', None)
+                   Cluster.log('Current chunks end is: ' + str(pitr_end_cur))
                    if pitr_end_cur is not None:
                         pitr_end = pitr_end_cur
                 if pitr_end < target_time:
                     time.sleep(1)
-
+                else:
+                   Cluster.log("Found necessary chunk with end timestamp: " + str(pitr_end))
+                   break
+            assert pitr_end >= target_time, "Didn't find the chunks with necessary timestamp " + str(target_time)
         result = n.check_output(
-            "pbm config --set pitr.enabled=false --wait --out json")
+            "pbm config --set pitr.enabled=false --wait")
         Cluster.log("Disabling PITR: " + result)
-        timeout = time.time() + 150
-        while True:
-            if not self.check_pitr():
-                break
-            if time.time() > timeout:
-                assert False
-            time.sleep(1)
+        self.wait_pitr(enabled=False)
 
     # executes any pbm command e.g. cluster.exec_pbm_cli("status"), doesn't raise any errors, output from
     # https://testinfra.readthedocs.io/en/latest/modules.html#testinfra.host.Host.run
@@ -811,12 +806,16 @@ class Cluster:
         running = json.loads(status)['pitr']['run']
         return bool(running)
 
+    def wait_pitr(self,wait=60,enabled=True):
+        for i in range(wait):
+            if self.check_pitr() == enabled:
+                break
+            else:
+                time.sleep(1)
+        assert self.check_pitr() == enabled, self.get_status()['pitr']
+
     def check_pbm_status(self):
-        n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output('pbm status --out=json')
-        parsed_result = json.loads(result)
-        Cluster.log("PBM status: \n" + str(parsed_result['cluster']))
-        #Cluster.log(json.dumps(parsed_result['cluster'], indent=4))
+        parsed_result = self.get_status()
         hosts = []
         for replicaset in parsed_result['cluster']:
             for host in replicaset['nodes']:
@@ -833,6 +832,7 @@ class Cluster:
             except AssertionError:
                 time.sleep(1)
         self.check_pbm_status()
+        Cluster.log("PBM status: " + str(self.get_status()))
 
     @staticmethod
     def restart_pbm_agent(host):

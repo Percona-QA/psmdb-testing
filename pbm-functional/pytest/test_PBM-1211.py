@@ -62,7 +62,7 @@ def test_pitr_PBM_T268(start_cluster,cluster,backup_type):
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     Cluster.log("Time for PITR is " + pitr)
     time.sleep(10)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     pymongo.MongoClient(cluster.connection).drop_database('test')
     backup="--time=" + pitr
     if backup_type == 'logical':

@@ -72,7 +72,7 @@ def test_logical_pitr_PBM_T253(start_cluster,cluster,newcluster):
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(10)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(10)
     cluster.destroy()
 

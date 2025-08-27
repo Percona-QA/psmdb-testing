@@ -52,7 +52,7 @@ def test_physical_PBM_T279(start_cluster, cluster):
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup = " --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(10)
     cluster.make_restore(backup, restart_cluster=True, check_pbm_status=True)
     assert (
@@ -82,7 +82,7 @@ def test_logical_PBM_T280(start_cluster, cluster):
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup = " --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(10)
     cluster.make_restore(backup, check_pbm_status=True)
     assert (

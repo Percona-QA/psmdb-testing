@@ -75,7 +75,7 @@ def test_load_shard_collection_pitr_PBM_T289(start_cluster,cluster):
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup= "--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(30)
     cluster.make_restore(backup,make_resync=False,check_pbm_status=True)
 

@@ -83,7 +83,7 @@ def test_pitr_PBM_T256(start_cluster,cluster,backup_type,base_snapshot):
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     Cluster.log("Time for PITR is " + pitr)
     time.sleep(60)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     pymongo.MongoClient(cluster.connection).drop_database('test')
     if base_snapshot == 'base':
         backup="--time=" + pitr + " --base-snapshot=" + base_backup

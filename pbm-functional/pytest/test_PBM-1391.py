@@ -58,7 +58,7 @@ def test_physical_PBM_T278(start_cluster, cluster):
     time.sleep(5)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     Cluster.log("Time for PITR is: " + pitr)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(5)
     client.drop_database("test")
     backup = " --time=" + pitr

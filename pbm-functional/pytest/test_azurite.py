@@ -81,7 +81,7 @@ def test_logical_pitr(start_cluster,cluster):
     time.sleep(5)
     cluster.delete_backup(backup_l2)
     cluster.delete_backup(backup_l3)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(5)
     pymongo.MongoClient(cluster.connection).drop_database('test')
     cluster.make_restore(backup,check_pbm_status=True)

@@ -53,7 +53,7 @@ def test_logical_pitr_crud_PBM_T270(start_cluster,cluster,collection):
     pitr=" --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(5)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(5)
     backup_to_fail=pitr + " --ns-from=test." + collection + " --ns-to=test.test"
     result=cluster.exec_pbm_cli("restore" + backup_to_fail + " --wait")
@@ -106,7 +106,7 @@ def test_logical_pitr_with_txn_PBM_T271(start_cluster,cluster,collection):
     pitr=" --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(5)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(5)
     backup_to_fail=pitr + " --ns-from=test." + collection + " --ns-to=test.test"
     result=cluster.exec_pbm_cli("restore" + backup_to_fail + " --wait")
@@ -150,7 +150,7 @@ def test_logical_pitr_ddl_PBM_T273(start_cluster,cluster):
     pitr=" --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(10)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(5)
     backup=pitr + " --ns-from=test.indexes --ns-to=restored.indexes"
     cluster.make_restore(backup)

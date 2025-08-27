@@ -88,7 +88,7 @@ def test_logical_selective_PBM_T218(start_cluster, cluster):
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     pitr = " --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(5)
     client.drop_database("test1")
     client.drop_database("test2")
@@ -149,7 +149,7 @@ def test_logical_pitr_PBM_T194(start_cluster,cluster):
     time.sleep(5)
     cluster.delete_backup(backup_l2)
     cluster.delete_backup(backup_l3)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(5)
     pymongo.MongoClient(cluster.connection).drop_database('test')
     cluster.make_restore(backup,check_pbm_status=True)
@@ -183,7 +183,7 @@ def test_physical_pitr_PBM_T244(start_cluster,cluster):
     backup="--time=" + pitr + " --base-snapshot=" + backup
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(5)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(5)
     cluster.make_restore(backup,restart_cluster=True,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)

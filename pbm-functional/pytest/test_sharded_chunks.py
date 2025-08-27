@@ -78,10 +78,7 @@ def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster):
     for i in range(threads):
         background_insert[i].join()
     Cluster.log("Background threads are finished")
-    time.sleep(5)
-    cluster.disable_pitr()
-
-    time.sleep(5)
+    cluster.disable_pitr(pitr)
     cluster.make_restore(backup,make_resync=False,check_pbm_status=True)
 
     try:

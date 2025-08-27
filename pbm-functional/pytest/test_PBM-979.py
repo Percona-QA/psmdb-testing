@@ -70,7 +70,7 @@ def test_logical_pitr_PBM_T263(start_cluster,cluster):
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(10)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(10)
     pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
     pymongo.MongoClient(cluster.connection)["test"]["pitr"].delete_many({})

@@ -29,7 +29,7 @@ def start_cluster(cluster,request):
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
         cluster.create()
-        cluster.setup_pbm()
+        cluster.setup_pbm('/etc/pbm-1043.conf')
         client=pymongo.MongoClient(cluster.connection)
         client.admin.command("enableSharding", "test")
         client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
@@ -44,23 +44,17 @@ def start_cluster(cluster,request):
 def test_logical_PBM_T255(start_cluster,cluster):
     def insert_docs():
         client=pymongo.MongoClient(cluster.connection)
-        for i in range(200):
+        for i in range(300):
             client['test']['test'].insert_one({"doc":i})
-            time.sleep(1)
+            time.sleep(0.1)
 
-    cluster.check_pbm_status()
     cluster.make_backup("logical")
-    cluster.exec_pbm_cli("config --file=/etc/pbm-1043.conf")
-    time.sleep(60)
-    Cluster.log("Check if PITR is running")
-    if not cluster.check_pitr():
-        logs=cluster.exec_pbm_cli("logs -sD -t0")
-        assert False, logs.stdout
+    cluster.wait_pitr()
 
     Cluster.log("Start inserting docs in the background")
     background_insert = threading.Thread(target=insert_docs)
     background_insert.start()
-    time.sleep(60)
+    time.sleep(10)
     Cluster.log("Check if oplog slicer has been started on the nodes with the highest priorities")
     logs=cluster.exec_pbm_cli("logs -sD -t0 -e pitr")
     assert '[rscfg/rscfg03:27017] [pitr] created chunk' in logs.stdout
@@ -74,28 +68,28 @@ def test_logical_PBM_T255(start_cluster,cluster):
     nrs103.check_output('supervisorctl stop mongod')
     nrs203.check_output('supervisorctl stop pbm-agent')
 
-    time.sleep(60)
+    time.sleep(10)
 
     Cluster.log("Start pbm-agent and mongod")
     nrs103.check_output('supervisorctl start mongod')
     nrs203.check_output('supervisorctl start pbm-agent')
 
-    time.sleep(60)
     background_insert.join()
+    Cluster.log("Stop inserting docs in the background")
+    time.sleep(5)
 
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 200
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 300
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(60)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     pymongo.MongoClient(cluster.connection).drop_database('test')
     status=cluster.exec_pbm_cli("status")
     Cluster.log(status.stdout)
     cluster.make_restore(backup,check_pbm_status=True)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 200
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 300
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
-    time.sleep(60)
+    time.sleep(10)
     Cluster.log("PITR must be disabled after the restore")
     assert not cluster.check_pitr()
     cluster.check_pbm_status()

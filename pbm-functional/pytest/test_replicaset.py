@@ -72,7 +72,7 @@ def test_logical_selective_PBM_T274(start_cluster, cluster):
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     pitr = " --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(10)
     client.drop_database("test1")
     client.drop_database("test2")

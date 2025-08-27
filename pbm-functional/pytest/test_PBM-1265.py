@@ -73,7 +73,7 @@ def test_disabled_pitr_PBM_T251(start_cluster,cluster):
         time.sleep(1)
     time.sleep(30)
     backup="--time=" + pitr + " --base-snapshot=" + backup
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     cluster.make_restore(backup,restart_cluster=True,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 60
 
