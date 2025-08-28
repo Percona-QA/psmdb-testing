@@ -59,8 +59,8 @@
   gather_facts: yes
   roles:
     - role: psmdb-tarball-pro
+    - role: '../../../roles/docker'
     - role: '../../../roles/openldap'
     - role: '../../../roles/kerberos'
     - role: '../../../roles/kmip'
     - role: '../../../roles/vault'
-    - role: '../../../roles/docker'
