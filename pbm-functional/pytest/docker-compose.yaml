@@ -103,7 +103,7 @@ services:
       - keytabs:/keytabs
 
   ldap:
-    image: bitnami/openldap
+    image: bitnamilegacy/openldap
     container_name: ldap
     hostname: ldap
     environment:
