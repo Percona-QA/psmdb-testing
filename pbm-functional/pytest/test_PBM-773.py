@@ -47,12 +47,12 @@ def test_logical_PBM_T221(start_cluster,cluster):
     client = pymongo.MongoClient(cluster.connection)
     db = client.test
     collection = db.test
-    for i in range(50):
+    for i in range(100):
         collection.insert_one({"a":i})
 
     with client.start_session() as session:
         with session.start_transaction():
-            for i in range(50):
+            for i in range(100):
                 collection.insert_one({"b":i}, session=session)
             session.commit_transaction()
     time.sleep(10)
@@ -62,7 +62,7 @@ def test_logical_PBM_T221(start_cluster,cluster):
 
     cluster.disable_pitr(pitr)
     cluster.make_restore(backup,check_pbm_status=True)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 100
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 200
 
     folder="/backups/pbmPitr/rs1/" + datetime.utcnow().strftime("%Y%m%d") + "/"
     for entry in os.scandir(folder):
@@ -86,7 +86,7 @@ def test_logical_PBM_T221(start_cluster,cluster):
                             f.write(bson.encode(doc))
 
     cluster.make_restore(backup,check_pbm_status=True)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 100
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 200
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully\n")
 

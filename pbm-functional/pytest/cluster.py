@@ -806,7 +806,7 @@ class Cluster:
         running = json.loads(status)['pitr']['run']
         return bool(running)
 
-    def wait_pitr(self,wait=60,enabled=True):
+    def wait_pitr(self,wait=120,enabled=True):
         for i in range(wait):
             if self.check_pitr() == enabled:
                 break
