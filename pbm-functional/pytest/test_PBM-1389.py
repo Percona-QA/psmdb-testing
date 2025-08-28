@@ -60,4 +60,3 @@ def test_logical_selective_PBM_T267(start_cluster,cluster):
     assert result.rc != 0, result.stdout + result.stderr
     result = cluster.exec_pbm_cli("logical --ns=test.test1 --wait")
     assert result.rc != 0, result.stdout + result.stderr
-
