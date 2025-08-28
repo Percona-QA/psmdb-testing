@@ -105,3 +105,4 @@
   register: verify_trust
   changed_when: false
   failed_when: verify_trust.rc != 0
+  
