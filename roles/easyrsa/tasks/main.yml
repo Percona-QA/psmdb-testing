@@ -56,14 +56,3 @@
     path: /root/
   register: ca_key
   failed_when: not ca_key.stat.exists
-
-
-
-
-
-
-
-
-
-
-
