@@ -42,7 +42,7 @@ def start_cluster(cluster,request):
 @pytest.mark.timeout(300,func_only=True)
 def test_logical_PBM_T221(start_cluster,cluster):
     cluster.make_backup("logical")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
 
     client = pymongo.MongoClient(cluster.connection)
     db = client.test
