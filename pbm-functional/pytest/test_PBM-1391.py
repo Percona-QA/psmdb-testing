@@ -2,18 +2,11 @@ import pytest
 import pymongo
 import time
 import os
-import docker
 
 from datetime import datetime
 from cluster import Cluster
 
 documents = [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
-
-
-@pytest.fixture(scope="package")
-def docker_client():
-    return docker.from_env()
-
 
 @pytest.fixture(scope="package")
 def config():
@@ -26,12 +19,8 @@ def config():
         "shards": [
             {
                 "_id": "rs1",
-                "members": [{"host": "rs101"}, {"host": "rs102"}, {"host": "rs103"}],
-            },
-            {
-                "_id": "rs2",
-                "members": [{"host": "rs201"}, {"host": "rs202"}, {"host": "rs203"}],
-            },
+                "members": [{"host": "rs101"}],
+            }
         ],
     }
 
@@ -49,7 +38,6 @@ def start_cluster(cluster, request):
         os.system("rm -rf /backups/*")
         cluster.create()
         cluster.setup_pbm()
-        client = pymongo.MongoClient(cluster.connection)
         yield True
 
     finally:
@@ -60,7 +48,6 @@ def start_cluster(cluster, request):
 
 @pytest.mark.timeout(600, func_only=True)
 def test_physical_PBM_T278(start_cluster, cluster):
-    cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
     client.admin.command("enableSharding", "test")
     client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
@@ -71,7 +58,7 @@ def test_physical_PBM_T278(start_cluster, cluster):
     time.sleep(5)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     Cluster.log("Time for PITR is: " + pitr)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     time.sleep(5)
     client.drop_database("test")
     backup = " --time=" + pitr

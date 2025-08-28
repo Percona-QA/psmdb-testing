@@ -1,15 +1,10 @@
 import pytest
 import pymongo
 import os
-import docker
 import random
 import string
 
 from cluster import Cluster
-
-@pytest.fixture(scope="package")
-def docker_client():
-    return docker.from_env()
 
 @pytest.fixture(scope="package")
 def config():
@@ -24,14 +19,10 @@ def start_cluster(cluster,request):
     try:
         cluster.destroy()
         cluster.create()
-        cluster.setup_pbm()
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
         pymongo.MongoClient(cluster.connection).admin.command( { "setParameter": 1, "wiredTigerEngineRuntimeConfig": "cache_size=4G"} )
-        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups "
-                                    "--set backup.compression=none --out json --wait")
-        assert result.rc == 0
-        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
+        cluster.setup_pbm("/etc/pbm-fs.conf")
         yield True
     finally:
         if request.config.getoption("--verbose"):
@@ -54,7 +45,7 @@ def test_load_PBM_T250(start_cluster,cluster):
         db["test_collection"].create_indexes(indexes)
         Cluster.log( database + ": " + str(i))
 
-    backup = cluster.make_backup("physical")
+    cluster.make_backup("physical")
 #    cluster.make_restore(backup,restart_cluster=True, check_pbm_status=True,timeout=1200)
     Cluster.log("Finished successfully")
 

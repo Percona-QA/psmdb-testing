@@ -1,7 +1,6 @@
 import pytest
 import pymongo
 import time
-import docker
 
 from datetime import datetime
 from cluster import Cluster
@@ -9,20 +8,13 @@ from cluster import Cluster
 documents = [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
 
 @pytest.fixture(scope="package")
-def docker_client():
-    return docker.from_env()
-
-@pytest.fixture(scope="package")
 def config():
     return {"mongos": "mongos",
             "configserver":
-            {"_id": "rscfg", "members": [{"host": "rscfg01"}, {
-                "host": "rscfg02"}, {"host": "rscfg03"}]},
+            {"_id": "rscfg", "members": [{"host": "rscfg01"}]},
             "shards": [
-                {"_id": "rs1", "members": [{"host": "rs101"}, {
-                    "host": "rs102"}, {"host": "rs103"}]},
-                {"_id": "rs2", "members": [{"host": "rs201"}, {
-                    "host": "rs202"}, {"host": "rs203"}]}
+                {"_id": "rs1", "members": [{"host": "rs101"}]},
+                {"_id": "rs2", "members": [{"host": "rs201"}]}
             ]}
 
 @pytest.fixture(scope="package")
@@ -74,23 +66,23 @@ def test_logical(start_cluster, cluster):
 def test_logical_pitr(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
-    backup_l1=cluster.make_backup("logical")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
-    time.sleep(60)
+    cluster.make_backup("logical")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
+    time.sleep(5)
     # make several following backups and then remove them to check the continuity of PITR timeframe
     pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_many(documents)
     backup_l2=cluster.make_backup("logical")
-    time.sleep(60)
+    time.sleep(5)
     pymongo.MongoClient(cluster.connection)["test"]["test3"].insert_many(documents)
     backup_l3=cluster.make_backup("logical")
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(60)
+    time.sleep(5)
     cluster.delete_backup(backup_l2)
     cluster.delete_backup(backup_l3)
-    cluster.disable_pitr()
-    time.sleep(10)
+    cluster.disable_pitr(pitr)
+    time.sleep(5)
     pymongo.MongoClient(cluster.connection).drop_database('test')
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)

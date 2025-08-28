@@ -29,7 +29,6 @@ def start_cluster(cluster,request):
         os.system("rm -rf /backups/*")
         cluster.create()
         cluster.setup_pbm()
-        client=pymongo.MongoClient(cluster.connection)
         yield True
     finally:
         if request.config.getoption("--verbose"):
@@ -76,7 +75,7 @@ def test_disabled_drop_pitr_PBM_T281(start_cluster,cluster,restore_type,primary_
     pitr = " --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(4)
-    cluster.disable_pitr()
+    cluster.disable_pitr(pitr)
     assert client["testdb"]["test"].count_documents({}) == 100
     for i in range(100):
         assert client["testdb"]["test"].find_one({"key": i + 100, "data": i + 100})

@@ -42,12 +42,11 @@ jobs:
       run: |
         docker compose run --rm test pytest -s --junitxml=junit.xml -k ${{ matrix.test }}
       working-directory: ./pbm-functional/pytest
-    - name: Print Azurite logs
-      if: failure()
-      run: |
-        docker logs azurite
     - name: Publish Test Report
-      uses: mikepenz/action-junit-report@v4
+      uses: mikepenz/action-junit-report@v5
       if: success() || failure()
       with:
         report_paths: '**/junit.xml'
+        include_passed: True
+        detailed_summary: True
+        include_time_in_summary: True

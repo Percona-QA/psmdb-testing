@@ -1,14 +1,9 @@
 import pytest
 import pymongo
-import docker
 
 from cluster import Cluster
 
 documents = [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
-
-@pytest.fixture(scope="package")
-def docker_client():
-    return docker.from_env()
 
 @pytest.fixture(scope="package")
 def config():

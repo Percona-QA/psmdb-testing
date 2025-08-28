@@ -62,7 +62,6 @@ def test_logical_selective_PBM_T274(start_cluster, cluster):
     backup_full = cluster.make_backup("logical")
     backup_partial = cluster.make_backup("logical --ns=test1.test_coll11,test2.*")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
-    time.sleep(5)
     client.drop_database("test1")
     for i in range(10):
         client["test1"]["test_coll11"].insert_one({"key": i + 10, "data": i + 10})
@@ -70,10 +69,9 @@ def test_logical_selective_PBM_T274(start_cluster, cluster):
     client["test2"]["test_coll22"].create_index("data", name="test_coll22_index_new")
     time.sleep(10)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
-    pitr = " --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    cluster.disable_pitr()
-    time.sleep(10)
+    cluster.disable_pitr(pitr)
+    pitr = " --time=" + pitr
     client.drop_database("test1")
     client.drop_database("test2")
     backup_partial = " --base-snapshot=" + backup_partial + pitr
@@ -150,8 +148,7 @@ def test_logical_timeseries_PBM_T224(start_cluster,cluster):
         pymongo.MongoClient(cluster.connection)["test"]["test1"].insert_one({"timestamp": datetime.now(), "data": i})
         time.sleep(0.1)
     cluster.make_backup("logical")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
-    time.sleep(30)
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     #create new timeseries collection
     pymongo.MongoClient(cluster.connection)["test"].create_collection('test2',timeseries={'timeField':'timestamp','metaField': 'data'})
     for i in range(10):
@@ -162,7 +159,7 @@ def test_logical_timeseries_PBM_T224(start_cluster,cluster):
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(30)
+    cluster.disable_pitr(pitr)
     pymongo.MongoClient(cluster.connection).drop_database('test')
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test1"].count_documents({}) == 20

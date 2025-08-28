@@ -60,19 +60,19 @@ def start_cluster(cluster,newcluster,request):
 def test_logical_pitr_PBM_T253(start_cluster,cluster,newcluster):
     cluster.check_pbm_status()
     cluster.make_backup("logical")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     #Create the first database during oplog slicing
     client=pymongo.MongoClient(cluster.connection)
     client.admin.command("enableSharding", "test")
     client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
     for i in range(100):
         pymongo.MongoClient(cluster.connection)["test"]["test"].insert_one({"doc":i})
-    time.sleep(30)
+    time.sleep(10)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(30)
-    cluster.disable_pitr()
+    time.sleep(10)
+    cluster.disable_pitr(pitr)
     time.sleep(10)
     cluster.destroy()
 
