@@ -739,6 +739,12 @@ class Cluster:
                          '{"db":"admin","role":"clusterMonitor" },' +
                          '{"db":"admin","role":"restore" },' +
                          '{"db":"admin","role":"pbmAnyAction" }]});\'')
+        oidc_pbm_user = ('\'db.getSiblingDB("$external").runCommand({createUser:"keycloak/pbmclient","roles":[' +
+                         '{"db":"admin","role":"readWrite","collection":""},' +
+                         '{"db":"admin","role":"backup" },' +
+                         '{"db":"admin","role":"clusterMonitor" },' +
+                         '{"db":"admin","role":"restore" },' +
+                         '{"db":"admin","role":"pbmAnyAction" }]});\'')
         logs = primary.check_output(
             "mongo -u root -p root --quiet --eval " + init_pbm_user)
         logs = primary.check_output(
@@ -755,6 +761,10 @@ class Cluster:
         if "authMechanism=PLAIN" in uri:
             logs = primary.check_output(
                 "mongo -u root -p root --quiet --eval " + ldap_mongo_grp)
+            #Cluster.log(logs)
+        if "authMechanism=MONGODB-OIDC" in uri:
+            logs = primary.check_output(
+                "mongo -u root -p root --quiet --eval " + oidc_pbm_user)
             #Cluster.log(logs)
 
     def __setup_authorizations(self, replicasets):
