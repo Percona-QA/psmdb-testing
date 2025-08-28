@@ -56,3 +56,52 @@
     path: /root/
   register: ca_key
   failed_when: not ca_key.stat.exists
+
+- name: Create Truststore Directory (Redhat)
+  ansible.builtin.file:
+    path: /etc/pki/ca-trust/source/anchors
+    state: directory
+
+- name: Create Truststore Directory (Debian)
+  ansible.builtin.file:
+    path: /usr/local/share/ca-certificates/
+    state: directory
+
+- name: Move ca.crt to trust anchors (Redhat)
+  copy:
+    src: /root/pki/ca.crt
+    dest: /etc/pki/ca-trust/source/anchors/percona.crt
+    remote_src: true
+  when: ansible_os_family == "RedHat"
+
+- name: Rebuild Trust Bundle (Redhat)
+  command: update-ca-trust extract
+  changed_when: true
+  when: ansible_os_family == "RedHat"
+
+- name: Move ca.crt to trust anchors (Debian)
+  copy:
+    src: /root/pki/ca.crt
+    dest: /usr/local/share/ca-certificates/percona.crt
+    remote_src: true
+  when: ansible_os_family == "Debian"
+
+- name: Rebuild trust bundle (Debian)
+  command: update-ca-certificates
+  changed_when: true
+  when: ansible_os_family == "Debian"
+
+- name: Select OS CA bundle path
+  set_fact:
+    os_cafile: >-
+      {{ '/etc/ssl/certs/ca-certificates.crt'
+         if ansible_os_family == 'Debian'
+         else '/etc/pki/tls/certs/ca-bundle.crt' }}
+
+- name: Verify CA is trusted by the OS bundle
+  command: >
+    openssl verify -CAfile {{ os_cafile }}
+    /root/pki/ca.crt
+  register: verify_trust
+  changed_when: false
+  failed_when: verify_trust.rc != 0
