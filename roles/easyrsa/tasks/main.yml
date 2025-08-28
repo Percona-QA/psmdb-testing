@@ -1,0 +1,69 @@
+- name: Install deps
+  yum:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+      - git
+      - openssl
+  when: ansible_os_family == "RedHat"
+
+- name: Install deps
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+      - git
+      - openssl
+  when: ansible_os_family == "Debian"
+
+- name: Clone easy-rsa Repo
+  ansible.builtin.git:
+    repo: "https://github.com/OpenVPN/easy-rsa"
+    dest: /root/easyrsa
+    version: master
+
+- name: Move easyrsa binary to /usr/local/bin
+  copy:
+    src: /root/easyrsa/easyrsa3/easyrsa
+    dest: /usr/local/bin/
+    mode: '0775'
+    remote_src: true
+
+- name: Initiate PKI
+  command: easyrsa init-pki
+  args:
+    chdir: /root/
+    creates: /root/pki
+
+- name: Generate CA Cert and CA Private Key
+  command: easyrsa --req-cn=Percona --batch build-ca nopass
+  args:
+    chdir: /root/
+    creates: /root/pki/ca.crt
+
+- name: Confirm CA cert exists
+  stat:
+    path: /root/pki/ca.crt
+  register: ca_crt
+  failed_when: not ca_crt.stat.exists
+
+- name: Confirm CA Private Key exists
+  stat:
+    path: /root/
+  register: ca_key
+  failed_when: not ca_key.stat.exists
+
+
+
+
+
+
+
+
+
+
+
