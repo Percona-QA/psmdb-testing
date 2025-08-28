@@ -556,7 +556,7 @@ class Cluster:
             try:
                 timeout = time.time() + 30
                 self.disable_pitr()
-                result=self.exec_pbm_cli("delete-pitr --all --force --yes ")
+                result=self.exec_pbm_cli("delete-pitr --all --force --yes --wait")
                 Cluster.log(result.stdout + result.stderr)
                 while True:
                     if not self.get_status()['running'] or time.time() > timeout:
