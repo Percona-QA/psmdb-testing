@@ -22,14 +22,12 @@
     docker_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else
                   'arm64' if ansible_architecture == 'aarch64' }}"
 
-- name: Add Docker APT repository
+- name: Write Docker apt source
   copy:
-    content: |
-      deb [arch={{ docker_arch }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
     dest: /etc/apt/sources.list.d/docker.list
     mode: '0644'
-  when:
-    - ansible_os_family == "Debian"
+    content: |
+      deb [arch={{ (ansible_architecture == 'x86_64') | ternary('amd64', (ansible_architecture == 'aarch64') | ternary('arm64', ansible_architecture)) }} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/{{ 'ubuntu' if ansible_distribution == 'Ubuntu' else 'debian' }} {{ ansible_distribution_release }} stable
 
 - name: Update apt cache
   apt:
