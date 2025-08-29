@@ -26,34 +26,27 @@
     dest: /root/easyrsa
     version: master
 
-- name: Move easyrsa binary to /usr/local/bin
-  copy:
-    src: /root/easyrsa/easyrsa3/easyrsa
-    dest: /usr/local/bin/
-    mode: '0775'
-    remote_src: true
-
 - name: Initiate PKI
-  command: easyrsa init-pki
+  command: ./easyrsa init-pki
   args:
-    chdir: /root/
+    chdir: /root/easyrsa/easyrsa3
     creates: /root/pki
 
 - name: Generate CA Cert and CA Private Key
-  command: easyrsa --req-cn=Percona --batch build-ca nopass
+  command: ./easyrsa --req-cn=Percona --batch build-ca nopass
   args:
-    chdir: /root/
+    chdir: /root/easyrsa/easyrsa3
     creates: /root/pki/ca.crt
 
 - name: Confirm CA cert exists
   stat:
-    path: /root/pki/ca.crt
+    path: /root/easyrsa/easyrsa3/pki/ca.crt
   register: ca_crt
   failed_when: not ca_crt.stat.exists
 
 - name: Confirm CA Private Key exists
   stat:
-    path: /root/
+    path: /root/easyrsa/easyrsa3/pki/private/ca.key
   register: ca_key
   failed_when: not ca_key.stat.exists
 
@@ -69,7 +62,7 @@
 
 - name: Move ca.crt to trust anchors (Redhat)
   copy:
-    src: /root/pki/ca.crt
+    src: /root/easyrsa/easyrsa3/pki/ca.crt
     dest: /etc/pki/ca-trust/source/anchors/percona.crt
     remote_src: true
   when: ansible_os_family == "RedHat"
@@ -81,7 +74,7 @@
 
 - name: Move ca.crt to trust anchors (Debian)
   copy:
-    src: /root/pki/ca.crt
+    src: /root/easyrsa/easyrsa3/pki/ca.crt
     dest: /usr/local/share/ca-certificates/percona.crt
     remote_src: true
   when: ansible_os_family == "Debian"
@@ -101,7 +94,7 @@
 - name: Verify CA is trusted by the OS bundle
   command: >
     openssl verify -CAfile {{ os_cafile }}
-    /root/pki/ca.crt
+    /root/easyrsa/easyrsa3/pki/ca.crt
   register: verify_trust
   changed_when: false
   failed_when: verify_trust.rc != 0
