@@ -54,11 +54,13 @@
   ansible.builtin.file:
     path: /etc/pki/ca-trust/source/anchors
     state: directory
+  when: ansible_os_family == "RedHat"
 
 - name: Create Truststore Directory (Debian)
   ansible.builtin.file:
     path: /usr/local/share/ca-certificates/
     state: directory
+  when: ansible_os_family == "Debian"
 
 - name: Move ca.crt to trust anchors (Redhat)
   copy:
