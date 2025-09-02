@@ -1,12 +1,16 @@
 #- name: Include OS-specific tasks
 #  include_tasks: "{{ ansible_os_family }}.yml"
 
-- name: Install dependencies
+
+
+- name: Install Python SDKs from apt
   become: true
-  ansible.builtin.pip:
+  apt:
+    update_cache: true
     name:
-      - docker
-      - requests
+      - python3-docker
+      - python3-requests
+    state: present
 
 - name: Ensure Docker network exists
   community.docker.docker_network:
