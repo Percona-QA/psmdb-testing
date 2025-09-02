@@ -58,9 +58,9 @@
   become_method: sudo
   gather_facts: yes
   roles:
+    - role: '../../../roles/easyrsa'
     - role: psmdb-tarball-pro
     - role: '../../../roles/docker'
-    - role: '../../../roles/easyrsa'
     - role: '../../../roles/openldap-docker'
     - role: '../../../roles/kerberos'
     - role: '../../../roles/kmip'

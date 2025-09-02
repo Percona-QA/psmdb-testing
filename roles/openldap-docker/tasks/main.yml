@@ -1,7 +1,8 @@
 #- name: Include OS-specific tasks
 #  include_tasks: "{{ ansible_os_family }}.yml"
 
-- name: Ensure Python dependencies for Docker modules are installed
+- name: Install dependencies
+  become: true
   ansible.builtin.pip:
     name:
       - docker
