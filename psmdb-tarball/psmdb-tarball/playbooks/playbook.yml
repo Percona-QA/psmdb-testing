@@ -68,6 +68,7 @@
 
 - name: Converge
   hosts: all
+  become: true
   gather_facts: yes
   roles:
     - role: '../../../roles/easyrsa'
