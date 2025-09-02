@@ -36,45 +36,45 @@
         - ol7
         - ol8
         - ol9
-        - ol2023
+#        - ol2023
         - jammy
         - focal
         - noble
         - buster
-        - bookworm
+#        - bookworm
         - bullseye
       when: tarball.startswith('http')
       ignore_errors: yes
 
-    - name: Download tarball from s3
-      aws_s3:
-        bucket: "{{ tarball_template | urlsplit('hostname') }}"
-        object: "{{ tarball_template | urlsplit('path') }}{{ item }}-minimal.tar.gz"
-        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}-{{ item }}.tar.gz
-        mode: get
-      loop:
-        - ol7
-        - ol8
-        - ol9
-        - ol2023
-        - jammy
-        - focal
-        - noble
-        - buster
-        - bookworm
-        - bullseye
-      when: tarball.startswith('s3')
-      ignore_errors: yes
+#    - name: Download tarball from s3
+#      aws_s3:
+#        bucket: "{{ tarball_template | urlsplit('hostname') }}"
+#        object: "{{ tarball_template | urlsplit('path') }}{{ item }}-minimal.tar.gz"
+#        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}-{{ item }}.tar.gz
+#        mode: get
+#      loop:
+#        - ol7
+#        - ol8
+#        - ol9
+#        - ol2023
+#        - jammy
+#        - focal
+#        - noble
+#        - buster
+#        - bookworm
+#        - bullseye
+#      when: tarball.startswith('s3')
+#      ignore_errors: yes
 
 - name: Converge
   hosts: all
   become: true
   gather_facts: yes
   roles:
-    - role: '../../../roles/easyrsa'
-    - role: '../../psmdb-tarball'
+#    - role: '../../../roles/easyrsa'
+#    - role: '../../psmdb-tarball'
     - role: '../../../roles/docker'
-    - role: '../../../roles/kmip'
+#    - role: '../../../roles/kmip'
     - role: '../../../roles/openldap-docker'
-    - role: '../../../roles/kerberos'
-    - role: '../../../roles/vault'
+#    - role: '../../../roles/kerberos'
+#    - role: '../../../roles/vault'
