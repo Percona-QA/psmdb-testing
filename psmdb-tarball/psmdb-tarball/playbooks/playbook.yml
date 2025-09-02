@@ -68,14 +68,12 @@
 
 - name: Converge
   hosts: all
-  become: true
-  become_method: sudo
   gather_facts: yes
   roles:
-    - role: psmdb-tarball
-    - role: '../../../roles/docker'
     - role: '../../../roles/easyrsa'
+    - role: '../../psmdb-tarball'
+    - role: '../../../roles/docker'
     - role: '../../../roles/kmip'
-    - role: '../../../roles/openldap'
+    - role: '../../../roles/openldap-docker'
     - role: '../../../roles/kerberos'
     - role: '../../../roles/vault'
