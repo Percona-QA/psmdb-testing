@@ -71,10 +71,10 @@
   become: true
   gather_facts: yes
   roles:
-#    - role: '../../../roles/easyrsa'
-#    - role: '../../psmdb-tarball'
+    - role: '../../../roles/easyrsa'
+    - role: '../../psmdb-tarball'
     - role: '../../../roles/docker'
-#    - role: '../../../roles/kmip'
+    - role: '../../../roles/kmip'
     - role: '../../../roles/openldap-docker'
-#    - role: '../../../roles/kerberos'
-#    - role: '../../../roles/vault'
+    - role: '../../../roles/kerberos'
+    - role: '../../../roles/vault'
