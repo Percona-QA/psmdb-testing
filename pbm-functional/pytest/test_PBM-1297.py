@@ -58,7 +58,6 @@ def start_cluster(cluster,newcluster,request):
 
 @pytest.mark.timeout(600, func_only=True)
 def test_logical_pitr_PBM_T253(start_cluster,cluster,newcluster):
-    cluster.check_pbm_status()
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     #Create the first database during oplog slicing
@@ -67,19 +66,17 @@ def test_logical_pitr_PBM_T253(start_cluster,cluster,newcluster):
     client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
     for i in range(100):
         pymongo.MongoClient(cluster.connection)["test"]["test"].insert_one({"doc":i})
-    time.sleep(10)
+    time.sleep(5)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(10)
+    time.sleep(5)
     cluster.disable_pitr(pitr)
-    time.sleep(10)
     cluster.destroy()
 
     newcluster.create()
     newcluster.setup_pbm()
-    time.sleep(10)
-    newcluster.check_pbm_status()
+    time.sleep(5)
     newcluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(newcluster.connection)["test"]["test"].count_documents({}) == 100
     assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)

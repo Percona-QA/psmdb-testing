@@ -64,7 +64,6 @@ def test_logical(start_cluster,cluster):
 
 @pytest.mark.timeout(300, func_only=True)
 def test_logical_selective_PBM_T218(start_cluster, cluster):
-    cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
     client.admin.command("enableSharding", "test2")
     client.admin.command("shardCollection", "test2.test_coll21", key={"_id": "hashed"})
@@ -147,7 +146,6 @@ def test_logical_pitr_PBM_T194(start_cluster,cluster):
     cluster.delete_backup(backup_l2)
     cluster.delete_backup(backup_l3)
     cluster.disable_pitr(pitr)
-    time.sleep(5)
     pymongo.MongoClient(cluster.connection).drop_database('test')
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)

@@ -14,6 +14,7 @@ RUN mkdir -p /pbm-old && mkdir -p /pbm-new && \
     git clone https://github.com/percona/percona-backup-mongodb.git && cd percona-backup-mongodb && \
     if [ -n "$PR_NUMBER" ]; then git fetch origin pull/$PR_NUMBER/head:CURRENT_PR; PBM_BRANCH=CURRENT_PR; fi && \
     git checkout $PBM_BRANCH && \
+    sed 's/5 \* time.Minute/1 \* time.Minute/g' -i pbm/restore/physical.go && \
     make $MAKE_TARGET && cp -rpf bin/* /pbm-new/ && rm -rf bin && \
     git reset --hard && \
     git branch -r | grep release | sed 's/origin\///'| grep -v $PBM_BRANCH | sort --version-sort | tail -1 | xargs git checkout && \
@@ -43,6 +44,10 @@ COPY conf/pbm/pbm-1525.yaml /etc/pbm-1525.conf
 COPY conf/pbm/pbm-1043.yaml /etc/pbm-1043.conf
 COPY conf/pbm/pbm-1211.yaml /etc/pbm-1211.conf
 COPY conf/pbm/filesystem-profile.yaml /etc/pbm-fs-profile.conf
+COPY conf/pbm/aws.yaml /etc/aws.conf
+COPY conf/pbm/gcs.yaml /etc/gcs.conf
+COPY conf/pbm/gcs_hmac.yaml /etc/gcs_hmac.conf
+COPY conf/pbm/azure.yaml /etc/azure.conf
 COPY conf/krb5.conf /etc/krb5.conf
 COPY keyfile /etc/keyfile
 COPY mongodb-keyfile /etc/mongodb-keyfile

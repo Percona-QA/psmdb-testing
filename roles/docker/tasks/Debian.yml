@@ -1,6 +1,17 @@
 - set_fact:
     ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
 
+- name: Install dependencies
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+      - ca-certificates
+      - curl
+  when: ansible_os_family == "Debian"
+
 - name: Create keyrings directory
   file:
     path: /etc/apt/keyrings
@@ -9,13 +20,14 @@
   when:
     - ansible_os_family == "Debian"
 
-- name: Download Docker GPG key to keyring
+- name: Download Docker repo key (ASCII)
+  become: true
   get_url:
-    url: https://download.docker.com/linux/debian/gpg
+    url: "https://download.docker.com/linux/{{ 'ubuntu' if ansible_distribution == 'Ubuntu' else 'debian' }}/gpg"
     dest: /etc/apt/keyrings/docker.asc
     mode: '0644'
-  when:
-    - ansible_os_family == "Debian"
+  register: docker_key_asc
+  when: ansible_os_family == "Debian"
 
 - name: Map architecture for Docker APT repo
   set_fact:
@@ -23,13 +35,12 @@
                   'arm64' if ansible_architecture == 'aarch64' }}"
 
 - name: Add Docker APT repository
-  copy:
-    content: |
-      deb [arch={{ docker_arch }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
-    dest: /etc/apt/sources.list.d/docker.list
-    mode: '0644'
-  when:
-    - ansible_os_family == "Debian"
+  shell: |
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
+         https://download.docker.com/linux/{{ 'ubuntu' if ansible_distribution == 'Ubuntu' else 'debian' }} \
+         $(. /etc/os-release && echo ${UBUNTU_CODENAME:-$VERSION_CODENAME}) stable" \
+    > /etc/apt/sources.list.d/docker.list
+  when: ansible_os_family == "Debian"
 
 - name: Update apt cache
   apt:

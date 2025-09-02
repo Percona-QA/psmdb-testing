@@ -23,7 +23,7 @@ import re
 class Cluster:
     def __init__(self, config, **kwargs):
         self.config = config
-        self.mongod_extra_args = kwargs.get('mongod_extra_args', " --setParameter=logicalSessionRefreshMillis=10000")
+        self.mongod_extra_args = kwargs.get('mongod_extra_args', " --setParameter=logicalSessionRefreshMillis=10000 --setParameter=shutdownTimeoutMillisForSignaledShutdown=300")
         self.mongod_datadir = kwargs.get('mongod_datadir', "/var/lib/mongo")
         self.pbm_mongodb_uri = kwargs.get('pbm_mongodb_uri', "mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin")
 
@@ -385,11 +385,20 @@ class Cluster:
         Cluster.log("The cluster was prepared in {} seconds".format(duration))
 
     # setups pbm from default config-file, minio as storage
-    def setup_pbm(self,file="/etc/pbm.conf"):
+    def setup_pbm(self, file="/etc/pbm.conf", retries=3):
         host = self.pbm_cli
         n = testinfra.get_host("docker://" + host)
-        result = n.check_output('pbm config --file=' + file + ' --wait')
-        Cluster.log("Setup PBM:\n" + result)
+        for attempt in range(retries):
+            result = n.run(f'pbm config --file={file} --wait')
+            if result.rc == 0:
+                Cluster.log("Setup PBM:\n" + result.stdout)
+                break
+            Cluster.log(f"Setup PBM attempt {attempt + 1} failed (rc={result.rc}):\n"
+                f"{result.stdout}\n{result.stderr}")
+            if attempt < retries:
+                time.sleep(2)
+            else:
+                raise RuntimeError(f"Setup PBM command failed after {retries} attempts")
         self.wait_pbm_status()
 
     # pbm --force-resync
@@ -468,6 +477,7 @@ class Cluster:
         result = n.run('SSL_CERT_FILE=/etc/nginx-minio/ca.crt timeout ' + str(timeout) +
             ' pbm restore ' + name + ' ' + ' '.join(restore_opts) + ' --wait')
         if "--fallback-enabled=true" in restore_opts:
+            Cluster.log(result.stdout)
             # Additional log check due to PBM-1574
             match = re.search(r"Starting restore (\S+) from", result.stdout)
             if not match:
@@ -485,7 +495,7 @@ class Cluster:
                     if host in matched_hosts:
                         continue
                     container = docker.from_env().containers.get(host)
-                    logs = container.logs(stdout=True, stderr=True, tail=1000).decode("utf-8")
+                    logs = container.logs(stdout=False, stderr=True, tail=1000).decode("utf-8")
                     last_logs_by_host[host] = logs
                     if pattern.search(logs):
                         matched_hosts.add(host)
@@ -556,7 +566,7 @@ class Cluster:
             try:
                 timeout = time.time() + 30
                 self.disable_pitr()
-                result=self.exec_pbm_cli("delete-pitr --all --force --yes ")
+                result=self.exec_pbm_cli("delete-pitr --all --force --yes --wait")
                 Cluster.log(result.stdout + result.stderr)
                 while True:
                     if not self.get_status()['running'] or time.time() > timeout:

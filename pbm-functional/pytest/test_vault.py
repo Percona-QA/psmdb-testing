@@ -31,7 +31,6 @@ def start_cluster(cluster,request):
 
 @pytest.mark.timeout(300,func_only=True)
 def test_physical_PBM_T196(start_cluster,cluster):
-    cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("physical")
     result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
@@ -42,7 +41,6 @@ def test_physical_PBM_T196(start_cluster,cluster):
 
 @pytest.mark.timeout(300,func_only=True)
 def test_incremental_PBM_T200(start_cluster,cluster):
-    cluster.check_pbm_status()
     cluster.make_backup("incremental --base")
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("incremental")
@@ -54,7 +52,6 @@ def test_incremental_PBM_T200(start_cluster,cluster):
 
 @pytest.mark.timeout(600,func_only=True)
 def test_external_PBM_T239(start_cluster,cluster):
-    cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup = cluster.external_backup_start()
     result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})

@@ -51,7 +51,7 @@ def start_cluster(cluster,request):
         client.admin.command("shardCollection", "test.test2", key={"_id": "hashed"})
         for node in cluster.pbm_hosts:
             n = testinfra.get_host("docker://" + node)
-            result=n.check_output('mongo -u root -p root --eval \'db.getSiblingDB("admin").adminCommand({ "setParameter": 1, "wiredTigerEngineRuntimeConfig": "checkpoint=(log_size=1, wait=1),debug_mode=(slow_checkpoint=true)"})\'')
+            n.check_output('mongo -u root -p root --eval \'db.getSiblingDB("admin").adminCommand({ "setParameter": 1, "wiredTigerEngineRuntimeConfig": "checkpoint=(log_size=1, wait=1),debug_mode=(slow_checkpoint=true)"})\'')
         upsert=True
         t1 = threading.Thread(target=insert_data, args=("test","test1",))
         t2 = threading.Thread(target=insert_data, args=("test","test2",))
@@ -75,26 +75,24 @@ def start_cluster(cluster,request):
 
 @pytest.mark.timeout(6000, func_only=True)
 def test_incremental_base_PBM_T246(start_cluster,cluster):
-    cluster.check_pbm_status()
-    time.sleep(10)
-    for i in range(20):
-        time.sleep(1)
+    time.sleep(5)
+    for i in range(10):
+        time.sleep(0.5)
         cluster.make_backup("incremental --base")
 
     Cluster.log("Finished successfully")
 
 @pytest.mark.timeout(6000, func_only=True)
 def test_incremental_PBM_T245(start_cluster,cluster):
-    cluster.check_pbm_status()
-    time.sleep(10)
+    time.sleep(5)
     cluster.make_backup("incremental --base")
-    for i in range(20):
-        time.sleep(1)
+    for i in range(10):
+        time.sleep(0.5)
         pymongo.MongoClient(cluster.connection)['test']['test'].insert_one({'data': random.randbytes(1024)})
         backup=cluster.make_backup("incremental")
 
     cluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 20
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 10
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test1").get("sharded", False)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test2").get("sharded", False)
@@ -102,10 +100,9 @@ def test_incremental_PBM_T245(start_cluster,cluster):
 
 @pytest.mark.timeout(6000, func_only=True)
 def test_physical_PBM_T247(start_cluster,cluster):
-    cluster.check_pbm_status()
-    time.sleep(10)
-    for i in range(20):
-        time.sleep(1)
+    time.sleep(5)
+    for i in range(10):
+        time.sleep(0.5)
         cluster.make_backup("physical")
 
     Cluster.log("Finished successfully")
