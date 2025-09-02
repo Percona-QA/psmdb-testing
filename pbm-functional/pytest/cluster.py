@@ -385,11 +385,20 @@ class Cluster:
         Cluster.log("The cluster was prepared in {} seconds".format(duration))
 
     # setups pbm from default config-file, minio as storage
-    def setup_pbm(self,file="/etc/pbm.conf"):
+    def setup_pbm(self, file="/etc/pbm.conf", retries=3):
         host = self.pbm_cli
         n = testinfra.get_host("docker://" + host)
-        result = n.check_output('pbm config --file=' + file + ' --wait')
-        Cluster.log("Setup PBM:\n" + result)
+        for attempt in range(retries):
+            result = n.run(f'pbm config --file={file} --wait')
+            if result.rc == 0:
+                Cluster.log("Setup PBM:\n" + result.stdout)
+                break
+            Cluster.log(f"Setup PBM attempt {attempt + 1} failed (rc={result.rc}):\n"
+                f"{result.stdout}\n{result.stderr}")
+            if attempt < retries:
+                time.sleep(2)
+            else:
+                raise RuntimeError(f"Setup PBM command failed after {retries} attempts")
         self.wait_pbm_status()
 
     # pbm --force-resync
@@ -556,7 +565,7 @@ class Cluster:
             try:
                 timeout = time.time() + 30
                 self.disable_pitr()
-                result=self.exec_pbm_cli("delete-pitr --all --force --yes ")
+                result=self.exec_pbm_cli("delete-pitr --all --force --yes --wait")
                 Cluster.log(result.stdout + result.stderr)
                 while True:
                     if not self.get_status()['running'] or time.time() > timeout:

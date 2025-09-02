@@ -16,6 +16,7 @@ services:
       - JENKINS_URL=${JENKINS_URL:-}
       - GIT_URL=https://github.com/percona/percona-backup-mongodb
       - GIT_BRANCH=${PBM_BRANCH:-dev}
+      - KMS_ID=${KMS_ID:-}
     networks:
       - test
 

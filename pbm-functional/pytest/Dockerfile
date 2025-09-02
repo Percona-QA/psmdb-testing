@@ -43,6 +43,10 @@ COPY conf/pbm/pbm-1525.yaml /etc/pbm-1525.conf
 COPY conf/pbm/pbm-1043.yaml /etc/pbm-1043.conf
 COPY conf/pbm/pbm-1211.yaml /etc/pbm-1211.conf
 COPY conf/pbm/filesystem-profile.yaml /etc/pbm-fs-profile.conf
+COPY conf/pbm/aws.yaml /etc/aws.conf
+COPY conf/pbm/gcs.yaml /etc/gcs.conf
+COPY conf/pbm/gcs_hmac.yaml /etc/gcs_hmac.conf
+COPY conf/pbm/azure.yaml /etc/azure.conf
 COPY conf/krb5.conf /etc/krb5.conf
 COPY keyfile /etc/keyfile
 COPY mongodb-keyfile /etc/mongodb-keyfile
