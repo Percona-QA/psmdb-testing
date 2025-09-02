@@ -36,12 +36,12 @@
         - ol7
         - ol8
         - ol9
-#        - ol2023
+        - ol2023
         - jammy
         - focal
         - noble
         - buster
-#        - bookworm
+        - bookworm
         - bullseye
       when: tarball.startswith('http')
       ignore_errors: yes
