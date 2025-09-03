@@ -1,0 +1,22 @@
+ldap_basedn: dc=percona,dc=com      
+ldap_server_uri: ldap://localhost:1389
+ldap_bind_pw: secret 
+ldap_users:
+  exttestro:
+    cn: exttestro
+    givenname: exttestro
+    sn: exttestro
+    userpassword: exttestro9a5S
+  exttestrw:
+    cn: exttestrw
+    givenname: exttestrw
+    sn: exttestrw
+    userpassword: exttestrw9a5S
+ldap_groups:
+  - name: testreaders
+    members:
+      - exttestro
+      - exttestrw
+  - name: testwriters
+    members:
+      - exttestrw

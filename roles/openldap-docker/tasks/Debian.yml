@@ -1,0 +1,10 @@
+- name: Install dependencies
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+      - docker
+      - python-requests
+  when: ansible_os_family == "Debian"
