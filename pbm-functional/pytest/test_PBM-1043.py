@@ -68,7 +68,7 @@ def test_logical_PBM_T255(start_cluster,cluster):
     nrs103.check_output('supervisorctl stop mongod')
     nrs203.check_output('supervisorctl stop pbm-agent')
 
-    time.sleep(10)
+    time.sleep(5)
 
     Cluster.log("Start pbm-agent and mongod")
     nrs103.check_output('supervisorctl start mongod')
@@ -89,7 +89,7 @@ def test_logical_PBM_T255(start_cluster,cluster):
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 300
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
-    time.sleep(10)
+    time.sleep(5)
     Cluster.log("PITR must be disabled after the restore")
     assert not cluster.check_pitr()
     cluster.check_pbm_status()

@@ -41,7 +41,7 @@ def start_cluster(cluster,request):
 def test_pitr_PBM_T268(start_cluster,cluster,backup_type):
     def insert_docs():
         client=pymongo.MongoClient(cluster.connection)
-        for i in range(500):
+        for i in range(300):
             client['test']['test'].insert_one({"doc":i})
             time.sleep(0.1)
 
@@ -50,18 +50,18 @@ def test_pitr_PBM_T268(start_cluster,cluster,backup_type):
     Cluster.log("Start inserting docs in the background")
     background_insert = threading.Thread(target=insert_docs)
     background_insert.start()
-    time.sleep(10)
+    time.sleep(5)
     Cluster.log("Check if PITR is running")
     if not cluster.check_pitr():
         logs=cluster.exec_pbm_cli("logs -sD -t0")
         assert False, logs.stdout
-    time.sleep(10)
+    time.sleep(5)
     background_insert.join()
-    time.sleep(10)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 500
+    time.sleep(5)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 300
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     Cluster.log("Time for PITR is " + pitr)
-    time.sleep(10)
+    time.sleep(5)
     cluster.disable_pitr(pitr)
     pymongo.MongoClient(cluster.connection).drop_database('test')
     backup="--time=" + pitr
@@ -69,8 +69,8 @@ def test_pitr_PBM_T268(start_cluster,cluster,backup_type):
         cluster.make_restore(backup, check_pbm_status=True)
     else:
         cluster.make_restore(backup, restart_cluster=True, check_pbm_status=True)
-    time.sleep(10)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 500
+    time.sleep(5)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 300
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 

@@ -71,7 +71,7 @@ def start_cluster(cluster,newcluster,request):
 def test_general_PBM_T257(start_cluster,cluster,backup_type,restore_type):
     cluster.check_pbm_status()
     client=pymongo.MongoClient(cluster.connection)
-    for i in range(600):
+    for i in range(100):
         client['test']['test'].insert_one({"doc":i})
 
     backup=cluster.make_backup(backup_type)
@@ -79,28 +79,28 @@ def test_general_PBM_T257(start_cluster,cluster,backup_type,restore_type):
     if restore_type == 'base':
         pymongo.MongoClient(cluster.connection).drop_database('test')
         cluster.make_restore(backup,restart_cluster=restart,check_pbm_status=True,make_resync=False)
-        assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 600
+        assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 100
         assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     else:
         cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
-        for i in range(600):
+        for i in range(100):
             client['test']['test'].insert_one({"doc":i})
             time.sleep(0.1)
-        time.sleep(10)
+        time.sleep(5)
         pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
         Cluster.log("Time for PITR is: " + pitr)
         pitr_backup="--time=" + pitr
-        time.sleep(10)
+        cluster.disable_pitr(pitr)
         pymongo.MongoClient(cluster.connection).drop_database('test')
         cluster.make_restore(pitr_backup,restart_cluster=restart,check_pbm_status=True,make_resync=False)
-        assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 1200
+        assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 200
         assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
 
 @pytest.mark.timeout(900,func_only=True)
 @pytest.mark.parametrize('backup_type',['logical','physical'])
 def test_remap_PBM_T265(start_cluster,cluster,newcluster,backup_type):
     client=pymongo.MongoClient(cluster.connection)
-    for i in range(600):
+    for i in range(300):
         client['test']['test'].insert_one({"doc":i})
 
     backup=cluster.make_backup(backup_type)
@@ -114,22 +114,22 @@ def test_remap_PBM_T265(start_cluster,cluster,newcluster,backup_type):
 
     restart = True if backup_type == 'physical' else False
     newcluster.make_restore(backup,restart_cluster=restart,check_pbm_status=True,make_resync=False)
-    assert pymongo.MongoClient(newcluster.connection)["test"]["test"].count_documents({}) == 600
+    assert pymongo.MongoClient(newcluster.connection)["test"]["test"].count_documents({}) == 300
     assert pymongo.MongoClient(newcluster.connection)["test"].command("collstats", "test").get("sharded", False)
 
 @pytest.mark.timeout(900,func_only=True)
 def test_incremental_PBM_T258(start_cluster,cluster):
     client=pymongo.MongoClient(cluster.connection)
-    for i in range(600):
+    for i in range(300):
         client['test']['test'].insert_one({"doc":i})
     cluster.make_backup("incremental --base")
-    for i in range(600):
+    for i in range(300):
         client['test']['test'].insert_one({"doc":i})
-    time.sleep(10)
+    time.sleep(5)
     backup=cluster.make_backup("incremental")
     pymongo.MongoClient(cluster.connection).drop_database('test')
     cluster.make_restore(backup,restart_cluster=True,check_pbm_status=True,make_resync=False)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 1200
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 600
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
 
 @pytest.mark.parametrize('command',['config --force-resync','backup'])

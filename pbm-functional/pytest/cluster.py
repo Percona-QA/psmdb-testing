@@ -23,7 +23,7 @@ import re
 class Cluster:
     def __init__(self, config, **kwargs):
         self.config = config
-        self.mongod_extra_args = kwargs.get('mongod_extra_args', " --setParameter=logicalSessionRefreshMillis=10000")
+        self.mongod_extra_args = kwargs.get('mongod_extra_args', " --setParameter=logicalSessionRefreshMillis=10000 --setParameter=shutdownTimeoutMillisForSignaledShutdown=300")
         self.mongod_datadir = kwargs.get('mongod_datadir', "/var/lib/mongo")
         self.pbm_mongodb_uri = kwargs.get('pbm_mongodb_uri', "mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin")
 
@@ -477,6 +477,7 @@ class Cluster:
         result = n.run('SSL_CERT_FILE=/etc/nginx-minio/ca.crt timeout ' + str(timeout) +
             ' pbm restore ' + name + ' ' + ' '.join(restore_opts) + ' --wait')
         if "--fallback-enabled=true" in restore_opts:
+            Cluster.log(result.stdout)
             # Additional log check due to PBM-1574
             match = re.search(r"Starting restore (\S+) from", result.stdout)
             if not match:
@@ -494,7 +495,7 @@ class Cluster:
                     if host in matched_hosts:
                         continue
                     container = docker.from_env().containers.get(host)
-                    logs = container.logs(stdout=True, stderr=True, tail=1000).decode("utf-8")
+                    logs = container.logs(stdout=False, stderr=True, tail=1000).decode("utf-8")
                     last_logs_by_host[host] = logs
                     if pattern.search(logs):
                         matched_hosts.add(host)

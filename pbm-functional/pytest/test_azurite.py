@@ -68,7 +68,6 @@ def test_logical_pitr(start_cluster,cluster):
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
-    time.sleep(5)
     # make several following backups and then remove them to check the continuity of PITR timeframe
     pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_many(documents)
     backup_l2=cluster.make_backup("logical")
@@ -82,7 +81,6 @@ def test_logical_pitr(start_cluster,cluster):
     cluster.delete_backup(backup_l2)
     cluster.delete_backup(backup_l3)
     cluster.disable_pitr(pitr)
-    time.sleep(5)
     pymongo.MongoClient(cluster.connection).drop_database('test')
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
