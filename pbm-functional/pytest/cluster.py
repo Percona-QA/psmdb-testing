@@ -1096,3 +1096,37 @@ class Cluster:
                 assert False
             time.sleep(1)
         Cluster.log("Mongodb on " + host + " is in previous state, is secondary: " + newstate)
+
+    def network_interruption(self, delay=120, stop_event=None):
+        client = docker.from_env()
+        if self.layout == "replicaset":
+            names = [m["host"] for m in self.config["members"]]
+        elif self.layout == "sharded":
+            names = [m["host"] for m in self.config["configserver"]["members"]]
+            for shard in self.config["shards"]:
+                names += [m["host"] for m in shard["members"]]
+        else:
+            return
+        containers = [client.containers.get(n) for n in names]
+        defaults = {}
+        for c in containers:
+            r = c.exec_run("sh -c \"ip -o -4 route show default | awk '{print $3, $5}'\"")
+            gw_dev = r.output.decode().strip()
+            if gw_dev:
+                defaults[c.name] = gw_dev
+                c.exec_run("ip route replace blackhole default", privileged=True)
+                Cluster.log(f"Disconnecting {c.name} container from the network")
+        if stop_event:
+            elapsed = 0
+            while elapsed < delay and not stop_event.is_set():
+                time.sleep(1)
+                elapsed += 1
+            if stop_event.is_set():
+                Cluster.log("Network interruption stopped early due to stop signal")
+        else:
+            time.sleep(delay)
+        for c in containers:
+            if c.name in defaults:
+                gw, dev = defaults[c.name].split()
+                c.exec_run(f"ip route replace default via {gw} dev {dev}", privileged=True)
+                Cluster.log(f"Reconnecting {c.name} container to the network")

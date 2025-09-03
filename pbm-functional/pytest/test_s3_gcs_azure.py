@@ -5,6 +5,7 @@ import docker
 import pymongo
 import pytest
 import base64
+import threading
 import time
 from bson.binary import Binary
 
@@ -148,6 +149,97 @@ def test_general_PBM_T300(start_cluster, cluster, provider, encryption_type, bac
         raise TimeoutError(f"PBM command {cmd!r} is still running after timeout")
     pbm_exec_and_wait(cluster, "delete-pitr --all --force --yes --wait")
     pbm_exec_and_wait(cluster, f"delete-backup --older-than=0d -t {backup_type} --force --yes")
+    logs=cluster.exec_pbm_cli("logs -sD -t0")
+    ignored_errors = ["no documents in result","send pbm heartbeat","resync"]
+    error_lines = [
+        line for line in logs.stdout.splitlines()
+        if " E " in line and not any(ignore in line for ignore in ignored_errors)]
+    if error_lines:
+        error_summary = "\n".join(error_lines)
+        raise AssertionError(f"Errors found in PBM logs\n{error_summary}")
+    Cluster.log("Finished successfully")
+
+@pytest.mark.jenkins
+@pytest.mark.parametrize("provider",["aws", "gcs", "gcs_hmac", "azure"])
+@pytest.mark.parametrize("backup_type", ["logical", "physical", "incremental"])
+@pytest.mark.timeout(1600, func_only=True)
+def test_general_PBM_T301(start_cluster, cluster, provider, backup_type):
+    cloud_configs = {
+        "aws": "/etc/aws.conf",
+        "gcs": "/etc/gcs.conf",
+        "gcs_hmac": "/etc/gcs_hmac.conf",
+        "azure": "/etc/azure.conf"}
+    cluster.setup_pbm(file=cloud_configs[provider])
+    client = pymongo.MongoClient(cluster.connection)
+    mongod_version = client.server_info()["version"]
+    major_ver = "".join(mongod_version.split(".")[:2])
+    unique_prefix = f"no-encryption/{major_ver}-{backup_type}"
+    if provider == "aws":
+        result = cluster.exec_pbm_cli(f'config --set storage.s3.prefix={unique_prefix} --out json -w')
+    elif provider in ["gcs", "gcs_hmac"]:
+        result = cluster.exec_pbm_cli(f'config --set storage.s3.prefix={unique_prefix} --out json -w')
+    elif provider == "azure":
+        result = cluster.exec_pbm_cli(f'config --set storage.azure.prefix={unique_prefix} --out json -w')
+    assert result.rc == 0
+    cluster.check_pbm_status()
+    result = cluster.exec_pbm_cli("config")
+    Cluster.log("Current PBM config:\n" + result.stdout)
+    total_docs = (1000 * 1024) // 10
+    for i in range(0, total_docs, 1000):
+        batch = [
+            {"_id": i + j, "payload": Binary(os.urandom(10 * 1024))}
+            for j in range(min(1000, total_docs - i))]
+        client["test"]["bigdata"].insert_many(batch)
+    Cluster.log(f"Inserted {total_docs} documents")
+    backup_result = {"backup": None, "error": None}
+    network_interrupt_stop = threading.Event()
+    def run_backup():
+        try:
+            if backup_type == "incremental":
+                backup_result["backup"] = cluster.make_backup(f"{backup_type} --base")
+            else:
+                backup_result["backup"] = cluster.make_backup(f"{backup_type}")
+            Cluster.log("Backup completed successfully")
+        except Exception as e:
+            backup_result["error"] = e
+            Cluster.log(f"Backup failed: {e}")
+        finally:
+            network_interrupt_stop.set()
+    def run_network_interrupt():
+        try:
+            time.sleep(10)
+            cluster.network_interruption(600, stop_event=network_interrupt_stop)
+        except Exception as e:
+            Cluster.log(f"Network interruption failed: {e}")
+    try:
+        backup_thread = threading.Thread(target=run_backup)
+        network_thread = threading.Thread(target=run_network_interrupt)
+        backup_thread.start()
+        network_thread.start()
+        backup_thread.join()
+        network_thread.join()
+    finally:
+        all_threads = []
+        if "backup_thread" in locals():
+            all_threads.append(backup_thread)
+        if "network_thread" in locals():
+            all_threads.append(network_thread)
+        for thread in all_threads:
+            if thread.is_alive():
+                thread.join(timeout=5)
+    if backup_result["error"]:
+        raise AssertionError(f"Backup failed with error: {backup_result['error']}")
+    if not backup_result["backup"]:
+        raise AssertionError("Backup didn't complete")
+    client.drop_database("test")
+    backup = backup_result.get("backup")
+    if backup_type == "logical":
+        cluster.make_restore(backup,timeout=500,check_pbm_status=True)
+    else:
+        cluster.make_restore(backup,timeout=500,restart_cluster=True,check_pbm_status=True)
+    assert client["test"]["bigdata"].count_documents({}) == total_docs
+    for i in range(total_docs):
+        assert client["test"]["bigdata"].find_one({"_id": i})
     logs=cluster.exec_pbm_cli("logs -sD -t0")
     ignored_errors = ["no documents in result","send pbm heartbeat","resync"]
     error_lines = [
