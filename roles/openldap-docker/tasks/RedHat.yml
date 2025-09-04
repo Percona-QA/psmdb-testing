@@ -1,14 +1,14 @@
-- name: Enable CRB (RHEL 9) for EPEL deps
-  community.general.dnf_config_manager:
-    name: crb
-    state: enabled
-  when: ansible_distribution_major_version | int >= 9 and ansible_distribution != "Amazon"
-
-- name: Install EPEL release
-  dnf:
-    name: epel-release
-    state: present
-  when: ansible_distribution_major_version | int >= 9 and ansible_distribution != "Amazon"
+#- name: Enable CRB (RHEL 9) for EPEL deps
+#  community.general.dnf_config_manager:
+#    name: crb
+#    state: enabled
+#  when: ansible_distribution_major_version | int >= 9 and ansible_distribution != "Amazon"
+#
+#- name: Install EPEL release
+#  dnf:
+#    name: epel-release
+#    state: present
+#  when: ansible_distribution_major_version | int >= 9 and ansible_distribution != "Amazon"
 
 - name: Install Pip and Python Requests
   dnf:
@@ -25,7 +25,7 @@
       - python3-ldap
       - python3-docker
     state: present
-    when: ansible_distribution != "Amazon"
+  when: ansible_distribution != "Amazon"
 
 - name: Install python-ldap (AL2023)
   pip:
