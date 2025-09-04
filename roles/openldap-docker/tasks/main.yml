@@ -2,16 +2,11 @@
 - include_vars: all.yml
 - include_vars: "Debian-vars.yml"
   when: ansible_os_family == "Debian"
-
-- name: Install Python SDKs from apt
-  become: true
-  apt:
-    update_cache: true
-    name:
-      - python3-ldap
-      - python3-docker
-      - python3-requests
-    state: present
+- include_vars: "RedHat-vars.yml"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "7"
+- include_vars: "RedHat8-vars.yml"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version|int >= 8
+- include_tasks: "{{ansible_os_family}}.yml"
 
 - name: Ensure Docker network exists
   community.docker.docker_network:
@@ -35,16 +30,6 @@
       LDAP_PASSWORDS: "pbmpass"
     networks:
       - name: test
-
-- name: Register encrypted password
-  community.docker.docker_container_exec:
-    container: ldap
-    command: slappasswd -s "{{ ldap_bind_pw }}"
-  register: ldap_encrypted_password
-
-- name: Show generated hash
-  debug:
-    var: ldap_encrypted_password.stdout
 
 - name: Copy db templates
   template:
