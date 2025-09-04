@@ -1,0 +1,9 @@
+- name: Install Python SDKs from apt
+  become: true
+  yum:
+    update_cache: true
+    name:
+      - python3-ldap
+      - python3-docker
+      - python3-requests
+    state: present
