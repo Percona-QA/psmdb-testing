@@ -31,6 +31,12 @@
     networks:
       - name: test
 
+- name: Register encrypted password
+  community.docker.docker_container_exec:
+    container: ldap
+    command: slappasswd -s "{{ ldap_bind_pw }}"
+  register: ldap_encrypted_password
+
 - name: Copy db templates
   template:
     src: db.ldif
