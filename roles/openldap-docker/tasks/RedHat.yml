@@ -1,9 +1,36 @@
-- name: Install Python SDKs from apt
-  become: true
-  yum:
+- name: Enable CRB (RHEL 9) for EPEL deps
+  community.general.dnf_config_manager:
+    name: crb
+    state: enabled
+  when: ansible_distribution_major_version | int >= 9 and ansible_distribution != "Amazon"
+
+- name: Install EPEL release
+  dnf:
+    name: epel-release
+    state: present
+  when: ansible_distribution_major_version | int >= 9 and ansible_distribution != "Amazon"
+
+- name: Install Pip and Python Requests
+  dnf:
+    update_cache: true
+    name:
+      - python3-pip
+      - python3-requests
+    state: present
+
+- name: Install Python SDKs (RedHat)
+  dnf:
     update_cache: true
     name:
       - python3-ldap
       - python3-docker
-      - python3-requests
     state: present
+    when: ansible_distribution != "Amazon"
+
+- name: Install python-ldap (AL2023)
+  pip:
+    name:
+      - python-ldap
+      - python-docker
+    executable: pip3
+  when: ansible_distribution == "Amazon"

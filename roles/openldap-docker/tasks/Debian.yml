@@ -1,4 +1,4 @@
-- name: Install Python SDKs from apt
+- name: Install Python SDKs (Debian)
   become: true
   apt:
     update_cache: true
