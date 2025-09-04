@@ -26,7 +26,7 @@
     restart_policy: unless-stopped
     hostname: ldap
     published_ports:
-      - "1389:1389"
+      - "389:1389"
       - "1636:1636"
     env:
       LDAP_ADMIN_USERNAME: "admin"
@@ -78,7 +78,7 @@
 
 - name: Load ldap root entry
   ldap_entry:
-    server_uri: "{{ldap_server_uri}}"
+    server_uri: "ldap://localhost:389"
     bind_dn: "{{ldap_basedn}}"
     bind_pw: "{{ldap_bind_pw}}"
     dn: "{{ldap_basedn}}"
