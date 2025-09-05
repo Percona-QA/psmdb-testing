@@ -73,31 +73,12 @@
       command: percona-release enable {{ psmdb_to_test }} {{ repo }}
       when: pro_build != true
 
-    - name: Create yum repo for PRO build
-      blockinfile:
-        path: /etc/yum.repos.d/percona-pro.repo
-        mode: '0640'
-        create: true
-        block: |
-          [percona-pro]
-          name=[{{ psmdb_to_test }}-pro-{{ repo }}-{{ ansible_architecture }}]
-          baseurl=https://repo.percona.com/private/{{ client_id }}-{{ client_token }}/{{ psmdb_to_test }}-pro/yum/{{ repo }}/{{ ansible_distribution_major_version }}/RPMS/{{ ansible_architecture }}
-          enabled=1
-          gpgcheck=0
-          sslverify=0
+    - name: enable psmdb PRO repo
+      command: percona-release enable {{ psmdb_to_test }}-pro {{ repo }} --user_name={{ client_id }} --repo_token={{ client_token }}
       vars:
         client_id: "{{ lookup('env', 'USERNAME') }}"
         client_token: "{{ lookup('env', 'PASSWORD') }}"
-      when: ansible_os_family == "RedHat" and pro_build == true
-
-    - name: create apt repo for PRO build
-      apt_repository: repo='deb http://repo.percona.com/private/{{ client_id }}-{{ client_token }}/{{ psmdb_to_test }}-pro/apt/ {{ ansible_distribution_release }} {{ repo }}' state=present update_cache=yes
-      vars:
-        client_id: "{{ lookup('env', 'USERNAME') }}"
-        client_token: "{{ lookup('env', 'PASSWORD') }}"
-        deb_repo: "{{ 'main' if repo  == 'release' else repo }}"
-        version: "{{ lookup('env', 'PSMDB_VERSION') }}"
-      when: ansible_os_family == "Debian" and pro_build == true
+      when: pro_build == true
 
     - name: install psmdb deb packages
       apt:
