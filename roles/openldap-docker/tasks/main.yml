@@ -6,13 +6,26 @@
   when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "7"
 - include_vars: "RedHat8-vars.yml"
   when: ansible_os_family == "RedHat" and ansible_distribution_major_version|int >= 8
-#- include_tasks: "{{ansible_os_family}}.yml"
+- include_tasks: "{{ansible_os_family}}.yml"
 
 - name: Ensure Docker network exists
   community.docker.docker_network:
     name: test
     driver: bridge
     state: present
+
+- name: Remove any existing container (and its anonymous volumes)
+  community.docker.docker_container:
+    name: ldap
+    state: absent
+    keep_volumes: false
+
+- name: Copy entire ldif directory to host
+  ansible.builtin.copy:
+    src: templates
+    dest: /tmp/ldifs/
+    mode: "0644"
+    directory_mode: "0755"
 
 - name: Run OpenLDAP container
   docker_container:
@@ -24,48 +37,16 @@
       - "389:1389"
       - "1636:1636"
     env:
+      LDAP_ROOT: "dc=percona,dc=com"
       LDAP_ADMIN_USERNAME: "admin"
       LDAP_ADMIN_PASSWORD: "password"
       LDAP_USERS: "pbm"
       LDAP_PASSWORDS: "pbmpass"
+      LDAP_SKIP_DEFAULT_TREE: "yes"
+      LDAP_CUSTOM_LDIF_DIR: /tmp/ldifs/templates
+    volumes: /tmp/ldifs:/tmp/ldifs:ro
     networks:
       - name: test
-
-- name: Register encrypted password
-  community.docker.docker_container_exec:
-    container: ldap
-    command: slappasswd -s "{{ ldap_bind_pw }}"
-  register: ldap_encrypted_password
-
-- name: Copy db templates
-  template:
-    src: db.ldif
-    dest: /tmp
-
-- name: Copy db templates to host
-  community.docker.docker_container_copy_into:
-    path: /tmp/db.ldif
-    container_path: /tmp/db.ldif
-    container: ldap
-
-- name: Load db template into ldap
-  community.docker.docker_container_exec:
-    container: ldap
-    command: ldapmodify -Y EXTERNAL  -H ldapi:/// -f /tmp/db.ldif
-
-- name: Load some schemas
-  community.docker.docker_container_exec:
-    container: ldap
-    command: ldapadd -Y EXTERNAL -H ldapi:/// -f {{schema_path}}/{{item}}
-  register: ldap_result_code
-  failed_when: ldap_result_code.rc not in [0, 80]
-  changed_when: ldap_result_code.rc == 0
-  loop:
-    - cosine.ldif
-    - nis.ldif
-    - inetorgperson.ldif
-  loop_control:
-    label: "{{ item }}"
 
 #- name: Load ldap root entry
 #  ldap_entry:
@@ -135,13 +116,13 @@
 #    - "{{ldap_groups}}"
 #    - members
 #
-#- name: Remove dummy entry
-#  ldap_attrs:
-#    server_uri: "{{ldap_server_uri}}"
-#    bind_dn: "{{ldap_basedn}}"
-#    bind_pw: "{{ldap_bind_pw}}"
-#    dn: "cn={{item.name}},ou=groups,{{ldap_basedn}}"
-#    attributes:
-#      member: "cn=dummy,ou=people,{{ldap_basedn}}"
-#    state: absent
-#  with_items: "{{ldap_groups}}"
+- name: Remove dummy entry
+  ldap_attrs:
+    server_uri: "{{ldap_server_uri}}"
+    bind_dn: "{{ldap_basedn}}"
+    bind_pw: "{{ldap_bind_pw}}"
+    dn: "cn={{item.name}},ou=groups,{{ldap_basedn}}"
+    attributes:
+      member: "cn=dummy,ou=people,{{ldap_basedn}}"
+    state: absent
+  with_items: "{{ldap_groups}}"

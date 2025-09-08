@@ -1,0 +1,48 @@
+dn: ou=people,dc=percona,dc=com
+objectClass: top
+objectClass: organizationalUnit
+ou: people
+
+dn: ou=groups,dc=percona,dc=com
+objectClass: top
+objectClass: organizationalUnit
+ou: groups
+
+# User: exttestro
+dn: cn=exttestro,ou=people,dc=percona,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: exttestro
+sn: exttestro
+givenName: exttestro
+uid: exttestro
+userPassword: exttestro9a5S
+
+# User: exttestrw
+dn: cn=exttestrw,ou=people,dc=percona,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: exttestrw
+sn: exttestrw
+givenName: exttestrw
+uid: exttestrw
+userPassword: exttestrw9a5S
+
+# Group: testreaders
+dn: cn=testreaders,ou=groups,dc=percona,dc=com
+objectClass: top
+objectClass: groupOfNames
+cn: testreaders
+member: cn=exttestro,ou=people,dc=percona,dc=com
+member: cn=exttestrw,ou=people,dc=percona,dc=com
+
+# Group: testwriters
+dn: cn=testwriters,ou=groups,dc=percona,dc=com
+objectClass: top
+objectClass: groupOfNames
+cn: testwriters
+member: cn=exttestrw,ou=people,dc=percona,dc=com
