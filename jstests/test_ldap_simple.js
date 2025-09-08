@@ -23,7 +23,7 @@
     conn = MongoRunner.runMongod({
         restart: conn,
         auth: '',
-        ldapServers: '127.0.0.1:1389',
+        ldapServers: '127.0.0.1:389',
         ldapTransportSecurity: 'none',
         ldapBindMethod: 'simple',
         ldapQueryUser: 'dc=percona,dc=com',
