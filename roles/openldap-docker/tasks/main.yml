@@ -14,7 +14,7 @@
     driver: bridge
     state: present
 
-- name: Remove any existing container (and its anonymous volumes)
+- name: Remove any existing container
   community.docker.docker_container:
     name: ldap
     state: absent
@@ -116,13 +116,13 @@
 #    - "{{ldap_groups}}"
 #    - members
 #
-- name: Remove dummy entry
-  ldap_attrs:
-    server_uri: "{{ldap_server_uri}}"
-    bind_dn: "{{ldap_basedn}}"
-    bind_pw: "{{ldap_bind_pw}}"
-    dn: "cn={{item.name}},ou=groups,{{ldap_basedn}}"
-    attributes:
-      member: "cn=dummy,ou=people,{{ldap_basedn}}"
-    state: absent
-  with_items: "{{ldap_groups}}"
+#- name: Remove dummy entry
+#  ldap_attrs:
+#    server_uri: "{{ldap_server_uri}}"
+#    bind_dn: "{{ldap_basedn}}"
+#    bind_pw: "{{ldap_bind_pw}}"
+#    dn: "cn={{item.name}},ou=groups,{{ldap_basedn}}"
+#    attributes:
+#      member: "cn=dummy,ou=people,{{ldap_basedn}}"
+#    state: absent
+#  with_items: "{{ldap_groups}}"
