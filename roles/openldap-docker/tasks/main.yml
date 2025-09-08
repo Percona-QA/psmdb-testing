@@ -37,7 +37,7 @@
       - "389:1389"
       - "1636:1636"
     env:
-      LDAP_ROOT: "cn=admin,dc=percona,dc=com"
+      LDAP_ROOT: "dc=percona,dc=com"
       LDAP_ADMIN_USERNAME: "admin"
       LDAP_ADMIN_PASSWORD: "secret"
       LDAP_SKIP_DEFAULT_TREE: "yes"
