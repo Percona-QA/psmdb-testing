@@ -2,5 +2,6 @@ storage:
   type: filesystem
   filesystem:
     path: /backups
+    maxObjSizeGB: 0.097656249
 backup:
   compression: none

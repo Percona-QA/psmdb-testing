@@ -7,4 +7,4 @@ storage:
       credentials:
         access-key-id: "minio1234"
         secret-access-key: "minio1234"
-  
+      maxObjSizeGB: 0.097656249
