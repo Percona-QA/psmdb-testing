@@ -1,9 +1,0 @@
-- name: Install Python SDKs (Debian)
-  become: true
-  apt:
-    update_cache: true
-    name:
-      - python3-ldap
-      - python3-docker
-      - python3-requests
-    state: present
