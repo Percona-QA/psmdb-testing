@@ -16,6 +16,7 @@ services:
       - JENKINS_URL=${JENKINS_URL:-}
       - GIT_URL=https://github.com/percona/percona-backup-mongodb
       - GIT_BRANCH=${PBM_BRANCH:-dev}
+      - KMS_ID=${KMS_ID:-}
     networks:
       - test
 
@@ -103,7 +104,7 @@ services:
       - keytabs:/keytabs
 
   ldap:
-    image: bitnami/openldap
+    image: bitnamilegacy/openldap
     container_name: ldap
     hostname: ldap
     environment:

@@ -163,7 +163,7 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
         client["test_db2"]["test_coll21"].insert_one({"key": i, "data": i})
     backup_full = cluster.make_backup("logical")
     backup_partial = cluster.make_backup("logical --ns=administration.*,test_db1.*,test_db2.*")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     client.admin.command('createUser', 'admin_random_user3', pwd='test123', roles=[{'role':'readWrite','db':'admin'}, 'userAdminAnyDatabase', 'clusterAdmin'])
     client_shard.admin.command('createUser', 'admin_random_user4', pwd='test123', roles=[{'role':'readWrite','db':'admin'}, 'userAdminAnyDatabase', 'clusterAdmin'])
     client.test_db1.command('createUser', 'test_random_user3', pwd='test123', roles=[{'role':'readWrite','db':'test_db1'}, {'role':'clusterManager','db':'admin'}])

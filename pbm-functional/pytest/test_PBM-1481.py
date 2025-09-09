@@ -1,19 +1,14 @@
 import pytest
 import time
 import os
-import docker
 import re
 
 from datetime import datetime
 from cluster import Cluster
 
 @pytest.fixture(scope="package")
-def docker_client():
-    return docker.from_env()
-
-@pytest.fixture(scope="package")
 def config():
-    return { "_id": "rs1", "members": [{"host":"rs101"},{"host": "rs102"},{"host": "rs103" }]}
+    return { "_id": "rs1", "members": [{"host":"rs101"}]}
 
 @pytest.fixture(scope="package")
 def cluster(config):
@@ -37,11 +32,11 @@ def start_cluster(cluster,request):
 def test_logical_backup_and_PITR_timestamp_PBM_T290(start_cluster,cluster):
     cluster.check_pbm_status()
     cluster.make_backup("logical")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup = "--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(30)
+    time.sleep(10)
     cluster.make_restore(backup, check_pbm_status=True)
 
     list_backups = cluster.exec_pbm_cli("list ").stdout

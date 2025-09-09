@@ -19,13 +19,9 @@ def start_cluster(cluster,request):
     try:
         cluster.destroy()
         cluster.create()
-        cluster.setup_pbm()
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
-        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups "
-                                    "--set backup.compression=none --out json --wait")
-        assert result.rc == 0
-        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
+        cluster.setup_pbm("/etc/pbm-fs.conf")
         yield True
 
     finally:
@@ -37,8 +33,6 @@ def start_cluster(cluster,request):
 
 @pytest.mark.timeout(300,func_only=True)
 def test_load_PBM_T204(start_cluster,cluster):
-    cluster.check_pbm_status()
-
     client = pymongo.MongoClient(cluster.connection)
     db = client.test
     collection = db.test
@@ -57,8 +51,7 @@ def test_load_PBM_T204(start_cluster,cluster):
             update = {"$set": {"a": 1, "b": 1, "c": 1}}
             pymongo.MongoClient(cluster.connection)['test']['test'].delete_one(query)
             try:
-                doc = pymongo.MongoClient(cluster.connection)['test']['test'].find_one_and_update(query,update,upsert=True,return_document=pymongo.collection.ReturnDocument.AFTER)
-                #Cluster.log(doc)
+                pymongo.MongoClient(cluster.connection)['test']['test'].find_one_and_update(query,update,upsert=True,return_document=pymongo.collection.ReturnDocument.AFTER)
             except pymongo.errors.DuplicateKeyError:
                 pass
         Cluster.log("Stopping background upsert 1")
@@ -70,8 +63,7 @@ def test_load_PBM_T204(start_cluster,cluster):
             update = {"$set": {"a": 2, "b": 1, "c": 1}}
             pymongo.MongoClient(cluster.connection)['test']['test'].delete_one(query)
             try:
-                doc = pymongo.MongoClient(cluster.connection)['test']['test'].find_one_and_update(query,update,upsert=True,return_document=pymongo.collection.ReturnDocument.AFTER)
-                #Cluster.log(doc)
+                pymongo.MongoClient(cluster.connection)['test']['test'].find_one_and_update(query,update,upsert=True,return_document=pymongo.collection.ReturnDocument.AFTER)
             except pymongo.errors.DuplicateKeyError:
                 pass
         Cluster.log("Stopping background upsert 2")

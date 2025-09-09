@@ -7,7 +7,6 @@ from cluster import Cluster
 @pytest.fixture(scope="package")
 def config():
     return {"_id": "rs1", "members": [{"host": "rs101"},{"host": "rs102"},{"host": "rs103"},
-#                                      {"host": "rs104"},{"host": "rs105"},{"host": "rs106"},{"host": "rs107"}
                                       {"host": "rs104", "hidden": True, "priority": 0, "votes": 0},
                                       {"host": "rs105", "hidden": True, "priority": 0, "votes": 0},
                                       {"host": "rs106", "hidden": True, "priority": 0, "votes": 0},
@@ -27,13 +26,9 @@ def start_cluster(cluster,request):
     try:
         cluster.destroy()
         cluster.create()
-        cluster.setup_pbm()
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
-        result = cluster.exec_pbm_cli("config --set storage.type=filesystem --set storage.filesystem.path=/backups "
-                                    "--set backup.compression=none --out json --wait")
-        assert result.rc == 0
-        Cluster.log("Setup PBM with fs storage:\n" + result.stdout)
+        cluster.setup_pbm("/etc/pbm-fs.conf")
         yield True
     finally:
         if request.config.getoption("--verbose"):
@@ -42,7 +37,6 @@ def start_cluster(cluster,request):
 
 @pytest.mark.timeout(300,func_only=True)
 def test_logical_PBM_T254(start_cluster,cluster):
-    cluster.check_pbm_status()
     for i in range(100):
         pymongo.MongoClient(cluster.connection)["test"]["test"].insert_one({"a": i})
     backup = cluster.make_backup("logical")

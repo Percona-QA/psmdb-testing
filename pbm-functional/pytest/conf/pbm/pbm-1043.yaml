@@ -9,9 +9,9 @@ storage:
         secret-access-key: "minio1234"
 pitr:
   enabled: true
-  oplogSpanMin: 0.5
+  oplogSpanMin: 0.1
   priority:
     rs103:27017: 2
     rs203:27017: 2
     rscfg03:27017: 2
-  compression: none  
+  compression: none

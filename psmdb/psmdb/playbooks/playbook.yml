@@ -7,6 +7,7 @@
     - role: '../../../roles/easyrsa'
     - role: psmdb
     - role: '../../../roles/docker'
+    - role: '../../../roles/easyrsa'
     - role: '../../../roles/kmip'
     - role: '../../../roles/vault'
     - role: '../../../roles/openldap-docker'

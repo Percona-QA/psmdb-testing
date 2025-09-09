@@ -15,28 +15,32 @@ backup_cache = {}
 def docker_client():
     return docker.from_env()
 
+@pytest.fixture(scope="package")
+def pbm_mongodb_uri():
+    return 'mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin&serverSelectionTimeoutMS=10000'
+
 @pytest.fixture
-def rs_encrypted_same_key():
+def rs_encrypted_same_key(pbm_mongodb_uri):
     config = {
         "_id": "rs1",
         "members": [{"host": "rs101"}, {"host": "rs102"}, {"host": "rs103"}]}
-    return Cluster(config, mongod_extra_args="--enableEncryption --encryptionKeyFile=/etc/mongodb-keyfile")
+    return Cluster(config, pbm_mongodb_uri=pbm_mongodb_uri, mongod_extra_args="--enableEncryption --encryptionKeyFile=/etc/mongodb-keyfile")
 
 @pytest.fixture
-def rs_encrypted_mixed_key():
+def rs_encrypted_mixed_key(pbm_mongodb_uri):
     config = {
         "_id": "rs1",
         "members": [
             {"host": "rs101"},{"host": "rs102"},
             {"host": "rs103", "mongod_extra_args": "--enableEncryption --encryptionKeyFile=/etc/mongodb-keyfile-new"}]}
-    return Cluster(config, mongod_extra_args="--enableEncryption --encryptionKeyFile=/etc/mongodb-keyfile")
+    return Cluster(config, pbm_mongodb_uri=pbm_mongodb_uri, mongod_extra_args="--enableEncryption --encryptionKeyFile=/etc/mongodb-keyfile")
 
 @pytest.fixture
-def rs_encrypted_new_key():
+def rs_encrypted_new_key(pbm_mongodb_uri):
     config = {
         "_id": "rs1",
         "members": [{"host": "rs101"}, {"host": "rs102"}, {"host": "rs103"}]}
-    return Cluster(config, mongod_extra_args="--enableEncryption --encryptionKeyFile=/etc/mongodb-keyfile-new")
+    return Cluster(config, pbm_mongodb_uri=pbm_mongodb_uri, mongod_extra_args="--enableEncryption --encryptionKeyFile=/etc/mongodb-keyfile-new")
 
 @pytest.fixture
 def start_cluster(request):
@@ -45,9 +49,9 @@ def start_cluster(request):
     try:
         cluster.destroy()
         cluster.create()
-        cluster.setup_pbm()
         os.chmod("/backups", 0o777)
         os.system("rm -rf /backups/*")
+        cluster.setup_pbm()
         yield cluster, allow_partly_done, cluster_name
     finally:
         if request.config.getoption("--verbose"):

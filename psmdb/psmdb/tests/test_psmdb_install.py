@@ -165,6 +165,13 @@ def test_version_pt(host):
     assert PSMDB_VER in version
 
 def test_telemetry(host):
+    TOKEN_FILE="/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"
+    CA_FILE="/package-testing/scripts/psmdb_encryption/test.cer"
+    FILES=[TOKEN_FILE,CA_FILE]
+    for file in FILES:
+        with host.sudo():
+            host.check_output('chown mongod ' + file)
+            host.check_output('chmod 600 ' + file)
     if version.parse(PSMDB_VER) <= version.parse("5.0.27"):
         pytest.skip("This version doesn't support telemetry")
     if version.parse(PSMDB_VER) >= version.parse("6.0.0") and version.parse(PSMDB_VER) <= version.parse("6.0.15"):
@@ -204,10 +211,33 @@ def test_telemetry(host):
     conf = get_default_conf(host)
     conf['setParameter'] = {}
     conf['setParameter']['perconaTelemetryGracePeriod'] = 2
+    conf['security'] = {}
+    conf['security']['enableEncryption'] = True
+    conf['security']['encryptionCipherMode'] = 'AES256-CBC'
+    conf['security']['vault'] = {}
+    conf['security']['vault']['serverName'] = '127.0.0.1'
+    conf['security']['vault']['port'] = 8200
+    conf['security']['vault']['tokenFile'] = TOKEN_FILE
+    conf['security']['vault']['serverCAFile'] = CA_FILE
+    conf['security']['vault']['secret'] = 'secret_v2/data/psmdb-test/package-test'
     apply_conf(host,conf,True)
     time.sleep(3)
     with host.sudo():
         assert "1"==host.check_output("ls -1 /usr/local/percona/telemetry/psmdb/ | wc -l")
+        telemetry_file = host.check_output("ls -1 /usr/local/percona/telemetry/psmdb/").strip()
+        telemetry_path = f"/usr/local/percona/telemetry/psmdb/{telemetry_file}"
+        telemetry_content = host.check_output(f"cat {telemetry_path}")
+        try:
+            data = json.loads(telemetry_content)
+        except Exception as e:
+            pytest.fail(f"Telemetry file {telemetry_path} is not valid JSON: {e}\nContent:\n{telemetry_content}")
+        assert data.get("tde_key_storage") == "vault", (
+            f"'tde_key_storage' is not 'vault' in {telemetry_path}: {data.get('tde_key_storage')}")
+        tv = data.get("tde_vault_info")
+        assert isinstance(tv, dict), f"'tde_vault_info' section missing or not an object in {telemetry_path}"
+        assert tv.get("title") == "HashiCorp Vault API", (
+            f"'title' in tde_vault_info is not 'HashiCorp Vault API' in {telemetry_path}: {tv.get('title')}")
+        assert tv.get("version"), (f"'version' field missing or empty in tde_vault_info in {telemetry_path}")
         time.sleep(15)
         logs=host.check_output('cat /var/log/percona/telemetry-agent/telemetry-agent.log')
         assert "Sending request to host=check-dev.percona.com." in logs

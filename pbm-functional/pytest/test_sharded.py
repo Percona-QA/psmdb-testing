@@ -64,7 +64,6 @@ def test_logical(start_cluster,cluster):
 
 @pytest.mark.timeout(300, func_only=True)
 def test_logical_selective_PBM_T218(start_cluster, cluster):
-    cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
     client.admin.command("enableSharding", "test2")
     client.admin.command("shardCollection", "test2.test_coll21", key={"_id": "hashed"})
@@ -77,19 +76,17 @@ def test_logical_selective_PBM_T218(start_cluster, cluster):
     backup_full = cluster.make_backup("logical")
     backup_partial = cluster.make_backup("logical --ns=test1.test_coll11,test2.*")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
-    time.sleep(5)
     client["test1"]["test_coll11"].drop_index('test_coll11_index_old')
     client["test1"]["test_coll11"].delete_many({})
     for i in range(10):
         client["test1"]["test_coll11"].insert_one({"key": i + 10, "data": i + 10})
     client["test1"]["test_coll11"].create_index("data", name="test_coll11_index_new")
     client["test2"]["test_coll22"].create_index("data", name="test_coll22_index_new")
-    time.sleep(10)
+    time.sleep(5)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
-    pitr = " --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    cluster.disable_pitr()
-    time.sleep(10)
+    cluster.disable_pitr(pitr)
+    pitr = " --time=" + pitr
     client.drop_database("test1")
     client.drop_database("test2")
     backup_partial = " --base-snapshot=" + backup_partial + pitr
@@ -133,25 +130,22 @@ def test_logical_selective_PBM_T218(start_cluster, cluster):
 
 @pytest.mark.timeout(600, func_only=True)
 def test_logical_pitr_PBM_T194(start_cluster,cluster):
-    cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
-    backup_l1=cluster.make_backup("logical")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
-    time.sleep(60)
+    cluster.make_backup("logical")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     # make several following backups and then remove them to check the continuity of PITR timeframe
     pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_many(documents)
-    backup_l2=cluster.make_backup("logical")
-    time.sleep(60)
+    backup_l2 = cluster.make_backup("logical")
+    time.sleep(5)
     pymongo.MongoClient(cluster.connection)["test"]["test3"].insert_many(documents)
-    backup_l3=cluster.make_backup("logical")
+    backup_l3 = cluster.make_backup("logical")
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(60)
+    time.sleep(5)
     cluster.delete_backup(backup_l2)
     cluster.delete_backup(backup_l3)
-    cluster.disable_pitr()
-    time.sleep(10)
+    cluster.disable_pitr(pitr)
     pymongo.MongoClient(cluster.connection).drop_database('test')
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
@@ -161,7 +155,6 @@ def test_logical_pitr_PBM_T194(start_cluster,cluster):
 
 @pytest.mark.timeout(600,func_only=True)
 def test_physical(start_cluster,cluster):
-    cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup=cluster.make_backup("physical")
     result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
@@ -173,21 +166,19 @@ def test_physical(start_cluster,cluster):
 
 @pytest.mark.timeout(600, func_only=True)
 def test_physical_pitr_PBM_T244(start_cluster,cluster):
-    cluster.check_pbm_status()
     cluster.make_backup("logical")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
+    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
-    backup=cluster.make_backup("physical")
-    time.sleep(30)
+    backup = cluster.make_backup("physical")
+    time.sleep(5)
     pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_many(documents)
     pymongo.MongoClient(cluster.connection)["test"]["test3"].insert_many(documents)
-    time.sleep(30)
+    time.sleep(5)
     pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr + " --base-snapshot=" + backup
     Cluster.log("Time for PITR is: " + pitr)
-    time.sleep(60)
-    cluster.disable_pitr()
-    time.sleep(10)
+    time.sleep(5)
+    cluster.disable_pitr(pitr)
     cluster.make_restore(backup,restart_cluster=True,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(cluster.connection)["test"]["test2"].count_documents({}) == len(documents)
@@ -227,14 +218,13 @@ def test_external_meta_PBM_T236(start_cluster,cluster):
 
 @pytest.mark.timeout(600,func_only=True)
 def test_external_nometa_PBM_T237(start_cluster,cluster):
-    cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup = cluster.external_backup_start()
     result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
     assert int(result.deleted_count) == len(documents)
     cluster.external_backup_copy(backup)
     cluster.external_backup_finish(backup)
-    time.sleep(10)
+    time.sleep(5)
     os.system("find /backups/ -name pbm.rsmeta.* | xargs rm -f")
     restore=cluster.external_restore_start()
     cluster.external_restore_copy(backup)

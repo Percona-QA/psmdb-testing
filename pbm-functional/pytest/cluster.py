@@ -23,7 +23,7 @@ import re
 class Cluster:
     def __init__(self, config, **kwargs):
         self.config = config
-        self.mongod_extra_args = kwargs.get('mongod_extra_args', " --setParameter=logicalSessionRefreshMillis=10000")
+        self.mongod_extra_args = kwargs.get('mongod_extra_args', " --setParameter=logicalSessionRefreshMillis=10000 --setParameter=shutdownTimeoutMillisForSignaledShutdown=300")
         self.mongod_datadir = kwargs.get('mongod_datadir', "/var/lib/mongo")
         self.pbm_mongodb_uri = kwargs.get('pbm_mongodb_uri', "mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin")
 
@@ -283,7 +283,7 @@ class Cluster:
                 if "arbiterOnly" in host:
                     if host['arbiterOnly']:
                         self.__delete_pbm(host['host'])
-            time.sleep(5)
+            time.sleep(2)
             Cluster.setup_replicaset(self.config)
             Cluster.setup_authorization(self.config['members'][0]['host'],self.pbm_mongodb_uri)
         else:
@@ -320,7 +320,7 @@ class Cluster:
                     if 'arbiterOnly' in host:
                         if host['arbiterOnly']:
                             self.__delete_pbm(host['host'])
-                    if 'hidden' not in host or host['hidden'] != True:
+                    if 'hidden' not in host or not host['hidden']:
                         conn = conn + host['host'] + ':27017,'
                 conn = conn[:-1]
                 shards.append(conn)
@@ -359,7 +359,7 @@ class Cluster:
                 conn = conn + host['host'] + ':27017,'
             conn = conn[:-1]
             configdb = conn
-            time.sleep(5)
+            time.sleep(2)
             self.__setup_replicasets(
                 self.config['shards'] + [self.config['configserver']])
             self.__setup_authorizations(self.config['shards'])
@@ -373,7 +373,7 @@ class Cluster:
                 detach=True,
                 network='test'
             )
-            time.sleep(1)
+            time.sleep(5)
             Cluster.setup_authorization(self.config['mongos'],self.pbm_mongodb_uri)
             connection = self.connection
             client = pymongo.MongoClient(connection)
@@ -385,28 +385,27 @@ class Cluster:
         Cluster.log("The cluster was prepared in {} seconds".format(duration))
 
     # setups pbm from default config-file, minio as storage
-    def setup_pbm(self,file="/etc/pbm.conf"):
+    def setup_pbm(self, file="/etc/pbm.conf", retries=3):
         host = self.pbm_cli
         n = testinfra.get_host("docker://" + host)
-        result = n.check_output('pbm config --file=' + file + ' --wait --out=json')
-        Cluster.log("Setup PBM:\n" + result)
-        time.sleep(5)
+        for attempt in range(retries):
+            result = n.run(f'pbm config --file={file} --wait')
+            if result.rc == 0:
+                Cluster.log("Setup PBM:\n" + result.stdout)
+                break
+            Cluster.log(f"Setup PBM attempt {attempt + 1} failed (rc={result.rc}):\n"
+                f"{result.stdout}\n{result.stderr}")
+            if attempt < retries:
+                time.sleep(2)
+            else:
+                raise RuntimeError(f"Setup PBM command failed after {retries} attempts")
+        self.wait_pbm_status()
 
     # pbm --force-resync
     def make_resync(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output('pbm config --force-resync --wait --out json')
-        parsed_result = json.loads(result)
-        Cluster.log('Started resync: ' + result)
-        timeout = time.time() + 30
-        while True:
-            logs = self.__find_event_msg("resync", "succeed")
-            if logs:
-                break
-            if time.time() > timeout:
-                assert False
-            time.sleep(1)
-        time.sleep(10)
+        result = n.check_output('pbm config --force-resync --wait')
+        Cluster.log("Resync storage:\n" + result)
 
     # creates backup based on type (no checking input - it's hack for situation like 'incremental --base')
     def make_backup(self, type):
@@ -478,6 +477,7 @@ class Cluster:
         result = n.run('SSL_CERT_FILE=/etc/nginx-minio/ca.crt timeout ' + str(timeout) +
             ' pbm restore ' + name + ' ' + ' '.join(restore_opts) + ' --wait')
         if "--fallback-enabled=true" in restore_opts:
+            Cluster.log(result.stdout)
             # Additional log check due to PBM-1574
             match = re.search(r"Starting restore (\S+) from", result.stdout)
             if not match:
@@ -495,7 +495,7 @@ class Cluster:
                     if host in matched_hosts:
                         continue
                     container = docker.from_env().containers.get(host)
-                    logs = container.logs(stdout=True, stderr=True, tail=1000).decode("utf-8")
+                    logs = container.logs(stdout=False, stderr=True, tail=1000).decode("utf-8")
                     last_logs_by_host[host] = logs
                     if pattern.search(logs):
                         matched_hosts.add(host)
@@ -540,7 +540,7 @@ class Cluster:
         if restart_cluster:
             self.restart()
             self.restart_pbm_agents()
-            time.sleep(10)
+            time.sleep(3)
             self.check_initsync()
 
         make_resync=kwargs.get('make_resync', True)
@@ -549,7 +549,7 @@ class Cluster:
 
         check_pbm_status=kwargs.get('check_pbm_status', True)
         if check_pbm_status:
-            self.check_pbm_status()
+            self.wait_pbm_status()
 
         if self.layout == "sharded":
             self.start_mongos()
@@ -566,7 +566,7 @@ class Cluster:
             try:
                 timeout = time.time() + 30
                 self.disable_pitr()
-                result=self.exec_pbm_cli("delete-pitr --all --force --yes ")
+                result=self.exec_pbm_cli("delete-pitr --all --force --yes --wait")
                 Cluster.log(result.stdout + result.stderr)
                 while True:
                     if not self.get_status()['running'] or time.time() > timeout:
@@ -629,44 +629,39 @@ class Cluster:
         n = testinfra.get_host("docker://" + self.pbm_cli)
         pitr_extra_args = kwargs.get('pitr_extra_args', "")
         result = n.check_output(
-            "pbm config --set pitr.enabled=true --set pitr.compression=none --wait --out json " + pitr_extra_args)
+            "pbm config --set pitr.enabled=true --set pitr.compression=none --wait  " + pitr_extra_args)
         Cluster.log("Enabling PITR: " + result)
-        timeout = time.time() + 150
-        while True:
-            if self.check_pitr():
-                break
-            if time.time() > timeout:
-                status=self.get_status()['pitr']
-                assert False, status
-            time.sleep(1)
+        self.wait_pitr()
 
     # disables PITR
-    def disable_pitr(self, time_param=None):
+    def disable_pitr(self, time_param=None, wait=120):
         n = testinfra.get_host("docker://" + self.pbm_cli)
         if time_param:
             target_time = int(datetime.fromisoformat(time_param).timestamp())
             pitr_end = 0
-
-            while pitr_end < target_time:
+            Cluster.log('Wait for the chunks with timestamp:' + str(target_time))
+            for i in range(wait):
                 result = n.check_output("pbm s -s backups -o json")
                 backups = json.loads(result)
                 if 'backups' in backups and 'pitrChunks' in backups['backups'] and 'pitrChunks' in backups['backups']['pitrChunks']:
-                   pitr_end_cur = backups['backups']['pitrChunks']['pitrChunks'][0].get('range', {}).get('end', None)
+                   chunks = []
+                   for j in backups['backups']['pitrChunks']['pitrChunks']:
+                       chunks.append(j.get('range', {}).get('end', None))
+                   pitr_end_cur = max(chunks)
+                   # pitr_end_cur = backups['backups']['pitrChunks']['pitrChunks'][0].get('range', {}).get('end', None)
+                   Cluster.log('Current chunks end is: ' + str(pitr_end_cur))
                    if pitr_end_cur is not None:
                         pitr_end = pitr_end_cur
                 if pitr_end < target_time:
                     time.sleep(1)
-
+                else:
+                   Cluster.log("Found necessary chunk with end timestamp: " + str(pitr_end))
+                   break
+            assert pitr_end >= target_time, "Didn't find the chunks with necessary timestamp " + str(target_time)
         result = n.check_output(
-            "pbm config --set pitr.enabled=false --wait --out json")
+            "pbm config --set pitr.enabled=false --wait")
         Cluster.log("Disabling PITR: " + result)
-        timeout = time.time() + 150
-        while True:
-            if not self.check_pitr():
-                break
-            if time.time() > timeout:
-                assert False
-            time.sleep(1)
+        self.wait_pitr(enabled=False)
 
     # executes any pbm command e.g. cluster.exec_pbm_cli("status"), doesn't raise any errors, output from
     # https://testinfra.readthedocs.io/en/latest/modules.html#testinfra.host.Host.run
@@ -690,7 +685,7 @@ class Cluster:
         Cluster.log("Setup replicaset " + json.dumps(rs) + ":\n" + result)
 
     def __setup_replicasets(self, replicasets):
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
             for rs in replicasets:
                 executor.submit(Cluster.setup_replicaset, rs)
 
@@ -743,22 +738,22 @@ class Cluster:
             "mongo -u root -p root --quiet --eval " + init_pbm_user)
         logs = primary.check_output(
             "mongo -u root -p root --quiet --eval " + init_pbm_t_user)
-        #Cluster.log(logs)
+        Cluster.log(logs)
         if "authMechanism=MONGODB-X509" in uri:
             logs = primary.check_output(
                 "mongo -u root -p root --quiet --eval " + x509_pbm_user)
-            #Cluster.log(logs)
+            Cluster.log(logs)
         if "authMechanism=GSSAPI" in uri:
             logs = primary.check_output(
                 "mongo -u root -p root --quiet --eval " + krb_pbm_user)
-            #Cluster.log(logs)
+            Cluster.log(logs)
         if "authMechanism=PLAIN" in uri:
             logs = primary.check_output(
                 "mongo -u root -p root --quiet --eval " + ldap_mongo_grp)
-            #Cluster.log(logs)
+            Cluster.log(logs)
 
     def __setup_authorizations(self, replicasets):
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
             for rs in replicasets:
                 executor.submit(Cluster.setup_authorization,
                                 rs['members'][0]['host'], self.pbm_mongodb_uri)
@@ -782,11 +777,11 @@ class Cluster:
                 Cluster.log("Waiting for " + host + " to became primary")
             if time.time() > timeout:
                 assert False
-            time.sleep(3)
+            time.sleep(1)
 
     def wait_for_primaries(self):
         Cluster.log(self.primary_hosts)
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
             for primary in self.primary_hosts:
                 executor.submit(Cluster.wait_for_primary, primary,
                                 "mongodb://root:root@127.0.0.1:27017")
@@ -821,19 +816,33 @@ class Cluster:
         running = json.loads(status)['pitr']['run']
         return bool(running)
 
+    def wait_pitr(self,wait=120,enabled=True):
+        for i in range(wait):
+            if self.check_pitr() == enabled:
+                break
+            else:
+                time.sleep(1)
+        assert self.check_pitr() == enabled, self.get_status()['pitr']
+
     def check_pbm_status(self):
-        n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output('pbm status --out=json')
-        parsed_result = json.loads(result)
-        Cluster.log("PBM status: \n" + str(parsed_result['cluster']))
-        #Cluster.log(json.dumps(parsed_result['cluster'], indent=4))
+        parsed_result = self.get_status()
         hosts = []
         for replicaset in parsed_result['cluster']:
             for host in replicaset['nodes']:
                 if host['role'] != "A":
                     hosts.append(host)
-                    assert host['ok'] == True
+                    assert host['ok']
         assert len(hosts) == len(self.pbm_hosts)
+
+    def wait_pbm_status(self,wait=10):
+        for i in range(wait):
+            try:
+                self.check_pbm_status()
+                break
+            except AssertionError:
+                time.sleep(1)
+        self.check_pbm_status()
+        Cluster.log("PBM status: " + str(self.get_status()))
 
     @staticmethod
     def restart_pbm_agent(host):
@@ -843,10 +852,10 @@ class Cluster:
         assert n.supervisor('pbm-agent').is_running
 
     def restart_pbm_agents(self):
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
             for host in self.pbm_hosts:
                 executor.submit(Cluster.restart_pbm_agent, host)
-        time.sleep(5)
+        time.sleep(1)
 
     @staticmethod
     def downgrade_single(host,**kwargs):
@@ -908,7 +917,7 @@ class Cluster:
         assert "INITSYNC" not in result, 'INITSYNC found on ' + host + ' :\n' + result
 
     def check_initsync(self):
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
             for host in self.pbm_hosts:
                 executor.submit(Cluster.check_initsync_single, host)
 
@@ -1039,7 +1048,7 @@ class Cluster:
         self.restart()
         self.restart_pbm_agents()
         self.make_resync()
-        self.check_pbm_status()
+        self.wait_pbm_status()
         if self.layout == "sharded":
             self.start_mongos()
             client = pymongo.MongoClient(self.connection)
