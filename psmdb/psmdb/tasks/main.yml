@@ -6,6 +6,16 @@
 - set_fact:
     pro_build: "{{ lookup('env', 'GATED_BUILD') | default('false', true) }}"
 
+- name: Install Readelf for RHEL 8
+  yum:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+      - binutils
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
 - name: remove the Percona apt main repository
   apt_repository: repo='deb http://repo.percona.com/apt {{ ansible_distribution_release }} main' state=absent update_cache=yes
   when: ansible_os_family == "Debian"
