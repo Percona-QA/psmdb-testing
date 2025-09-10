@@ -1,121 +1,41 @@
 ---
 - include_vars: all.yml
 - include_vars: "Debian-vars.yml"
-  when: ansible_os_family == "Debian" 
-- include_vars: "RedHat-vars.yml"
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "7"
-- include_vars: "RedHat8-vars.yml"
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version|int >= 8
-- include_tasks: "{{ansible_os_family}}.yml"
 
-- name: Start ldap service
-  service:
-    name: slapd
-    state: started
-    enabled: yes
-
-- name: Register encripted password
-  command: slappasswd -s "{{ldap_bind_pw}}"
-  register: ldap_encripted_password
-
-- name: Copy db templates
-  template:
-    src: db.ldif
-    dest: /tmp
-
-- name: Load ddbb template into ldap
-  command: ldapmodify -Y EXTERNAL  -H ldapi:/// -f /tmp/db.ldif
-
-- name: Load some schemas (ignoring duplicate entries error for idempotence)
-  command: "ldapadd -Y EXTERNAL -H ldapi:/// -f {{schema_path}}/{{item}}"
-  register: ldap_result_code
-  failed_when: ldap_result_code.rc not in [0,80]
-  changed_when: ldap_result_code.rc not in [0,80]
-  with_items:
-    - cosine.ldif
-    - nis.ldif
-    - inetorgperson.ldif
-
-- name: Load ldap root entry
-  ldap_entry:
-    server_uri: "{{ldap_server_uri}}"
-    bind_dn: "{{ldap_basedn}}"
-    bind_pw: "{{ldap_bind_pw}}"
-    dn: "{{ldap_basedn}}"
-    objectClass:
-      - top
-      - domain
-
-- name: Load groups and users parent entry
-  ldap_entry:
-    server_uri: "{{ldap_server_uri}}"
-    bind_dn: "{{ldap_basedn}}"
-    bind_pw: "{{ldap_bind_pw}}"
-    dn: "ou={{item}},{{ldap_basedn}}"
-    objectClass:
-      - organizationalUnit
-      - top
-  with_items:
-    - groups
-    - people
-
-- name: Load users
-  ldap_entry:
-    server_uri: "{{ldap_server_uri}}"
-    bind_dn: "{{ldap_basedn}}"
-    bind_pw: "{{ldap_bind_pw}}"
-    dn: "cn={{item.value.cn}},ou=people,{{ldap_basedn}}"
-    objectClass:
-      - person
-      - organizationalPerson
-      - inetOrgPerson
-      - top
-    attributes:
-      cn: "{{item.value.cn}}"
-      givenname: "{{item.value.givenname}}"
-      sn: "{{item.value.sn}}"
-      uid: "{{item.key}}"
-      userpassword: "{{item.value.userpassword}}"
-  with_dict: "{{ldap_users}}"
-
-- name: Load groups
-  ldap_entry:
-    server_uri: "{{ldap_server_uri}}"
-    bind_dn: "{{ldap_basedn}}"
-    bind_pw: "{{ldap_bind_pw}}"
-    dn: "cn={{item.name}},ou=groups,{{ldap_basedn}}"
-    objectClass:
-      - groupOfNames
-      - top
-    attributes:
-      member: "cn=dummy,ou=people,{{ldap_basedn}}"
-  with_items: "{{ldap_groups}}"
-
-- name: Add users to groups
-  ldap_attrs:
-    server_uri: "{{ldap_server_uri}}"
-    bind_dn: "{{ldap_basedn}}"
-    bind_pw: "{{ldap_bind_pw}}"
-    dn: "cn={{item.0.name}},ou=groups,{{ldap_basedn}}"
-    attributes:
-      member: "cn={{item.1}},ou=people,{{ldap_basedn}}"
+- name: Ensure Docker network exists
+  community.docker.docker_network:
+    name: test
+    driver: bridge
     state: present
-  with_subelements:
-    - "{{ldap_groups}}"
-    - members
 
-- name: Remove dummy entry
-  ldap_attrs:
-    server_uri: "{{ldap_server_uri}}"
-    bind_dn: "{{ldap_basedn}}"
-    bind_pw: "{{ldap_bind_pw}}"
-    dn: "cn={{item.name}},ou=groups,{{ldap_basedn}}"
-    attributes:
-      member: "cn=dummy,ou=people,{{ldap_basedn}}"
+- name: Remove any existing container
+  community.docker.docker_container:
+    name: ldap
     state: absent
-  with_items: "{{ldap_groups}}"
+    keep_volumes: false
 
-- name: Restart ldap service
-  service:
-    name: slapd
-    state: restarted
+- name: Copy entire ldif directory to host
+  ansible.builtin.copy:
+    src: templates
+    dest: /tmp/ldifs/
+    mode: "0644"
+    directory_mode: "0755"
+
+- name: Run OpenLDAP container
+  docker_container:
+    name: ldap
+    image: bitnamilegacy/openldap:latest
+    restart_policy: unless-stopped
+    hostname: ldap
+    published_ports:
+      - "389:1389"
+      - "1636:1636"
+    env:
+      LDAP_ROOT: "dc=percona,dc=com"
+      LDAP_ADMIN_USERNAME: "admin"
+      LDAP_ADMIN_PASSWORD: "secret"
+      LDAP_SKIP_DEFAULT_TREE: "yes"
+      LDAP_CUSTOM_LDIF_DIR: /tmp/ldifs/templates
+    volumes: /tmp/ldifs:/tmp/ldifs:ro
+    networks:
+      - name: test
