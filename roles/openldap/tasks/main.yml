@@ -1,6 +1,11 @@
 ---
 - include_vars: all.yml
 - include_vars: "Debian-vars.yml"
+  when: ansible_os_family == "Debian"
+- include_vars: "RedHat-vars.yml"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "7"
+- include_vars: "RedHat8-vars.yml"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version|int >= 8
 
 - name: Ensure Docker network exists
   community.docker.docker_network:
