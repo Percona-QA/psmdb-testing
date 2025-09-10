@@ -32,8 +32,12 @@ def start_cluster(srcRS, dstRS, plink, request):
     try:
         srcRS.destroy()
         dstRS.destroy()
-        srcRS.create()
-        dstRS.create()
+        src_create_thread = threading.Thread(target=srcRS.create)
+        dst_create_thread = threading.Thread(target=dstRS.create)
+        src_create_thread.start()
+        dst_create_thread.start()
+        src_create_thread.join()
+        dst_create_thread.join()
         yield True
 
     finally:
@@ -83,8 +87,6 @@ def test_rs_plink_PML_T22(reset_state, srcRS, dstRS, plink):
     try:
         src = pymongo.MongoClient(srcRS.connection)
         dst = pymongo.MongoClient(dstRS.connection)
-
-        generate_dummy_data(srcRS.connection)
         init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
 
         # Verify transactions started before sync and committed during data clone stage / before sync finalize
@@ -117,8 +119,6 @@ def test_rs_plink_PML_T22(reset_state, srcRS, dstRS, plink):
         # Verify transaction started during replication and committed after sync completion
         session3 = src.start_session()
         perform_transaction(src, session3, "transaction_db2", "after_sync", [{"_id": 1, "value": "txn"}], commit=False)
-
-        time.sleep(10)
 
         session0.commit_transaction()
         session0.end_session()
@@ -351,6 +351,7 @@ def test_rs_plink_PML_T26(reset_state, srcRS, dstRS, plink):
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
 
+@pytest.mark.jenkins
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
 def test_rs_plink_PML_T27(reset_state, srcRS, dstRS, plink):

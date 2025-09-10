@@ -83,4 +83,4 @@ def create_diff_coll_types(db, drop_before_creation=False):
 
     # GridFS
     fs = GridFS(db)
-    file_id = fs.put(b"BinaryData" * 1000000, filename="large_file.txt")
+    fs.put(b"BinaryData" * 1000000, filename="large_file.txt")

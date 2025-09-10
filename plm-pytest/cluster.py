@@ -230,7 +230,6 @@ class Cluster:
                     memswap_limit=mem_limit,
                     command=cmd
                 )
-            time.sleep(5)
             Cluster.setup_replicaset(self.config)
             Cluster.setup_authorization(self.config['members'][0]['host'])
         else:
@@ -270,7 +269,7 @@ class Cluster:
                 conn = conn + host['host'] + ':27017,'
             conn = conn[:-1]
             configdb = conn
-            time.sleep(5)
+
             self.__setup_replicasets(
                 self.config['shards'] + [self.config['configserver']])
             self.__setup_authorizations(self.config['shards'])
@@ -465,8 +464,14 @@ class Cluster:
         init_rs = ('\'config =' +
                    json.dumps(rs) +
                    ';rs.initiate(config);\'')
-        result = primary.check_output("mongosh --quiet --eval " + init_rs)
-        Cluster.log("Setup replicaset " + json.dumps(rs) + ":\n" + result)
+        max_iterations = 10
+        wait_time = 0.5
+        for i in range(max_iterations):
+            result = primary.run("mongosh --quiet --eval " + init_rs)
+            if result.rc == 0 or (result.rc != 0 and 'already initialized' in result.stderr.lower()):
+                break
+            time.sleep(wait_time)
+        Cluster.log("Setup replicaset " + json.dumps(rs) + ":\n" + result.stdout.strip())
 
     def __setup_replicasets(self, replicasets):
         with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -480,10 +485,10 @@ class Cluster:
         Cluster.log("Setup authorization on " + host)
         Cluster.log("Adding root user on " + host)
         init_root_user = '\'db.getSiblingDB("admin").createUser({ user: "root", pwd: "root", roles: [ "root", "userAdminAnyDatabase", "clusterAdmin" ] });\''
-        logs = primary.check_output("mongosh --quiet --eval " + init_root_user)
+        primary.check_output("mongosh --quiet --eval " + init_root_user)
         Cluster.log("Adding system user on " + host)
         init_s_user = '\'db.getSiblingDB("admin").createUser({ user: "system", pwd: "system", roles: [ "__system" ] });\''
-        logs = primary.check_output("mongosh -u root -p root --quiet --eval " + init_s_user)
+        primary.check_output("mongosh -u root -p root --quiet --eval " + init_s_user)
         Cluster.log("Adding plink user on " + host)
         plink_user = ('\'db.getSiblingDB("admin").createUser({user:"plink",pwd:"test1234","roles":[' +
                          '{"db":"admin","role":"backup" },' +
@@ -498,9 +503,9 @@ class Cluster:
             + '{"db":"admin","role":"clusterManager" },'
             + '{"db":"admin","role":"restore" },'
             + '{"db":"admin","role":"readWriteAnyDatabase" }]});\'')
-        logs = primary.check_output(
+        primary.check_output(
             "mongosh -u root -p root --quiet --eval " + plink_user)
-        logs = primary.check_output(
+        primary.check_output(
             "mongosh -u root -p root --quiet --eval " + x509_plink_user)
 
     def __setup_authorizations(self, replicasets):
@@ -508,7 +513,7 @@ class Cluster:
             for rs in replicasets:
                 executor.submit(Cluster.setup_authorization,
                                 rs['members'][0]['host'])
-        time.sleep(1)
+        time.sleep(0.5)
 
     @staticmethod
     def wait_for_primary(host, connection):
@@ -528,7 +533,7 @@ class Cluster:
                 Cluster.log("Waiting for " + host + " to became primary")
             if time.time() > timeout:
                 assert False
-            time.sleep(1)
+            time.sleep(0.5)
 
     def wait_for_primaries(self):
         Cluster.log(self.primary_hosts)

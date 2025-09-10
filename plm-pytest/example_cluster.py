@@ -33,7 +33,7 @@ def configure_failpoint_fulldisk(connection,commands,mode):
 def configure_failpoint_delay(connection,commands,mode,timeout):
     client = pymongo.MongoClient(connection)
     data = {'failCommands': commands, 'appName': 'plm', 'blockConnection': True, 'blockTimeMS': timeout}
-    result = client.admin.command({'configureFailPoint': 'failCommand', 'mode': mode, 'data': data})
+    client.admin.command({'configureFailPoint': 'failCommand', 'mode': mode, 'data': data})
 
 def handler(signum,frame):
     plink.destroy()
