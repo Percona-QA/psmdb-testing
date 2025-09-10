@@ -32,10 +32,13 @@ def start_cluster(srcRS, dstRS, plink, request):
     try:
         srcRS.destroy()
         dstRS.destroy()
-        srcRS.create()
-        dstRS.create()
+        src_create_thread = threading.Thread(target=srcRS.create)
+        dst_create_thread = threading.Thread(target=dstRS.create)
+        src_create_thread.start()
+        dst_create_thread.start()
+        src_create_thread.join()
+        dst_create_thread.join()
         yield True
-
     finally:
         srcRS.destroy()
         dstRS.destroy()
@@ -69,7 +72,7 @@ def reset_state(srcRS, dstRS, plink, request):
 
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.usefixtures("start_cluster")
-def test_rs_plink_PML_T2(reset_state, srcRS, dstRS, plink, metrics_collector):
+def test_rs_plink_PML_T2(reset_state, srcRS, dstRS, plink):
     """
     Test to validate basic sync of all data types including time-series. Data is added before sync,
     during data clone and replication phase, also CRUD operations are performed all time during the sync.
@@ -77,25 +80,16 @@ def test_rs_plink_PML_T2(reset_state, srcRS, dstRS, plink, metrics_collector):
     try:
         src = pymongo.MongoClient(srcRS.connection)
         dst = pymongo.MongoClient(dstRS.connection)
-
-        generate_dummy_data(srcRS.connection)
         # Add data before sync
         init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", create_ts=True, start_crud=True)
-
         result = plink.start()
         assert result is True, "Failed to start plink service"
-
         # Add data during clone phase
         clone_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", create_ts=True, start_crud=True)
-
         result = plink.wait_for_repl_stage()
         assert result is True, "Failed to start replication stage"
-
         # Add data during replication phase
         repl_test_db, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", create_ts=True, start_crud=True)
-
-        time.sleep(5)
-
     except Exception:
         raise
     finally:
@@ -120,10 +114,8 @@ def test_rs_plink_PML_T2(reset_state, srcRS, dstRS, plink, metrics_collector):
 
     result = plink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
-
     result = plink.finalize()
     assert result is True, "Failed to finalize plink service"
-
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
     plink_error, error_logs = plink.check_plink_errors()
@@ -273,8 +265,6 @@ def test_rs_plink_PML_T4(reset_state, srcRS, dstRS, plink):
         dst["repl_test_db"].duplicate_index_collection.create_index([("age", pymongo.ASCENDING)], name="conflict_index")
         src["repl_test_db"].duplicate_index_collection.create_index([("name", pymongo.ASCENDING)], name="conflict_index")
 
-        time.sleep(5)
-
     except Exception:
         raise
     finally:
@@ -383,8 +373,6 @@ def test_rs_plink_PML_T5(reset_state, srcRS, dstRS, plink):
             "Collection 'invalid_text_collection2' was not replicated to dst in time"
         dst["repl_test_db"].invalid_text_collection2.insert_one({"a": {"b": []}, "words": "omnibus_new"})
         repl_test_db.invalid_text_collection2.create_index([("a.b", 1), ("words", "text")])
-
-        time.sleep(5)
 
     except Exception:
         raise
@@ -588,8 +576,7 @@ def test_rs_plink_PML_T8(reset_state, srcRS, dstRS, plink):
         src = pymongo.MongoClient(srcRS.connection)
         dst = pymongo.MongoClient(dstRS.connection)
 
-        generate_dummy_data(srcRS.connection)
-        init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
+        _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
         dst["test_db1"].create_collection("duplicate_collection", collation={"locale": "en","strength": 2})
         dst["test_db1"].duplicate_collection.insert_one({"_id": "1", "field": "1"})
         src["test_db1"].create_collection("duplicate_collection", capped=True, size=1024 * 1024, max=20)
@@ -606,13 +593,11 @@ def test_rs_plink_PML_T8(reset_state, srcRS, dstRS, plink):
         result = plink.wait_for_repl_stage()
         assert result is True, "Failed to start replication stage"
 
-        repl_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
+        _, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         dst["test_db3"].create_collection("duplicate_collection", collation={"locale": "en","strength": 2})
         dst["test_db3"].duplicate_collection.insert_one({"_id": "1", "field": "1"})
         src["test_db3"].create_collection("duplicate_collection", capped=True, size=1024 * 1024, max=20)
         src["test_db3"].duplicate_collection.insert_one({"_id": "1", "field": "2"})
-
-        time.sleep(5)
 
     except Exception:
         raise

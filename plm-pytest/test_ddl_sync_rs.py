@@ -1,6 +1,5 @@
 import pytest
 import pymongo
-import time
 import threading
 import docker
 import re
@@ -32,8 +31,12 @@ def start_cluster(srcRS, dstRS, plink, request):
     try:
         srcRS.destroy()
         dstRS.destroy()
-        srcRS.create()
-        dstRS.create()
+        src_create_thread = threading.Thread(target=srcRS.create)
+        dst_create_thread = threading.Thread(target=dstRS.create)
+        src_create_thread.start()
+        dst_create_thread.start()
+        src_create_thread.join()
+        dst_create_thread.join()
         yield True
 
     finally:
@@ -74,17 +77,13 @@ def test_rs_plink_PML_T9(reset_state, srcRS, dstRS, plink):
     Test to verify collection drop and re-creation during clone phase
     """
     src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
-
     for i in range(5):
         src["dummy"].create_collection(f"collection_{i}", capped=True, size=2147483648, max=500000)
     generate_dummy_data(srcRS.connection, 'dummy', 5, 500000, drop_before_creation=False)
     for i in range(5):
         src["dummy"][f"collection_{i}"].create_index([("array", 1)])
-
     result = plink.start()
     assert result is True, "Failed to start plink service"
-
     for i in range(5):
         src["dummy"].command("collMod", f"collection_{i}", cappedSize=512 * 1024, cappedMax=500)
         src["dummy"][f"collection_{i}"].drop_indexes()
@@ -93,7 +92,6 @@ def test_rs_plink_PML_T9(reset_state, srcRS, dstRS, plink):
 
     result = plink.wait_for_repl_stage()
     assert result is True, "Failed to start replication stage"
-
     result = plink.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
     result = plink.finalize()
@@ -115,24 +113,15 @@ def test_rs_plink_PML_T10(reset_state, srcRS, dstRS, plink):
     Test to verify collection drop and re-creation replication phase
     """
     try:
-        src = pymongo.MongoClient(srcRS.connection)
-        dst = pymongo.MongoClient(dstRS.connection)
-
-        init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
-
+        _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
         result = plink.start()
         assert result is True, "Failed to start plink service"
-
         result = plink.wait_for_repl_stage()
         assert result is True, "Failed to start replication stage"
-
-        repl_test_db, _ = create_all_types_db(srcRS.connection, "repl_test_db", create_ts=True)
-
+        _, _ = create_all_types_db(srcRS.connection, "repl_test_db", create_ts=True)
         # Re-create data during replication phase by dropping and re-creating the collections
-        repl_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db",
+        _, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db",
                                                                 drop_before_creation=True, start_crud=True)
-        time.sleep(5)
-
     except Exception:
         raise
     finally:
@@ -166,10 +155,7 @@ def test_rs_plink_PML_T11(reset_state, srcRS, dstRS, plink):
     """
     try:
         src = pymongo.MongoClient(srcRS.connection)
-        dst = pymongo.MongoClient(dstRS.connection)
-
         generate_dummy_data(srcRS.connection, "init_test_db")
-
         # Re-create data during clone phase by dropping DB
         def start_plink():
             result = plink.start()
@@ -228,22 +214,15 @@ def test_rs_plink_PML_T12(reset_state, srcRS, dstRS, plink):
     """
     try:
         src = pymongo.MongoClient(srcRS.connection)
-        dst = pymongo.MongoClient(dstRS.connection)
-
-        init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
-
+        _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
         result = plink.start()
         assert result is True, "Failed to start plink service"
-
         result = plink.wait_for_repl_stage()
         assert result is True, "Failed to start replication stage"
-
-        repl_test_db, _ = create_all_types_db(srcRS.connection, "repl_test_db")
-
+        _, _ = create_all_types_db(srcRS.connection, "repl_test_db")
         # Re-create data during replication phase by dropping DB
         src.drop_database("repl_test_db")
-        repl_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
-        time.sleep(5)
+        _, operation_threads_2 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
 
     except Exception:
         raise

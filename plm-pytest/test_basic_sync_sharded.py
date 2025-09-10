@@ -1,11 +1,12 @@
 import pytest
 import pymongo
 import docker
+import threading
 
 from cluster import Cluster
 from perconalink import Perconalink
 from data_integrity_check import compare_data_sharded
-from data_generator import create_all_types_db, generate_dummy_data, stop_all_crud_operations
+from data_generator import create_all_types_db, stop_all_crud_operations
 
 @pytest.fixture(scope="module")
 def docker_client():
@@ -48,8 +49,12 @@ def start_cluster(srcCluster, dstCluster, plink, request):
     try:
         srcCluster.destroy()
         dstCluster.destroy()
-        srcCluster.create()
-        dstCluster.create()
+        src_create_thread = threading.Thread(target=srcCluster.create)
+        dst_create_thread = threading.Thread(target=dstCluster.create)
+        src_create_thread.start()
+        dst_create_thread.start()
+        src_create_thread.join()
+        dst_create_thread.join()
         plink.create()
         yield True
 
@@ -65,7 +70,6 @@ def test_sharded_plink_basic(start_cluster, srcCluster, dstCluster, plink):
     srcRS = pymongo.MongoClient(srcCluster.connection)
     operation_threads_1, operation_threads_2, operation_threads_3 = [], [], []
     try:
-        generate_dummy_data(srcCluster.connection)
         _, operation_threads_1 = create_all_types_db(srcCluster.connection, "init_test_db", create_ts=True, start_crud=True)
         assert plink.start(), "Failed to start plink service"
         _, operation_threads_2 = create_all_types_db(srcCluster.connection, "clone_test_db", create_ts=True, start_crud=True)

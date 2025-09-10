@@ -1,8 +1,8 @@
 import pytest
 import pymongo
-import time
 import docker
 import urllib.parse
+import threading
 
 from cluster import Cluster
 from perconalink import Perconalink
@@ -84,8 +84,12 @@ def start_cluster(srcRS, dstRS):
     try:
         srcRS.destroy()
         dstRS.destroy()
-        srcRS.create()
-        dstRS.create()
+        src_create_thread = threading.Thread(target=srcRS.create)
+        dst_create_thread = threading.Thread(target=dstRS.create)
+        src_create_thread.start()
+        dst_create_thread.start()
+        src_create_thread.join()
+        dst_create_thread.join()
         yield True
     finally:
         srcRS.destroy()
@@ -139,7 +143,6 @@ def test_rs_plink_PML_T45(reset_state, srcRS, dstRS, plink, docker_client):
                     assert app_name == "plm", (f"Connection from {client_address} does not use appName=plm (found '{app_name}')")
             client.close()
         _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
-        time.sleep(5)
     except Exception:
         raise
     finally:
