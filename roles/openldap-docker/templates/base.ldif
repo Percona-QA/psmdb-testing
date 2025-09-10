@@ -1,5 +1,4 @@
-# 00-base.ldif
-dn: dc=percona,dc=com
+dn: {{ ldap_basedn }}
 objectClass: top
 objectClass: domain
 dc: percona

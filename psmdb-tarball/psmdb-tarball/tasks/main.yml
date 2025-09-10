@@ -2,6 +2,9 @@
 - set_fact:
     tarball: "{{ lookup('env', 'TARBALL') | default('https://downloads.percona.com/downloads/TESTING/psmdb-6.0.16/percona-server-mongodb-6.0.16-13-x86_64.glibc2.17-minimal.tar.gz', true) }}"
 
+- set_fact:
+    psmdb_version: "{{ lookup('env', 'PSMDB_VERSION')
+
 - name: Get mongodb version
   set_fact:
     mongodb_ver: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
@@ -143,7 +146,7 @@
   git:
     repo: 'https://github.com/Percona-QA/psmdb-testing.git'
     dest: /package-testing
-    version: "PSMDB-1774"
+    version: {{ psmdb_version }}
 
 - name: Check if mongo cli exists in PATH
   stat:
