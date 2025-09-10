@@ -694,6 +694,8 @@ def test_rs_plink_PML_T30(reset_state, srcRS, dstRS, plink):
         if unexpected:
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
+
+@pytest.mark.jenkins
 @pytest.mark.usefixtures("start_cluster")
 @pytest.mark.timeout(600,func_only=True)
 @pytest.mark.plink_env({"PLM_CLONE_NUM_PARALLEL_COLLECTIONS": "200"})
@@ -724,6 +726,7 @@ def test_rs_plink_PML_T31(reset_state, srcRS, dstRS, plink):
     plink_error, error_logs = plink.check_plink_errors()
     assert plink_error is True, f"Plimk reported errors in logs: {error_logs}"
 
+@pytest.mark.jenkins
 @pytest.mark.usefixtures("start_cluster")
 @pytest.mark.timeout(600,func_only=True)
 def test_rs_plink_PML_T43(reset_state, srcRS, dstRS, plink):
