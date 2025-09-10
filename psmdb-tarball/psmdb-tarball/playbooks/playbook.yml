@@ -73,9 +73,9 @@
   gather_facts: yes
   roles:
     - role: '../../../roles/easyrsa'
-    - role: '../../psmdb-tarball'
+    - role: psmdb-tarball
     - role: '../../../roles/docker'
-    - role: '../../../roles/openldap-docker'
+    - role: '../../../roles/openldap'
     - role: '../../../roles/kmip'
     - role: '../../../roles/kerberos'
     - role: '../../../roles/vault'
