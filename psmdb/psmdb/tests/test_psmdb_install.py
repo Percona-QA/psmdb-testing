@@ -281,7 +281,7 @@ def test_auth(host,auth):
         conf['security']['ldap']['authz'] = {}
         conf['security']['ldap']['authz']['queryTemplate'] = "ou=groups,dc=percona,dc=com??sub?(member={PROVIDED_USER})"
         conf['security']['ldap']['bind'] = {}
-        conf['security']['ldap']['bind']['queryUser'] = "dc=percona,dc=com"
+        conf['security']['ldap']['bind']['queryUser'] = "cn=admin,dc=percona,dc=com"
         conf['security']['ldap']['bind']['queryPassword'] = "secret"
         conf['setParameter']['saslauthdPath'] = ""
         conf['setParameter']['authenticationMechanisms'] = "PLAIN"

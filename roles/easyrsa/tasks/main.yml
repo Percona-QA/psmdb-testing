@@ -25,18 +25,19 @@
     repo: "https://github.com/OpenVPN/easy-rsa"
     dest: /root/easyrsa
     version: master
+    update: false
 
 - name: Initiate PKI
   command: ./easyrsa init-pki
   args:
     chdir: /root/easyrsa/easyrsa3
-    creates: /root/pki
+    creates: /root/easyrsa/easyrsa3/pki
 
 - name: Generate CA Cert and CA Private Key
   command: ./easyrsa --req-cn=Percona --batch build-ca nopass
   args:
     chdir: /root/easyrsa/easyrsa3
-    creates: /root/pki/ca.crt
+    creates: /root/easyrsa/easyrsa3/pki/ca.crt
 
 - name: Confirm CA cert exists
   stat:

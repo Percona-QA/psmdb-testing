@@ -1,0 +1,4 @@
+dn: dc=percona,dc=com
+objectClass: top
+objectClass: domain
+dc: percona

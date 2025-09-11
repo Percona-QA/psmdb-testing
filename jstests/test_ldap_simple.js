@@ -26,7 +26,7 @@
         ldapServers: '127.0.0.1:389',
         ldapTransportSecurity: 'none',
         ldapBindMethod: 'simple',
-        ldapQueryUser: 'dc=percona,dc=com',
+        ldapQueryUser: 'cn=admin,dc=percona,dc=com',
         ldapQueryPassword: 'secret',
         ldapAuthzQueryTemplate: 'ou=groups,dc=percona,dc=com??sub?(member={PROVIDED_USER})',
         setParameter: {authenticationMechanisms: 'PLAIN,SCRAM-SHA-256,SCRAM-SHA-1'},
