@@ -36,6 +36,10 @@
   apt_repository:
     repo: "ppa:deadsnakes/ppa"
     state: present
+  register: add_repo
+  until: add_repo is succeeded
+  retries: 5
+  delay: 3
   when: ansible_distribution_major_version == "24"
 
 - name: Install python 3.11
