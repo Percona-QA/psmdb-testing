@@ -2,7 +2,7 @@
 - set_fact:
     tarball: "{{ lookup('env', 'TARBALL') | default('https://downloads.percona.com/downloads/TESTING/psmdb-6.0.16/percona-server-mongodb-6.0.16-13-x86_64.glibc2.17-minimal.tar.gz', true) }}"
 
-    psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('https://downloads.percona.com/downloads/TESTING/psmdb-6.0.16/percona-server-mongodb-6.0.16-13-x86_64.glibc2.17-minimal.tar.gz', true) }}"
+    psmdb_version: "{{ lookup('env', 'TESTING_BRANCH') }}"
 
 - name: Get mongodb version
   set_fact:
