@@ -41,6 +41,10 @@
   retries: 5
   delay: 3
   when: ansible_distribution_major_version == "24"
+  register: add_repo_result
+  until: add_repo_result is succeeded
+  retries: 5
+  delay: 10
 
 - name: Install python 3.11
   apt:
