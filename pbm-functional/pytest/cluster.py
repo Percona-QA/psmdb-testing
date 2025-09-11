@@ -283,7 +283,6 @@ class Cluster:
                 if "arbiterOnly" in host:
                     if host['arbiterOnly']:
                         self.__delete_pbm(host['host'])
-            time.sleep(2)
             Cluster.setup_replicaset(self.config)
             Cluster.setup_authorization(self.config['members'][0]['host'],self.pbm_mongodb_uri)
         else:
@@ -359,7 +358,6 @@ class Cluster:
                 conn = conn + host['host'] + ':27017,'
             conn = conn[:-1]
             configdb = conn
-            time.sleep(2)
             self.__setup_replicasets(
                 self.config['shards'] + [self.config['configserver']])
             self.__setup_authorizations(self.config['shards'])
@@ -373,7 +371,6 @@ class Cluster:
                 detach=True,
                 network='test'
             )
-            time.sleep(5)
             Cluster.setup_authorization(self.config['mongos'],self.pbm_mongodb_uri)
             connection = self.connection
             client = pymongo.MongoClient(connection)
@@ -396,7 +393,7 @@ class Cluster:
             Cluster.log(f"Setup PBM attempt {attempt + 1} failed (rc={result.rc}):\n"
                 f"{result.stdout}\n{result.stderr}")
             if attempt < retries:
-                time.sleep(2)
+                time.sleep(1)
             else:
                 raise RuntimeError(f"Setup PBM command failed after {retries} attempts")
         self.wait_pbm_status()
@@ -678,11 +675,18 @@ class Cluster:
         for id, data in enumerate(rs['members']):
             rs['members'][id]['_id'] = id
             rs['members'][id]['host'] = rs['members'][id]['host'] + ":27017"
+        rs['settings'] = {'electionTimeoutMillis': 2000}
         init_rs = ('\'config =' +
                    json.dumps(rs) +
                    ';rs.initiate(config);\'')
-        result = primary.check_output("mongo --quiet --eval " + init_rs)
-        Cluster.log("Setup replicaset " + json.dumps(rs) + ":\n" + result)
+        max_iterations = 10
+        wait_time = 0.5
+        for i in range(max_iterations):
+            result = primary.run("mongo --quiet --eval " + init_rs)
+            if result.rc == 0 or 'already initialized' in result.stderr.lower():
+                break
+            time.sleep(wait_time)
+        Cluster.log("Setup replicaset " + json.dumps(rs) + ":\n" + result.stdout.strip())
 
     def __setup_replicasets(self, replicasets):
         with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
@@ -929,6 +933,13 @@ class Cluster:
         n = testinfra.get_host("docker://" + self.pbm_cli)
         result = n.check_output('pbm delete-backup -y ' + name)
         if re.search(r"\[done\](?!.*\berror\b)", result):
+            timeout = time.time() + 15
+            while True:
+                if not self.get_status()['running']:
+                    break
+                if time.time() > timeout:
+                    assert False, 'Backup deletion timeout exceeded'
+                time.sleep(0.5)
             Cluster.log(result)
         else:
             assert False, result
