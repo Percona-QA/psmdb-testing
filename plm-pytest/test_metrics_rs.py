@@ -1,7 +1,7 @@
 import pytest
 import pymongo
-import time
 import docker
+import threading
 
 from cluster import Cluster
 from perconalink import Perconalink
@@ -29,8 +29,12 @@ def start_cluster(srcRS, dstRS, plink, request):
     try:
         srcRS.destroy()
         dstRS.destroy()
-        srcRS.create()
-        dstRS.create()
+        src_create_thread = threading.Thread(target=srcRS.create)
+        dst_create_thread = threading.Thread(target=dstRS.create)
+        src_create_thread.start()
+        dst_create_thread.start()
+        src_create_thread.join()
+        dst_create_thread.join()
         yield True
 
     finally:
@@ -145,7 +149,6 @@ def test_rs_plink_PML_T44(reset_state, srcRS, dstRS, plink):
         assert metrics["success"], f"Failed to fetch metrics after start: {metrics.get('error')}"
         assert_metrics(metrics["data"])
         _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
-        time.sleep(5)
     except Exception:
         raise
     finally:

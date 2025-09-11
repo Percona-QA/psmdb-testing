@@ -2,6 +2,7 @@ import pytest
 import pymongo
 import time
 import docker
+import threading
 
 from cluster import Cluster
 from perconalink import Perconalink
@@ -29,8 +30,12 @@ def start_cluster(srcRS, dstRS, plink, request):
     try:
         srcRS.destroy()
         dstRS.destroy()
-        srcRS.create()
-        dstRS.create()
+        src_create_thread = threading.Thread(target=srcRS.create)
+        dst_create_thread = threading.Thread(target=dstRS.create)
+        src_create_thread.start()
+        dst_create_thread.start()
+        src_create_thread.join()
+        dst_create_thread.join()
         yield True
 
     finally:

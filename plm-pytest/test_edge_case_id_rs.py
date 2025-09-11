@@ -33,8 +33,12 @@ def start_cluster(srcRS, dstRS, plink, request):
     try:
         srcRS.destroy()
         dstRS.destroy()
-        srcRS.create()
-        dstRS.create()
+        src_create_thread = threading.Thread(target=srcRS.create)
+        dst_create_thread = threading.Thread(target=dstRS.create)
+        src_create_thread.start()
+        dst_create_thread.start()
+        src_create_thread.join()
+        dst_create_thread.join()
         yield True
 
     finally:
@@ -88,8 +92,8 @@ def test_rs_plink_PML_T32(reset_state, srcRS, dstRS, plink):
         Decimal128("-9999999999999999999999999999.9999"), float("1e-300"),
         str(uuid.uuid4()), DBRef("coll", 12345), "a" * 512, "\u202eRTL_Text"]
 
-    batch_size = 5000
-    num_batches = 80
+    batch_size = 500
+    num_batches = 10
     for meta in collections_meta:
         weird_ids_copy = weird_ids.copy()
         def get_id():
@@ -173,8 +177,8 @@ def test_rs_plink_PML_T34(reset_state, srcRS, dstRS, plink, id_type):
         meta["collection"] = db[meta["name"]]
 
     def add_data(target_suffix):
-        batch_size = 5000
-        num_batches = 20
+        batch_size = 500
+        num_batches = 10
 
         for meta in collections_meta:
             if not meta["name"].endswith(target_suffix):

@@ -1,7 +1,7 @@
 import pytest
 import pymongo
-import time
 import docker
+import threading
 
 from cluster import Cluster
 from perconalink import Perconalink
@@ -29,8 +29,12 @@ def start_cluster(srcRS, dstRS, plink, request):
     try:
         srcRS.destroy()
         dstRS.destroy()
-        srcRS.create()
-        dstRS.create()
+        src_create_thread = threading.Thread(target=srcRS.create)
+        dst_create_thread = threading.Thread(target=dstRS.create)
+        src_create_thread.start()
+        dst_create_thread.start()
+        src_create_thread.join()
+        dst_create_thread.join()
         yield True
 
     finally:
@@ -63,8 +67,6 @@ def test_rs_plink_PML_T28(reset_state, srcRS, dstRS, plink):
     Test to check PLM behavior when restarted during the clone and replication stages
     """
     try:
-        src = pymongo.MongoClient(srcRS.connection)
-        dst = pymongo.MongoClient(dstRS.connection)
         generate_dummy_data(srcRS.connection)
         init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
         result = plink.start()
@@ -81,7 +83,6 @@ def test_rs_plink_PML_T28(reset_state, srcRS, dstRS, plink):
         repl_test_db, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         # restart during replication stage
         plink.restart()
-        time.sleep(5)
     except Exception:
         raise
     finally:
@@ -115,13 +116,11 @@ def test_rs_plink_PML_T29(reset_state, srcRS, dstRS, plink):
     Test to check PLM pause/resume options
     """
     try:
-        src = pymongo.MongoClient(srcRS.connection)
-        dst = pymongo.MongoClient(dstRS.connection)
         generate_dummy_data(srcRS.connection)
-        init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
+        _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
         result = plink.start()
         assert result is True, "Failed to start plink service"
-        clone_test_db, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
+        _, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
         result = plink.pause()
         assert result is False, "Can't pause plink service during clone stage"
         result = plink.wait_for_repl_stage()
@@ -129,8 +128,7 @@ def test_rs_plink_PML_T29(reset_state, srcRS, dstRS, plink):
         result = plink.pause()
         plink.restart()
         assert result is True, "Replication is paused"
-        repl_test_db, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
-        time.sleep(5)
+        _, operation_threads_3 = create_all_types_db(srcRS.connection, "repl_test_db", start_crud=True)
         result = plink.resume()
         assert result is True, "Replication is resumed"
     except Exception:
@@ -167,7 +165,6 @@ def test_rs_plink_PML_T37(reset_state, srcRS, dstRS, plink):
     """
     try:
         src = pymongo.MongoClient(srcRS.connection)
-        dst = pymongo.MongoClient(dstRS.connection)
         result = src.admin.command("replSetResizeOplog", size=990)
         assert result.get("ok") == 1.0, f"Failed to resize oplog: {result}"
         init_test_db, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
@@ -193,7 +190,7 @@ def test_rs_plink_PML_T37(reset_state, srcRS, dstRS, plink):
     if not result:
         assert "oplog history is lost" in plink.logs()
     status = plink.status()
-    assert status['data']['ok'] == False
+    assert not status['data']['ok']
     assert status['data']['state'] != 'running'
 
 @pytest.mark.timeout(300,func_only=True)
@@ -204,7 +201,6 @@ def test_rs_plink_PML_T38(reset_state, srcRS, dstRS, plink):
     operations after the restart, the first insert will fail due to an existing index that prohibits such doc
     """
     src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
     src["test_db1"].create_collection("test_collection")
     src["test_db2"].create_collection("test_collection")
     result = plink.start()
