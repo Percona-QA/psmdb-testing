@@ -13,6 +13,10 @@
     url: https://download.docker.com/linux/centos/docker-ce.repo
     dest: /etc/yum.repos.d/docker-ce.repo
     mode: '0644'
+  register: download
+  until: download is succeeded
+  retries: 5
+  delay: 3
   when:
     - ansible_os_family == "RedHat"
 
