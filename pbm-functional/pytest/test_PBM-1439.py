@@ -62,9 +62,8 @@ def test_logical_PBM_T294(start_cluster, cluster):
     insert_thread = threading.Thread(target=insert_random_data, args=(docs_before, docs_during))
     insert_thread.start()
     Cluster.log("Starting backup")
-    result = cluster.exec_pbm_cli("backup --wait")
+    cluster.make_backup("logical")
     insert_thread.join()
-    assert result.rc == 0, f"PBM backup failed\nstderr:\n{result.stderr}"
     logs=cluster.exec_pbm_cli("logs -sD -t0 -e backup")
     error_lines = [line for line in logs.stdout.splitlines() if " E " in line]
     if error_lines:
@@ -97,9 +96,8 @@ def test_logical_PBM_T295(start_cluster, cluster):
     insert_thread = threading.Thread(target=insert_random_data, args=(total_docs,))
     insert_thread.start()
     Cluster.log("Starting backup")
-    result = cluster.exec_pbm_cli("backup --ns=random.* --wait")
+    cluster.make_backup("logical --ns=random.*")
     insert_thread.join()
-    assert result.rc == 0, f"PBM backup failed\nstderr:\n{result.stderr}"
     logs = cluster.exec_pbm_cli("logs -sD -t0 -e backup")
     error_lines = [line for line in logs.stdout.splitlines() if " E " in line]
     if error_lines:
