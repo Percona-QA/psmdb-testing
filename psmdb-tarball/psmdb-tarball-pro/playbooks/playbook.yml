@@ -63,5 +63,5 @@
     - role: '../../../roles/docker'
     - role: '../../../roles/openldap'
     - role: '../../../roles/kerberos'
-    - role: '../../../roles/kmip'
+    - role: '../../../roles/kmip-docker'
     - role: '../../../roles/vault'
