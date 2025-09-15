@@ -1,0 +1,76 @@
+- name: Generate Build CA Cert and CA Private Key
+  command: ./easyrsa --batch build-server-full pykmip nopass
+  args:
+    chdir: /root/easyrsa/easyrsa3
+    creates: /root/easyrsa/easyrsa3/pki/reqs/pykmip.req
+
+- name: Generate Client CA Cert and CA Private Key
+  command: ./easyrsa --batch build-client-full mongod nopass
+  args:
+    chdir: /root/easyrsa/easyrsa3
+    creates: /root/easyrsa/easyrsa3/pki/reqs/mongod.req
+
+- name: Confirm Build CA cert exists
+  stat:
+    path: /root/easyrsa/easyrsa3/pki/issued/pykmip.crt
+  register: build_crt
+  failed_when: not build_crt.stat.exists
+
+- name: Confirm Build CA Private Key exists
+  stat:
+    path: /root/easyrsa/easyrsa3/pki/private/pykmip.key
+  register: pykmip_key
+  failed_when: not pykmip_key.stat.exists
+
+- name: Confirm Client CA cert exists
+  stat:
+    path: /root/easyrsa/easyrsa3/pki/issued/mongod.crt
+  register: mongod_crt
+  failed_when: not mongod_crt.stat.exists
+
+- name: Confirm Client CA Private Key exists
+  stat:
+    path: /root/easyrsa/easyrsa3/pki/private/mongod.key
+  register: private_key
+  failed_when: not private_key.stat.exists
+
+- name: Create PyKmip Directory
+  file:
+    path: /etc/pykmip/
+    state: directory
+
+- name: Generate mongod.pem
+  shell: cat pki/issued/mongod.crt pki/private/mongod.key > /etc/pykmip/mongod.pem
+  args:
+    chdir: /root/easyrsa/easyrsa3
+    creates: /etc/pykmip/mongod.pem
+
+- name: Copy pykmip.crt to /etc/pykmip folder
+  copy:
+    src: /root/easyrsa/easyrsa3/pki/issued/pykmip.crt
+    dest: /etc/pykmip/pykmip.crt
+    remote_src: true
+
+- name: Move pykmip.key to /etc/pykmip folder
+  copy:
+    src: /root/easyrsa/easyrsa3/pki/private/pykmip.key
+    dest: /etc/pykmip/pykmip.key
+    remote_src: true
+
+- name: Move mongod.crt to /etc/pykmip folder
+  copy:
+    src: /root/easyrsa/easyrsa3/pki/private/mongod.key
+    dest: /etc/pykmip/mongod.key
+    remote_src: true
+
+- name: Copy mongod.crt to /etc/pykmip folder
+  copy:
+    src: /root/easyrsa/easyrsa3/pki/issued/mongod.crt
+    dest: /etc/pykmip/mongod.crt
+    remote_src: true
+
+- name: Copy ca.crt to /etc/pykmip folder
+  copy:
+    src: /root/easyrsa/easyrsa3/pki/ca.crt
+    dest: /etc/pykmip/ca.crt
+    remote_src: true
