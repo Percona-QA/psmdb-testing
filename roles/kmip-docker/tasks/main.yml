@@ -31,7 +31,7 @@
 - name: Copy PyKMIP configuration template to host
   template:
     src: pykmip_server.conf
-    dest: /etc/pykmip
+    dest: /etc/pykmip/server.conf
 
 - name: Run PyKMIP container
   docker_container:
