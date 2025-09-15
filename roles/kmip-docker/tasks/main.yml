@@ -1,11 +1,20 @@
 - include_tasks: "crts_keys.yml"
 
-- name: Install Dependencies
-  ansible.builtin.pip:
+#- name: Install Dependencies
+#  ansible.builtin.pip:
+#    name:
+#      - requests
+#      - docker
+#    executable: pip3
+
+- name: Install Python deps via apt (Debian/Ubuntu)
+  apt:
+    update_cache: yes
     name:
-      - requests
-      - docker
-    executable: pip3
+      - python3-requests
+      - python3-docker
+    state: present
+  become: yes
 
 - name: Ensure Docker network exists
   docker_network:
@@ -36,7 +45,7 @@
     networks:
       - name: test
 
-- name: Install PyKMIP dependencies and PyKMIP in container
+- name: Install PyKMIP dependencies in container
   community.docker.docker_container_exec:
     container: pykmip
     command: >
@@ -46,10 +55,10 @@
         python -m pip install --upgrade --no-cache-dir pip setuptools wheel &&
         python -m pip install --no-cache-dir pykmip
       '
-  register: apt_res
+  register: exec_result
   retries: 5
   delay: 5
-  until: apt_res.rc == 0
+  until: exec_result.rc == 0
 
 - name: Install PyKMIP
   community.docker.docker_container_exec:
