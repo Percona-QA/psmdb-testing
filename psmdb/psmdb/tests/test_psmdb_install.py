@@ -347,8 +347,8 @@ def test_encryption(host,encryption,cipher):
     KEY_FILE='/package-testing/scripts/psmdb_encryption/mongodb-keyfile'
     TOKEN_FILE="/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"
     CA_FILE="/package-testing/scripts/psmdb_encryption/test.cer"
-    CA_KMIP_FILE="/pykmip_workdir/ca.crt"
-    MONGO_PEM_FILE="/pykmip_workdir/mongod.pem"
+    CA_KMIP_FILE="/etc/pykmip/ca.crt"
+    MONGO_PEM_FILE="/etc/pykmip/mongod.pem"
     FILES=[KEY_FILE,TOKEN_FILE,CA_FILE,CA_KMIP_FILE,MONGO_PEM_FILE]
     for file in FILES:
         with host.sudo():
