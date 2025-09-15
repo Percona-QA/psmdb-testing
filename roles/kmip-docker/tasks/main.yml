@@ -83,6 +83,12 @@
                 disown'
   changed_when: true
 
+- name: Ensure pykmip resolves locally
+  lineinfile:
+    path: /etc/hosts
+    line: "127.0.0.1 pykmip"
+    state: present
+
 - name: Wait for PyKMIP to start listening
   ansible.builtin.wait_for:
     host: "127.0.0.1"
