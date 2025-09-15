@@ -85,7 +85,7 @@
 
 - name: Wait for PyKMIP to start listening
   ansible.builtin.wait_for:
-    host: "{{ inventory_hostname }}"
+    host: "127.0.0.1"
     port: 5696
     delay: 2
     timeout: 20
