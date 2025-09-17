@@ -1,5 +1,5 @@
 ARG PSMDB=percona/percona-server-mongodb
-ARG GO_VER=bullseye
+ARG GO_VER=bookworm
 
 FROM easyrsa/local AS easyrsa
 
