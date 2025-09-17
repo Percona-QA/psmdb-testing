@@ -125,7 +125,7 @@ services:
       context: .
       args:
         - PBM_BRANCH=${PBM_BRANCH:-dev}
-        - GO_VER=${GO_VER:-bullseye}
+        - GO_VER=${GO_VER:-bookworm}
         - PSMDB=${PSMDB:-percona/percona-server-mongodb:latest}
         - PR_NUMBER=${PR_NUMBER:-}
         - MAKE_TARGET=${MAKE_TARGET:-build}
@@ -143,7 +143,7 @@ services:
     command: /bin/bash
 
   golang_reports:
-    image: golang:bullseye
+    image: golang:bookworm
     command: >
       /bin/sh -c " mkdir -p /gocoverdir/reports; chmod -R 777 /gocoverdir/reports; exit 0; "  
     volumes:
