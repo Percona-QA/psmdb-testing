@@ -61,7 +61,7 @@ RUN set -ex; \
     fi; \
     pip3 install --upgrade pip && pip3 install virtualenv && python3 -m venv /opt/venv
 ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="/opt/venv/bin:${PATH}"
+ENV PATH="/root/.local/bin:/opt/venv/bin:${PATH}"
 ENV POETRY_VIRTUALENVS_CREATE=false
 ENV POETRY_INSTALLER_MAX_WORKERS=10
 ENV PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
@@ -109,7 +109,7 @@ RUN set -ex; \
     fi 
 ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
 ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
-ENV AWS_LIBS=/opt/aws
+ENV AWS_LIBS=/usr
 ARG AWS_VERSION=1.9.379
 RUN cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
     mkdir -p /opt/aws && \
@@ -118,7 +118,7 @@ RUN cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
     cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="$AWS_LIBS" -DAUTORUN_UNIT_TESTS=OFF && \
     make -j "$(nproc)" && make install && \
     cd /opt && rm -rf aws-sdk-cpp
-ENV E2FS_LIBS=/opt/e2fs
+ENV E2FS_LIBS=/usr
 ARG E2FS_VERSION=v1.47.2
 RUN cd /opt && git clone https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git && \
     mkdir -p /opt/e2fs && \
@@ -130,13 +130,15 @@ RUN cd /opt && git clone https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git &&
 RUN /usr/bin/echo -e "\n\
 CC = \"/opt/gcc/bin/gcc\"\n\
 CXX = \"/opt/gcc/bin/g++\"\n\
-CPPPATH = \"/opt/aws/include /opt/e2fs/include\"\n\
-LIBPATH = \"/opt/aws/lib /opt/aws/lib64 /opt/e2fs/lib /opt/e2fs/lib64\"\n\
+CPPPATH = \"/usr/include\"\n\
+LIBPATH = \"/usr/lib /usr/lib64\"\n\
 " > gcc.vars
+ENV MONGO_VERSION=$psm_ver-$psm_release
 
 FROM base_image AS psmdb_builder
 ARG psm_ver=8.0.3
 ARG pro=""
+ARG use_bazel=1
 RUN set -ex; \
     VER=$(echo $psm_ver | cut -d"." -f1) && \
     if [ $VER -ge 8 ]; then \
@@ -144,8 +146,14 @@ RUN set -ex; \
     else \
         SCONS_TARGETS="install-mongod install-mongos install-mongo install-dbtest build/install/bin/mongobridge build/install/bin/wt" ;\
     fi; \
-    buildscripts/scons.py --variables-files=gcc.vars -j"$(nproc)" --disable-warnings-as-errors \
-    --ssl --opt=on $pro --use-sasl-client --wiredtiger --audit --inmemory --hotbackup ${SCONS_TARGETS} 
+    if [ $use_bazel -eq 1 ]; then \
+        buildscripts/install_bazel.py && \
+        bazel build --config=psmdb_opt_release --full_featured install-dist-test install-dbtest --define=MONGO_VERSION=$MONGO_VERSION && \
+        mkdir -p build/install/bin && cp -RL bazel-bin/install/bin/* build/install/bin/ ;\
+    else \
+        buildscripts/scons.py --variables-files=gcc.vars -j"$(nproc)" --disable-warnings-as-errors \
+        --ssl --opt=on $pro --use-sasl-client --wiredtiger --audit --inmemory --hotbackup ${SCONS_TARGETS} ;\
+    fi
 RUN find build/install/bin -type f | xargs strip --strip-debug || true 
 
 FROM base_image
