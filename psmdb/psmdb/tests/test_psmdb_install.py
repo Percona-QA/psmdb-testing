@@ -366,7 +366,7 @@ def test_encryption(host,encryption,cipher):
         conf['security']['encryptionKeyFile'] = KEY_FILE
     if encryption == "VAULT":
         conf['security']['vault'] = {}
-        conf['security']['vault']['serverName'] = '127.0.0.1'
+        conf['security']['vault']['serverName'] = 'pykmip'
         conf['security']['vault']['port'] = 8200
         conf['security']['vault']['tokenFile'] = TOKEN_FILE
         conf['security']['vault']['serverCAFile'] = CA_FILE
