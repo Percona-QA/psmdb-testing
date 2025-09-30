@@ -11,7 +11,7 @@ executor:
       global_vars:
         TestData:
           enableEncryption: ''
-          kmipServerName: pykmip
+          kmipServerName: 127.0.0.1
           kmipPort: 5696
           kmipServerCAFile: /etc/pykmip/ca.crt
           kmipClientCertificateFile: /etc/pykmip/mongod.pem
