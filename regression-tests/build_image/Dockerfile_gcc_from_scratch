@@ -1,10 +1,12 @@
 ARG OS=debian:12
 FROM $OS AS toolchain_builder
 ARG toolchain_version=v4
+ARG bazel_version=7.6.1
+ARG TARGETARCH
 RUN set -ex; \
     if [ -f "/usr/bin/yum" ] ; \
     then \
-        yum -y update && yum install -y --allowerasing diffutils wget curl file glibc-devel gmp-devel mpfr-devel libmpc-devel gcc gcc-c++ bzip2 bzip2-devel openssl-devel zlib-devel libffi-devel xz-devel make tzdata ; \
+        yum -y update && yum install -y --allowerasing diffutils wget curl file glibc-devel gmp-devel mpfr-devel libmpc-devel gcc gcc-c++ bzip2 bzip2-devel openssl-devel zlib-devel libffi-devel xz-devel make tzdata; \
     else \
         apt-get update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl file libgmp-dev libmpfr-dev libmpc-dev gcc g++ bzip2 libbz2-dev libssl-dev zlib1g-dev libreadline-dev libffi-dev make tzdata ; \
     fi
@@ -37,25 +39,42 @@ RUN set -ex; \
     ./configure --prefix=/opt/python --enable-optimizations; \
     make -j "$(nproc)"; \
     make install; \    
-    cd /opt/ && rm -rf /opt/src/python && rm -rf /opt/python.tgz
+    cd /opt/ && rm -rf /opt/src/python && rm -rf /opt/python.tgz && \
+    if [ "$TARGETARCH" = "amd64" ]; then \
+        TARGETARCH="x86_64"; \
+    fi; \
+    if [ "$toolchain_version" = "v5" ]; then \
+        mkdir -p /opt/bazel && \
+        wget https://github.com/bazelbuild/bazel/releases/download/${bazel_version}/bazel-${bazel_version}-linux-${TARGETARCH} -O /opt/bazel/bazel && \
+        chmod +x /opt/bazel/bazel ;\
+    fi
 
 ARG OS=debian:12
-FROM $OS AS base_image
-ARG branch=v8.0
-ARG psm_ver=8.0.3
-ARG psm_release=1
-ARG repo=https://github.com/percona/percona-server-mongodb.git
+FROM $OS AS toolchain
+COPY --from=toolchain_builder /opt /opt
+ENV PATH="/opt/python/bin:/opt/gcc/bin:/opt/bazel:${PATH}"
 RUN set -ex; \
     if [ -f "/usr/bin/yum" ] ; then \
         yum -y update && yum install -y --allowerasing diffutils wget git curl cmake lld binutils glibc-devel tzdata; \
     else \
         apt-get update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl git cmake binutils lld tzdata; \
-    fi
-COPY --from=toolchain_builder /opt /opt
-ENV PATH="/opt/python/bin:/opt/gcc/bin:${PATH}"
-RUN pip3 install --upgrade pip && pip3 install virtualenv && python3 -m venv /opt/venv
-ENV VIRTUAL_ENV /opt/venv
+    fi; \
+    pip3 install --upgrade pip && pip3 install virtualenv && python3 -m venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
+ENV POETRY_VIRTUALENVS_CREATE=false
+ENV POETRY_INSTALLER_MAX_WORKERS=10
+ENV PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
+ENV GLIBC_TUNABLES=glibc.pthread.rseq=0
+ENV CC=/opt/gcc/bin/gcc
+ENV CXX=/opt/gcc/bin/g++
+ENV PYTHON_BIN_PATH=/opt/venv/bin/python
+
+FROM toolchain AS base_image
+ARG branch=v8.0
+ARG psm_ver=8.0.13
+ARG psm_release=4
+ARG repo=https://github.com/percona/percona-server-mongodb.git
 RUN cd /opt && mkdir -p percona-server-mongodb && \
     git clone $repo percona-server-mongodb && \
     cd percona-server-mongodb/ && \
@@ -66,17 +85,13 @@ RUN cd /opt && mkdir -p percona-server-mongodb && \
   \"githash\": \"${REVISION_LONG}\"\n\
 }" > version.json && \
     echo "mongo_version: \"$psm_ver-$psm_release\"" > .resmoke_mongo_version.yml && \
-    rm -rf /opt/percona-server-mongodb/.git && mkdir -p /data/db
+    rm -rf /opt/percona-server-mongodb/.git && mkdir -p /data/db 
 WORKDIR /opt/percona-server-mongodb
-ENV POETRY_VIRTUALENVS_CREATE=false
-ENV POETRY_INSTALLER_MAX_WORKERS=10
-ENV PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
-ENV GLIBC_TUNABLES=glibc.pthread.rseq=0
 RUN set -ex; \
     if [ -f "/usr/bin/yum" ] ; then \
-         yum install -y cmake openssl-devel openldap-devel krb5-devel libcurl-devel cyrus-sasl-devel bzip2-devel zlib-devel lz4-devel xz-devel e2fsprogs-devel iproute; \
+         yum install -y cmake openssl-devel openldap-devel krb5-devel libcurl-devel cyrus-sasl-devel bzip2-devel zlib-devel lz4-devel xz-devel e2fsprogs-devel iproute glibc-debuginfo; \
     else \
-         DEBIAN_FRONTEND=noninteractive apt-get -y install cmake libssl-dev libldap2-dev libkrb5-dev libcurl4-openssl-dev libsasl2-dev liblz4-dev libbz2-dev libsnappy-dev zlib1g-dev libzlcore-dev liblzma-dev e2fslibs-dev iproute2; \
+         DEBIAN_FRONTEND=noninteractive apt-get -y install cmake libssl-dev libldap2-dev libkrb5-dev libcurl4-openssl-dev libsasl2-dev liblz4-dev libbz2-dev libsnappy-dev zlib1g-dev libzlcore-dev liblzma-dev e2fslibs-dev iproute2 libc6-dbg; \
     fi 
 RUN set -ex; \
     pip install --upgrade pip; \
@@ -94,46 +109,129 @@ RUN set -ex; \
     fi 
 ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
 ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
-ENV AWS_LIBS=/opt/aws
 ARG AWS_VERSION=1.9.379
 RUN cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
     mkdir -p /opt/aws && \
     cd aws-sdk-cpp && git checkout $AWS_VERSION && git submodule update --init --recursive && \
     mkdir build && cd build && \
-    cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="$AWS_LIBS" -DAUTORUN_UNIT_TESTS=OFF && \
+    cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="/usr" -DAUTORUN_UNIT_TESTS=OFF && \
     make -j "$(nproc)" && make install && \
     cd /opt && rm -rf aws-sdk-cpp
-ENV E2FS_LIBS=/opt/e2fs
 ARG E2FS_VERSION=v1.47.2
 RUN cd /opt && git clone https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git && \
     mkdir -p /opt/e2fs && \
     cd e2fsprogs && git checkout $E2FS_VERSION && \
     mkdir build && cd build && \
-    ../configure --prefix=$E2FS_LIBS && \
+    ../configure --prefix=/usr && \
     make -j "$(nproc)" && make install-libs && \
     cd /opt && rm -rf e2fsprogs
 RUN /usr/bin/echo -e "\n\
 CC = \"/opt/gcc/bin/gcc\"\n\
 CXX = \"/opt/gcc/bin/g++\"\n\
-CPPPATH = \"/opt/aws/include /opt/e2fs/include\"\n\
-LIBPATH = \"/opt/aws/lib /opt/aws/lib64 /opt/e2fs/lib /opt/e2fs/lib64\"\n\
+CPPPATH = \"/usr/include\"\n\
+LIBPATH = \"/usr/lib /usr/lib64\"\n\
 " > gcc.vars
+ENV MONGO_VERSION=$psm_ver-$psm_release
+ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/resmoke2junit.py .
 
 FROM base_image AS psmdb_builder
-ARG psm_ver=8.0.3
-ARG pro=""
+ARG build_platform=bazel
+ARG pro=true
+ENV PATH="/root/.local/bin:${PATH}"
 RUN set -ex; \
-    VER=$(echo $psm_ver | cut -d"." -f1) && \
+    VER=$(echo $MONGO_VERSION | cut -d"." -f1) && \
     if [ $VER -ge 8 ]; then \
         SCONS_TARGETS="install-mongod install-mongos install-mongo install-dbtest build/install/bin/mongobridge build/install/bin/wt build/install/bin/mongotmock" ;\
     else \
         SCONS_TARGETS="install-mongod install-mongos install-mongo install-dbtest build/install/bin/mongobridge build/install/bin/wt" ;\
     fi; \
-    buildscripts/scons.py --variables-files=gcc.vars -j"$(nproc)" --disable-warnings-as-errors \
-    --ssl --opt=on $pro --use-sasl-client --wiredtiger --audit --inmemory --hotbackup ${SCONS_TARGETS} 
+    ff="" ;\
+    if [ "$pro" = "true" ] && [ "$build_platform" = "bazel" ]; then \
+        ff="--full_featured" ;\
+    fi; \
+    if [ "$pro" = "true" ] && [ "$build_platform" = "scons" ]; then \
+        ff="--full-featured" ;\
+    fi; \
+    if [ "$build_platform" = "bazel" ]; then \
+        buildscripts/install_bazel.py && \
+        bazel build --config=psmdb_opt_release $ff install-dist-test install-dbtest --define=MONGO_VERSION=$MONGO_VERSION && \
+        mkdir -p build/install/bin && cp -RL bazel-bin/install/bin/* build/install/bin/ ;\
+    else \
+        buildscripts/scons.py --variables-files=gcc.vars -j"$(nproc)" --disable-warnings-as-errors \
+        --ssl --opt=on $ff --use-sasl-client --wiredtiger --audit --inmemory --hotbackup ${SCONS_TARGETS} ;\
+    fi
 RUN find build/install/bin -type f | xargs strip --strip-debug || true 
 
-FROM base_image
+FROM base_image AS unittests
+ARG build_platform=bazel
+ARG pro=true
+RUN useradd -u 1001 -g 0 -m -c "Default Application User" mongodb && \
+    chown -R mongodb /opt && chown -R mongodb /data/db && mkdir /work && chown -R mongodb /work
+USER mongodb
+ENV PATH="/home/mongodb/.local/bin:${PATH}"
+RUN set -ex; \
+    ff="" ;\
+    if [ "$pro" = "true" ] && [ "$build_platform" = "bazel" ]; then \
+        ff="--full_featured" ;\
+    fi; \
+    if [ "$pro" = "true" ] && [ "$build_platform" = "scons" ]; then \
+        ff="--full-featured" ;\
+    fi; \
+    if [ "$build_platform" = "bazel" ]; then \
+        buildscripts/install_bazel.py && \
+        bazel build --define=MONGO_VERSION=$MONGO_VERSION --config=psmdb_dev --include_autogenerated_targets=True $ff install-mongo_unittest ;\
+    else \
+        buildscripts/scons.py --variables-files=gcc.vars -j"$(nproc)" --disable-warnings-as-errors \
+        --ssl --link-model=dynamic --linker=gold --dbg=off --opt=off $ff --use-sasl-client --wiredtiger --audit --inmemory --hotbackup install-unittests ;\
+    fi
+
+FROM base_image AS integrationtests
+ARG build_platform=bazel
+ARG pro=true
+RUN useradd -u 1001 -g 0 -m -c "Default Application User" mongodb && \
+    chown -R mongodb /opt && chown -R mongodb /data/db && mkdir /work && chown -R mongodb /work 
+USER mongodb
+ENV PATH="/home/mongodb/.local/bin:${PATH}"
+RUN set -ex; \
+    ff="" ;\
+    if [ "$pro" = "true" ] && [ "$build_platform" = "bazel" ]; then \
+        ff="--full_featured" ;\
+    fi; \
+    if [ "$pro" = "true" ] && [ "$build_platform" = "scons" ]; then \
+        ff="--full-featured" ;\
+    fi; \
+    if [ "$build_platform" = "bazel" ]; then \
+        buildscripts/install_bazel.py && \
+        bazel build --define=MONGO_VERSION=$MONGO_VERSION --config=psmdb_dev --include_autogenerated_targets=True $ff install-mongo_integration_test ;\
+    else \
+        buildscripts/scons.py --variables-files=gcc.vars -j"$(nproc)" --disable-warnings-as-errors \
+        --ssl --link-model=dynamic --linker=gold --dbg=off --opt=off $ff --use-sasl-client --wiredtiger --audit --inmemory --hotbackup install-integration-tests ;\
+    fi
+
+FROM base_image AS benchmarks
+ARG build_platform=bazel
+ARG pro=true
+RUN useradd -u 1001 -g 0 -m -c "Default Application User" mongodb && \
+    chown -R mongodb /opt && chown -R mongodb /data/db && mkdir /work && chown -R mongodb /work
+USER mongodb
+ENV PATH="/home/mongodb/.local/bin:${PATH}"
+RUN set -ex; \
+    ff="" ;\
+    if [ "$pro" = "true" ] && [ "$build_platform" = "bazel" ]; then \
+        ff="--full_featured" ;\
+    fi; \
+    if [ "$pro" = "true" ] && [ "$build_platform" = "scons" ]; then \
+        ff="--full-featured" ;\
+    fi; \
+    if [ "$build_platform" = "bazel" ]; then \
+        buildscripts/install_bazel.py && \
+        bazel build --define=MONGO_VERSION=$MONGO_VERSION --config=psmdb_dev --include_autogenerated_targets=True $ff install-mongo_benchmark ;\
+    else \
+        buildscripts/scons.py --variables-files=gcc.vars -j"$(nproc)" --disable-warnings-as-errors \
+        --ssl --link-model=dynamic --linker=gold --dbg=off --opt=off $ff --use-sasl-client --wiredtiger --audit --inmemory --hotbackup install-benchmarks ;\
+    fi
+
+FROM base_image AS jstests
 COPY --from=psmdb_builder /opt/percona-server-mongodb/build/install/bin/* /usr/bin/
 RUN find jstests -type f | xargs chmod 400 && \
     cp /usr/bin/dbtest . || true && \
@@ -144,6 +242,5 @@ ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
 ENV TZ=America/New_York
 ENV PORTABLE=1
 ENV USE_SSE=1
-ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/resmoke2junit.py .
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN useradd -u 1001 -r -g 0 -m -s /sbin/nologin -c "Default Application User" mongodb || true 
