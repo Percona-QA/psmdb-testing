@@ -5,10 +5,10 @@
   become_method: sudo
   roles:
     - role: '../../../roles/easyrsa'
-    - role: psmdb
     - role: '../../../roles/docker'
     - role: '../../../roles/easyrsa'
     - role: '../../../roles/openldap'
     - role: '../../../roles/kmip-docker'
+    - role: psmdb
     - role: '../../../roles/vault'
     - role: '../../../roles/kerberos'
