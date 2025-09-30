@@ -33,61 +33,83 @@
     src: pykmip_server.conf
     dest: /etc/pykmip/server.conf
 
+#- name: Run PyKMIP container
+#  docker_container:
+#    name: pykmip
+#    hostname: pykmip
+#    image: python:3.11-slim
+#    command: ["sleep", "infinity"]
+#    restart_policy: unless-stopped
+#    published_ports: ["5696:5696"]
+#    volumes: ["/etc/pykmip:/etc/pykmip"]
+#    networks:
+#      - name: test
+
+#- name: Install PyKMIP dependencies in container
+#  community.docker.docker_container_exec:
+#    container: pykmip
+#    command: >
+#      bash -lc '
+#        apt-get update &&
+#        apt-get install -y --no-install-recommends bash git ca-certificates build-essential libffi-dev libssl-dev python3-dev &&
+#        python -m pip install --upgrade --no-cache-dir pip setuptools wheel &&
+#        python -m pip install --no-cache-dir pykmip
+#      '
+#  register: exec_result
+#  retries: 5
+#  delay: 5
+#  until: exec_result.rc == 0
+
 - name: Run PyKMIP container
   docker_container:
     name: pykmip
     hostname: pykmip
     image: python:3.11-slim
-    command: ["sleep", "infinity"]
+    command: >
+      bash -lc "set -euo pipefail;
+                apt-get update &&
+                apt-get install -y --no-install-recommends ca-certificates gcc libffi-dev libssl-dev python3-dev &&
+                python -m pip install --upgrade --no-cache-dir pip setuptools wheel &&
+                python -m pip install --no-cache-dir pykmip &&
+                exec pykmip-server -f /etc/pykmip/server.conf"
     restart_policy: unless-stopped
-    published_ports: ["5696:5696"]
-    volumes: ["/etc/pykmip:/etc/pykmip"]
+    published_ports:
+      - "5696:5696"
+    volumes:
+      - "/etc/pykmip:/etc/pykmip"
     networks:
       - name: test
 
-- name: Install PyKMIP dependencies in container
-  community.docker.docker_container_exec:
-    container: pykmip
-    command: >
-      bash -lc '
-        apt-get update &&
-        apt-get install -y --no-install-recommends bash git ca-certificates build-essential libffi-dev libssl-dev python3-dev &&
-        python -m pip install --upgrade --no-cache-dir pip setuptools wheel &&
-        python -m pip install --no-cache-dir pykmip
-      '
-  register: exec_result
-  retries: 5
-  delay: 5
-  until: exec_result.rc == 0
-
-- name: Install PyKMIP
-  community.docker.docker_container_exec:
-    container: pykmip
-    command: "git clone https://github.com/OpenKMIP/PyKMIP /root/PyKMIP"
-  register: exec_result
-  failed_when: exec_result.rc != 0
-
-- name: Setup pykmip
-  community.docker.docker_container_exec:
-    container: pykmip
-    command: "python /root/PyKMIP/setup.py install"
-  register: exec_result
-  failed_when: exec_result.rc != 0
-
-- name: Start PyKMIP in background
-  community.docker.docker_container_exec:
-    container: pykmip
-    command: >
-      bash -lc 'mkdir -p /var/log &&
-                nohup /root/PyKMIP/bin/run_server.py > /var/log/pykmip.log 2>&1 &
-                disown'
-  changed_when: true
+#- name: Install PyKMIP
+#  community.docker.docker_container_exec:
+#    container: pykmip
+#    command: "git clone https://github.com/OpenKMIP/PyKMIP /root/PyKMIP"
+#  register: exec_result
+#  failed_when: exec_result.rc != 0
+#
+#- name: Setup pykmip
+#  community.docker.docker_container_exec:
+#    container: pykmip
+#    command: "python /root/PyKMIP/setup.py install"
+#  register: exec_result
+#  failed_when: exec_result.rc != 0
+#
+#- name: Start PyKMIP in background
+#  community.docker.docker_container_exec:
+#    container: pykmip
+#    command: >
+#      bash -lc 'mkdir -p /var/log &&
+#                nohup /root/PyKMIP/bin/run_server.py > /var/log/pykmip.log 2>&1 &
+#                disown'
+#  changed_when: true
 
 - name: Ensure pykmip resolves locally
   lineinfile:
     path: /etc/hosts
     line: "127.0.0.1 pykmip"
     state: present
+  args:
+    unsafe_writes: true
 
 - name: Wait for PyKMIP to start listening
   ansible.builtin.wait_for:
