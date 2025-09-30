@@ -68,7 +68,7 @@
     command: >
       bash -lc "set -euo pipefail;
                 apt-get update &&
-                apt-get install -y --no-install-recommends ca-certificates gcc libffi-dev libssl-dev python3-dev &&
+                apt-get install -y --no-install-recommends ca-certificates gcc libffi-dev libssl-dev python3-dev netcat-openbsd &&
                 python -m pip install --upgrade --no-cache-dir pip setuptools wheel &&
                 python -m pip install --no-cache-dir pykmip &&
                 exec pykmip-server -f /etc/pykmip/server.conf"
@@ -102,6 +102,15 @@
 #                nohup /root/PyKMIP/bin/run_server.py > /var/log/pykmip.log 2>&1 &
 #                disown'
 #  changed_when: true
+
+- name: Wait until PyKMIP port is listening inside the container
+  community.docker.docker_container_exec:
+    container: pykmip
+    command: bash -lc 'for i in {1..60}; do nc -z 127.0.0.1 5696 && exit 0; sleep 2; done; exit 1'
+  register: kmip_ready
+  retries: 3
+  delay: 5
+  until: kmip_ready.rc == 0
 
 - name: Ensure pykmip resolves locally
   lineinfile:
