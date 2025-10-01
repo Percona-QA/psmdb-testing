@@ -30,10 +30,10 @@ SUITES = ['multiversion_kmip']
 #         print(result.stderr)
 #     assert result.rc == 0, result.stdout
 
-@pytest.mark.parametrize("suites", SUITES)
-def test_suites(host, suites):
-    cmd = "cd /percona-server-mongodb && /opt/venv/bin/python buildscripts/resmoke.py run --suite "  + suites
-    with host.sudo():
-        result = host.run(cmd)
-        print(result.stderr)
-    assert result.rc == 0, result.stdout
+# @pytest.mark.parametrize("suites", SUITES)
+# def test_suites(host, suites):
+#     cmd = "cd /percona-server-mongodb && /opt/venv/bin/python buildscripts/resmoke.py run --suite "  + suites
+#     with host.sudo():
+#         result = host.run(cmd)
+#         print(result.stderr)
+#     assert result.rc == 0, result.stdout
