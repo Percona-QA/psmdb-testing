@@ -278,7 +278,8 @@ class Cluster:
                                  "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + mongod_args,
                                  "GOCOVERDIR=/gocoverdir/reports"],
-                    volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
+                    volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"],
+                    cap_add=["NET_ADMIN", "NET_RAW"]
                 )
                 if "arbiterOnly" in host:
                     if host['arbiterOnly']:
@@ -1077,3 +1078,30 @@ class Cluster:
                 assert False
             time.sleep(1)
         Cluster.log("Mongodb on " + host + " is in previous state, is secondary: " + newstate)
+
+    def network_interruption(self, delay=120, stop_event=None, loss_percent=100):
+        client = docker.from_env()
+        if self.layout == "replicaset":
+            names = [m["host"] for m in self.config["members"]]
+        elif self.layout == "sharded":
+            names = [m["host"] for m in self.config["configserver"]["members"]]
+            for shard in self.config["shards"]:
+                names += [m["host"] for m in shard["members"]]
+        else:
+            return
+        containers = [client.containers.get(n) for n in names]
+        try:
+            for c in containers:
+                cmd = f"tc qdisc add dev eth0 root netem loss {loss_percent}%"
+                c.exec_run(cmd, privileged=True)
+                Cluster.log(f"Simulating {loss_percent}% network loss for {c.name}")
+            elapsed = 0
+            while elapsed < delay and (not stop_event or not stop_event.is_set()):
+                time.sleep(1)
+                elapsed += 1
+            if stop_event and stop_event.is_set():
+                Cluster.log("Network interruption stopped early due to stop signal")
+        finally:
+            for c in containers:
+                c.exec_run("tc qdisc del dev eth0 root netem", privileged=True)
+                Cluster.log(f"Restored network connectivity for {c.name}")

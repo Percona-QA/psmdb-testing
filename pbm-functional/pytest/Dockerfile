@@ -30,7 +30,10 @@ RUN yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noar
     ARCH=$(mongod --version | tail -n +2 | sed 's/Build Info: //' | jq -r .environment.distarch)  && \
     if [ $ARCH == x86_64 ]; then curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel93-$VERSION.tgz || curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-$VERSION.tgz ||true; fi && \
     if [ $ARCH == aarch64 ]; then curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel93-$VERSION.tgz || curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-$VERSION.tgz || true ; fi && \
-    mkdir -p /opt/mongodb && tar -C /opt/mongodb --transform='s,^/*[^/]*,,S' -xzvf mongo-ce.tgz || true && rm -rf mongo-ce.tgz || true
+    mkdir -p /opt/mongodb && tar -C /opt/mongodb --transform='s,^/*[^/]*,,S' -xzvf mongo-ce.tgz || true && rm -rf mongo-ce.tgz || true && \
+    curl -Lf -o /tmp/iproute-tc.rpm https://rpmfind.net/linux/centos-stream/9-stream/BaseOS/$ARCH/os/Packages/iproute-tc-6.14.0-2.el9.$ARCH.rpm && \
+    curl -Lf -o /tmp/iproute.rpm https://rpmfind.net/linux/centos-stream/9-stream/BaseOS/$ARCH/os/Packages/iproute-6.14.0-2.el9.$ARCH.rpm && \
+    yum install -y /tmp/iproute-tc.rpm /tmp/iproute.rpm && rm -f /tmp/iproute-tc.rpm /tmp/iproute.rpm
 COPY --from=builder /pbm-new/ /pbm-new/
 COPY --from=builder /pbm-old/ /pbm-old/
 COPY --from=easyrsa /etc/pykmip/mongod.pem /etc/pykmip/mongod.pem
