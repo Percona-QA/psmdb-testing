@@ -5,6 +5,7 @@ import docker
 import pymongo
 import pytest
 import base64
+import threading
 import time
 from bson.binary import Binary
 
@@ -41,7 +42,7 @@ def start_cluster(cluster,request):
         pytest.param("aws", "sse-c"),
         pytest.param("aws", "sse-kms"),
         pytest.param("aws", "sse-s3"),
-        pytest.param("gcs", "no-encryption"),
+        pytest.param("gcs_native", "no-encryption"),
         pytest.param("gcs_hmac", "no-encryption"),
         pytest.param("azure", "no-encryption")])
 @pytest.mark.parametrize("backup_type", ["logical", "physical", "incremental"])
@@ -57,7 +58,7 @@ def test_general_PBM_T300(start_cluster, cluster, provider, encryption_type, bac
     """
     cloud_configs = {
         "aws": "/etc/aws.conf",
-        "gcs": "/etc/gcs.conf",
+        "gcs_native": "/etc/gcs.conf",
         "gcs_hmac": "/etc/gcs_hmac.conf",
         "azure": "/etc/azure.conf"}
     cluster.setup_pbm(file=cloud_configs[provider])
@@ -88,7 +89,7 @@ def test_general_PBM_T300(start_cluster, cluster, provider, encryption_type, bac
     if encryption_type == "no-encryption":
         if provider == "aws":
             result = cluster.exec_pbm_cli(f'config --set storage.s3.prefix={unique_prefix} --out json -w')
-        elif provider in ["gcs", "gcs_hmac"]:
+        elif provider in ["gcs_native", "gcs_hmac"]:
             result = cluster.exec_pbm_cli(f'config --set storage.gcs.prefix={unique_prefix} --out json -w')
         elif provider == "azure":
             result = cluster.exec_pbm_cli(f'config --set storage.azure.prefix={unique_prefix} --out json -w')
@@ -150,6 +151,101 @@ def test_general_PBM_T300(start_cluster, cluster, provider, encryption_type, bac
     pbm_exec_and_wait(cluster, f"delete-backup --older-than=0d -t {backup_type} --force --yes")
     logs=cluster.exec_pbm_cli("logs -sD -t0")
     ignored_errors = ["no documents in result","send pbm heartbeat","resync"]
+    error_lines = [
+        line for line in logs.stdout.splitlines()
+        if " E " in line and not any(ignore in line for ignore in ignored_errors)]
+    if error_lines:
+        error_summary = "\n".join(error_lines)
+        raise AssertionError(f"Errors found in PBM logs\n{error_summary}")
+    Cluster.log("Finished successfully")
+
+@pytest.mark.jenkins
+@pytest.mark.parametrize("provider", ["aws", "gcs_native", "gcs_hmac", "azure"])
+@pytest.mark.parametrize("backup_type", ["logical", "physical"])
+@pytest.mark.parametrize("loss_percent", ["50", "100"])
+@pytest.mark.timeout(1600, func_only=True)
+def test_general_PBM_T304(start_cluster, cluster, provider, backup_type, loss_percent):
+    cloud_configs = {
+        "aws": "/etc/aws.conf",
+        "gcs_native": "/etc/gcs.conf",
+        "gcs_hmac": "/etc/gcs_hmac.conf",
+        "azure": "/etc/azure.conf"}
+    cluster.setup_pbm(file=cloud_configs[provider])
+    client = pymongo.MongoClient(cluster.connection)
+    mongod_version = client.server_info()["version"]
+    major_ver = "".join(mongod_version.split(".")[:2])
+    unique_prefix = f"no-encryption/{major_ver}-{backup_type}"
+    if provider == "aws":
+        result = cluster.exec_pbm_cli(f'config --set storage.s3.prefix={unique_prefix} --out json -w')
+    elif provider in ["gcs_native", "gcs_hmac"]:
+        result = cluster.exec_pbm_cli(f'config --set storage.gcs.prefix={unique_prefix} --out json -w')
+    elif provider == "azure":
+        result = cluster.exec_pbm_cli(f'config --set storage.azure.prefix={unique_prefix} --out json -w')
+    assert result.rc == 0
+    cluster.check_pbm_status()
+    result = cluster.exec_pbm_cli("config")
+    Cluster.log("Current PBM config:\n" + result.stdout)
+    total_docs = (500 * 1024) // 10
+    for i in range(0, total_docs, 1000):
+        batch = [
+            {"_id": i + j, "payload": Binary(os.urandom(10 * 1024))}
+            for j in range(min(1000, total_docs - i))]
+        client["test"]["bigdata"].insert_many(batch)
+    Cluster.log(f"Inserted {total_docs} documents")
+    backup_result = {"backup": None, "error": None}
+    network_interrupt_stop = threading.Event()
+    def run_backup():
+        try:
+            backup_result["backup"] = cluster.make_backup(f"{backup_type}")
+            Cluster.log("Backup completed successfully")
+        except Exception as e:
+            backup_result["error"] = e
+            Cluster.log(f"Backup failed: {e}")
+        finally:
+            network_interrupt_stop.set()
+    def run_network_interrupt():
+        try:
+            time.sleep(10)
+            # For 50% loss - stop network for 1 minute to ensure requests re-tries happen
+            # For 100% loss - stop network for 6 minutes to verify backup timeout handling (STR from PBM-1605)
+            if loss_percent == "50":
+                cluster.network_interruption(60, stop_event=network_interrupt_stop, loss_percent=loss_percent)
+            else:
+                cluster.network_interruption(360, stop_event=network_interrupt_stop, loss_percent=loss_percent)
+        except Exception as e:
+            Cluster.log(f"Network interruption failed: {e}")
+    try:
+        backup_thread = threading.Thread(target=run_backup)
+        network_thread = threading.Thread(target=run_network_interrupt)
+        backup_thread.start()
+        network_thread.start()
+        backup_thread.join()
+        network_thread.join()
+    finally:
+        for t in (backup_thread, network_thread):
+            if t.is_alive():
+                t.join(timeout=5)
+    # GCS is weird about retries, reported in PBM-1628
+    if provider == "gcs_native" and backup_result["error"]:
+        Cluster.log("Backup failed, treating as successful test outcome")
+        return
+    # Backup should complete successfully with 50% packet loss
+    if loss_percent == "50" and backup_result["error"]:
+        pytest.fail("Backup failed, while it should succeed")
+    # If the backup failed due to timeout caused by 100% network interruption
+    # and produced an error, treat as successful test outcome
+    elif loss_percent == "100" and backup_result["error"]:
+        Cluster.log("Backup failed, treating as successful test outcome")
+        return
+    client.drop_database("test")
+    backup = backup_result.get("backup")
+    if backup_type == "logical":
+        cluster.make_restore(backup, timeout=500, check_pbm_status=True)
+    else:
+        cluster.make_restore(backup, timeout=500, restart_cluster=True, check_pbm_status=True)
+    assert client["test"]["bigdata"].count_documents({}) == total_docs
+    logs = cluster.exec_pbm_cli("logs -sD -t0")
+    ignored_errors = ["no documents in result", "send pbm heartbeat", "resync"]
     error_lines = [
         line for line in logs.stdout.splitlines()
         if " E " in line and not any(ignore in line for ignore in ignored_errors)]

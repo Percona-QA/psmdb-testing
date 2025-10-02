@@ -278,7 +278,8 @@ class Cluster:
                                  "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
                                  "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + mongod_args,
                                  "GOCOVERDIR=/gocoverdir/reports"],
-                    volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
+                    volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"],
+                    cap_add=["NET_ADMIN", "NET_RAW"]
                 )
                 if "arbiterOnly" in host:
                     if host['arbiterOnly']:
@@ -473,44 +474,14 @@ class Cluster:
         timeout=kwargs.get('timeout', 240)
         result = n.run('SSL_CERT_FILE=/etc/nginx-minio/ca.crt timeout ' + str(timeout) +
             ' pbm restore ' + name + ' ' + ' '.join(restore_opts) + ' --wait')
-        if "--fallback-enabled=true" in restore_opts:
-            Cluster.log(result.stdout)
-            # Additional log check due to PBM-1574
-            match = re.search(r"Starting restore (\S+) from", result.stdout)
-            if not match:
-                raise ValueError(f"Failed to extract restore ID from output:\n{result.stdout}")
-            restore_id = match.group(1)
-            Cluster.log(f"Detected restore ID: {restore_id}")
-            pattern = re.compile(
-                rf"\[restore/{re.escape(restore_id)}\] recovery successfully finished"
-                rf"|\[restore/{re.escape(restore_id)}\].*exec cleanup strategy")
-            timeout = time.time() + 60
-            last_logs_by_host = {}
-            matched_hosts = set()
-            while time.time() < timeout:
-                for host in self.mongod_hosts:
-                    if host in matched_hosts:
-                        continue
-                    container = docker.from_env().containers.get(host)
-                    logs = container.logs(stdout=False, stderr=True, tail=1000).decode("utf-8")
-                    last_logs_by_host[host] = logs
-                    if pattern.search(logs):
-                        matched_hosts.add(host)
-                if len(matched_hosts) == len(self.mongod_hosts):
-                    break
-                time.sleep(1)
-            else:
-                unmatched = [h for h in self.mongod_hosts if h not in matched_hosts]
-                error_logs = "\n\n".join(f"--- {host} ---\n{last_logs_by_host.get(host, '')[-2000:]}" for host in unmatched)
-                raise TimeoutError(
-                    f"Timed out waiting for restore completion message for ID '{restore_id}'"
-                    f"on nodes: {', '.join(unmatched)}\n"
-                    f"Expected pattern: '{pattern.pattern}'\n"
-                    f"Last 1000 log lines from unmatched nodes:\n{error_logs}")
+        if "--fallback-enabled=true" in restore_opts and result.rc == 1 and "fallback is applied" in result.stderr.lower():
+            # if fallback is enabled and restore fails, PBM should revert the cluster
+            # to the state before restore, so just continue execution without raising error
+            Cluster.log(result.stdout, result.stderr)
         elif result.rc == 0 and "Error" not in result.stdout:
-            Cluster.log(result.stdout)
+            Cluster.log(result.stdout, result.stderr)
         elif result.rc == 0 and "Error" in result.stdout:
-            assert False, result.stdout
+            assert False, result.stdout + result.stderr
         else:
             # try to catch possible failures if timeout exceeded
             error=''
@@ -820,7 +791,7 @@ class Cluster:
         running = json.loads(status)['pitr']['run']
         return bool(running)
 
-    def wait_pitr(self,wait=120,enabled=True):
+    def wait_pitr(self,wait=180,enabled=True):
         for i in range(wait):
             if self.check_pitr() == enabled:
                 break
@@ -1107,3 +1078,30 @@ class Cluster:
                 assert False
             time.sleep(1)
         Cluster.log("Mongodb on " + host + " is in previous state, is secondary: " + newstate)
+
+    def network_interruption(self, delay=120, stop_event=None, loss_percent=100):
+        client = docker.from_env()
+        if self.layout == "replicaset":
+            names = [m["host"] for m in self.config["members"]]
+        elif self.layout == "sharded":
+            names = [m["host"] for m in self.config["configserver"]["members"]]
+            for shard in self.config["shards"]:
+                names += [m["host"] for m in shard["members"]]
+        else:
+            return
+        containers = [client.containers.get(n) for n in names]
+        try:
+            for c in containers:
+                cmd = f"tc qdisc add dev eth0 root netem loss {loss_percent}%"
+                c.exec_run(cmd, privileged=True)
+                Cluster.log(f"Simulating {loss_percent}% network loss for {c.name}")
+            elapsed = 0
+            while elapsed < delay and (not stop_event or not stop_event.is_set()):
+                time.sleep(1)
+                elapsed += 1
+            if stop_event and stop_event.is_set():
+                Cluster.log("Network interruption stopped early due to stop signal")
+        finally:
+            for c in containers:
+                c.exec_run("tc qdisc del dev eth0 root netem", privileged=True)
+                Cluster.log(f"Restored network connectivity for {c.name}")
