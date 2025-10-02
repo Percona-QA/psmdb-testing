@@ -1,0 +1,24 @@
+FROM golang:alpine AS build
+WORKDIR /src
+COPY kmip-server/go.mod kmip-server/go.sum ./
+RUN go mod download 
+COPY kmip-server .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/kmip-server ./cmd/server
+
+FROM easyrsa/local AS easyrsa
+
+FROM alpine
+RUN adduser -D -u 10001 kmip
+WORKDIR /app
+COPY --from=build /out/kmip-server /app/kmip-server
+RUN mkdir -p /etc/pykmip
+COPY --from=easyrsa --chown=kmip:kmip /etc/pykmip/ /etc/pykmip/
+
+USER kmip
+EXPOSE 5696
+ENV KMIP_ADDR=:5696 \
+    KMIP_CERT=/etc/pykmip/pykmip.crt \
+    KMIP_KEY=/etc/pykmip/pykmip.key \
+    KMIP_CA=/etc/pykmip/ca.crt \
+    KMIP_NAME=pykmip
+ENTRYPOINT ["/app/kmip-server"]
