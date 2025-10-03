@@ -55,17 +55,19 @@
   delay: 5
   until: kmip_ready.rc == 0
 
+- name: Get pykmip container info
+  community.docker.docker_container_info:
+    name: pykmip
+  register: pykmip_info
+
+- name: Set fact with pykmip IP (first network)
+  set_fact:
+    pykmip_ip: "{{ (pykmip_info.containers[0].NetworkSettings.IPAddress }}"
+
 - name: Ensure pykmip resolves locally
   lineinfile:
     path: /etc/hosts
-    line: "127.0.0.1 pykmip"
+    line: "{{ pykmip_ip }} pykmip"
     state: present
   args:
     unsafe_writes: true
-
-- name: Wait for PyKMIP to start listening
-  ansible.builtin.wait_for:
-    host: "127.0.0.1"
-    port: 5696
-    delay: 2
-    timeout: 20
