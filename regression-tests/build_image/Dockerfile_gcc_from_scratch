@@ -10,23 +10,26 @@ RUN set -ex; \
     else \
         apt-get update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl file libgmp-dev libmpfr-dev libmpc-dev gcc g++ bzip2 libbz2-dev libssl-dev zlib1g-dev libreadline-dev libffi-dev make tzdata ; \
     fi
+ARG build_platform=bazel
 RUN set -ex; \
-    if [ "$toolchain_version" = "v3" ]; then \
-        wget https://gcc.gnu.org/pub/gcc/releases/gcc-8.5.0/gcc-8.5.0.tar.gz -O gcc.tar.gz; \
-    fi; \
-    if [ "$toolchain_version" = "v4" ]; then \
-        wget https://gcc.gnu.org/pub/gcc/releases/gcc-11.3.0/gcc-11.3.0.tar.gz -O gcc.tar.gz; \
-    fi; \
-    if [ "$toolchain_version" = "v5" ]; then \
-        wget https://gcc.gnu.org/pub/gcc/releases/gcc-14.2.0/gcc-14.2.0.tar.gz -O gcc.tar.gz; \
-    fi; \
-    mkdir -p /opt/src/gcc && tar -xf gcc.tar.gz -C /opt/src/gcc --strip-components=1; \
-    cd /opt/src/gcc && ./contrib/download_prerequisites; \
-    mkdir /opt/objdir && cd /opt/objdir; \
-    CFLAGS="-O2" CXXFLAGS="-O2" /opt/src/gcc/configure --disable-multilib --prefix=/opt/gcc --enable-languages=c,c++; \
-    make -j "$(nproc)"; \
-    make install-strip; \
-    cd /opt && rm -rf /opt/src/gcc && rm -rf /opt/gcc.tar.gz && rm -rf /opt/objdir    
+    if [ "$build_platform" = "scons" ]; then \
+        if [ "$toolchain_version" = "v3" ]; then \
+            wget https://gcc.gnu.org/pub/gcc/releases/gcc-8.5.0/gcc-8.5.0.tar.gz -O gcc.tar.gz; \
+        fi; \
+        if [ "$toolchain_version" = "v4" ]; then \
+            wget https://gcc.gnu.org/pub/gcc/releases/gcc-11.3.0/gcc-11.3.0.tar.gz -O gcc.tar.gz; \
+        fi; \
+        if [ "$toolchain_version" = "v5" ]; then \
+            wget https://gcc.gnu.org/pub/gcc/releases/gcc-14.2.0/gcc-14.2.0.tar.gz -O gcc.tar.gz; \
+        fi; \
+        mkdir -p /opt/src/gcc && tar -xf gcc.tar.gz -C /opt/src/gcc --strip-components=1; \
+        cd /opt/src/gcc && ./contrib/download_prerequisites; \
+        mkdir /opt/objdir && cd /opt/objdir; \
+        CFLAGS="-O2" CXXFLAGS="-O2" /opt/src/gcc/configure --disable-multilib --prefix=/opt/gcc --enable-languages=c,c++; \
+        make -j "$(nproc)"; \
+        make install-strip; \
+        cd /opt && rm -rf /opt/src/gcc && rm -rf /opt/gcc.tar.gz && rm -rf /opt/objdir; \
+    fi    
 ENV PATH="/opt/gcc/bin:${PATH}"
 RUN set -ex; \
     if [ "$toolchain_version" = "v3" ]; then \
@@ -48,12 +51,37 @@ RUN set -ex; \
         wget https://github.com/bazelbuild/bazel/releases/download/${bazel_version}/bazel-${bazel_version}-linux-${TARGETARCH} -O /opt/bazel/bazel && \
         chmod +x /opt/bazel/bazel ;\
     fi
+RUN set -ex; \
+    if [ -f "/usr/bin/yum" ] ; then \
+        yum -y update && yum install -y --allowerasing diffutils wget git curl cmake lld binutils glibc-devel tzdata openssl-devel libcurl-devel; \
+    else \
+        apt-get update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl git cmake binutils lld tzdata libssl-dev libcurl4-openssl-dev; \
+    fi
+ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
+ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
+ARG AWS_VERSION=1.9.379
+RUN cd /opt && git clone --branch $AWS_VERSION --single-branch https://github.com/aws/aws-sdk-cpp.git && \
+    mkdir -p /opt/aws && \
+    cd aws-sdk-cpp && git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="/opt/aws" -DAUTORUN_UNIT_TESTS=OFF && \
+    make -j "$(nproc)" && make install && \
+    cd /opt && rm -rf aws-sdk-cpp
+ARG E2FS_VERSION=v1.47.2
+RUN cd /opt && git clone --branch $E2FS_VERSION --single-branch https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git && \
+    mkdir -p /opt/e2fs && cd e2fsprogs && \
+    mkdir build && cd build && \
+    ../configure --prefix=/opt/e2fs && \
+    make -j "$(nproc)" && make install-libs && \
+    cd /opt && rm -rf e2fsprogs
 
 ARG OS=debian:12
 FROM $OS AS toolchain
 COPY --from=toolchain_builder /opt /opt
 ENV PATH="/opt/python/bin:/opt/gcc/bin:/opt/bazel:${PATH}"
 RUN set -ex; \
+    cp -r /opt/aws/* /usr/ && cp -r /opt/e2fs/* /usr/ && \
+    rm -rf /opt/aws && rm -rf /opt/e2fs && \
     if [ -f "/usr/bin/yum" ] ; then \
         yum -y update && yum install -y --allowerasing diffutils wget git curl cmake lld binutils glibc-devel tzdata; \
     else \
@@ -66,8 +94,6 @@ ENV POETRY_VIRTUALENVS_CREATE=false
 ENV POETRY_INSTALLER_MAX_WORKERS=10
 ENV PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
 ENV GLIBC_TUNABLES=glibc.pthread.rseq=0
-ENV CC=/opt/gcc/bin/gcc
-ENV CXX=/opt/gcc/bin/g++
 ENV PYTHON_BIN_PATH=/opt/venv/bin/python
 
 FROM toolchain AS base_image
@@ -76,7 +102,7 @@ ARG psm_ver=8.0.13
 ARG psm_release=4
 ARG repo=https://github.com/percona/percona-server-mongodb.git
 RUN cd /opt && mkdir -p percona-server-mongodb && \
-    git clone $repo percona-server-mongodb && \
+    git clone --branch $branch --single-branch $repo percona-server-mongodb && \
     cd percona-server-mongodb/ && \
     git checkout $branch && git pull && \
     REVISION_LONG=$(git rev-parse HEAD) && \
@@ -107,24 +133,6 @@ RUN set -ex; \
         pip install --upgrade referencing==0.35.1 && \
         pip install -r etc/pip/dev-requirements.txt; \        
     fi 
-ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
-ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
-ARG AWS_VERSION=1.9.379
-RUN cd /opt && git clone https://github.com/aws/aws-sdk-cpp.git && \
-    mkdir -p /opt/aws && \
-    cd aws-sdk-cpp && git checkout $AWS_VERSION && git submodule update --init --recursive && \
-    mkdir build && cd build && \
-    cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="/usr" -DAUTORUN_UNIT_TESTS=OFF && \
-    make -j "$(nproc)" && make install && \
-    cd /opt && rm -rf aws-sdk-cpp
-ARG E2FS_VERSION=v1.47.2
-RUN cd /opt && git clone https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git && \
-    mkdir -p /opt/e2fs && \
-    cd e2fsprogs && git checkout $E2FS_VERSION && \
-    mkdir build && cd build && \
-    ../configure --prefix=/usr && \
-    make -j "$(nproc)" && make install-libs && \
-    cd /opt && rm -rf e2fsprogs
 RUN /usr/bin/echo -e "\n\
 CC = \"/opt/gcc/bin/gcc\"\n\
 CXX = \"/opt/gcc/bin/g++\"\n\
@@ -185,13 +193,25 @@ RUN set -ex; \
         --ssl --link-model=dynamic --linker=gold --dbg=off --opt=off $ff --use-sasl-client --wiredtiger --audit --inmemory --hotbackup install-unittests ;\
     fi
 
+FROM base_image AS jstests
+COPY --from=psmdb_builder /opt/percona-server-mongodb/build/install/bin/* /usr/bin/
+RUN find jstests -type f | xargs chmod 400 && \
+    cp /usr/bin/dbtest . || true && \
+    support-files/ldap-sasl/deploy_ldap_and_sasl.sh || true && \
+    echo "START=yes" >> /etc/default/saslauthd || true
+ENV PATH="${PATH}:/data/multiversion"
+ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
+ENV TZ=America/New_York
+ENV PORTABLE=1
+ENV USE_SSE=1
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN useradd -u 1001 -r -g 0 -m -s /sbin/nologin -c "Default Application User" mongodb || true
+
 FROM base_image AS integrationtests
+COPY --from=psmdb_builder /opt/percona-server-mongodb/build/install/bin/* /usr/bin/
 ARG build_platform=bazel
 ARG pro=true
-RUN useradd -u 1001 -g 0 -m -c "Default Application User" mongodb && \
-    chown -R mongodb /opt && chown -R mongodb /data/db && mkdir /work && chown -R mongodb /work 
-USER mongodb
-ENV PATH="/home/mongodb/.local/bin:${PATH}"
+ENV PATH="/root/.local/bin:${PATH}"
 RUN set -ex; \
     ff="" ;\
     if [ "$pro" = "true" ] && [ "$build_platform" = "bazel" ]; then \
@@ -211,10 +231,7 @@ RUN set -ex; \
 FROM base_image AS benchmarks
 ARG build_platform=bazel
 ARG pro=true
-RUN useradd -u 1001 -g 0 -m -c "Default Application User" mongodb && \
-    chown -R mongodb /opt && chown -R mongodb /data/db && mkdir /work && chown -R mongodb /work
-USER mongodb
-ENV PATH="/home/mongodb/.local/bin:${PATH}"
+ENV PATH="/root/.local/bin:${PATH}"
 RUN set -ex; \
     ff="" ;\
     if [ "$pro" = "true" ] && [ "$build_platform" = "bazel" ]; then \
@@ -231,16 +248,3 @@ RUN set -ex; \
         --ssl --link-model=dynamic --linker=gold --dbg=off --opt=off $ff --use-sasl-client --wiredtiger --audit --inmemory --hotbackup install-benchmarks ;\
     fi
 
-FROM base_image AS jstests
-COPY --from=psmdb_builder /opt/percona-server-mongodb/build/install/bin/* /usr/bin/
-RUN find jstests -type f | xargs chmod 400 && \
-    cp /usr/bin/dbtest . || true && \
-    support-files/ldap-sasl/deploy_ldap_and_sasl.sh || true && \
-    echo "START=yes" >> /etc/default/saslauthd || true   
-ENV PATH="${PATH}:/data/multiversion"
-ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
-ENV TZ=America/New_York
-ENV PORTABLE=1
-ENV USE_SSE=1
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-RUN useradd -u 1001 -r -g 0 -m -s /sbin/nologin -c "Default Application User" mongodb || true 
