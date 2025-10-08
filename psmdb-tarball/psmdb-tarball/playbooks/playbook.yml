@@ -77,5 +77,5 @@
     - role: '../../../roles/docker'
     - role: '../../../roles/openldap'
 #    - role: '../../../roles/kmip-docker'
-    - role: '../../../roles/kerberos'
-#    - role: '../../../roles/vault'
+#    - role: '../../../roles/kerberos'
+    - role: '../../../roles/vault'
