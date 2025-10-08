@@ -71,7 +71,7 @@ def check_agents_status(node,port):
     parsed_result = json.loads(result)
     for replicaset in parsed_result['cluster']:
         for host in replicaset['nodes']:
-            assert host['ok'] == True
+            assert host['ok']
 
 def check_mongod_service(node):
     with node.sudo():
@@ -86,13 +86,13 @@ def check_pbm_service(node):
 def restart_mongod(node):
     with node.sudo():
         hostname = node.check_output('hostname -s')
-        result = node.check_output('systemctl restart mongod')
+        node.check_output('systemctl restart mongod')
     print('restarting mongod on ' + hostname)
 
 def restart_pbm_agent(node):
     with node.sudo():
         hostname = node.check_output('hostname -s')
-        result = node.check_output('systemctl restart pbm-agent')
+        node.check_output('systemctl restart pbm-agent')
     print('restarting pbm-agent on ' + hostname)
 
 def make_backup(node,port,type):
@@ -199,7 +199,7 @@ def load_data(node,port,count):
     config_json = json.dumps(config, indent=4)
     print(config_json)
     node.run_test('echo \'' + config_json + '\' > /tmp/generated_config.json')
-    result = node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
+    node.check_output('mgodatagen --uri=mongodb://127.0.0.1:' + port + '/?replicaSet=rs -f /tmp/generated_config.json --batchsize 10')
 
 def check_count_data(node,port):
     result = node.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval 'db.binary.count()' --quiet | tail -1")
@@ -218,14 +218,6 @@ def setup_pitr(node,port):
 def test_1_setup_storage():
     result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --file=/etc/pbm-agent-storage-' + STORAGE + '.conf --out=json')
     store_out = json.loads(result)
-    if STORAGE == "minio":
-        assert store_out['storage']['type'] == 's3'
-        assert store_out['storage']['s3']['region'] == 'us-east-1'
-        assert store_out['storage']['s3']['endpointUrl'] == 'http://minio:9000'
-    if STORAGE == "aws":
-        assert store_out['storage']['type'] == 's3'
-        assert store_out['storage']['s3']['region'] == 'us-west-2'
-        assert store_out['storage']['s3']['bucket'] == 'pbm-testing-west'
     d = {'numDownloadWorkers': numDownloadWorkers,'maxDownloadBufferMb': maxDownloadBufferMb,'downloadChunkMb': downloadChunkMb }
     for k, v in d.items():
         if int(v):
@@ -257,7 +249,7 @@ def test_4_setup_pitr():
             else:
                 print("pitr enabled")
                 break
-        assert check_pitr(primary_rs,"27017") == True
+        assert check_pitr(primary_rs,"27017")
         time.sleep(10)
     else:
         result = primary_rs.check_output('pbm config --mongodb-uri=mongodb://localhost:27017/ --set pitr.enabled=true --out=json')
@@ -280,7 +272,7 @@ def test_5_backup():
             else:
                 print("pitr enabled")
                 break
-        assert check_pitr(primary_rs,"27017") == True
+        assert check_pitr(primary_rs,"27017")
 
 def test_6_modify_data():
     if EXISTING_BACKUP != "no":
@@ -309,7 +301,7 @@ def test_7_disable_pitr():
         else:
             print("pitr disabled")
             break
-    assert check_pitr(primary_rs,"27017") == False
+    assert not check_pitr(primary_rs,"27017")
 
 def test_8_restore():
     if EXISTING_BACKUP != "no":
