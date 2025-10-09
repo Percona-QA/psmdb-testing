@@ -229,27 +229,17 @@
           WantedBy=multi-user.target
       when: ansible_os_family == "RedHat"
 
-    - name: add AWS storage for pbm-agent
-      blockinfile:
-        path: /etc/pbm-agent-storage-aws.conf
+    - name: add AWS storage (AWS SDK) for pbm-agent
+      copy:
+        src: /tmp/pbm-agent-storage-aws.yaml
+        dest: /etc/pbm-agent-storage-aws.conf
         mode: '0666'
-        create: true
-        block: |
-          storage:
-            type: s3
-            s3:
-               region: us-west-2
-               bucket: pbm-testing-west
-               prefix: sharded
-               credentials:
-                 access-key-id: {{ access_key }}
-                 secret-access-key: {{ access_secret }}
-          restore:
-            batchSize: 50
-            numInsertionWorkers: 10 
-      vars:
-        access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
-        access_secret: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+
+    - name: add AWS storage (MinIO SDK) for pbm-agent
+      copy:
+        src: /tmp/pbm-agent-storage-aws-minio.yaml
+        dest: /etc/pbm-agent-storage-aws-minio.conf
+        mode: '0666'
 
     - name: add GCP storage for pbm-agent
       copy:
@@ -298,7 +288,7 @@
 
     - name: add minio storage for pbm-agent
       blockinfile:
-        path: /etc/pbm-agent-storage-minio.conf
+        path: /etc/pbm-agent-storage-minio-aws.conf
         mode: '0666'
         create: true
         block: |
