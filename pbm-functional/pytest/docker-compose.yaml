@@ -27,7 +27,7 @@ services:
       - "10000:10000"
     networks:
       - test
-    command: azurite-blob --blobHost 0.0.0.0 -d /dev/stdout
+    command: azurite-blob --skipApiVersionCheck --blobHost 0.0.0.0 -d /dev/stdout
 
   minio:
     image: minio/minio
