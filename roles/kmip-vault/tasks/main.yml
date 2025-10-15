@@ -1,14 +1,5 @@
 - include_tasks: "generate_vault_certs.yml"
 
-- set_fact:
-    vault_license: "{{ lookup('env', 'vault_license') | default('none', true) }}"
-    vault_host: "vault"
-    vault_ip: "127.0.0.1"
-    vault_port: 8200
-    kmip_role_path: "kmip/scope/psmdb/role/mongod"
-    kmip_dir: "/etc/mongo/kmip"
-    kmip_host_dir: "/etc/kmip"
-
 - name: Install Python deps via apt (Debian/Ubuntu)
   apt:
     update_cache: yes
