@@ -202,7 +202,7 @@ def test_incremental(start_cluster,cluster):
 
 @pytest.mark.timeout(600,func_only=True)
 def test_external_meta_PBM_T236(start_cluster,cluster):
-    if "fs" not in start_cluster.pbm_config:
+    if "fs" not in start_cluster:
         pytest.skip("Skipping the test for external backup/restore, it's valid only for fs")
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
@@ -221,7 +221,7 @@ def test_external_meta_PBM_T236(start_cluster,cluster):
 
 @pytest.mark.timeout(600,func_only=True)
 def test_external_nometa_PBM_T237(start_cluster,cluster):
-    if "fs" not in start_cluster.pbm_config:
+    if "fs" not in start_cluster:
         pytest.skip("Skipping the test for external backup/restore, it's valid only for fs")
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup = cluster.external_backup_start()
