@@ -6,8 +6,10 @@ import json
 import copy
 import concurrent.futures
 import os
-from datetime import datetime
 import re
+from azure.storage.blob import BlobServiceClient
+from azure.core.exceptions import ResourceExistsError
+from datetime import datetime
 
 # the structure of the cluster could be one of
 # 1. { _id: "rsname", members: [{host: "host", hidden: boolean, priority: int, arbiterOnly: bool}, ...]} for replicaset
@@ -1105,3 +1107,13 @@ class Cluster:
             for c in containers:
                 c.exec_run("tc qdisc del dev eth0 root netem", privileged=True)
                 Cluster.log(f"Restored network connectivity for {c.name}")
+
+    def setup_azurite(self):
+        connect_str = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
+        blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+        container_name = "test-container"
+        try:
+            container_client = blob_service_client.create_container(container_name)
+            Cluster.log(f"Container '{container_name}' created successfully.")
+        except ResourceExistsError:
+            Cluster.log(f"Container '{container_name}' already exists.")

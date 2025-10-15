@@ -29,6 +29,7 @@ def start_cluster(cluster,request):
         os.system("rm -rf /backups/*")
         cluster.create()
         cluster.downgrade()
+        cluster.setup_azurite()
         cluster.setup_pbm(pbm_config)
         client=pymongo.MongoClient(cluster.connection)
         client.admin.command("enableSharding", "test")
