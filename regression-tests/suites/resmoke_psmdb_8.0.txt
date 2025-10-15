@@ -457,15 +457,15 @@ timeseries_crud_jscore_passthrough|wiredTiger
 tla_plus --jobs=1|wiredTiger|apt install -y default-jre && mkdir -p /opt/java/jdk11/bin/ && ln -s /usr/bin/java /opt/java/jdk11/bin/java && ./src/mongo/tla_plus/download-tlc.sh && cp tla2tools.jar src/mongo/tla_plus/
  unittest_shell_hang_analyzer|wiredTiger
 unittests|wiredTiger
-unittests_auth|wiredTiger
-unittests_client|wiredTiger
-unittests_first_quarter|wiredTiger
-unittests_fourth_quarter|wiredTiger
-unittests_query|wiredTiger
-unittests_repl|wiredTiger
-unittests_second_quarter|wiredTiger
-unittests_sharding|wiredTiger
-unittests_third_quarter|wiredTiger
+ unittests_auth|wiredTiger
+ unittests_client|wiredTiger
+ unittests_first_quarter|wiredTiger
+ unittests_fourth_quarter|wiredTiger
+ unittests_query|wiredTiger
+ unittests_repl|wiredTiger
+ unittests_second_quarter|wiredTiger
+ unittests_sharding|wiredTiger
+ unittests_third_quarter|wiredTiger
 unsplittable_collections_created_on_any_shard_jscore_passthrough|wiredTiger
 unsplittable_collections_on_random_shard_jscore_txns|wiredTiger
  update_fuzzer|wiredTiger
