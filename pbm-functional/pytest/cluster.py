@@ -383,7 +383,7 @@ class Cluster:
         Cluster.log("The cluster was prepared in {} seconds".format(duration))
 
     # setups pbm from default config-file, minio as storage
-    def setup_pbm(self, file="/etc/pbm.conf", retries=3):
+    def setup_pbm(self, file="/etc/pbm-aws-provider.conf", retries=3):
         host = self.pbm_cli
         n = testinfra.get_host("docker://" + host)
         for attempt in range(retries):

@@ -27,20 +27,21 @@ def config():
 def cluster(config):
     return Cluster(config)
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function",params=["/etc/pbm-fs.conf", "/etc/pbm-aws-provider.conf", "/etc/pbm-minio-provider.conf","/etc/pbm-azurite.conf"])
 def start_cluster(cluster,request):
     try:
+        pbm_config = request.param
         cluster.destroy()
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
         cluster.create()
-        cluster.setup_pbm()
+        cluster.setup_pbm(pbm_config)
         client=pymongo.MongoClient(cluster.connection)
         client.admin.command("enableSharding", "test")
         client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
         client.admin.command("shardCollection", "test.test2", key={"_id": "hashed"})
         client.admin.command("shardCollection", "test.test3", key={"_id": "hashed"})
-        yield True
+        yield pbm_config
 
     finally:
         if request.config.getoption("--verbose"):
@@ -201,6 +202,8 @@ def test_incremental(start_cluster,cluster):
 
 @pytest.mark.timeout(600,func_only=True)
 def test_external_meta_PBM_T236(start_cluster,cluster):
+    if "fs" not in start_cluster.pbm_config:
+        pytest.skip("Skipping the test for external backup/restore, it's valid only for fs")
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup = cluster.external_backup_start()
@@ -218,6 +221,8 @@ def test_external_meta_PBM_T236(start_cluster,cluster):
 
 @pytest.mark.timeout(600,func_only=True)
 def test_external_nometa_PBM_T237(start_cluster,cluster):
+    if "fs" not in start_cluster.pbm_config:
+        pytest.skip("Skipping the test for external backup/restore, it's valid only for fs")
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup = cluster.external_backup_start()
     result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
