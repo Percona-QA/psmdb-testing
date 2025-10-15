@@ -1,0 +1,151 @@
+- name: Ensure KMIP directories exist
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode | default('0755') }}"
+  loop:
+    - { path: "/etc/mongo/kmip" }
+    - { path: "/etc/kmip" }
+
+- name: Generate KMIP certs from Vault
+  command:
+    argv:
+      - curl
+      - -sS
+      - --fail
+      - --resolve
+      - "{{ vault_host }}:{{ vault_port }}:{{ vault_ip }}"
+      - -H
+      - "X-Vault-Token: {{ vault_root_token }}"
+      - -X
+      - PUT
+      - "https://{{ vault_host }}:{{ vault_port }}/v1/{{ kmip_role_path }}/credential/generate"
+  register: kmip_gen
+  changed_when: false
+
+- name: Parse Vault KMIP JSON
+  set_fact:
+    kmip_data: "{{ (kmip_gen.stdout | from_json).data }}"
+
+- name: Extract leaf certificate
+  set_fact:
+    kmip_leaf_cert: >-
+      {{
+        (kmip_data.certificate | default(''))
+        | regex_search('-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----')
+        | default('', true)
+      }}
+
+- name: Determine private key PEM
+  set_fact:
+    kmip_privkey: "{{ kmip_data.private_key | default('', true) }}"
+
+- name: Lookup KMIP credential by serial to get certificate
+  command:
+    argv:
+      - curl
+      - -sS
+      - --fail
+      - --resolve
+      - "{{ vault_host }}:{{ vault_port }}:{{ vault_ip }}"
+      - -H
+      - "X-Vault-Token: {{ vault_root_token }}"
+      - -G
+      - --data-urlencode
+      - "serial_number={{ kmip_data.serial_number }}"
+      - "https://{{ vault_host }}:{{ vault_port }}/v1/{{ kmip_role_path }}/credential/lookup"
+  register: kmip_lookup
+  changed_when: false
+  when: kmip_leaf_cert | length == 0
+
+- name: Parse lookup JSON
+  set_fact:
+    kmip_lookup_data: "{{ (kmip_lookup.stdout | from_json).data }}"
+  when: kmip_leaf_cert | length == 0
+
+- name: Pick certificate source
+  set_fact:
+    kmip_cert_source: >-
+      {{ kmip_lookup_data.certificate
+         | default(kmip_data.certificate, true)
+         | default('', true) }}
+
+- name: Normalise certs
+  set_fact:
+    kmip_cert_source_norm: >-
+      {{
+        kmip_cert_source
+        | regex_replace('\\\\n', '\n')
+        | regex_replace('\r\n', '\n')
+      }}
+
+- name: Store cert blocks
+  set_fact:
+    kmip_pems: >-
+      {{
+        (kmip_cert_source_norm
+          | regex_findall('(?s)-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----'))
+        | default([], true)
+        | list
+      }}
+
+- name: Extract leaf cert
+  set_fact:
+    kmip_leaf_cert: "{{ kmip_pems | first if (kmip_pems | length) > 0 else '' }}"
+
+- name: Normalize private key
+  set_fact:
+    kmip_privkey_norm: >-
+      {{
+        (kmip_privkey | default(''))
+        | regex_replace('\\\\n', '\n')
+        | regex_replace('\r\n', '\n')
+        | trim
+      }}
+
+- name: Choose CA chain source
+  set_fact:
+    kmip_ca_chain_src: "{{ (kmip_lookup_data.ca_chain | default(kmip_data.ca_chain, true)) | default([], true) }}"
+
+- name: Normalize CA chain PEMs
+  set_fact:
+    kmip_ca_chain_norm: >-
+      {{
+        kmip_ca_chain_src
+        | map('regex_replace', '\\\\n', '\n')
+        | map('regex_replace', '\r\n', '\n')
+        | list
+      }}
+
+- name: Build CA bundle content
+  set_fact:
+    kmip_ca_bundle: "{{ (kmip_ca_chain_norm | join('\n')) ~ '\n' }}"
+
+- name: Create mongod KMIP client PEM
+  copy:
+    dest: "{{ kmip_dir }}/mongod-kmip-client.pem"
+    mode: '0600'
+    content: |-
+      {{ kmip_leaf_cert | trim }}
+      {{ kmip_privkey_norm }}
+      {{ '' }}
+
+- name: Write KMIP CA bundle
+  copy:
+    dest: "{{ kmip_dir }}/ca-bundle.pem"
+    mode: '0644'
+    content: "{{ kmip_ca_bundle }}"
+
+- name: Copy mongod-kmip-client.pem to /etc/kmip
+  copy:
+    src: "{{ kmip_dir }}/mongod-kmip-client.pem"
+    dest: "{{ kmip_host_dir }}/mongod-kmip-client.pem"
+    remote_src: true
+    mode: '0600'
+
+- name: Copy ca-bundle.pem to /etc/kmip
+  copy:
+    src: "{{ kmip_dir }}/ca-bundle.pem"
+    dest: "{{ kmip_host_dir }}/ca-bundle.pem"
+    remote_src: true
+    mode: '0644'
