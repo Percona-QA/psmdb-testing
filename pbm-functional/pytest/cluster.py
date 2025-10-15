@@ -1013,11 +1013,11 @@ class Cluster:
 
     def external_restore_finish(self, restore):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output("pbm restore-finish " + restore + " -c /etc/pbm.conf")
+        result = n.check_output("pbm restore-finish " + restore + " -c /etc/pbm-aws-provider.conf")
         Cluster.log(result)
         timeout = time.time() + 300
         while True:
-            result = n.check_output("pbm describe-restore " + restore + " -c /etc/pbm.conf -o json")
+            result = n.check_output("pbm describe-restore " + restore + " -c /etc/pbm-aws-provider.conf -o json")
             status = json.loads(result)
             Cluster.log(status['status'])
             if status['status']=='done':
