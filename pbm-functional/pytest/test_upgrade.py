@@ -20,7 +20,7 @@ def config():
 def cluster(config):
     return Cluster(config)
 
-@pytest.fixture(scope="function",params=["/etc/pbm-fs.conf", "/etc/pbm-aws-provider.conf", "/etc/pbm-azurite.conf"])
+@pytest.fixture(scope="function", params=["/etc/pbm-fs.conf", "/etc/pbm-aws-provider.conf", "/etc/pbm-azurite.conf"])
 def start_cluster(cluster,request):
     try:
         pbm_config = request.param

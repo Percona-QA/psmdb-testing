@@ -13,4 +13,4 @@ storage:
       signature-ver: V2
     retryer:
       numMaxRetries: 10
-    debugTrace: true 
+    debugTrace: true
