@@ -1,7 +1,7 @@
 storage:
   type: minio
   minio:
-    endpointUrl: http://minio:9000
+    endpoint: minio:9000
     bucket: bcp
     prefix: pbme2etest
     secure: false
