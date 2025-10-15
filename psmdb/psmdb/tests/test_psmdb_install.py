@@ -345,7 +345,7 @@ def test_auth(host,auth):
 def test_encryption(host,encryption,cipher):
     #fix privileges
     KEY_FILE='/package-testing/scripts/psmdb_encryption/mongodb-keyfile'
-    TOKEN_FILE="/etc/vault/vault.key"
+    TOKEN_FILE="/etc/vault/vault.token"
     CA_FILE="/etc/vault/vault.crt"
     CA_KMIP_FILE="/etc/kmip/ca-bundle.pem"
     MONGO_PEM_FILE="/etc/kmip/mongod-kmip-client.pem"
@@ -366,14 +366,14 @@ def test_encryption(host,encryption,cipher):
         conf['security']['encryptionKeyFile'] = KEY_FILE
     if encryption == "VAULT":
         conf['security']['vault'] = {}
-        conf['security']['vault']['serverName'] = '127.0.0.1'
+        conf['security']['vault']['serverName'] = 'vault'
         conf['security']['vault']['port'] = 8200
         conf['security']['vault']['tokenFile'] = TOKEN_FILE
         conf['security']['vault']['serverCAFile'] = CA_FILE
         conf['security']['vault']['secret'] = 'secret_v2/data/psmdb-test/package-test'
     if encryption == "KMIP":
         conf['security']['kmip'] = {}
-        conf['security']['kmip']['serverName'] = '127.0.0.1'
+        conf['security']['kmip']['serverName'] = 'vault'
         conf['security']['port']['port'] = '5696'
         conf['security']['kmip']['clientCertificateFile'] = MONGO_PEM_FILE
         conf['security']['kmip']['serverCAFile'] = CA_KMIP_FILE
