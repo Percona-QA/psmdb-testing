@@ -165,8 +165,8 @@ def test_version_pt(host):
     assert PSMDB_VER in version
 
 def test_telemetry(host):
-    TOKEN_FILE="/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"
-    CA_FILE="/package-testing/scripts/psmdb_encryption/test.cer"
+    TOKEN_FILE="/etc/vault/vault.token"
+    CA_FILE="/etc/vault/vault.crt"
     FILES=[TOKEN_FILE,CA_FILE]
     for file in FILES:
         with host.sudo():
@@ -374,7 +374,7 @@ def test_encryption(host,encryption,cipher):
     if encryption == "KMIP":
         conf['security']['kmip'] = {}
         conf['security']['kmip']['serverName'] = 'vault'
-        conf['security']['port']['port'] = '5696'
+        conf['security']['kmip']['port'] = '5696'
         conf['security']['kmip']['clientCertificateFile'] = MONGO_PEM_FILE
         conf['security']['kmip']['serverCAFile'] = CA_KMIP_FILE
 
