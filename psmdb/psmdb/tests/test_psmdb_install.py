@@ -124,222 +124,222 @@ def check_hotbackup(node):
     result = node.check_output('mongo --quiet --eval "db.series.countDocuments({})"')
     assert "1000" in result
 
-# def test_pro_version(host):
-#     if pro_build != "true":
-#         pytest.skip("Skipping PSMDB PRO version check")
-#
-#     result = host.run("/usr/bin/mongod --version")
-#     enabled_features = result.stdout.split('"proFeatures":')[1].split(']')[0]
-#
-#     for feature in PRO_FEATURES:
-#         assert feature in enabled_features, f'"{feature}" not found in proFeatures: {enabled_features}'
-#
-# def test_binary_symbol_visibility(host):
-#     binaries = ["/usr/bin/mongod", "/usr/bin/mongos"]
-#
-#     for binary in binaries:
-#         readelf_result = host.run(f"readelf -S {binary}")
-#         file_result = host.run(f"file {binary}")
-#
-#         assert readelf_result.rc == 0, f"readelf failed for {binary}"
-#         assert file_result.rc == 0, f"file failed for {binary}"
-#         file_output = file_result.stdout.lower()
-#
-#         if pro_build == "true":
-#             assert ".symtab" in readelf_result.stdout, f"{binary} is missing .symtab section (PRO build)"
-#             assert ".strtab" in readelf_result.stdout, f"{binary} is missing .strtab section (PRO build)"
-#             assert "not stripped" in file_output, f"{binary} should NOT be stripped (PRO build)"
-#         else:
-#             assert ".symtab" not in readelf_result.stdout, f"{binary} should NOT have .symtab (community build)"
-#             assert ".strtab" not in readelf_result.stdout, f"{binary} should NOT have .strtab (community build)"
-#             assert "not stripped" not in file_output, f"{binary} should be stripped (community build)"
-#
-# def test_version_pt(host):
-#     if toolkit != "true" :
-#         pytest.skip("skipping pt tests")
-#     cmd = "pt-mongodb-summary -f json 2>/dev/null"
-#     result = host.run(cmd)
-#     version = json.loads(result.stdout)['HostInfo']['Version']
-#     print("mongod version is: " + version)
-#     assert result.rc == 0
-#     assert PSMDB_VER in version
-#
-# def test_telemetry(host):
-#     TOKEN_FILE="/etc/vault/vault.token"
-#     CA_FILE="/etc/vault/vault.crt"
-#     FILES=[TOKEN_FILE,CA_FILE]
-#     for file in FILES:
-#         with host.sudo():
-#             host.check_output('chown mongod ' + file)
-#             host.check_output('chmod 600 ' + file)
-#     if version.parse(PSMDB_VER) <= version.parse("5.0.27"):
-#         pytest.skip("This version doesn't support telemetry")
-#     if version.parse(PSMDB_VER) >= version.parse("6.0.0") and version.parse(PSMDB_VER) <= version.parse("6.0.15"):
-#         pytest.skip("This version doesn't support telemetry")
-#     if version.parse(PSMDB_VER) >= version.parse("7.0.0") and version.parse(PSMDB_VER) <= version.parse("7.0.11"):
-#         pytest.skip("This version doesn't support telemetry")
-#
-#     file_path = "/usr/local/percona/telemetry_uuid"
-#     expected_fields = ["instanceId", "PRODUCT_FAMILY_PSMDB"]
-#     expected_group = "percona-telemetry"
-#
-#     assert host.file(file_path).exists, f"Telemetry file '{file_path}' does not exist."
-#
-#     file_content = host.file(file_path).content_string
-#     for string in expected_fields:
-#         assert string in file_content, f"Field '{string}' wasn't found in file '{file_path}'."
-#
-#     if not (host.system_info.distribution.lower() in ["redhat", "centos", 'rhel'] and host.system_info.release == '7'):
-#         file_group = host.file(file_path).group
-#         assert file_group == expected_group, f"File '{file_path}' group is '{file_group}', expected group is '{expected_group}'."
-#
-#     #reconfigure telemetry agent
-#     with host.sudo():
-#         assert host.service('percona-telemetry-agent').is_running
-#         assert host.service('percona-telemetry-agent').is_enabled
-#         if host.system_info.distribution == "debian" or host.system_info.distribution == "ubuntu":
-#             host.check_output("sed -E 's|PERCONA_TELEMETRY_URL=(.+)|PERCONA_TELEMETRY_URL=https://check-dev.percona.com/v1/telemetry/GenericReport|' -i /etc/default/percona-telemetry-agent")
-#             host.check_output("sed -E 's|PERCONA_TELEMETRY_CHECK_INTERVAL=(.+)|PERCONA_TELEMETRY_CHECK_INTERVAL=10|' -i /etc/default/percona-telemetry-agent")
-#         else:
-#             host.check_output("sed -E 's|PERCONA_TELEMETRY_URL=(.+)|PERCONA_TELEMETRY_URL=https://check-dev.percona.com/v1/telemetry/GenericReport|' -i /etc/sysconfig/percona-telemetry-agent")
-#             host.check_output("sed -E 's|PERCONA_TELEMETRY_CHECK_INTERVAL=(.+)|PERCONA_TELEMETRY_CHECK_INTERVAL=10|' -i /etc/sysconfig/percona-telemetry-agent")
-#         host.check_output('systemctl restart percona-telemetry-agent')
-#         assert host.service('percona-telemetry-agent').is_running
-#
-#     #test mongod telemetry
-#     restore_defaults(host)
-#     conf = get_default_conf(host)
-#     conf['setParameter'] = {}
-#     conf['setParameter']['perconaTelemetryGracePeriod'] = 2
-#     conf['security'] = {}
-#     conf['security']['enableEncryption'] = True
-#     conf['security']['encryptionCipherMode'] = 'AES256-CBC'
-#     conf['security']['vault'] = {}
-#     conf['security']['vault']['serverName'] = '127.0.0.1'
-#     conf['security']['vault']['port'] = 8200
-#     conf['security']['vault']['tokenFile'] = TOKEN_FILE
-#     conf['security']['vault']['serverCAFile'] = CA_FILE
-#     conf['security']['vault']['secret'] = 'secret_v2/data/psmdb-test/package-test'
-#     apply_conf(host,conf,True)
-#     time.sleep(3)
-#     with host.sudo():
-#         assert "1"==host.check_output("ls -1 /usr/local/percona/telemetry/psmdb/ | wc -l")
-#         telemetry_file = host.check_output("ls -1 /usr/local/percona/telemetry/psmdb/").strip()
-#         telemetry_path = f"/usr/local/percona/telemetry/psmdb/{telemetry_file}"
-#         telemetry_content = host.check_output(f"cat {telemetry_path}")
-#         try:
-#             data = json.loads(telemetry_content)
-#         except Exception as e:
-#             pytest.fail(f"Telemetry file {telemetry_path} is not valid JSON: {e}\nContent:\n{telemetry_content}")
-#         assert data.get("tde_key_storage") == "vault", (
-#             f"'tde_key_storage' is not 'vault' in {telemetry_path}: {data.get('tde_key_storage')}")
-#         tv = data.get("tde_vault_info")
-#         assert isinstance(tv, dict), f"'tde_vault_info' section missing or not an object in {telemetry_path}"
-#         assert tv.get("title") == "HashiCorp Vault API", (
-#             f"'title' in tde_vault_info is not 'HashiCorp Vault API' in {telemetry_path}: {tv.get('title')}")
-#         assert tv.get("version"), (f"'version' field missing or empty in tde_vault_info in {telemetry_path}")
-#         time.sleep(15)
-#         logs=host.check_output('cat /var/log/percona/telemetry-agent/telemetry-agent.log')
-#         assert "Sending request to host=check-dev.percona.com." in logs
-#         assert "0"==host.check_output("ls -1 /usr/local/percona/telemetry/psmdb/ | wc -l")
-#         assert "1"==host.check_output("ls -1 /usr/local/percona/telemetry/history/ | wc -l")
-#
-# def test_profiling(host):
-#     restore_defaults(host)
-#
-#     #setup profiler
-#     conf = get_default_conf(host)
-#     conf['operationProfiling'] = {}
-#     conf['operationProfiling']['mode'] = 'all'
-#     conf['operationProfiling']['slowOpThresholdMs'] = 200
-#     conf['operationProfiling']['rateLimit'] = 100
-#     conf['auditLog'] = {}
-#     conf['auditLog']['destination'] = 'file'
-#     conf['auditLog']['path'] = '/tmp/audit.json'
-#
-#     #check startup and audit file creation
-#     apply_conf(host,conf,False)
-#     assert host.file('/tmp/audit.json').exists
-#
-# @pytest.mark.parametrize("auth", ['LDAP','GSSAPI','MONGODB-AWS','MONGODB-OIDC'])
-# def test_auth(host,auth):
-#     if auth == 'MONGODB-OIDC' and pro_build != "true":
-#         pytest.skip("Skipping MONGODB-OIDC test for community build")
-#
-#     restore_defaults(host)
-#
-#     #setup config and users
-#     conf = get_default_conf(host)
-#     conf['net']['bindIp'] = '0.0.0.0'
-#     conf['security'] = {}
-#     conf['security']['authorization'] = "enabled"
-#     conf['setParameter'] = {}
-#     if auth == 'LDAP':
-#         conf['security']['ldap'] = {}
-#         conf['security']['ldap']['transportSecurity'] = "none"
-#         conf['security']['ldap']['servers'] = '127.0.0.1:389'
-#         conf['security']['ldap']['authz'] = {}
-#         conf['security']['ldap']['authz']['queryTemplate'] = "ou=groups,dc=percona,dc=com??sub?(member={PROVIDED_USER})"
-#         conf['security']['ldap']['bind'] = {}
-#         conf['security']['ldap']['bind']['queryUser'] = "cn=admin,dc=percona,dc=com"
-#         conf['security']['ldap']['bind']['queryPassword'] = "secret"
-#         conf['setParameter']['saslauthdPath'] = ""
-#         conf['setParameter']['authenticationMechanisms'] = "PLAIN"
-#         result = host.check_output('mongo admin --quiet --eval \'db.createRole({role: "cn=testwriters,ou=groups,dc=percona,dc=com", privileges: [], roles: [ "userAdminAnyDatabase", "clusterMonitor", "clusterManager", "clusterAdmin"]})\'')
-#         print(result)
-#     if auth == 'GSSAPI':
-#         conf['setParameter']['authenticationMechanisms'] = 'GSSAPI'
-#         result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"exttestrw@PERCONATEST.COM",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
-#         print(result)
-#     if auth == 'MONGODB-AWS':
-#         conf['setParameter']['authenticationMechanisms'] = 'MONGODB-AWS'
-#         result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"arn:aws:iam::119175775298:role/jenkins-psmdb-slave",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
-#         print(result)
-#     if auth == 'MONGODB-OIDC':
-#         conf['setParameter']['authenticationMechanisms'] = 'MONGODB-OIDC'
-#         conf['setParameter']['oidcIdentityProviders'] = json.dumps([
-#             {
-#                 "issuer": "https://percona.oktapreview.com/oauth2/ausoxk7qawOSbws7w1d7",
-#                 "audience": "0oaoxk03h6o9jFuRZ1d7",
-#                 "authNamePrefix": "okta",
-#                 "clientId": "0oaoxk03h6o9jFuRZ1d7",
-#                 "useAuthorizationClaim": False,
-#                 "supportsHumanFlows": False
-#             }
-#         ])
-#         result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"okta/0oaoxk03h6o9jFuRZ1d7",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
-#         print(result)
-#
-#     #apply config without erasing data
-#     apply_conf(host,conf,False)
-#
-#     #check authorization
-#     if auth == 'LDAP':
-#         result = host.check_output('mongo -u "cn=exttestrw,ou=people,dc=percona,dc=com" -p "exttestrw9a5S" --authenticationDatabase \'$external\' --authenticationMechanism=PLAIN --quiet --eval "db.runCommand({connectionStatus : 1})"')
-#         print(result)
-#         assert 'ok: 1' in result or '"ok" : 1' in result
-#     if auth == 'GSSAPI':
-#         with host.sudo():
-#             hostname = host.check_output('hostname')
-#             host.check_output('kadmin.local -q "addprinc -pw exttestrw exttestrw"')
-#             host.check_output('bash -c "kinit exttestrw <<<\'exttestrw\'"')
-#             result = host.check_output('mongo -u exttestrw@PERCONATEST.COM --host '+ hostname +' --authenticationMechanism=GSSAPI --authenticationDatabase \'$external\' --quiet --eval "db.runCommand({connectionStatus : 1})"')
-#             print(result)
-#             assert 'ok: 1' in result or '"ok" : 1' in result
-#     if auth == 'MONGODB-AWS':
-#         hostname = host.check_output('hostname')
-#         result = host.check_output('mongo --host '+ hostname + ' --authenticationMechanism MONGODB-AWS --authenticationDatabase \'$external\' --quiet --eval "db.runCommand({connectionStatus : 1})"')
-#         print(result)
-#         assert 'ok: 1' in result or '"ok" : 1' in result
-#     if auth == 'MONGODB-OIDC':
-#         access_token = host.file('/tmp/oidc_access_token').content_string.strip()
-#         hostname = host.check_output('hostname')
-#         result = host.check_output(f'/usr/bin/mongo.bcp --host {hostname} --authenticationMechanism MONGODB-OIDC '
-#             f'--authenticationDatabase \'$external\' '
-#             f'--oidcAccessToken "{access_token}" '
-#             '--quiet --eval "db.runCommand({connectionStatus : 1})"')
-#         print(result)
-#         assert 'ok: 1' in result or '"ok" : 1' in result
+def test_pro_version(host):
+    if pro_build != "true":
+        pytest.skip("Skipping PSMDB PRO version check")
+
+    result = host.run("/usr/bin/mongod --version")
+    enabled_features = result.stdout.split('"proFeatures":')[1].split(']')[0]
+
+    for feature in PRO_FEATURES:
+        assert feature in enabled_features, f'"{feature}" not found in proFeatures: {enabled_features}'
+
+def test_binary_symbol_visibility(host):
+    binaries = ["/usr/bin/mongod", "/usr/bin/mongos"]
+
+    for binary in binaries:
+        readelf_result = host.run(f"readelf -S {binary}")
+        file_result = host.run(f"file {binary}")
+
+        assert readelf_result.rc == 0, f"readelf failed for {binary}"
+        assert file_result.rc == 0, f"file failed for {binary}"
+        file_output = file_result.stdout.lower()
+
+        if pro_build == "true":
+            assert ".symtab" in readelf_result.stdout, f"{binary} is missing .symtab section (PRO build)"
+            assert ".strtab" in readelf_result.stdout, f"{binary} is missing .strtab section (PRO build)"
+            assert "not stripped" in file_output, f"{binary} should NOT be stripped (PRO build)"
+        else:
+            assert ".symtab" not in readelf_result.stdout, f"{binary} should NOT have .symtab (community build)"
+            assert ".strtab" not in readelf_result.stdout, f"{binary} should NOT have .strtab (community build)"
+            assert "not stripped" not in file_output, f"{binary} should be stripped (community build)"
+
+def test_version_pt(host):
+    if toolkit != "true" :
+        pytest.skip("skipping pt tests")
+    cmd = "pt-mongodb-summary -f json 2>/dev/null"
+    result = host.run(cmd)
+    version = json.loads(result.stdout)['HostInfo']['Version']
+    print("mongod version is: " + version)
+    assert result.rc == 0
+    assert PSMDB_VER in version
+
+def test_telemetry(host):
+    TOKEN_FILE="/etc/vault/vault.token"
+    CA_FILE="/etc/vault/vault.crt"
+    FILES=[TOKEN_FILE,CA_FILE]
+    for file in FILES:
+        with host.sudo():
+            host.check_output('chown mongod ' + file)
+            host.check_output('chmod 600 ' + file)
+    if version.parse(PSMDB_VER) <= version.parse("5.0.27"):
+        pytest.skip("This version doesn't support telemetry")
+    if version.parse(PSMDB_VER) >= version.parse("6.0.0") and version.parse(PSMDB_VER) <= version.parse("6.0.15"):
+        pytest.skip("This version doesn't support telemetry")
+    if version.parse(PSMDB_VER) >= version.parse("7.0.0") and version.parse(PSMDB_VER) <= version.parse("7.0.11"):
+        pytest.skip("This version doesn't support telemetry")
+
+    file_path = "/usr/local/percona/telemetry_uuid"
+    expected_fields = ["instanceId", "PRODUCT_FAMILY_PSMDB"]
+    expected_group = "percona-telemetry"
+
+    assert host.file(file_path).exists, f"Telemetry file '{file_path}' does not exist."
+
+    file_content = host.file(file_path).content_string
+    for string in expected_fields:
+        assert string in file_content, f"Field '{string}' wasn't found in file '{file_path}'."
+
+    if not (host.system_info.distribution.lower() in ["redhat", "centos", 'rhel'] and host.system_info.release == '7'):
+        file_group = host.file(file_path).group
+        assert file_group == expected_group, f"File '{file_path}' group is '{file_group}', expected group is '{expected_group}'."
+
+    #reconfigure telemetry agent
+    with host.sudo():
+        assert host.service('percona-telemetry-agent').is_running
+        assert host.service('percona-telemetry-agent').is_enabled
+        if host.system_info.distribution == "debian" or host.system_info.distribution == "ubuntu":
+            host.check_output("sed -E 's|PERCONA_TELEMETRY_URL=(.+)|PERCONA_TELEMETRY_URL=https://check-dev.percona.com/v1/telemetry/GenericReport|' -i /etc/default/percona-telemetry-agent")
+            host.check_output("sed -E 's|PERCONA_TELEMETRY_CHECK_INTERVAL=(.+)|PERCONA_TELEMETRY_CHECK_INTERVAL=10|' -i /etc/default/percona-telemetry-agent")
+        else:
+            host.check_output("sed -E 's|PERCONA_TELEMETRY_URL=(.+)|PERCONA_TELEMETRY_URL=https://check-dev.percona.com/v1/telemetry/GenericReport|' -i /etc/sysconfig/percona-telemetry-agent")
+            host.check_output("sed -E 's|PERCONA_TELEMETRY_CHECK_INTERVAL=(.+)|PERCONA_TELEMETRY_CHECK_INTERVAL=10|' -i /etc/sysconfig/percona-telemetry-agent")
+        host.check_output('systemctl restart percona-telemetry-agent')
+        assert host.service('percona-telemetry-agent').is_running
+
+    #test mongod telemetry
+    restore_defaults(host)
+    conf = get_default_conf(host)
+    conf['setParameter'] = {}
+    conf['setParameter']['perconaTelemetryGracePeriod'] = 2
+    conf['security'] = {}
+    conf['security']['enableEncryption'] = True
+    conf['security']['encryptionCipherMode'] = 'AES256-CBC'
+    conf['security']['vault'] = {}
+    conf['security']['vault']['serverName'] = '127.0.0.1'
+    conf['security']['vault']['port'] = 8200
+    conf['security']['vault']['tokenFile'] = TOKEN_FILE
+    conf['security']['vault']['serverCAFile'] = CA_FILE
+    conf['security']['vault']['secret'] = 'secret_v2/data/psmdb-test/package-test'
+    apply_conf(host,conf,True)
+    time.sleep(3)
+    with host.sudo():
+        assert "1"==host.check_output("ls -1 /usr/local/percona/telemetry/psmdb/ | wc -l")
+        telemetry_file = host.check_output("ls -1 /usr/local/percona/telemetry/psmdb/").strip()
+        telemetry_path = f"/usr/local/percona/telemetry/psmdb/{telemetry_file}"
+        telemetry_content = host.check_output(f"cat {telemetry_path}")
+        try:
+            data = json.loads(telemetry_content)
+        except Exception as e:
+            pytest.fail(f"Telemetry file {telemetry_path} is not valid JSON: {e}\nContent:\n{telemetry_content}")
+        assert data.get("tde_key_storage") == "vault", (
+            f"'tde_key_storage' is not 'vault' in {telemetry_path}: {data.get('tde_key_storage')}")
+        tv = data.get("tde_vault_info")
+        assert isinstance(tv, dict), f"'tde_vault_info' section missing or not an object in {telemetry_path}"
+        assert tv.get("title") == "HashiCorp Vault API", (
+            f"'title' in tde_vault_info is not 'HashiCorp Vault API' in {telemetry_path}: {tv.get('title')}")
+        assert tv.get("version"), (f"'version' field missing or empty in tde_vault_info in {telemetry_path}")
+        time.sleep(15)
+        logs=host.check_output('cat /var/log/percona/telemetry-agent/telemetry-agent.log')
+        assert "Sending request to host=check-dev.percona.com." in logs
+        assert "0"==host.check_output("ls -1 /usr/local/percona/telemetry/psmdb/ | wc -l")
+        assert "1"==host.check_output("ls -1 /usr/local/percona/telemetry/history/ | wc -l")
+
+def test_profiling(host):
+    restore_defaults(host)
+
+    #setup profiler
+    conf = get_default_conf(host)
+    conf['operationProfiling'] = {}
+    conf['operationProfiling']['mode'] = 'all'
+    conf['operationProfiling']['slowOpThresholdMs'] = 200
+    conf['operationProfiling']['rateLimit'] = 100
+    conf['auditLog'] = {}
+    conf['auditLog']['destination'] = 'file'
+    conf['auditLog']['path'] = '/tmp/audit.json'
+
+    #check startup and audit file creation
+    apply_conf(host,conf,False)
+    assert host.file('/tmp/audit.json').exists
+
+@pytest.mark.parametrize("auth", ['LDAP','GSSAPI','MONGODB-AWS','MONGODB-OIDC'])
+def test_auth(host,auth):
+    if auth == 'MONGODB-OIDC' and pro_build != "true":
+        pytest.skip("Skipping MONGODB-OIDC test for community build")
+
+    restore_defaults(host)
+
+    #setup config and users
+    conf = get_default_conf(host)
+    conf['net']['bindIp'] = '0.0.0.0'
+    conf['security'] = {}
+    conf['security']['authorization'] = "enabled"
+    conf['setParameter'] = {}
+    if auth == 'LDAP':
+        conf['security']['ldap'] = {}
+        conf['security']['ldap']['transportSecurity'] = "none"
+        conf['security']['ldap']['servers'] = '127.0.0.1:389'
+        conf['security']['ldap']['authz'] = {}
+        conf['security']['ldap']['authz']['queryTemplate'] = "ou=groups,dc=percona,dc=com??sub?(member={PROVIDED_USER})"
+        conf['security']['ldap']['bind'] = {}
+        conf['security']['ldap']['bind']['queryUser'] = "cn=admin,dc=percona,dc=com"
+        conf['security']['ldap']['bind']['queryPassword'] = "secret"
+        conf['setParameter']['saslauthdPath'] = ""
+        conf['setParameter']['authenticationMechanisms'] = "PLAIN"
+        result = host.check_output('mongo admin --quiet --eval \'db.createRole({role: "cn=testwriters,ou=groups,dc=percona,dc=com", privileges: [], roles: [ "userAdminAnyDatabase", "clusterMonitor", "clusterManager", "clusterAdmin"]})\'')
+        print(result)
+    if auth == 'GSSAPI':
+        conf['setParameter']['authenticationMechanisms'] = 'GSSAPI'
+        result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"exttestrw@PERCONATEST.COM",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
+        print(result)
+    if auth == 'MONGODB-AWS':
+        conf['setParameter']['authenticationMechanisms'] = 'MONGODB-AWS'
+        result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"arn:aws:iam::119175775298:role/jenkins-psmdb-slave",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
+        print(result)
+    if auth == 'MONGODB-OIDC':
+        conf['setParameter']['authenticationMechanisms'] = 'MONGODB-OIDC'
+        conf['setParameter']['oidcIdentityProviders'] = json.dumps([
+            {
+                "issuer": "https://percona.oktapreview.com/oauth2/ausoxk7qawOSbws7w1d7",
+                "audience": "0oaoxk03h6o9jFuRZ1d7",
+                "authNamePrefix": "okta",
+                "clientId": "0oaoxk03h6o9jFuRZ1d7",
+                "useAuthorizationClaim": False,
+                "supportsHumanFlows": False
+            }
+        ])
+        result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"okta/0oaoxk03h6o9jFuRZ1d7",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
+        print(result)
+
+    #apply config without erasing data
+    apply_conf(host,conf,False)
+
+    #check authorization
+    if auth == 'LDAP':
+        result = host.check_output('mongo -u "cn=exttestrw,ou=people,dc=percona,dc=com" -p "exttestrw9a5S" --authenticationDatabase \'$external\' --authenticationMechanism=PLAIN --quiet --eval "db.runCommand({connectionStatus : 1})"')
+        print(result)
+        assert 'ok: 1' in result or '"ok" : 1' in result
+    if auth == 'GSSAPI':
+        with host.sudo():
+            hostname = host.check_output('hostname')
+            host.check_output('kadmin.local -q "addprinc -pw exttestrw exttestrw"')
+            host.check_output('bash -c "kinit exttestrw <<<\'exttestrw\'"')
+            result = host.check_output('mongo -u exttestrw@PERCONATEST.COM --host '+ hostname +' --authenticationMechanism=GSSAPI --authenticationDatabase \'$external\' --quiet --eval "db.runCommand({connectionStatus : 1})"')
+            print(result)
+            assert 'ok: 1' in result or '"ok" : 1' in result
+    if auth == 'MONGODB-AWS':
+        hostname = host.check_output('hostname')
+        result = host.check_output('mongo --host '+ hostname + ' --authenticationMechanism MONGODB-AWS --authenticationDatabase \'$external\' --quiet --eval "db.runCommand({connectionStatus : 1})"')
+        print(result)
+        assert 'ok: 1' in result or '"ok" : 1' in result
+    if auth == 'MONGODB-OIDC':
+        access_token = host.file('/tmp/oidc_access_token').content_string.strip()
+        hostname = host.check_output('hostname')
+        result = host.check_output(f'/usr/bin/mongo.bcp --host {hostname} --authenticationMechanism MONGODB-OIDC '
+            f'--authenticationDatabase \'$external\' '
+            f'--oidcAccessToken "{access_token}" '
+            '--quiet --eval "db.runCommand({connectionStatus : 1})"')
+        print(result)
+        assert 'ok: 1' in result or '"ok" : 1' in result
 
 @pytest.mark.parametrize("encryption,cipher",[('KEYFILE','AES256-CBC'),('KEYFILE','AES256-GCM'),('VAULT','AES256-CBC'),('VAULT','AES256-GCM'),('KMIP','AES256-CBC'),('KMIP','AES256-GCM')])
 def test_encryption(host,encryption,cipher):
