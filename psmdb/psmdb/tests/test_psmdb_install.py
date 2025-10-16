@@ -215,11 +215,11 @@ def test_telemetry(host):
     conf['security']['enableEncryption'] = True
     conf['security']['encryptionCipherMode'] = 'AES256-CBC'
     conf['security']['vault'] = {}
-    conf['security']['vault']['serverName'] = '127.0.0.1'
+    conf['security']['vault']['serverName'] = 'vault'
     conf['security']['vault']['port'] = 8200
     conf['security']['vault']['tokenFile'] = TOKEN_FILE
     conf['security']['vault']['serverCAFile'] = CA_FILE
-    conf['security']['vault']['secret'] = 'secret_v2/data/psmdb-test/package-test'
+    conf['security']['vault']['secret'] = 'secret_v2/data/psmdb/test'
     apply_conf(host,conf,True)
     time.sleep(3)
     with host.sudo():
