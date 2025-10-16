@@ -4,6 +4,7 @@
   apt:
     update_cache: yes
     name:
+      - curl
       - jq
       - vim
       - python3-requests
@@ -67,6 +68,10 @@
     port: 8200
     delay: 1
     timeout: 60
+
+- name: Wait for 5 seconds
+  ansible.builtin.wait_for:
+    timeout: 5
 
 - name: Initiate Vault
   community.docker.docker_container_exec:
