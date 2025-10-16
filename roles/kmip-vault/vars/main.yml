@@ -1,6 +1,6 @@
 ---
 
-    vault_license: "{{ lookup('env', 'vault_license') | default('none', true) }}"
+    vault_license: "{{ lookup('env', 'VAULT_TRIAL_LICENSE') }}"
     vault_host: "vault"
     vault_ip: "127.0.0.1"
     vault_port: 8200
