@@ -61,6 +61,13 @@
     capabilities:
       - "IPC_LOCK"
 
+- name: Wait for Vault TCP port to open
+  wait_for:
+    host: 127.0.0.1
+    port: 8200
+    delay: 1
+    timeout: 60
+
 - name: Initiate Vault
   community.docker.docker_container_exec:
     container: vault
