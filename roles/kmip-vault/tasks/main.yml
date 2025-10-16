@@ -109,6 +109,8 @@
   ansible.builtin.copy:
     dest: /etc/vault/vault.token
     content: "{{ vault_root_token }}"
+    owner: mongod
+    group: mongod
     mode: '0644'
 
 - name: Login to Vault

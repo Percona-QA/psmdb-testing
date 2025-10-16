@@ -149,3 +149,11 @@
     dest: "{{ kmip_host_dir }}/ca-bundle.pem"
     remote_src: true
     mode: '0644'
+
+- name: Change ownership of files to mongod
+  become: true
+  ansible.builtin.file:
+    path: {{ kmip_host_dir }}
+    owner: mongod
+    group: mongod
+    recurse: true
