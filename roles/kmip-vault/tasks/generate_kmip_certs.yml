@@ -153,7 +153,7 @@
 - name: Change ownership of files to mongod
   become: true
   ansible.builtin.file:
-    path: {{ kmip_host_dir }}
+    path: "{{ kmip_host_dir }}"
     owner: mongod
     group: mongod
     recurse: true
