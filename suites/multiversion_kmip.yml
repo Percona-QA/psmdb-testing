@@ -11,7 +11,7 @@ executor:
       global_vars:
         TestData:
           enableEncryption: ''
-          kmipServerName: vault
+          kmipServerName: 127.0.0.1
           kmipPort: 5696
           kmipServerCAFile: /etc/kmip/ca-bundle.pem
           kmipClientCertificateFile: /etc/kmip/mongod-kmip-client.pem
