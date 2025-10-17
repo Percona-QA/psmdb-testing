@@ -1,4 +1,5 @@
 - include_tasks: "generate_vault_certs.yml"
+- include_tasks: "AL2023.yml"
 
 - name: Install Python deps via apt (Debian)
   apt:
@@ -21,13 +22,13 @@
     - ansible_facts.os_family == 'RedHat'
     - ansible_distribution_major_version == "9"
 
-- name: Install deps on RHEL/AL2023
+- name: Install deps on (RedHat)
   package:
     name:
       - python3-requests
       - python3-docker
     state: present
-  when: ansible_facts.os_family in ['RedHat', 'Amazon']
+  when: ansible_facts.os_family == 'RedHat'
 
 - name: Ensure mongod system user exists
   ansible.builtin.user:
