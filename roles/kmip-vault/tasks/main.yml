@@ -12,6 +12,13 @@
     state: present
   become: yes
 
+- name: Ensure mongod system user exists
+  ansible.builtin.user:
+    name: mongod
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+
 - name: Remove pre-existing vault container
   docker_container:
     name: vault
