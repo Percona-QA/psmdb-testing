@@ -91,19 +91,23 @@
   set_fact:
     kmip_ca_bundle: "{{ (kmip_ca_chain_norm | join('\n')) ~ '\n' }}"
 
-- name: Create mongod KMIP client PEM
+- name: Create KMIP client PEM
   copy:
     dest: "{{ kmip_dir }}/mongod-kmip-client.pem"
+    owner: mongod
+    group: mongod
     mode: '0600'
     content: |-
       {{ kmip_leaf_cert | trim }}
       {{ kmip_privkey_norm }}
       {{ '' }}
 
-- name: Write KMIP CA bundle
+- name: Create KMIP CA bundle
   copy:
     dest: "{{ kmip_dir }}/ca-bundle.pem"
     mode: '0644'
+    owner: mongod
+    group: mongod
     content: "{{ kmip_ca_bundle }}"
 
 - name: Copy mongod-kmip-client.pem to /etc/kmip
@@ -119,11 +123,3 @@
     dest: "{{ kmip_host_dir }}/ca-bundle.pem"
     remote_src: true
     mode: '0644'
-
-- name: Change ownership of files to mongod
-  become: true
-  ansible.builtin.file:
-    path: "{{ kmip_host_dir }}"
-    owner: mongod
-    group: mongod
-    recurse: true
