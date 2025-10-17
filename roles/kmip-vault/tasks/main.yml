@@ -130,7 +130,7 @@
     content: "{{ vault_root_token }}"
     owner: mongod
     group: mongod
-    mode: '0644'
+    mode: '0600'
 
 - name: Login to Vault
   community.docker.docker_container_exec:
