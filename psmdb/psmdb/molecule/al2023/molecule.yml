@@ -19,7 +19,7 @@ provisioner:
   log: True
   playbooks:
     create: ../../../../playbooks/create.yml
-    destroy: ../../../../playbooks/destroy.yml
+#    destroy: ../../../../playbooks/destroy.yml
     prepare: ../../../../playbooks/prepare.yml
     cleanup: ../../playbooks/cleanup.yml
     converge: ../../playbooks/playbook.yml
@@ -37,8 +37,8 @@ scenario:
   converge_sequence:
     - prepare
     - converge
-  destroy_sequence:
-    - destroy
+#  destroy_sequence:
+#    - destroy
   clenup_sequence:
     - cleanup
   test_sequence:
@@ -48,4 +48,4 @@ scenario:
     - converge
     - verify
     - cleanup
-    - destroy
+#    - destroy
