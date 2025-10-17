@@ -5,10 +5,6 @@
     state: present
   when: ansible_facts.distribution | lower == 'amazon'
 
-- name: Upgrade pip inside venv (AL2023)
-  command: /opt/ansible-venv/bin/pip install --upgrade pip
-  when: ansible_facts.distribution | lower == 'amazon'
-
-- name: Install deps inside venv (AL2023)
-  command: /opt/ansible-venv/bin/pip install --upgrade --ignore-installed docker requests
+- name: Install dependencies (AL2023)
+  command: pip install docker requests
   when: ansible_facts.distribution | lower == 'amazon'
