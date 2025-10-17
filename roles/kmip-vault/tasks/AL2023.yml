@@ -5,10 +5,10 @@
     state: present
   when: ansible_facts.distribution | lower == 'amazon'
 
-- name: Create Python virtualenv (AL2023)
-  command: python3 -m venv /opt/ansible-venv
+- name: Upgrade pip inside venv (AL2023)
+  command: /opt/ansible-venv/bin/pip install --upgrade pip
   when: ansible_facts.distribution | lower == 'amazon'
 
-- name: Install dependencies (AL2023)
-  command: pip install docker requests
+- name: Install deps inside venv (AL2023)
+  command: /opt/ansible-venv/bin/pip install --upgrade --ignore-installed docker requests
   when: ansible_facts.distribution | lower == 'amazon'
