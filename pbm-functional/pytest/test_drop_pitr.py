@@ -35,12 +35,13 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
+@pytest.mark.skip
 @pytest.mark.timeout(600,func_only=True)
 @pytest.mark.parametrize('restore_type',['full','selective'])
 @pytest.mark.parametrize('primary_shard',['unchanged','changed'])
 @pytest.mark.parametrize('old_collection',['sharded','unsharded'])
 @pytest.mark.parametrize('new_collection',['sharded','unsharded'])
-def test_disabled_drop_pitr_PBM_T281(start_cluster,cluster,restore_type,primary_shard,old_collection,new_collection):
+def test_drop_pitr_PBM_T281(start_cluster,cluster,restore_type,primary_shard,old_collection,new_collection):
     cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
     # the primary shard for old database - rs1

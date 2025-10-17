@@ -132,12 +132,14 @@ def test_incremental_PBM_T258(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 600
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
 
+@pytest.mark.skip
 @pytest.mark.parametrize('command',['config --force-resync','backup'])
-def test_disabled_cli_PBM_T260(start_cluster,cluster,command):
+def test_cli_PBM_T260(start_cluster,cluster,command):
     result = cluster.exec_pbm_cli(command + ' --wait')
     assert result.rc == 0, result.stderr
     Cluster.log(result.stdout)
 
+@pytest.mark.jenkins
 @pytest.mark.timeout(900,func_only=True)
 @pytest.mark.parametrize('restore_ns',['sharded','unsharded'])
 @pytest.mark.parametrize('restore_type',['base','pitr'])
