@@ -1,7 +1,14 @@
-- name: Create Python virtualenv
+- name: Install Pip (AL2023)
+  package:
+    name:
+      - python3-pip
+    state: present
+  when: ansible_facts.distribution | lower == 'amazon'
+
+- name: Create Python virtualenv (AL2023)
   command: python3 -m venv /opt/ansible-venv
   when: ansible_facts.distribution | lower == 'amazon'
 
-- name: Install dependencies
+- name: Install dependencies (AL2023)
   command: pip install docker requests
   when: ansible_facts.distribution | lower == 'amazon'
