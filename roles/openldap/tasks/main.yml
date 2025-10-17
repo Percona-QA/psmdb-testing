@@ -7,12 +7,21 @@
 - include_vars: "RedHat8-vars.yml"
   when: ansible_os_family == "RedHat" and ansible_distribution_major_version|int >= 8
 
-- name: Install Dependencies
-  ansible.builtin.pip:
+- name: Install deps (Debian)
+  apt:
+    update_cache: yes
     name:
-      - requests
-      - docker
-    executable: pip3
+      - python3-requests
+      - python3-docker
+  when: ansible_facts.os_family == 'Debian'
+
+- name: Install deps on (RedHat))
+  yum:
+    name:
+      - python3-requests
+      - python3-docker
+    state: present
+  when: ansible_facts.os_family in ['RedHat', 'Amazon']
 
 - name: Ensure Docker network exists
   community.docker.docker_network:
