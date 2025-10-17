@@ -11,9 +11,9 @@ executor:
       global_vars:
         TestData:
           enableEncryption: ''
-          vaultServerName: 127.0.0.1
+          vaultServerName: vault
           vaultPort: 8200
-          vaultTokenFile: /package-testing/scripts/psmdb_encryption/mongodb-test-vault-token
-          vaultSecret: secret_v2/data/psmdb-test/package-test
-          vaultServerCAFile: /package-testing/scripts/psmdb_encryption/test.cer
+          vaultTokenFile: /etc/vault/vault.token
+          vaultSecret: secret_v2/data/psmdb/test
+          vaultServerCAFile: /etc/vault/ca.crt
           encryptionCipherMode: AES256-CBC
