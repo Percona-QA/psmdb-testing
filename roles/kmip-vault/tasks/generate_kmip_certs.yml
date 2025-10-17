@@ -7,21 +7,14 @@
     - { path: "/etc/mongo/kmip" }
     - { path: "/etc/kmip" }
 
-- name: Generate KMIP certs from Vault
-  command:
-    argv:
-      - curl
-      - -sS
-      - --fail
-      - --resolve
-      - "{{ vault_host }}:{{ vault_port }}:{{ vault_ip }}"
-      - -H
-      - "X-Vault-Token: {{ vault_root_token }}"
-      - -X
-      - PUT
-      - "https://{{ vault_host }}:{{ vault_port }}/v1/{{ kmip_role_path }}/credential/generate"
+- name: Generate KMIP client credentials
+  community.docker.docker_container_exec:
+    container: vault
+    command: >
+      sh -lc "VAULT_TOKEN='{{ vault_root_token }}'
+      vault write -format=json -address=https://127.0.0.1:8200 -tls-skip-verify
+      -f {{ kmip_role_path }}/credential/generate"
   register: kmip_gen
-  changed_when: false
 
 - name: Parse Vault KMIP JSON
   set_fact:
@@ -36,32 +29,9 @@
         | default('', true)
       }}
 
-- name: Determine private key PEM
+- name: Set KMIP Private Key variable
   set_fact:
     kmip_privkey: "{{ kmip_data.private_key | default('', true) }}"
-
-- name: Lookup KMIP credential by serial to get certificate
-  command:
-    argv:
-      - curl
-      - -sS
-      - --fail
-      - --resolve
-      - "{{ vault_host }}:{{ vault_port }}:{{ vault_ip }}"
-      - -H
-      - "X-Vault-Token: {{ vault_root_token }}"
-      - -G
-      - --data-urlencode
-      - "serial_number={{ kmip_data.serial_number }}"
-      - "https://{{ vault_host }}:{{ vault_port }}/v1/{{ kmip_role_path }}/credential/lookup"
-  register: kmip_lookup
-  changed_when: false
-  when: kmip_leaf_cert | length == 0
-
-- name: Parse lookup JSON
-  set_fact:
-    kmip_lookup_data: "{{ (kmip_lookup.stdout | from_json).data }}"
-  when: kmip_leaf_cert | length == 0
 
 - name: Pick certificate source
   set_fact:

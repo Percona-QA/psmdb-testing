@@ -4,12 +4,6 @@
     chdir: /root/easyrsa/easyrsa3
     creates: /root/easyrsa/easyrsa3/pki/reqs/vault.req
 
-- name: Generate Client CA Cert and CA Private Key
-  command: ./easyrsa --batch build-client-full mongod nopass
-  args:
-    chdir: /root/easyrsa/easyrsa3
-    creates: /root/easyrsa/easyrsa3/pki/reqs/mongod.req
-
 - name: Confirm Build CA cert exists
   stat:
     path: /root/easyrsa/easyrsa3/pki/issued/vault.crt
@@ -22,28 +16,10 @@
   register: vault_key
   failed_when: not vault_key.stat.exists
 
-- name: Confirm Client CA cert exists
-  stat:
-    path: /root/easyrsa/easyrsa3/pki/issued/mongod.crt
-  register: mongod_crt
-  failed_when: not mongod_crt.stat.exists
-
-- name: Confirm Client CA Private Key exists
-  stat:
-    path: /root/easyrsa/easyrsa3/pki/private/mongod.key
-  register: private_key
-  failed_when: not private_key.stat.exists
-
 - name: Create vault Directory
   file:
     path: /etc/vault/
     state: directory
-
-- name: Generate mongod.pem
-  shell: cat pki/issued/mongod.crt pki/private/mongod.key > /etc/vault/mongod.pem
-  args:
-    chdir: /root/easyrsa/easyrsa3
-    creates: /etc/vault/mongod.pem
 
 - name: Copy vault.crt to /etc/vault folder
   copy:
@@ -55,18 +31,6 @@
   copy:
     src: /root/easyrsa/easyrsa3/pki/private/vault.key
     dest: /etc/vault/vault.key
-    remote_src: true
-
-- name: Move mongod.crt to /etc/vault folder
-  copy:
-    src: /root/easyrsa/easyrsa3/pki/private/mongod.key
-    dest: /etc/vault/mongod.key
-    remote_src: true
-
-- name: Copy mongod.crt to /etc/vault folder
-  copy:
-    src: /root/easyrsa/easyrsa3/pki/issued/mongod.crt
-    dest: /etc/vault/mongod.crt
     remote_src: true
 
 - name: Copy ca.crt to /etc/vault folder
