@@ -94,7 +94,7 @@ def test_incremental_PBM_T262(start_cluster,cluster):
     for i in range(10):
         pymongo.MongoClient(cluster.connection)["test"]["test1"].insert_one({"timestamp": datetime.now(), "data": i})
         time.sleep(0.1)
-    base_backup=cluster.make_backup("incremental --base")
+    cluster.make_backup("incremental --base")
     for i in range(10):
         pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_one({"timestamp": datetime.now(), "data": i})
         time.sleep(0.1)
