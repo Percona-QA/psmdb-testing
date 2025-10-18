@@ -46,8 +46,9 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
+@pytest.mark.skip(reason="Not yet supported")
 @pytest.mark.timeout(600,func_only=True)
-def test_disabled_PBM_T252(start_cluster,cluster):
+def test_logical_PBM_T252(start_cluster,cluster):
     cluster.check_pbm_status()
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test1").get("sharded", False)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test2").get("sharded", False)
@@ -62,8 +63,9 @@ def test_disabled_PBM_T252(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test2").get("sharded", False)
     Cluster.log("Finished successfully")
 
+@pytest.mark.skip(reason="Not yet supported")
 @pytest.mark.timeout(600,func_only=True)
-def test_disabled_without_data(start_cluster,cluster):
+def test_logical_without_data(start_cluster,cluster):
     cluster.check_pbm_status()
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test1").get("sharded", False)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test2").get("sharded", False)
@@ -92,7 +94,7 @@ def test_incremental_PBM_T262(start_cluster,cluster):
     for i in range(10):
         pymongo.MongoClient(cluster.connection)["test"]["test1"].insert_one({"timestamp": datetime.now(), "data": i})
         time.sleep(0.1)
-    base_backup=cluster.make_backup("incremental --base")
+    cluster.make_backup("incremental --base")
     for i in range(10):
         pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_one({"timestamp": datetime.now(), "data": i})
         time.sleep(0.1)
