@@ -132,7 +132,7 @@ def test_incremental_PBM_T258(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 600
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
 
-@pytest.mark.skip
+@pytest.mark.skip(reason="Outdated")
 @pytest.mark.parametrize('command',['config --force-resync','backup'])
 def test_cli_PBM_T260(start_cluster,cluster,command):
     result = cluster.exec_pbm_cli(command + ' --wait')

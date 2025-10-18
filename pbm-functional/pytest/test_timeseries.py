@@ -46,7 +46,7 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.skip
+@pytest.mark.skip(reason="Not yet supported")
 @pytest.mark.timeout(600,func_only=True)
 def test_logical_PBM_T252(start_cluster,cluster):
     cluster.check_pbm_status()
@@ -63,7 +63,7 @@ def test_logical_PBM_T252(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test2").get("sharded", False)
     Cluster.log("Finished successfully")
 
-@pytest.mark.skip
+@pytest.mark.skip(reason="Not yet supported")
 @pytest.mark.timeout(600,func_only=True)
 def test_logical_without_data(start_cluster,cluster):
     cluster.check_pbm_status()

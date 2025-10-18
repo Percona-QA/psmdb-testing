@@ -35,7 +35,7 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.skip
+@pytest.mark.skip(reason="Not yet supported")
 @pytest.mark.timeout(600,func_only=True)
 @pytest.mark.parametrize('restore_type',['full','selective'])
 @pytest.mark.parametrize('primary_shard',['unchanged','changed'])

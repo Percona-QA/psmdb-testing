@@ -45,7 +45,7 @@ def start_cluster(cluster,request):
         cluster.destroy()
         os.system("rm -rf /backups/*")
 
-@pytest.mark.skip
+@pytest.mark.skip(reason="Will be fixed in PBM-1265")
 @pytest.mark.timeout(1200, func_only=True)
 def test_logical_pitr_PBM_T251(start_cluster,cluster):
     cluster.check_pbm_status()

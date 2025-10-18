@@ -43,7 +43,7 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.skip
+@pytest.mark.skip(reason="Outdated")
 @pytest.mark.timeout(300,func_only=True)
 def test_physical_PBM_T235(start_cluster,cluster):
     cluster.check_pbm_status()
