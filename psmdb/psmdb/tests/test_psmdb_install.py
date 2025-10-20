@@ -346,7 +346,7 @@ def test_encryption(host,encryption,cipher):
     #fix privileges
     KEY_FILE='/package-testing/scripts/psmdb_encryption/mongodb-keyfile'
     TOKEN_FILE="/etc/vault/vault.token"
-    CA_FILE="/etc/vault/ca.crt"
+    CA_FILE="/etc/vault/vault.crt"
     CA_KMIP_FILE="/etc/kmip/ca-bundle.pem"
     MONGO_PEM_FILE="/etc/kmip/mongod-kmip-client.pem"
     FILES=[KEY_FILE,TOKEN_FILE,CA_FILE,CA_KMIP_FILE,MONGO_PEM_FILE]
