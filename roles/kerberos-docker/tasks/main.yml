@@ -1,0 +1,75 @@
+- include_tasks: "RedHat.yml"
+- include_tasks: "Debian.yml"
+- include_vars: "{{ ansible_os_family }}.yml"
+
+- name: Ensure mongod system user exists
+  ansible.builtin.user:
+    name: mongod
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+
+- name: Remove pre-existing vault container
+  docker_container:
+    name: vault
+    state: absent
+    keep_volumes: false
+
+- name: Install necessary tools (Debian)
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+    - iproute2
+  when: ansible_distribution == "Debian"
+
+- name: Install necessary tools (RedHat)
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+    - iproute2
+  when: ansible_distribution == "RedHat"
+
+- name: Make sure we have the entry for hostname in /etc/hosts
+  lineinfile:
+    state: present
+    dest: /etc/hosts
+    regexp: '.*{{ ansible_hostname }}'
+    line: '{{ ansible_default_ipv4.address }} {{ ansible_hostname }} {{ ansible_hostname }}.{{ realm_name|lower() }}'
+    unsafe_writes: yes
+
+- name: Check hosts file
+  command: cat /etc/hosts
+  register: command_output
+
+- name: Debug /etc/hosts
+  debug:
+    msg: "{{command_output.stdout}}"
+
+- name: Add OS specific variables
+  include_vars: "{{ ansible_os_family }}.yml"
+
+- name: Run Kerberos container
+  community.docker.docker_container:
+    name: kerberos
+    image: "alpine"
+    command: >
+      sh -c 'apk add --no-cache coreutils && exec sleep infinity'
+    restart_policy: unless-stopped
+    published_ports:
+      - "88:88/udp"
+      - "88:88/tcp"
+    volumes:
+      - "/etc/vault:/etc/vault"
+    capabilities:
+      - "IPC_LOCK"
+
+- name: Install Kerberos packages
+  community.docker.docker_container_exec:
+    container: kerberos
+    command: "apk add --no-cache {{ item }}"
+  loop: "{{ krb_pkg }}"
+

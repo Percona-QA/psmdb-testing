@@ -1,0 +1,24 @@
+- name: Install pip (RedHat)
+  package:
+    name: python3-pip
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Create venv (RedHat)
+  command: /usr/bin/python3 -m venv /opt/ansible-venv
+  args:
+    creates: /opt/ansible-venv/bin/python
+  when: ansible_os_family == "RedHat"
+
+- name: Upgrade pip in venv (RedHat)
+  command: /opt/ansible-venv/bin/python -m pip install --upgrade pip
+  when: ansible_os_family == "RedHat"
+
+- name: Install deps in venv (RedHat)
+  command: /opt/ansible-venv/bin/python -m pip install --upgrade --ignore-installed docker requests
+  when: ansible_os_family == "RedHat"
+
+- name: Use venv interpreter (RedHat)
+  set_fact:
+    ansible_python_interpreter: /opt/ansible-venv/bin/python
+  when: ansible_os_family == "RedHat"
