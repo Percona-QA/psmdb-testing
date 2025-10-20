@@ -1,0 +1,52 @@
+- name: Install necessary python2 deb packages
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+    - git
+    - python-pip
+    - python-sqlalchemy
+    - python-requests
+    - python-setuptools
+  when: ansible_distribution_major_version == "10" or ansible_distribution_major_version == "18"
+
+- name: Install necessary python3 deb packages
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+    - git
+    - python3-pip
+    - python3-sqlalchemy
+    - python3-requests
+    - python3-setuptools
+  when: ansible_distribution_major_version != "10" and ansible_distribution_major_version != "18"
+
+- name: Add symlink for python3
+  file:
+    src: /usr/bin/python3
+    dest: /usr/bin/python
+    state: link
+    force: yes
+  when: ansible_distribution_major_version != "10" and ansible_distribution_major_version != "18"
+
+- name: Add repo for python 3.11
+  apt_repository:
+    repo: "ppa:deadsnakes/ppa"
+    state: present
+  when: ansible_distribution_major_version == "24"
+  register: add_repo_result
+  until: add_repo_result is succeeded
+  retries: 5
+  delay: 10
+
+- name: Install python 3.11
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+    - python3.11
+  when: ansible_distribution_major_version == "24"
