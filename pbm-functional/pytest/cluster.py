@@ -6,8 +6,10 @@ import json
 import copy
 import concurrent.futures
 import os
-from datetime import datetime
 import re
+from azure.storage.blob import BlobServiceClient
+from azure.core.exceptions import ResourceExistsError
+from datetime import datetime
 
 # the structure of the cluster could be one of
 # 1. { _id: "rsname", members: [{host: "host", hidden: boolean, priority: int, arbiterOnly: bool}, ...]} for replicaset
@@ -383,7 +385,7 @@ class Cluster:
         Cluster.log("The cluster was prepared in {} seconds".format(duration))
 
     # setups pbm from default config-file, minio as storage
-    def setup_pbm(self, file="/etc/pbm.conf", retries=3):
+    def setup_pbm(self, file="/etc/pbm-aws-provider.conf", retries=3):
         host = self.pbm_cli
         n = testinfra.get_host("docker://" + host)
         for attempt in range(retries):
@@ -1013,11 +1015,11 @@ class Cluster:
 
     def external_restore_finish(self, restore):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output("pbm restore-finish " + restore + " -c /etc/pbm.conf")
+        result = n.check_output("pbm restore-finish " + restore + " -c /etc/pbm-aws-provider.conf")
         Cluster.log(result)
         timeout = time.time() + 300
         while True:
-            result = n.check_output("pbm describe-restore " + restore + " -c /etc/pbm.conf -o json")
+            result = n.check_output("pbm describe-restore " + restore + " -c /etc/pbm-aws-provider.conf -o json")
             status = json.loads(result)
             Cluster.log(status['status'])
             if status['status']=='done':
@@ -1105,3 +1107,13 @@ class Cluster:
             for c in containers:
                 c.exec_run("tc qdisc del dev eth0 root netem", privileged=True)
                 Cluster.log(f"Restored network connectivity for {c.name}")
+
+    def setup_azurite(self):
+        connect_str = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
+        blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+        container_name = "test-container"
+        try:
+            container_client = blob_service_client.create_container(container_name)
+            Cluster.log(f"Container '{container_name}' created successfully.")
+        except ResourceExistsError:
+            Cluster.log(f"Container '{container_name}' already exists.")
