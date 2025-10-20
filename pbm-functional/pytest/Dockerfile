@@ -41,12 +41,14 @@ COPY --from=easyrsa /etc/x509/ca.crt /etc/pykmip/ca.crt
 COPY --from=easyrsa /etc/x509/ /etc/x509/
 COPY --from=easyrsa /etc/nginx-minio/ca.crt /etc/nginx-minio/ca.crt
 COPY conf/supervisord.d/ /etc/supervisord.d/
-COPY conf/pbm/minio.yaml /etc/pbm.conf
+COPY conf/pbm/minio.yaml /etc/pbm-aws-provider.conf
 COPY conf/pbm/fs.yaml /etc/pbm-fs.conf
 COPY conf/pbm/pbm-1525.yaml /etc/pbm-1525.conf
 COPY conf/pbm/pbm-1043.yaml /etc/pbm-1043.conf
 COPY conf/pbm/pbm-1211.yaml /etc/pbm-1211.conf
 COPY conf/pbm/filesystem-profile.yaml /etc/pbm-fs-profile.conf
+COPY conf/pbm/minio-provider.yaml /etc/pbm-minio-provider.conf
+COPY conf/pbm/azurite.yaml /etc/pbm-azurite.conf
 COPY conf/pbm/aws.yaml /etc/aws.conf
 COPY conf/pbm/gcs.yaml /etc/gcs.conf
 COPY conf/pbm/gcs_hmac.yaml /etc/gcs_hmac.conf
