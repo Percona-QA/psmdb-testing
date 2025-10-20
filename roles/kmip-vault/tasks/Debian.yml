@@ -1,4 +1,4 @@
-- name: Install Python deps via apt (Debian)
+- name: Install dependencies (Debian)
   apt:
     update_cache: yes
     name:

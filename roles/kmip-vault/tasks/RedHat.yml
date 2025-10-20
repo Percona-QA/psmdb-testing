@@ -17,7 +17,7 @@
   command: /opt/ansible-venv/bin/python -m pip install --upgrade pip
   when: ansible_os_family == "RedHat"
 
-- name: Install deps in venv (RedHat)
+- name: Install packages in venv (RedHat)
   become: true
   command: /opt/ansible-venv/bin/python -m pip install --upgrade --ignore-installed docker requests
   when: ansible_os_family == "RedHat"
