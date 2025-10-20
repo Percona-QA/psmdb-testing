@@ -2,8 +2,6 @@
   apt:
     update_cache: yes
     name:
-      - jq
-      - vim
       - python3-requests
       - python3-docker
     state: present
