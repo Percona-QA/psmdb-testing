@@ -1,5 +1,6 @@
 - include_tasks: "generate_vault_certs.yml"
-- include_tasks: "AL2023.yml"
+- include_tasks: "RedHat.yml"
+- include_tasks: "Debian.yml"
 
 - name: Ensure mongod system user exists
   ansible.builtin.user:
