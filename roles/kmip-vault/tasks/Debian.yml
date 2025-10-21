@@ -1,9 +1,7 @@
-- name: Install Python deps via apt (Debian)
+- name: Install dependencies (Debian)
   apt:
     update_cache: yes
     name:
-      - jq
-      - vim
       - python3-requests
       - python3-docker
     state: present
