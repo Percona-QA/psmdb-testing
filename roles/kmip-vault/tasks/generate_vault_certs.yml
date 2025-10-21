@@ -38,3 +38,13 @@
     src: /root/easyrsa/easyrsa3/pki/ca.crt
     dest: /etc/vault/ca.crt
     remote_src: true
+
+- name: Rebuild trust bundle (Debian)
+  command: update-ca-certificates
+  changed_when: true
+  when: ansible_os_family == "Debian"
+
+- name: Rebuild Trust Bundle (Redhat)
+  command: update-ca-trust extract
+  changed_when: true
+  when: ansible_os_family == "RedHat"
