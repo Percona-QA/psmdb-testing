@@ -76,6 +76,5 @@
     - role: psmdb-tarball
     - role: '../../../roles/docker'
     - role: '../../../roles/openldap'
-    - role: '../../../roles/kmip'
+    - role: '../../../roles/kmip-vault'
     - role: '../../../roles/kerberos'
-    - role: '../../../roles/vault'

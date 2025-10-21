@@ -165,8 +165,8 @@ def test_version_pt(host):
     assert PSMDB_VER in version
 
 def test_telemetry(host):
-    TOKEN_FILE="/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"
-    CA_FILE="/package-testing/scripts/psmdb_encryption/test.cer"
+    TOKEN_FILE="/etc/vault/vault.token"
+    CA_FILE="/etc/vault/vault.crt"
     FILES=[TOKEN_FILE,CA_FILE]
     for file in FILES:
         with host.sudo():
@@ -215,11 +215,11 @@ def test_telemetry(host):
     conf['security']['enableEncryption'] = True
     conf['security']['encryptionCipherMode'] = 'AES256-CBC'
     conf['security']['vault'] = {}
-    conf['security']['vault']['serverName'] = '127.0.0.1'
+    conf['security']['vault']['serverName'] = 'vault'
     conf['security']['vault']['port'] = 8200
     conf['security']['vault']['tokenFile'] = TOKEN_FILE
     conf['security']['vault']['serverCAFile'] = CA_FILE
-    conf['security']['vault']['secret'] = 'secret_v2/data/psmdb-test/package-test'
+    conf['security']['vault']['secret'] = 'secret_v2/data/psmdb/test'
     apply_conf(host,conf,True)
     time.sleep(3)
     with host.sudo():
@@ -345,10 +345,10 @@ def test_auth(host,auth):
 def test_encryption(host,encryption,cipher):
     #fix privileges
     KEY_FILE='/package-testing/scripts/psmdb_encryption/mongodb-keyfile'
-    TOKEN_FILE="/package-testing/scripts/psmdb_encryption/mongodb-test-vault-token"
-    CA_FILE="/package-testing/scripts/psmdb_encryption/test.cer"
-    CA_KMIP_FILE="/pykmip_workdir/ca.crt"
-    MONGO_PEM_FILE="/pykmip_workdir/mongod.pem"
+    TOKEN_FILE="/etc/vault/vault.token"
+    CA_FILE="/etc/vault/ca.crt"
+    CA_KMIP_FILE="/etc/kmip/ca-bundle.pem"
+    MONGO_PEM_FILE="/etc/kmip/mongod-kmip-client.pem"
     FILES=[KEY_FILE,TOKEN_FILE,CA_FILE,CA_KMIP_FILE,MONGO_PEM_FILE]
     for file in FILES:
         with host.sudo():
@@ -366,14 +366,15 @@ def test_encryption(host,encryption,cipher):
         conf['security']['encryptionKeyFile'] = KEY_FILE
     if encryption == "VAULT":
         conf['security']['vault'] = {}
-        conf['security']['vault']['serverName'] = '127.0.0.1'
+        conf['security']['vault']['serverName'] = 'vault'
         conf['security']['vault']['port'] = 8200
         conf['security']['vault']['tokenFile'] = TOKEN_FILE
         conf['security']['vault']['serverCAFile'] = CA_FILE
-        conf['security']['vault']['secret'] = 'secret_v2/data/psmdb-test/package-test'
+        conf['security']['vault']['secret'] = 'secret_v2/data/psmdb/test'
     if encryption == "KMIP":
         conf['security']['kmip'] = {}
         conf['security']['kmip']['serverName'] = '127.0.0.1'
+        conf['security']['kmip']['port'] = '5696'
         conf['security']['kmip']['clientCertificateFile'] = MONGO_PEM_FILE
         conf['security']['kmip']['serverCAFile'] = CA_KMIP_FILE
 

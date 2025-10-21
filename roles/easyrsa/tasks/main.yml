@@ -1,4 +1,4 @@
-- name: Install deps
+- name: Install deps (RedHat)
   yum:
     name: "{{ packages }}"
     state: present
@@ -9,7 +9,7 @@
       - openssl
   when: ansible_os_family == "RedHat"
 
-- name: Install deps
+- name: Install deps (Debian)
   apt:
     name: "{{ packages }}"
     state: present

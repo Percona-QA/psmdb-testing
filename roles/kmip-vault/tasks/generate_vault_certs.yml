@@ -1,0 +1,50 @@
+- name: Generate Build CA Cert and CA Private Key
+  command: ./easyrsa --batch build-server-full vault nopass
+  args:
+    chdir: /root/easyrsa/easyrsa3
+    creates: /root/easyrsa/easyrsa3/pki/reqs/vault.req
+
+- name: Confirm Build CA cert exists
+  stat:
+    path: /root/easyrsa/easyrsa3/pki/issued/vault.crt
+  register: build_crt
+  failed_when: not build_crt.stat.exists
+
+- name: Confirm Build CA Private Key exists
+  stat:
+    path: /root/easyrsa/easyrsa3/pki/private/vault.key
+  register: vault_key
+  failed_when: not vault_key.stat.exists
+
+- name: Create vault Directory
+  file:
+    path: /etc/vault/
+    state: directory
+
+- name: Copy vault.crt to /etc/vault folder
+  copy:
+    src: /root/easyrsa/easyrsa3/pki/issued/vault.crt
+    dest: /etc/vault/vault.crt
+    remote_src: true
+
+- name: Move vault.key to /etc/vault folder
+  copy:
+    src: /root/easyrsa/easyrsa3/pki/private/vault.key
+    dest: /etc/vault/vault.key
+    remote_src: true
+
+- name: Copy ca.crt to /etc/vault folder
+  copy:
+    src: /root/easyrsa/easyrsa3/pki/ca.crt
+    dest: /etc/vault/ca.crt
+    remote_src: true
+
+- name: Rebuild trust bundle (Debian)
+  command: update-ca-certificates
+  changed_when: true
+  when: ansible_os_family == "Debian"
+
+- name: Rebuild Trust Bundle (Redhat)
+  command: update-ca-trust extract
+  changed_when: true
+  when: ansible_os_family == "RedHat"

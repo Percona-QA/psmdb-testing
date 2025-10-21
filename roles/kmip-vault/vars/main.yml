@@ -1,0 +1,9 @@
+---
+
+    vault_license: "{{ lookup('env', 'VAULT_TRIAL_LICENSE') }}"
+    vault_host: "vault"
+    vault_ip: "127.0.0.1"
+    vault_port: 8200
+    kmip_role_path: "kmip/scope/psmdb/role/mongod"
+    kmip_dir: "/etc/mongo/kmip"
+    kmip_host_dir: "/etc/kmip"
