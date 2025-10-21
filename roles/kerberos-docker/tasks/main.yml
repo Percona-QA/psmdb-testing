@@ -33,6 +33,21 @@
     - iproute2
   when: ansible_distribution == "RedHat"
 
+- name: Creates directory
+  ansible.builtin.file:
+    path: /etc/kerberos
+    state: directory
+
+- name: Copy KDC configuration file
+  template:
+    src: kdc.conf.j2
+    dest: "/etc/kerberos/kdc.conf.j2"
+
+- name: Copy KDC ACL configuration file
+  template:
+    src: kadm5.acl.j2
+    dest: "/etc/kerberos/kadm5.acl.j2"
+
 - name: Make sure we have the entry for hostname in /etc/hosts
   lineinfile:
     state: present
@@ -57,19 +72,11 @@
     name: kerberos
     image: "alpine"
     command: >
-      sh -c 'apk add --no-cache coreutils && exec sleep infinity'
+      sh -c 'apk add --no-cache coreutils krb5 krb5-server && exec sleep infinity'
     restart_policy: unless-stopped
     published_ports:
       - "88:88/udp"
       - "88:88/tcp"
     volumes:
-      - "/etc/vault:/etc/vault"
-    capabilities:
-      - "IPC_LOCK"
-
-- name: Install Kerberos packages
-  community.docker.docker_container_exec:
-    container: kerberos
-    command: "apk add --no-cache {{ item }}"
-  loop: "{{ krb_pkg }}"
+      - "/etc/kerberos:/etc/kerberos"
 
