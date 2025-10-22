@@ -55,6 +55,7 @@ def insert_docs(connection,duration):
         if time.time() > timeout:
             break
 
+@pytest.mark.jenkins
 @pytest.mark.timeout(360,func_only=True)
 def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster):
     cluster.make_backup('logical')
@@ -90,7 +91,7 @@ def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-
+@pytest.mark.jenkins
 @pytest.mark.timeout(180,func_only=True)
 def test_load_chunks_migration_base_PBM_T285(start_cluster,cluster):
     threads = 100

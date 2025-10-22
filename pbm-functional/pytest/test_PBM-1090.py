@@ -31,6 +31,7 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
+@pytest.mark.jenkins
 @pytest.mark.timeout(300,func_only=True)
 def test_load_PBM_T204(start_cluster,cluster):
     client = pymongo.MongoClient(cluster.connection)

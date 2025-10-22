@@ -49,6 +49,7 @@ def insert_docs(connection,duration):
         if time.time() > timeout:
             break
 
+@pytest.mark.jenkins
 @pytest.mark.timeout(600,func_only=True)
 def test_load_shard_collection_pitr_PBM_T289(start_cluster,cluster):
     cluster.make_backup('logical')

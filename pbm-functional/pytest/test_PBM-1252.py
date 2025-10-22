@@ -29,6 +29,7 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
+@pytest.mark.jenkins
 @pytest.mark.timeout(3600,func_only=True)
 def test_load_PBM_T250(start_cluster,cluster):
     cluster.check_pbm_status()

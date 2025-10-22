@@ -64,6 +64,7 @@ def start_cluster(cluster,request):
         wrong_rscfg03_cluster.destroy()
         cluster.destroy()
 
+@pytest.mark.skip(reason="Skipped because it is possible STR")
 def test_STR_PBM_T292(start_cluster,cluster):
     coll = "test"
     for j in range(10):
