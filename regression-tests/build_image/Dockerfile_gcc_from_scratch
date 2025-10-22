@@ -115,7 +115,7 @@ RUN cd /opt && mkdir -p percona-server-mongodb && \
 WORKDIR /opt/percona-server-mongodb
 RUN set -ex; \
     if [ -f "/usr/bin/yum" ] ; then \
-         yum install -y cmake openssl-devel openldap-devel krb5-devel libcurl-devel cyrus-sasl-devel bzip2-devel zlib-devel lz4-devel xz-devel e2fsprogs-devel iproute glibc-debuginfo; \
+         yum install -y cmake openssl-devel openldap-devel krb5-devel libcurl-devel cyrus-sasl-devel bzip2-devel zlib-devel lz4-devel xz-devel e2fsprogs-devel iproute; \
     else \
          DEBIAN_FRONTEND=noninteractive apt-get -y install cmake libssl-dev libldap2-dev libkrb5-dev libcurl4-openssl-dev libsasl2-dev liblz4-dev libbz2-dev libsnappy-dev zlib1g-dev libzlcore-dev liblzma-dev e2fslibs-dev iproute2 libc6-dbg; \
     fi 
