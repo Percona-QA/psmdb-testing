@@ -316,6 +316,12 @@
         dest: /etc/pbm-agent-storage-azure.conf
         mode: '0666'     
 
+    - name: add OSS storage for pbm-agent
+      copy:
+        src: /tmp/pbm-agent-storage-oss.yaml
+        dest: /etc/pbm-agent-storage-oss.conf
+        mode: '0666'
+
     - name: Download and install mc
       get_url:
         url: 'https://dl.min.io/client/mc/release/linux-amd64/mc'
