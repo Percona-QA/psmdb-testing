@@ -434,7 +434,7 @@ def test_rs_plink_PML_T18(reset_state, srcRS, dstRS, plink):
     "clone_stage_pattern",
     [
         r'Starting "test_db\.collection_4" collection clone',
-        r'Collection "test_db\.collection_4" has been created',
+        r'Collection "test_db\.collection_4" created',
         r'read batch.*ns=test_db\.collection_4.*s=copy'
     ],
     ids=[
