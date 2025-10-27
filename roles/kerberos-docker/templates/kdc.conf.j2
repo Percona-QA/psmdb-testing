@@ -1,8 +1,0 @@
-[kdcdefaults]
- kdc_ports = {{ kdc_port }}
- kdc_tcp_ports = {{ kdc_port }}
-
-[realms]
- {{ realm_name|upper() }} = {
-  acl_file = {{ kadm5_acl_path }}
- }

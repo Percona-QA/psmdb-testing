@@ -1,1 +1,10 @@
 ---
+
+    percona_release_pkg: "percona-release_latest.{{ ansible_lsb.codename }}_all.deb"
+    psmdb_package_name: "percona-server-mongodb"
+    kerberos_container_name: "kerberos"
+    mongodb_service_principal: "mongodb/test.perconatest.com@PERCONATEST.COM"
+    mongodb_keytab_host_path: "/etc/mongodb.keytab"
+    mongodb_user: "mongod"
+    mongodb_group: "mongod"
+    percona_debian_codename: bullseye

@@ -10,4 +10,4 @@
   - krb5-admin-server
 
   kdc_conf_path: /etc/krb5kdc/kdc.conf
-  kadm5_acl_path: /etc/krb5kdc/kadm5.acl
+  kadm5_acl_path: `/etc/krb5kdc/kadm5.acl`

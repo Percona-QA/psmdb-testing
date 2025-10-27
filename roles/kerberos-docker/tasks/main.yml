@@ -1,13 +1,17 @@
-- include_tasks: "RedHat.yml"
-- include_tasks: "Debian.yml"
-- include_vars: "{{ ansible_os_family }}.yml"
+- name: Add variables
+  include_vars: "main.yml"
 
-- name: Ensure mongod system user exists
-  ansible.builtin.user:
-    name: mongod
-    system: true
-    shell: /usr/sbin/nologin
-    create_home: false
+- name: Install dependencies (Debian)
+  apt:
+    update_cache: yes
+    name:
+      - vim
+      - krb5-user
+      - python3-requests
+      - python3-docker
+    state: present
+  become: yes
+  when: ansible_os_family == "Debian"
 
 - name: Remove pre-existing vault container
   docker_container:
@@ -15,23 +19,17 @@
     state: absent
     keep_volumes: false
 
-- name: Install necessary tools (Debian)
-  apt:
-    name: "{{ packages }}"
-    update_cache: yes
-  vars:
-    packages:
-    - iproute2
-  when: ansible_distribution == "Debian"
-
-- name: Install necessary tools (RedHat)
-  apt:
-    name: "{{ packages }}"
-    update_cache: yes
-  vars:
-    packages:
-    - iproute2
-  when: ansible_distribution == "RedHat"
+- name: Create required folders
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+  loop:
+    - /var/lib/krb5kdc
+    - /keytabs
 
 - name: Creates directory
   ansible.builtin.file:
@@ -40,43 +38,116 @@
 
 - name: Copy KDC configuration file
   template:
-    src: kdc.conf.j2
-    dest: "/etc/kerberos/kdc.conf.j2"
-
-- name: Copy KDC ACL configuration file
-  template:
-    src: kadm5.acl.j2
-    dest: "/etc/kerberos/kadm5.acl.j2"
-
-- name: Make sure we have the entry for hostname in /etc/hosts
-  lineinfile:
-    state: present
-    dest: /etc/hosts
-    regexp: '.*{{ ansible_hostname }}'
-    line: '{{ ansible_default_ipv4.address }} {{ ansible_hostname }} {{ ansible_hostname }}.{{ realm_name|lower() }}'
-    unsafe_writes: yes
-
-- name: Check hosts file
-  command: cat /etc/hosts
-  register: command_output
-
-- name: Debug /etc/hosts
-  debug:
-    msg: "{{command_output.stdout}}"
-
-- name: Add OS specific variables
-  include_vars: "{{ ansible_os_family }}.yml"
+    src: krb5.conf
+    dest: "/etc/krb5.conf"
 
 - name: Run Kerberos container
   community.docker.docker_container:
     name: kerberos
     image: "alpine"
     command: >
-      sh -c 'apk add --no-cache coreutils krb5 krb5-server && exec sleep infinity'
+      sh -c '
+          apk add --no-cache bash krb5 krb5-server krb5-pkinit &&
+          if [ ! -f /var/lib/krb5kdc/principal ]; then
+            kdb5_util -P password create &&
+            kadmin.local -q "addprinc -pw password root/admin";
+          fi &&
+          /usr/sbin/krb5kdc -n
+        '
     restart_policy: unless-stopped
     published_ports:
       - "88:88/udp"
       - "88:88/tcp"
     volumes:
-      - "/etc/kerberos:/etc/kerberos"
+      - "/etc/krb5.conf:/etc/krb5.conf"
+      - "/var/lib/krb5kdc:/var/lib/krb5kdc"
+      - "/keytabs:/keytabs"
+
+#### Add KDC Principle ####
+
+- name: Adding a wait for the container to be ready
+  ansible.builtin.command:
+    cmd: >
+      docker exec kerberos sh -c 'test -x /usr/sbin/kadmin.local'
+  register: kadmin_check
+  retries: 10
+  delay: 2
+  until: kadmin_check.rc == 0
+  changed_when: false
+
+- name: Create test Kerberos user principal exttestrw
+  ansible.builtin.command:
+    cmd: >
+      docker exec kerberos sh -c 'kadmin.local -q "addprinc -pw exttestrw exttestrw"'
+  register: add_user_princ
+  failed_when: >
+    add_user_princ.rc != 0 and
+    ("already exists" not in (add_user_princ.stderr | default(''))) and
+    ("already exists" not in (add_user_princ.stdout | default('')))
+
+- name: Refresh MongoDB service keytab in Kerberos container
+  ansible.builtin.command:
+    cmd: >
+      docker exec kerberos sh -c 'kadmin.local -q "ktadd -k /keytabs/mongodb.keytab mongodb/test.perconatest.com@PERCONATEST.COM"'
+
+- name: Copy mongodb.keytab from container to host /etc/mongodb.keytab
+  ansible.builtin.command:
+    cmd: >
+      docker cp kerberos:/keytabs/mongodb.keytab /etc/mongodb.keytab
+  register: docker_cp_keytab
+  changed_when: docker_cp_keytab.rc == 0
+
+- name: Ensure /etc/mongodb.keytab perms
+  ansible.builtin.file:
+    path: /etc/mongodb.keytab
+    owner: mongod
+    group: mongod
+    mode: '0600'
+
+- name: Obtain Kerberos TGT for root/admin@PERCONATEST.COM
+  ansible.builtin.shell: |
+    echo 'password' | kinit -V root/admin@PERCONATEST.COM
+  register: kinit_result
+  changed_when: kinit_result.rc == 0
+
+- name: kinit as exttestrw
+  ansible.builtin.shell: |
+    echo 'exttestrw' | kinit exttestrw@PERCONATEST.COM
+  register: kinit_ext_result
+  changed_when: kinit_ext_result.rc == 0
+
+#### Add Environment variable to mongod service ####
+
+- name: Ensure systemd override directory for mongod exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/mongod.service.d
+    state: directory
+    mode: '0755'
+
+- name: Configure KRB5_KTNAME environment for mongod
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/mongod.service.d/override.conf
+    mode: '0644'
+    content: |
+      [Service]
+      Environment="KRB5_KTNAME=/etc/mongodb.keytab"
+
+- name: Reload systemd units
+  ansible.builtin.command:
+    cmd: systemctl daemon-reload
+
+- name: Restart mongod to pick up Kerberos keytab env
+  ansible.builtin.service:
+    name: mongod
+    state: restarted
+    enabled: yes
+
+- name: Add kerberos user to /etc/hosts
+  lineinfile:
+    state: present
+    dest: /etc/hosts
+    line: '127.0.0.1 test.perconatest.com'
+    unsafe_writes: yes
+
+
 
