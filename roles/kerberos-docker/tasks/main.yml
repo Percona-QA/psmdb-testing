@@ -13,6 +13,17 @@
   become: yes
   when: ansible_os_family == "Debian"
 
+- name: Gather host facts
+  ansible.builtin.setup:
+    gather_subset:
+      - network
+
+- name: Debug hostnames
+  ansible.builtin.debug:
+    msg:
+      - "FQDN: {{ ansible_fqdn }}"
+      - "Hostname: {{ ansible_hostname }}"
+
 - name: Remove pre-existing vault container
   docker_container:
     name: vault
@@ -79,7 +90,7 @@
   ansible.builtin.command:
     cmd: >
       docker exec kerberos sh -c
-      'kadmin.local -q "addprinc -randkey mongodb/test.perconatest.com@PERCONATEST.COM"'
+      'kadmin.local -q "addprinc -randkey mongodb/{{ ansible_hostname | lower }}.perconatest.com@PERCONATEST.COM"'
   register: add_service_princ
   failed_when: >
     add_service_princ.rc != 0 and
@@ -99,7 +110,7 @@
 - name: Refresh MongoDB service keytab in Kerberos container
   ansible.builtin.command:
     cmd: >
-      docker exec kerberos sh -c 'kadmin.local -q "ktadd -k /keytabs/mongodb.keytab mongodb/test.perconatest.com@PERCONATEST.COM"'
+      docker exec kerberos sh -c 'kadmin.local -q "ktadd -k /keytabs/mongodb.keytab mongodb/{{ ansible_hostname | lower }}.perconatest.com@PERCONATEST.COM"'
 
 - name: Copy mongodb.keytab from container to host /etc/mongodb.keytab
   ansible.builtin.command:
@@ -120,12 +131,6 @@
     echo 'password' | kinit -V root/admin@PERCONATEST.COM
   register: kinit_result
   changed_when: kinit_result.rc == 0
-
-- name: kinit as exttestrw
-  ansible.builtin.shell: |
-    echo 'exttestrw' | kinit exttestrw@PERCONATEST.COM
-  register: kinit_ext_result
-  changed_when: kinit_ext_result.rc == 0
 
 #### Add Environment variable to mongod service ####
 
@@ -171,7 +176,7 @@
   lineinfile:
     state: present
     dest: /etc/hosts
-    line: '127.0.0.1 test.perconatest.com'
+    line: '127.0.0.1 {{ ansible_hostname | lower }}.perconatest.com'
     unsafe_writes: yes
 
 

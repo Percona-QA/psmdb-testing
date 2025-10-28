@@ -1,0 +1,41 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: Test
+    groups:
+      - psmdb
+#    image: "${MOLECULE_DISTRO:-geerlingguy/docker-amazonlinux2023-ansible:latest}"
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-debian11-ansible:latest}"
+#    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2404-ansible:latest}"
+#    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    cgroupns_mode: host
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ssh_user: test-user
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: test
+provisioner:
+  name: ansible
+  log: true
+  playbooks:
+    converge: ../../playbooks/test.yml
+    prepare: ../../../../playbooks/prepare.yml
+verifier:
+  name: testinfra
+  directory: ../../tests/
+  options:
+    verbose: true
+    s: true
+    junitxml: report.xml
+scenario:
+  name: test
+  test_sequence:
+    - create
+    - prepare
+    - converge
