@@ -75,6 +75,17 @@
   until: kadmin_check.rc == 0
   changed_when: false
 
+- name: Create MongoDB service principal for mongod
+  ansible.builtin.command:
+    cmd: >
+      docker exec kerberos sh -c
+      'kadmin.local -q "addprinc -randkey mongodb/test.perconatest.com@PERCONATEST.COM"'
+  register: add_service_princ
+  failed_when: >
+    add_service_princ.rc != 0 and
+    ("already exists" not in (add_service_princ.stderr | default(''))) and
+    ("already exists" not in (add_service_princ.stdout | default('')))
+
 - name: Create test Kerberos user principal exttestrw
   ansible.builtin.command:
     cmd: >
