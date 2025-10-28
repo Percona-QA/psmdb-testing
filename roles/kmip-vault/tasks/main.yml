@@ -56,9 +56,9 @@
     delay: 1
     timeout: 60
 
-- name: Wait for 5 seconds
+- name: Wait for 10 seconds
   ansible.builtin.wait_for:
-    timeout: 5
+    timeout: 10
 
 - name: Initiate Vault
   community.docker.docker_container_exec:
