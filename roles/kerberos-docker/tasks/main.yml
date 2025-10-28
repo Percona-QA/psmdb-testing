@@ -147,6 +147,20 @@
   ansible.builtin.command:
     cmd: systemctl daemon-reload
 
+- name: Collect installed package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Restart mongod to pick up Kerberos keytab env
+  ansible.builtin.service:
+    name: mongod
+    state: restarted
+    enabled: yes
+  when:
+    - "'percona-server-mongodb-server' in ansible_facts.packages
+       or 'percona-server-mongodb' in ansible_facts.packages
+       or 'mongodb-org' in ansible_facts.packages"
+
 - name: Restart mongod to pick up Kerberos keytab env
   ansible.builtin.service:
     name: mongod
