@@ -261,145 +261,145 @@ def check_hotbackup(node):
 #     apply_conf(host,conf,False)
 #     assert host.file('/tmp/audit.json').exists
 
-@pytest.mark.parametrize("auth", ['LDAP','GSSAPI','MONGODB-AWS','MONGODB-OIDC'])
-def test_auth(host,auth):
-    if auth == 'MONGODB-OIDC' and pro_build != "true":
-        pytest.skip("Skipping MONGODB-OIDC test for community build")
-
-    restore_defaults(host)
-
-    #setup config and users
-    conf = get_default_conf(host)
-    conf['net']['bindIp'] = '0.0.0.0'
-    conf['security'] = {}
-    conf['security']['authorization'] = "enabled"
-    conf['setParameter'] = {}
-    if auth == 'LDAP':
-        conf['security']['ldap'] = {}
-        conf['security']['ldap']['transportSecurity'] = "none"
-        conf['security']['ldap']['servers'] = '127.0.0.1:389'
-        conf['security']['ldap']['authz'] = {}
-        conf['security']['ldap']['authz']['queryTemplate'] = "ou=groups,dc=percona,dc=com??sub?(member={PROVIDED_USER})"
-        conf['security']['ldap']['bind'] = {}
-        conf['security']['ldap']['bind']['queryUser'] = "cn=admin,dc=percona,dc=com"
-        conf['security']['ldap']['bind']['queryPassword'] = "secret"
-        conf['setParameter']['saslauthdPath'] = ""
-        conf['setParameter']['authenticationMechanisms'] = "PLAIN"
-        result = host.check_output('mongo admin --quiet --eval \'db.createRole({role: "cn=testwriters,ou=groups,dc=percona,dc=com", privileges: [], roles: [ "userAdminAnyDatabase", "clusterMonitor", "clusterManager", "clusterAdmin"]})\'')
-        print(result)
-    if auth == 'GSSAPI':
-        conf['setParameter']['authenticationMechanisms'] = 'GSSAPI'
-        result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"exttestrw@PERCONATEST.COM",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
-        print(result)
-    if auth == 'MONGODB-AWS':
-        conf['setParameter']['authenticationMechanisms'] = 'MONGODB-AWS'
-        result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"arn:aws:iam::119175775298:role/jenkins-psmdb-slave",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
-        print(result)
-    if auth == 'MONGODB-OIDC':
-        conf['setParameter']['authenticationMechanisms'] = 'MONGODB-OIDC'
-        conf['setParameter']['oidcIdentityProviders'] = json.dumps([
-            {
-                "issuer": "https://percona.oktapreview.com/oauth2/ausoxk7qawOSbws7w1d7",
-                "audience": "0oaoxk03h6o9jFuRZ1d7",
-                "authNamePrefix": "okta",
-                "clientId": "0oaoxk03h6o9jFuRZ1d7",
-                "useAuthorizationClaim": False,
-                "supportsHumanFlows": False
-            }
-        ])
-        result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"okta/0oaoxk03h6o9jFuRZ1d7",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
-        print(result)
-
-    #apply config without erasing data
-    apply_conf(host,conf,False)
-
-    #check authorization
-    if auth == 'LDAP':
-        result = host.check_output('mongo -u "cn=exttestrw,ou=people,dc=percona,dc=com" -p "exttestrw9a5S" --authenticationDatabase \'$external\' --authenticationMechanism=PLAIN --quiet --eval "db.runCommand({connectionStatus : 1})"')
-        print(result)
-        assert 'ok: 1' in result or '"ok" : 1' in result
-    if auth == 'GSSAPI':
-        with host.sudo():
-            hostname = host.check_output('hostname')
-            host.check_output('docker exec kerberos sh -c "kadmin.local -q \'addprinc -pw exttestrw exttestrw\'"')
-            host.check_output('bash -c "kinit exttestrw <<<\'exttestrw\'"')
-            result = host.check_output('mongo -u exttestrw@PERCONATEST.COM --host '+ hostname +' --authenticationMechanism=GSSAPI --authenticationDatabase \'$external\' --quiet --eval "db.runCommand({connectionStatus : 1})"')
-            print(result)
-            assert 'ok: 1' in result or '"ok" : 1' in result
-    if auth == 'MONGODB-AWS':
-        hostname = host.check_output('hostname')
-        result = host.check_output('mongo --host '+ hostname + ' --authenticationMechanism MONGODB-AWS --authenticationDatabase \'$external\' --quiet --eval "db.runCommand({connectionStatus : 1})"')
-        print(result)
-        assert 'ok: 1' in result or '"ok" : 1' in result
-    if auth == 'MONGODB-OIDC':
-        access_token = host.file('/tmp/oidc_access_token').content_string.strip()
-        hostname = host.check_output('hostname')
-        result = host.check_output(f'/usr/bin/mongo.bcp --host {hostname} --authenticationMechanism MONGODB-OIDC '
-            f'--authenticationDatabase \'$external\' '
-            f'--oidcAccessToken "{access_token}" '
-            '--quiet --eval "db.runCommand({connectionStatus : 1})"')
-        print(result)
-        assert 'ok: 1' in result or '"ok" : 1' in result
-
-# @pytest.mark.parametrize("encryption,cipher",[('KEYFILE','AES256-CBC'),('KEYFILE','AES256-GCM'),('VAULT','AES256-CBC'),('VAULT','AES256-GCM'),('KMIP','AES256-CBC'),('KMIP','AES256-GCM')])
-# def test_encryption(host,encryption,cipher):
-#     #fix privileges
-#     KEY_FILE='/package-testing/scripts/psmdb_encryption/mongodb-keyfile'
-#     TOKEN_FILE="/etc/vault/vault.token"
-#     CA_FILE="/etc/vault/ca.crt"
-#     CA_KMIP_FILE="/etc/kmip/ca-bundle.pem"
-#     MONGO_PEM_FILE="/etc/kmip/mongod-kmip-client.pem"
-#     FILES=[KEY_FILE,TOKEN_FILE,CA_FILE,CA_KMIP_FILE,MONGO_PEM_FILE]
-#     for file in FILES:
-#         with host.sudo():
-#             host.check_output('chown mongod ' + file)
-#             host.check_output('chmod 600 ' + file)
+# @pytest.mark.parametrize("auth", ['LDAP','GSSAPI','MONGODB-AWS','MONGODB-OIDC'])
+# def test_auth(host,auth):
+#     if auth == 'MONGODB-OIDC' and pro_build != "true":
+#         pytest.skip("Skipping MONGODB-OIDC test for community build")
 #
-#     #setup config
 #     restore_defaults(host)
+#
+#     #setup config and users
 #     conf = get_default_conf(host)
 #     conf['net']['bindIp'] = '0.0.0.0'
 #     conf['security'] = {}
-#     conf['security']['enableEncryption'] = True
-#     conf['security']['encryptionCipherMode'] = cipher
-#     if encryption == "KEYFILE":
-#         conf['security']['encryptionKeyFile'] = KEY_FILE
-#     if encryption == "VAULT":
-#         conf['security']['vault'] = {}
-#         conf['security']['vault']['serverName'] = 'vault'
-#         conf['security']['vault']['port'] = 8200
-#         conf['security']['vault']['tokenFile'] = TOKEN_FILE
-#         conf['security']['vault']['serverCAFile'] = CA_FILE
-#         conf['security']['vault']['secret'] = 'secret_v2/data/psmdb/test'
-#     if encryption == "KMIP":
-#         conf['security']['kmip'] = {}
-#         conf['security']['kmip']['serverName'] = '127.0.0.1'
-#         conf['security']['kmip']['port'] = '5696'
-#         conf['security']['kmip']['clientCertificateFile'] = MONGO_PEM_FILE
-#         conf['security']['kmip']['serverCAFile'] = CA_KMIP_FILE
+#     conf['security']['authorization'] = "enabled"
+#     conf['setParameter'] = {}
+#     if auth == 'LDAP':
+#         conf['security']['ldap'] = {}
+#         conf['security']['ldap']['transportSecurity'] = "none"
+#         conf['security']['ldap']['servers'] = '127.0.0.1:389'
+#         conf['security']['ldap']['authz'] = {}
+#         conf['security']['ldap']['authz']['queryTemplate'] = "ou=groups,dc=percona,dc=com??sub?(member={PROVIDED_USER})"
+#         conf['security']['ldap']['bind'] = {}
+#         conf['security']['ldap']['bind']['queryUser'] = "cn=admin,dc=percona,dc=com"
+#         conf['security']['ldap']['bind']['queryPassword'] = "secret"
+#         conf['setParameter']['saslauthdPath'] = ""
+#         conf['setParameter']['authenticationMechanisms'] = "PLAIN"
+#         result = host.check_output('mongo admin --quiet --eval \'db.createRole({role: "cn=testwriters,ou=groups,dc=percona,dc=com", privileges: [], roles: [ "userAdminAnyDatabase", "clusterMonitor", "clusterManager", "clusterAdmin"]})\'')
+#         print(result)
+#     if auth == 'GSSAPI':
+#         conf['setParameter']['authenticationMechanisms'] = 'GSSAPI'
+#         result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"exttestrw@PERCONATEST.COM",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
+#         print(result)
+#     if auth == 'MONGODB-AWS':
+#         conf['setParameter']['authenticationMechanisms'] = 'MONGODB-AWS'
+#         result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"arn:aws:iam::119175775298:role/jenkins-psmdb-slave",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
+#         print(result)
+#     if auth == 'MONGODB-OIDC':
+#         conf['setParameter']['authenticationMechanisms'] = 'MONGODB-OIDC'
+#         conf['setParameter']['oidcIdentityProviders'] = json.dumps([
+#             {
+#                 "issuer": "https://percona.oktapreview.com/oauth2/ausoxk7qawOSbws7w1d7",
+#                 "audience": "0oaoxk03h6o9jFuRZ1d7",
+#                 "authNamePrefix": "okta",
+#                 "clientId": "0oaoxk03h6o9jFuRZ1d7",
+#                 "useAuthorizationClaim": False,
+#                 "supportsHumanFlows": False
+#             }
+#         ])
+#         result = host.check_output('mongo admin --quiet --eval \'db.getSiblingDB("$external").runCommand({createUser:"okta/0oaoxk03h6o9jFuRZ1d7",roles: [{role: "userAdminAnyDatabase", db: "admin"}]})\'')
+#         print(result)
 #
-#     #erase data and setup config
-#     apply_conf(host,conf,True)
+#     #apply config without erasing data
+#     apply_conf(host,conf,False)
 #
-#     #check startup with encryption
-#     logs = get_logs(host)
-#     assert "Encryption keys DB is initialized successfully" in logs, logs
-#
-#     #check hotbackup with encryption
-#     check_hotbackup(host)
-#
-#     #check masterkey rotation
-#     if encryption == "VAULT" or encryption == "KMIP":
-#         stop_mongod(host)
-#         erase_logs(host)
-#         new_conf = get_current_conf(host)
-#         if encryption == "VAULT":
-#             new_conf['security']['vault']['rotateMasterKey'] = 'true'
-#         if encryption == "KMIP":
-#             new_conf['security']['kmip']['rotateMasterKey'] = 'true'
-#         apply_conf(host,new_conf,False,False)
-#         time.sleep(5)
-#         logs = get_logs(host)
-#         assert "Rotated master encryption key" in logs, logs
-#         assert '"Shutting down","attr":{"exitCode":0}}' in logs, logs
-#         apply_conf(host,conf)
+#     #check authorization
+#     if auth == 'LDAP':
+#         result = host.check_output('mongo -u "cn=exttestrw,ou=people,dc=percona,dc=com" -p "exttestrw9a5S" --authenticationDatabase \'$external\' --authenticationMechanism=PLAIN --quiet --eval "db.runCommand({connectionStatus : 1})"')
+#         print(result)
+#         assert 'ok: 1' in result or '"ok" : 1' in result
+#     if auth == 'GSSAPI':
+#         with host.sudo():
+#             hostname = host.check_output('hostname')
+#             host.check_output('docker exec kerberos sh -c "kadmin.local -q \'addprinc -pw exttestrw exttestrw\'"')
+#             host.check_output('bash -c "kinit exttestrw <<<\'exttestrw\'"')
+#             result = host.check_output('mongo -u exttestrw@PERCONATEST.COM --host '+ hostname +' --authenticationMechanism=GSSAPI --authenticationDatabase \'$external\' --quiet --eval "db.runCommand({connectionStatus : 1})"')
+#             print(result)
+#             assert 'ok: 1' in result or '"ok" : 1' in result
+#     if auth == 'MONGODB-AWS':
+#         hostname = host.check_output('hostname')
+#         result = host.check_output('mongo --host '+ hostname + ' --authenticationMechanism MONGODB-AWS --authenticationDatabase \'$external\' --quiet --eval "db.runCommand({connectionStatus : 1})"')
+#         print(result)
+#         assert 'ok: 1' in result or '"ok" : 1' in result
+#     if auth == 'MONGODB-OIDC':
+#         access_token = host.file('/tmp/oidc_access_token').content_string.strip()
+#         hostname = host.check_output('hostname')
+#         result = host.check_output(f'/usr/bin/mongo.bcp --host {hostname} --authenticationMechanism MONGODB-OIDC '
+#             f'--authenticationDatabase \'$external\' '
+#             f'--oidcAccessToken "{access_token}" '
+#             '--quiet --eval "db.runCommand({connectionStatus : 1})"')
+#         print(result)
+#         assert 'ok: 1' in result or '"ok" : 1' in result
+
+@pytest.mark.parametrize("encryption,cipher",[('KEYFILE','AES256-CBC'),('KEYFILE','AES256-GCM'),('VAULT','AES256-CBC'),('VAULT','AES256-GCM'),('KMIP','AES256-CBC'),('KMIP','AES256-GCM')])
+def test_encryption(host,encryption,cipher):
+    #fix privileges
+    KEY_FILE='/package-testing/scripts/psmdb_encryption/mongodb-keyfile'
+    TOKEN_FILE="/etc/vault/vault.token"
+    CA_FILE="/etc/vault/ca.crt"
+    CA_KMIP_FILE="/etc/kmip/ca-bundle.pem"
+    MONGO_PEM_FILE="/etc/kmip/mongod-kmip-client.pem"
+    FILES=[KEY_FILE,TOKEN_FILE,CA_FILE,CA_KMIP_FILE,MONGO_PEM_FILE]
+    for file in FILES:
+        with host.sudo():
+            host.check_output('chown mongod ' + file)
+            host.check_output('chmod 600 ' + file)
+
+    #setup config
+    restore_defaults(host)
+    conf = get_default_conf(host)
+    conf['net']['bindIp'] = '0.0.0.0'
+    conf['security'] = {}
+    conf['security']['enableEncryption'] = True
+    conf['security']['encryptionCipherMode'] = cipher
+    if encryption == "KEYFILE":
+        conf['security']['encryptionKeyFile'] = KEY_FILE
+    if encryption == "VAULT":
+        conf['security']['vault'] = {}
+        conf['security']['vault']['serverName'] = 'vault'
+        conf['security']['vault']['port'] = 8200
+        conf['security']['vault']['tokenFile'] = TOKEN_FILE
+        conf['security']['vault']['serverCAFile'] = CA_FILE
+        conf['security']['vault']['secret'] = 'secret_v2/data/psmdb/test'
+    if encryption == "KMIP":
+        conf['security']['kmip'] = {}
+        conf['security']['kmip']['serverName'] = '127.0.0.1'
+        conf['security']['kmip']['port'] = '5696'
+        conf['security']['kmip']['clientCertificateFile'] = MONGO_PEM_FILE
+        conf['security']['kmip']['serverCAFile'] = CA_KMIP_FILE
+
+    #erase data and setup config
+    apply_conf(host,conf,True)
+
+    #check startup with encryption
+    logs = get_logs(host)
+    assert "Encryption keys DB is initialized successfully" in logs, logs
+
+    #check hotbackup with encryption
+    check_hotbackup(host)
+
+    #check masterkey rotation
+    if encryption == "VAULT" or encryption == "KMIP":
+        stop_mongod(host)
+        erase_logs(host)
+        new_conf = get_current_conf(host)
+        if encryption == "VAULT":
+            new_conf['security']['vault']['rotateMasterKey'] = 'true'
+        if encryption == "KMIP":
+            new_conf['security']['kmip']['rotateMasterKey'] = 'true'
+        apply_conf(host,new_conf,False,False)
+        time.sleep(5)
+        logs = get_logs(host)
+        assert "Rotated master encryption key" in logs, logs
+        assert '"Shutting down","attr":{"exitCode":0}}' in logs, logs
+        apply_conf(host,conf)
