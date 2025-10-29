@@ -124,12 +124,6 @@
 
 #### Add Environment variable to mongod service ####
 
-- name: Ensure systemd override directory for mongod exists
-  ansible.builtin.file:
-    path: /etc/systemd/system/mongod.service.d
-    state: directory
-    mode: '0755'
-
 - name: Add KRB5_KTNAME for PSMDB deb
   lineinfile:
     path: /etc/default/mongod
