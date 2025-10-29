@@ -26,7 +26,7 @@
 
 - name: Remove pre-existing vault container
   docker_container:
-    name: vault
+    name: kerberos
     state: absent
     keep_volumes: false
 
