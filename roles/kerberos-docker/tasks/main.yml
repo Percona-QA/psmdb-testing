@@ -130,31 +130,23 @@
     state: directory
     mode: '0755'
 
-- name: Configure KRB5_KTNAME environment for mongod
-  ansible.builtin.copy:
-    dest: /etc/systemd/system/mongod.service.d/override.conf
-    mode: '0644'
-    content: |
-      [Service]
-      Environment="KRB5_KTNAME=/etc/mongodb.keytab"
+- name: Add KRB5_KTNAME for PSMDB deb
+  lineinfile:
+    path: /etc/default/mongod
+    line: KRB5_KTNAME=/etc/mongodb.keytab
+    create: yes
+  when: ansible_os_family == "Debian"
 
-- name: Reload systemd units
-  ansible.builtin.command:
-    cmd: systemctl daemon-reload
+- name: Add KRB5_KTNAME for PSMDB rpm
+  lineinfile:
+    path: /etc/sysconfig/mongod
+    line: KRB5_KTNAME=/etc/mongodb.keytab
+    create: yes
+  when: ansible_os_family == "RedHat"
 
 - name: Collect installed package facts
   ansible.builtin.package_facts:
     manager: auto
-
-- name: Restart mongod to pick up Kerberos keytab env
-  ansible.builtin.service:
-    name: mongod
-    state: restarted
-    enabled: yes
-  when:
-    - "'percona-server-mongodb-server' in ansible_facts.packages
-       or 'percona-server-mongodb' in ansible_facts.packages
-       or 'mongodb-org' in ansible_facts.packages"
 
 - name: Restart mongod to pick up Kerberos keytab env
   ansible.builtin.service:
