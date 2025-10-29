@@ -97,16 +97,6 @@
     ("already exists" not in (add_service_princ.stderr | default(''))) and
     ("already exists" not in (add_service_princ.stdout | default('')))
 
-- name: Create test Kerberos user principal exttestrw
-  ansible.builtin.command:
-    cmd: >
-      docker exec kerberos sh -c 'kadmin.local -q "addprinc -pw exttestrw exttestrw"'
-  register: add_user_princ
-  failed_when: >
-    add_user_princ.rc != 0 and
-    ("already exists" not in (add_user_princ.stderr | default(''))) and
-    ("already exists" not in (add_user_princ.stdout | default('')))
-
 - name: Refresh MongoDB service keytab in Kerberos container
   ansible.builtin.command:
     cmd: >
@@ -133,12 +123,6 @@
   changed_when: kinit_result.rc == 0
 
 #### Add Environment variable to mongod service ####
-
-- name: Ensure systemd override directory for mongod exists
-  ansible.builtin.file:
-    path: /etc/systemd/system/mongod.service.d
-    state: directory
-    mode: '0755'
 
 - name: Configure KRB5_KTNAME environment for mongod
   ansible.builtin.copy:

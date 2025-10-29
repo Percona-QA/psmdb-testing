@@ -321,7 +321,7 @@ def test_auth(host,auth):
     if auth == 'GSSAPI':
         with host.sudo():
             hostname = host.check_output('hostname')
-            host.check_output('kadmin.local -q "addprinc -pw exttestrw exttestrw"')
+            host.check_output('docker exec kerberos sh -c "kadmin.local -q \'addprinc -pw exttestrw exttestrw\'"')
             host.check_output('bash -c "kinit exttestrw <<<\'exttestrw\'"')
             result = host.check_output('mongo -u exttestrw@PERCONATEST.COM --host '+ hostname +' --authenticationMechanism=GSSAPI --authenticationDatabase \'$external\' --quiet --eval "db.runCommand({connectionStatus : 1})"')
             print(result)
