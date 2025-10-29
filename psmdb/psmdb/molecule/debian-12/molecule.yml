@@ -21,7 +21,7 @@ provisioner:
     create: ../../../../playbooks/create.yml
 #    destroy: ../../../../playbooks/destroy.yml
     prepare: ../../../../playbooks/prepare.yml
-    cleanup: ../../playbooks/cleanup.yml
+#    cleanup: ../../playbooks/cleanup.yml
     converge: ../../playbooks/playbook.yml
 verifier:
   name: testinfra
@@ -36,8 +36,8 @@ scenario:
   name: debian-12
 #  destroy_sequence:
 #    - destroy
-  cleanup_sequence:
-    - cleanup
+#  cleanup_sequence:
+#    - cleanup
   test_sequence:
     - destroy
     - create
