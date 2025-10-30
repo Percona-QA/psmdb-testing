@@ -1,0 +1,9 @@
+- name: Ensure passwordless sudo for test-user
+  hosts: all
+  become: false
+  tasks:
+    - name: Configure sudoers entry
+      copy:
+        dest: /etc/sudoers.d/test-user
+        content: "test-user ALL=(ALL) NOPASSWD: ALL\n"
+        mode: '0440'

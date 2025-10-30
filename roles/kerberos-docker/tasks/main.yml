@@ -1,5 +1,6 @@
-- name: Add variables
-  include_vars: "main.yml"
+- include_tasks: "RedHat.yml"
+- include_tasks: "Debian.yml"
+- include_vars: "main.yml"
 
 - name: Install dependencies (Debian)
   apt:
@@ -13,6 +14,15 @@
   become: yes
   when: ansible_os_family == "Debian"
 
+- name: Install dependencies (Debian)
+  yum:
+    update_cache: yes
+    name:
+      - vim
+      - krb5-workstation
+    state: present
+  become: yes
+
 - name: Gather host facts
   ansible.builtin.setup:
     gather_subset:
@@ -24,7 +34,7 @@
       - "FQDN: {{ ansible_fqdn }}"
       - "Hostname: {{ ansible_hostname }}"
 
-- name: Remove pre-existing vault container
+- name: Remove pre-existing kerberos container
   docker_container:
     name: kerberos
     state: absent
@@ -109,7 +119,7 @@
   register: docker_cp_keytab
   changed_when: docker_cp_keytab.rc == 0
 
-- name: Ensure /etc/mongodb.keytab perms
+- name: Ensure /etc/mongodb.keytab permissions
   ansible.builtin.file:
     path: /etc/mongodb.keytab
     owner: mongod
