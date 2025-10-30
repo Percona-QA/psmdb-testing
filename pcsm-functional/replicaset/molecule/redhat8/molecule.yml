@@ -1,0 +1,62 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: ec2
+platforms:
+  - name: jenkins-pcsm-source
+    groups:
+      - psmdb
+    region: us-west-2
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    vpc_subnet_id: subnet-0dc7518100473f19d
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ec2-user
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+  - name: jenkins-pcsm-destination
+    groups:
+      - psmdb
+    region: us-west-2
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    vpc_subnet_id: subnet-0dc7518100473f19d
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ec2-user
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+  - name: jenkins-pcsm-clustersync
+    region: us-west-2
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    vpc_subnet_id: subnet-0dc7518100473f19d
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ec2-user
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+provisioner:
+  name: ansible
+  log: true
+  playbooks:
+    create: ../../../../playbooks/create.yml
+    prepare: ../../../playbooks/prepare.yml
+    converge: ../../../playbooks/converge.yml
+    destroy: ../../../../playbooks/destroy.yml
+verifier:
+  name: testinfra
+  directory: ../../tests/
+  options:
+    verbose: true
+    s: true
+    junitxml: report.xml
+scenario:
+  name: redhat8
+  test_sequence:
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy
+  destroy_sequence:
+    - destroy
