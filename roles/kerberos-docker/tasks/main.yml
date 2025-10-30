@@ -100,7 +100,7 @@
   ansible.builtin.command:
     cmd: >
       docker exec kerberos sh -c
-      'kadmin.local -q "addprinc -randkey mongodb/{{ ansible_hostname | lower }}@PERCONATEST.COM"'
+      'kadmin.local -q "addprinc -randkey mongodb/{{ ansible_fqdn | lower }}@PERCONATEST.COM"'
   register: add_service_princ
   failed_when: >
     add_service_princ.rc != 0 and
@@ -110,7 +110,7 @@
 - name: Refresh MongoDB service keytab in Kerberos container
   ansible.builtin.command:
     cmd: >
-      docker exec kerberos sh -c 'kadmin.local -q "ktadd -k /keytabs/mongodb.keytab mongodb/{{ ansible_hostname | lower }}@PERCONATEST.COM"'
+      docker exec kerberos sh -c 'kadmin.local -q "ktadd -k /keytabs/mongodb.keytab mongodb/{{ ansible_fqdn | lower }}@PERCONATEST.COM"'
 
 - name: Copy mongodb.keytab from container to host /etc/mongodb.keytab
   ansible.builtin.command:
@@ -162,7 +162,7 @@
   lineinfile:
     state: present
     dest: /etc/hosts
-    line: '127.0.0.1 {{ ansible_hostname | lower }}'
+    line: '127.0.0.1 {{ ansible_fqdn | lower }}'
     unsafe_writes: yes
 
 
