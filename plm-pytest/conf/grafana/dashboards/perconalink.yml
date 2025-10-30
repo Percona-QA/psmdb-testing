@@ -1,9 +1,0 @@
-apiVersion: 1
-
-providers:
-  - name: PLM
-    type: file
-    folder: ""
-    options:
-      path: /etc/grafana/provisioning/dashboards/files
-      updateIntervalSeconds: 30
