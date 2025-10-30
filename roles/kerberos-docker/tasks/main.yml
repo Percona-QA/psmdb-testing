@@ -14,7 +14,7 @@
   become: yes
   when: ansible_os_family == "Debian"
 
-- name: Install dependencies (Debian)
+- name: Install dependencies (Redhat)
   yum:
     update_cache: yes
     name:
@@ -22,6 +22,7 @@
       - krb5-workstation
     state: present
   become: yes
+  when: ansible_os_family == "RedHat"
 
 - name: Gather host facts
   ansible.builtin.setup:
