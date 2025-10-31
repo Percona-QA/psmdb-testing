@@ -26,8 +26,12 @@
 
 - name: Get system hostname
   ansible.builtin.shell: hostname
-  register: hostname
+  register: hostname_raw
   changed_when: false
+
+- name: Set principal host from facts
+  ansible.builtin.set_fact:
+    hostname: "{{ hostname_raw.stdout }}"
 
 - name: Remove pre-existing kerberos container
   docker_container:
@@ -95,7 +99,7 @@
   ansible.builtin.command:
     cmd: >
       docker exec kerberos sh -c
-      'kadmin.local -q "addprinc -randkey mongodb/{{ hostname | lower }}@PERCONATEST.COM"'
+      'kadmin.local -q "addprinc -randkey mongodb/{{ hostname }}@PERCONATEST.COM"'
   register: add_service_princ
   failed_when: >
     add_service_princ.rc != 0 and
@@ -105,7 +109,7 @@
 - name: Refresh MongoDB service keytab in Kerberos container
   ansible.builtin.command:
     cmd: >
-      docker exec kerberos sh -c 'kadmin.local -q "ktadd -k /keytabs/mongodb.keytab mongodb/{{ hostname | lower }}@PERCONATEST.COM"'
+      docker exec kerberos sh -c 'kadmin.local -q "ktadd -k /keytabs/mongodb.keytab mongodb/{{ hostname }}@PERCONATEST.COM"'
 
 - name: Copy mongodb.keytab from container to host /etc/mongodb.keytab
   ansible.builtin.command:
@@ -157,7 +161,7 @@
   lineinfile:
     state: present
     dest: /etc/hosts
-    line: '127.0.0.1 {{ hostname | lower }}'
+    line: '127.0.0.1 {{ hostname }}'
     unsafe_writes: yes
 
 
