@@ -160,9 +160,9 @@
   become: true
   ansible.builtin.replace:
     path: /etc/hosts
-    regexp: '^(\s*127\.0\.1\.1)\s+ip-10-188-1-16\.us-west-2\.compute\.internal\s+{{ hostname }}\s*$'
-    replace: '\1 ip-10-188-1-16'
-    backup: true
+    regexp: '^\s*(127\.0\.0\.1)\s+.*$'
+    replace: '\1 {{ hostname }}'
+    unsafe_writes: true
   when:
     - ansible_distribution == "Debian"
     - ansible_distribution_major_version | int == 11
