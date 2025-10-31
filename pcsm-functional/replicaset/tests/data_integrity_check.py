@@ -34,7 +34,7 @@ def compare_data_rs(db1, db2, port, full_comparison):
 def compare_database_hashes(db1, db2, port):
     query = (
         'db.getMongo().getDBNames().forEach(function(dbName) { '
-        '    if (!["admin", "local", "config", "percona_link_mongodb"].includes(dbName)) { '
+        '    if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(dbName)) { '
         '        var collections = []; '
         '        db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
         '            if ((!coll.type || coll.type !== "view") && !(dbName === "test" && coll.name === "system.profile")) { '
@@ -108,7 +108,7 @@ def compare_database_hashes(db1, db2, port):
 def compare_entries_number(db1, db2, port):
     query = (
         'db.getMongo().getDBNames().forEach(function(i) { '
-        '  if (!["admin", "local", "config", "percona_link_mongodb"].includes(i)) { '
+        '  if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(i)) { '
         '    var collections = db.getSiblingDB(i).runCommand({ listCollections: 1 }).cursor.firstBatch '
         '      .filter(function(coll) { '
         '        return (!coll.type || coll.type !== "view") && coll.name !== "system.profile"; '
@@ -198,7 +198,7 @@ def compare_collection_metadata(db1, db2, port):
 def get_all_collection_metadata(db, port):
     query = (
         'db.getMongo().getDBNames().forEach(function(dbName) { '
-        '    if (!["admin", "local", "config", "percona_link_mongodb"].includes(dbName)) { '
+        '    if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(dbName)) { '
         '        var collections = db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch '
         '            .filter(function(coll) { '
         '                return !(dbName === "test" && coll.name === "system.profile"); '
