@@ -160,7 +160,7 @@
   become: true
   ansible.builtin.replace:
     path: /etc/hosts
-    regexp: '^\s*(127\.0\.0\.1)\s+.*$'
+    regexp: '^\s*(127\.0\.1\.1)\s+.*$'
     replace: '\1 {{ hostname }}'
     unsafe_writes: true
   when:
