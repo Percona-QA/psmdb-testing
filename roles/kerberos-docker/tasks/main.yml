@@ -98,8 +98,7 @@
 - name: Create MongoDB service principal for mongod
   ansible.builtin.command:
     cmd: >
-      docker exec kerberos sh -c
-      'kadmin.local -q "addprinc -randkey mongodb/{{ hostname }}@PERCONATEST.COM"'
+      docker exec kerberos sh -c 'kadmin.local -q "addprinc -randkey mongodb/{{ hostname }}@PERCONATEST.COM"'
   register: add_service_princ
   failed_when: >
     add_service_princ.rc != 0 and
@@ -157,12 +156,17 @@
     state: restarted
     enabled: yes
 
-- name: Add kerberos user to /etc/hosts
-  lineinfile:
-    state: present
-    dest: /etc/hosts
-    line: '127.0.0.1 {{ hostname }}'
-    unsafe_writes: yes
+- name: Adding short form of hostname to /etc/hosts (Debian 11)
+  become: true
+  ansible.builtin.replace:
+    path: /etc/hosts
+    regexp: '^(\s*127\.0\.1\.1)\s+ip-10-188-1-16\.us-west-2\.compute\.internal\s+{{ hostname }}\s*$'
+    replace: '\1 ip-10-188-1-16'
+    backup: true
+  when:
+    - ansible_distribution == "Debian"
+    - ansible_distribution_major_version | int == 11
+
 
 
 
