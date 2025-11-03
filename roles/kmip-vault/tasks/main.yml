@@ -39,7 +39,7 @@
           "max_lease_ttl": "720h",
           "ui": true,
           "log_level": "debug",
-          "log_format": "json"
+          "log_format": "json",
           "api_addr": "https://127.0.0.1:8200"
         }
       VAULT_ADDR: https://127.0.0.1:8200
