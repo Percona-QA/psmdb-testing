@@ -160,8 +160,7 @@
     name: mongod
     state: restarted
     enabled: yes
-  when:
-    - percona_dir.stat.isdir | default(false)
+  when: not percona_dir.stat.isdir | default(false)
 
 - name: Adding short form of hostname to /etc/hosts (Debian 11)
   become: true
