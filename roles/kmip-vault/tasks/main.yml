@@ -58,7 +58,7 @@
     return_content: yes
     validate_certs: no
   register: vault_health
-  retries: 60
+  retries: 10
   delay: 2
   until: vault_health.status in [200, 429, 472, 473, 501]
 
