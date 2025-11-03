@@ -1,0 +1,16 @@
+ARG GO_VERSION=latest
+ARG PCSM_BRANCH=main
+FROM easyrsa/local AS easyrsa
+FROM golang:$GO_VERSION
+COPY --from=easyrsa /etc/x509/ca.crt /etc/pykmip/ca.crt
+COPY --from=easyrsa /etc/x509/ /etc/x509/
+RUN apt update && apt -y install curl socat git && \
+    mkdir -p /percona-clustersync-mongodb
+COPY --from=repo . /percona-clustersync-mongodb/
+RUN cd /percona-clustersync-mongodb && \
+    git checkout $PCSM_BRANCH && \
+    make build && cp -rpf bin/* /usr/bin/
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
