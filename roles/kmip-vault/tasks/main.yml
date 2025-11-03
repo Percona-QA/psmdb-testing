@@ -40,6 +40,7 @@
           "ui": true,
           "log_level": "debug",
           "log_format": "json"
+          "api_addr": "https://127.0.0.1:8200"
         }
       VAULT_ADDR: https://127.0.0.1:8200
       VAULT_CACERT: /etc/vault/ca.crt
@@ -49,17 +50,29 @@
     capabilities:
       - "IPC_LOCK"
 
-- name: Wait for Vault TCP port to open
-  wait_for:
-    host: 127.0.0.1
-    port: 8200
-    delay: 1
-    timeout: 60
+- name: Poll Vault health endpoint until API is responding
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:8200/v1/sys/health"
+    method: GET
+    status_code: [200, 429, 472, 473, 501]
+    return_content: yes
+    validate_certs: no
+  register: vault_health
+  retries: 60
+  delay: 2
+  until: vault_health.status in [200, 429, 472, 473, 501]
 
-- name: Wait for 10 seconds
-  ansible.builtin.wait_for:
-    timeout: 10
-
+#- name: Wait for Vault TCP port to open
+#  wait_for:
+#    host: 127.0.0.1
+#    port: 8200
+#    delay: 1
+#    timeout: 60
+#
+#- name: Wait for 10 seconds
+#  ansible.builtin.wait_for:
+#    timeout: 10
+#
 - name: Initiate Vault
   community.docker.docker_container_exec:
     container: vault

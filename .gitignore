@@ -9,8 +9,3 @@ docker-image-tests/pxc/.DS_Store
 pbm-functional/pytest/example_cluster.py
 .idea/*
 *.pem
-plm-functional/manual/meta/main.yml
-psmdb-tarball/psmdb-tarball/playbooks/prepare.yml
-roles/psmdb/*
-plm-functional/manual/molecule/test/
-plm-functional/manual/playbooks/test.yml
