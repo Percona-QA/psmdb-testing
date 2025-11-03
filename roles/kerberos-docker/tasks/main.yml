@@ -1,6 +1,5 @@
 - include_tasks: "RedHat.yml"
 - include_tasks: "Debian.yml"
-- include_vars: "main.yml"
 
 - name: Install dependencies (Redhat)
   yum:
@@ -17,7 +16,7 @@
   register: hostname_raw
   changed_when: false
 
-- name: Set principal host from facts
+- name: Set hostname variable
   ansible.builtin.set_fact:
     hostname: "{{ hostname_raw.stdout }}"
 
@@ -39,12 +38,12 @@
     - /var/lib/krb5kdc
     - /keytabs
 
-- name: Copy KDC configuration file
+- name: Copy KDC configuration file to host
   template:
     src: krb5.conf
     dest: "/etc/krb5.conf"
 
-- name: Run Kerberos container
+- name: Start Kerberos container
   community.docker.docker_container:
     name: kerberos
     image: "alpine"
@@ -66,7 +65,7 @@
       - "/var/lib/krb5kdc:/var/lib/krb5kdc"
       - "/keytabs:/keytabs"
 
-- name: Adding a wait for the container to be ready
+- name: Waiting for Kerberos container to be ready
   ansible.builtin.command:
     cmd: >
       docker exec kerberos sh -c 'test -x /usr/sbin/kadmin.local'
@@ -86,33 +85,33 @@
     ("already exists" not in (add_service_princ.stderr | default(''))) and
     ("already exists" not in (add_service_princ.stdout | default('')))
 
-- name: Refresh MongoDB service keytab in Kerberos container
+- name: Create Service Key and store it in the Keytab
   ansible.builtin.command:
     cmd: >
       docker exec kerberos sh -c 'kadmin.local -q "ktadd -k /keytabs/mongodb.keytab mongodb/{{ hostname }}@PERCONATEST.COM"'
 
-- name: Copy mongodb.keytab from container to host /etc/mongodb.keytab
+- name: Copy mongodb.keytab from container to host
   ansible.builtin.command:
     cmd: >
       docker cp kerberos:/keytabs/mongodb.keytab /etc/mongodb.keytab
   register: docker_cp_keytab
   changed_when: docker_cp_keytab.rc == 0
 
-- name: Ensure /etc/mongodb.keytab permissions
+- name: Give /etc/mongodb.keytab mongod permissions
   ansible.builtin.file:
     path: /etc/mongodb.keytab
     owner: mongod
     group: mongod
     mode: '0600'
 
-- name: Add KRB5_KTNAME for PSMDB deb
+- name: Add KRB5_KTNAME variable for PSMDB (Debian)
   lineinfile:
     path: /etc/default/mongod
     line: KRB5_KTNAME=/etc/mongodb.keytab
     create: yes
   when: ansible_os_family == "Debian"
 
-- name: Add KRB5_KTNAME for PSMDB rpm
+- name: Add KRB5_KTNAME variable for PSMDB (RedHat)
   lineinfile:
     path: /etc/sysconfig/mongod
     line: KRB5_KTNAME=/etc/mongodb.keytab
@@ -141,7 +140,6 @@
   when:
     - ansible_distribution == "Debian"
     - ansible_distribution_major_version | int == 11
-    -
 
 - name: Add kerberos user to /etc/hosts
   lineinfile:
