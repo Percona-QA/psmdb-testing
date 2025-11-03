@@ -150,11 +150,18 @@
   ansible.builtin.package_facts:
     manager: auto
 
+- name: Check if Percona directory exists
+  ansible.builtin.stat:
+    path: /percona-server-mongodb
+  register: percona_dir
+
 - name: Restart mongod to pick up Kerberos keytab env
   ansible.builtin.service:
     name: mongod
     state: restarted
     enabled: yes
+  when:
+    - percona_dir.stat.isdir | default(false)
 
 - name: Adding short form of hostname to /etc/hosts (Debian 11)
   become: true
