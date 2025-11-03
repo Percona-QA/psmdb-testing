@@ -1,12 +1,5 @@
-- name: Install dependencies (Redhat)
-  yum:
-    update_cache: yes
-    name:
-      - vim
-      - krb5-workstation
-    state: present
-  become: yes
-  when: ansible_os_family == "RedHat"
+- include_tasks: "RedHat.yml"
+- include_tasks: "Debian.yml"
 
 - name: Get system hostname
   ansible.builtin.shell: hostname
