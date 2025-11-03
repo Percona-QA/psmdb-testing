@@ -166,7 +166,11 @@
   when:
     - ansible_distribution == "Debian"
     - ansible_distribution_major_version | int == 11
+    -
 
-
-
-
+- name: Add kerberos user to /etc/hosts
+  lineinfile:
+    state: present
+    dest: /etc/hosts
+    line: '127.0.0.1 {{ hostname }}'
+    unsafe_writes: yes
