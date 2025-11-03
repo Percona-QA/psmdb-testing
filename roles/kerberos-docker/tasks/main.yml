@@ -2,18 +2,6 @@
 - include_tasks: "Debian.yml"
 - include_vars: "main.yml"
 
-- name: Install dependencies (Debian)
-  apt:
-    update_cache: yes
-    name:
-      - vim
-      - krb5-user
-      - python3-requests
-      - python3-docker
-    state: present
-  become: yes
-  when: ansible_os_family == "Debian"
-
 - name: Install dependencies (Redhat)
   yum:
     update_cache: yes
@@ -51,11 +39,6 @@
     - /var/lib/krb5kdc
     - /keytabs
 
-- name: Creates directory
-  ansible.builtin.file:
-    path: /etc/kerberos
-    state: directory
-
 - name: Copy KDC configuration file
   template:
     src: krb5.conf
@@ -82,8 +65,6 @@
       - "/etc/krb5.conf:/etc/krb5.conf"
       - "/var/lib/krb5kdc:/var/lib/krb5kdc"
       - "/keytabs:/keytabs"
-
-#### Add KDC Principle ####
 
 - name: Adding a wait for the container to be ready
   ansible.builtin.command:
@@ -124,14 +105,6 @@
     group: mongod
     mode: '0600'
 
-- name: Obtain Kerberos TGT for root/admin@PERCONATEST.COM
-  ansible.builtin.shell: |
-    echo 'password' | kinit -V root/admin@PERCONATEST.COM
-  register: kinit_result
-  changed_when: kinit_result.rc == 0
-
-#### Add Environment variable to mongod service ####
-
 - name: Add KRB5_KTNAME for PSMDB deb
   lineinfile:
     path: /etc/default/mongod
@@ -145,10 +118,6 @@
     line: KRB5_KTNAME=/etc/mongodb.keytab
     create: yes
   when: ansible_os_family == "RedHat"
-
-- name: Collect installed package facts
-  ansible.builtin.package_facts:
-    manager: auto
 
 - name: Check if Percona directory exists
   ansible.builtin.stat:
