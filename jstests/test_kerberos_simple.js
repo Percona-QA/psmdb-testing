@@ -39,7 +39,7 @@
     }
 
     //add principal
-    _runCmd("kadmin.local -q 'addprinc -pw exttestrw exttestrw'");
+    _runCmd('docker exec kerberos sh -lc "kadmin.local -q \'addprinc -pw exttestrw exttestrw@PERCONATEST.COM\'"');
     _runCmd("kinit exttestrw <<<'exttestrw'");
 
     //check connection
