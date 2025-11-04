@@ -322,7 +322,7 @@ class Clustersync:
                 return False
 
             status_data = status_response["data"]
-            last_repl_op = status_data.get("lastReplicatedOpTime")
+            last_repl_op = status_data.get("lastReplicatedOpTime", {}).get("ts")
             current_events_processed = status_data.get("eventsProcessed")
 
             if last_repl_op is None:
