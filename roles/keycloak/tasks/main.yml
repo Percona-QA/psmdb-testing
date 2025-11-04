@@ -1,0 +1,68 @@
+- name: Generate Build CA Cert and CA Private Key
+  command: ./easyrsa --batch build-server-full keycloak nopass
+  args:
+    chdir: /root/easyrsa/easyrsa3
+    creates: /root/easyrsa/easyrsa3/pki/reqs/keycloak.req
+
+- name: Confirm Build CA cert exists
+  stat:
+    path: /root/easyrsa/easyrsa3/pki/issued/keycloak.crt
+  register: build_crt
+  failed_when: not build_crt.stat.exists
+
+- name: Confirm Build CA Private Key exists
+  stat:
+    path: /root/easyrsa/easyrsa3/pki/private/keycloak.key
+  register: keycloak_key
+  failed_when: not keycloak_key.stat.exists
+
+- name: Create keycloak Directory
+  file:
+    path: /etc/keycloak/
+    state: directory
+
+- name: Copy keycloak.crt to /etc/keycloak folder
+  copy:
+    src: /root/easyrsa/easyrsa3/pki/issued/keycloak.crt
+    dest: /etc/keycloak/keycloak.crt
+    remote_src: true
+
+- name: Move keycloak.key to /etc/keycloak folder
+  copy:
+    src: /root/easyrsa/easyrsa3/pki/private/keycloak.key
+    dest: /etc/keycloak/keycloak.key
+    remote_src: true
+
+- name: Copy ca.crt to /etc/keycloak folder
+  copy:
+    src: /root/easyrsa/easyrsa3/pki/ca.crt
+    dest: /etc/keycloak/ca.crt
+    remote_src: true
+
+- name: Rebuild trust bundle (Debian)
+  command: update-ca-certificates
+  changed_when: true
+  when: ansible_os_family == "Debian"
+
+- name: Rebuild Trust Bundle (Redhat)
+  command: update-ca-trust extract
+  changed_when: true
+  when: ansible_os_family == "RedHat"
+
+- name: Copy KDC configuration file to host
+  template:
+    src: krb5.conf
+    dest: "/etc/krb5.conf"
+
+- name: Start Kerberos container
+  community.docker.docker_container:
+    name: kerberos
+    image: "alpine"
+    command: "sleep infinity"
+    restart_policy: unless-stopped
+    published_ports:
+      - "8443:8443"
+    volumes:
+      - "/etc/krb5.conf:/etc/krb5.conf"
+      - "/var/lib/krb5kdc:/var/lib/krb5kdc"
+      - "/keytabs:/keytabs"
