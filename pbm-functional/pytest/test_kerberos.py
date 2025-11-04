@@ -76,3 +76,4 @@ def test_logical_PBM_T202(start_cluster,cluster):
     cluster.make_restore(backup,check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     Cluster.log("Finished successfully")
+    #just for testing
