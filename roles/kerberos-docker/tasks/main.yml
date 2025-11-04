@@ -1,0 +1,139 @@
+- include_tasks: "RedHat.yml"
+- include_tasks: "Debian.yml"
+
+- name: Get system hostname
+  ansible.builtin.shell: hostname
+  register: hostname_raw
+  changed_when: false
+
+- name: Set hostname variable
+  ansible.builtin.set_fact:
+    hostname: "{{ hostname_raw.stdout }}"
+
+- name: Remove pre-existing kerberos container
+  docker_container:
+    name: kerberos
+    state: absent
+    keep_volumes: false
+
+- name: Create required folders
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+  loop:
+    - /var/lib/krb5kdc
+    - /keytabs
+
+- name: Copy KDC configuration file to host
+  template:
+    src: krb5.conf
+    dest: "/etc/krb5.conf"
+
+- name: Start Kerberos container
+  community.docker.docker_container:
+    name: kerberos
+    image: "alpine"
+    command: >
+      sh -c '
+          apk add --no-cache bash krb5 krb5-server krb5-pkinit &&
+          if [ ! -f /var/lib/krb5kdc/principal ]; then
+            kdb5_util -P password create &&
+            kadmin.local -q "addprinc -pw password root/admin";
+          fi &&
+          /usr/sbin/krb5kdc -n
+        '
+    restart_policy: unless-stopped
+    published_ports:
+      - "88:88/udp"
+      - "88:88/tcp"
+    volumes:
+      - "/etc/krb5.conf:/etc/krb5.conf"
+      - "/var/lib/krb5kdc:/var/lib/krb5kdc"
+      - "/keytabs:/keytabs"
+
+- name: Waiting for Kerberos container to be ready
+  ansible.builtin.command:
+    cmd: >
+      docker exec kerberos sh -c 'test -x /usr/sbin/kadmin.local'
+  register: kadmin_check
+  retries: 10
+  delay: 2
+  until: kadmin_check.rc == 0
+  changed_when: false
+
+- name: Create MongoDB service principal for mongod
+  ansible.builtin.command:
+    cmd: >
+      docker exec kerberos sh -c 'kadmin.local -q "addprinc -randkey mongodb/{{ hostname }}@PERCONATEST.COM"'
+  register: add_service_princ
+  failed_when: >
+    add_service_princ.rc != 0 and
+    ("already exists" not in (add_service_princ.stderr | default(''))) and
+    ("already exists" not in (add_service_princ.stdout | default('')))
+
+- name: Create Service Key and store it in the Keytab
+  ansible.builtin.command:
+    cmd: >
+      docker exec kerberos sh -c 'kadmin.local -q "ktadd -k /keytabs/mongodb.keytab mongodb/{{ hostname }}@PERCONATEST.COM"'
+
+- name: Copy mongodb.keytab from container to host
+  ansible.builtin.command:
+    cmd: >
+      docker cp kerberos:/keytabs/mongodb.keytab /etc/mongodb.keytab
+  register: docker_cp_keytab
+  changed_when: docker_cp_keytab.rc == 0
+
+- name: Give /etc/mongodb.keytab mongod permissions
+  ansible.builtin.file:
+    path: /etc/mongodb.keytab
+    owner: mongod
+    group: mongod
+    mode: '0600'
+
+- name: Add KRB5_KTNAME variable for PSMDB (Debian)
+  lineinfile:
+    path: /etc/default/mongod
+    line: KRB5_KTNAME=/etc/mongodb.keytab
+    create: yes
+  when: ansible_os_family == "Debian"
+
+- name: Add KRB5_KTNAME variable for PSMDB (RedHat)
+  lineinfile:
+    path: /etc/sysconfig/mongod
+    line: KRB5_KTNAME=/etc/mongodb.keytab
+    create: yes
+  when: ansible_os_family == "RedHat"
+
+- name: Check if Percona directory exists
+  ansible.builtin.stat:
+    path: /percona-server-mongodb
+  register: percona_dir
+
+- name: Restart mongod to pick up Kerberos keytab env
+  ansible.builtin.service:
+    name: mongod
+    state: restarted
+    enabled: yes
+  when: not percona_dir.stat.isdir | default(false)
+
+- name: Adding short form of hostname to /etc/hosts (Debian 11)
+  become: true
+  ansible.builtin.replace:
+    path: /etc/hosts
+    regexp: '^\s*(127\.0\.1\.1)\s+.*$'
+    replace: '\1 {{ hostname }}'
+    unsafe_writes: true
+  when:
+    - ansible_distribution == "Debian"
+    - ansible_distribution_major_version | int == 11
+
+- name: Add kerberos user to /etc/hosts
+  lineinfile:
+    state: present
+    dest: /etc/hosts
+    line: '127.0.0.1 {{ hostname }}'
+    unsafe_writes: yes

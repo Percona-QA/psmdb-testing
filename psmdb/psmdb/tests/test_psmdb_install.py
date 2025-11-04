@@ -321,7 +321,7 @@ def test_auth(host,auth):
     if auth == 'GSSAPI':
         with host.sudo():
             hostname = host.check_output('hostname')
-            host.check_output('kadmin.local -q "addprinc -pw exttestrw exttestrw"')
+            host.check_output('docker exec kerberos sh -c "kadmin.local -q \'addprinc -pw exttestrw exttestrw\'"')
             host.check_output('bash -c "kinit exttestrw <<<\'exttestrw\'"')
             result = host.check_output('mongo -u exttestrw@PERCONATEST.COM --host '+ hostname +' --authenticationMechanism=GSSAPI --authenticationDatabase \'$external\' --quiet --eval "db.runCommand({connectionStatus : 1})"')
             print(result)
@@ -378,7 +378,7 @@ def test_encryption(host,encryption,cipher):
         conf['security']['kmip']['clientCertificateFile'] = MONGO_PEM_FILE
         conf['security']['kmip']['serverCAFile'] = CA_KMIP_FILE
 
-    #erase data and setup config 
+    #erase data and setup config
     apply_conf(host,conf,True)
 
     #check startup with encryption

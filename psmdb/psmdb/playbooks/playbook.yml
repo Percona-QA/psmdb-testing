@@ -10,4 +10,4 @@
     - role: '../../../roles/easyrsa'
     - role: '../../../roles/openldap'
     - role: '../../../roles/kmip-vault'
-    - role: '../../../roles/kerberos'
+    - role: '../../../roles/kerberos-docker'
