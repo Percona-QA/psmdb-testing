@@ -17,6 +17,10 @@ on:
     paths:
       - 'pbm-functional/pytest/**'
 
+  concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
 jobs:
   test:
     if: github.event.pull_request.draft == false
