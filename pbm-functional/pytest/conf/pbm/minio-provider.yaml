@@ -10,7 +10,5 @@ storage:
     credentials:
       access-key-id: "minio1234"
       secret-access-key: "minio1234"
-      signature-ver: V2
     retryer:
       numMaxRetries: 10
-    debugTrace: true
