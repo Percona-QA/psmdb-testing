@@ -104,7 +104,7 @@ def assert_metrics(metrics):
         'percona_clustersync_mongodb_copy_read_document_total': lambda v: 0 <= v <= 100_000,
         'percona_clustersync_mongodb_copy_read_size_bytes_total': lambda v: 0 <= v <= 2**30,
         'percona_clustersync_mongodb_estimated_total_size_bytes': lambda v: 0 <= v <= 2**30,
-        'percona_clustersync_mongodb_events_processed_total': lambda v: 0 <= v <= 50_000,
+        'percona_clustersync_mongodb_events_applied_total': lambda v: 0 <= v <= 50_000,
         'percona_clustersync_mongodb_initial_sync_lag_time_seconds': lambda v: v >= 0 and v <= 600,
         'percona_clustersync_mongodb_lag_time_seconds': lambda v: v >= 0 and v <= 600,
         'percona_clustersync_mongodb_process_cpu_seconds_total': lambda v: 0 <= v <= 600,

@@ -258,7 +258,7 @@
       },
       {
         "type": "timeseries",
-        "title": "percona_clustersync_mongodb_events_processed_total",
+        "title": "percona_clustersync_mongodb_events_applied_total",
         "id": 8,
         "gridPos": {
           "h": 8,
@@ -272,7 +272,7 @@
         },
         "targets": [
           {
-            "expr": "percona_clustersync_mongodb_events_processed_total",
+            "expr": "percona_clustersync_mongodb_events_applied_total",
             "refId": "H",
             "instant": false
           }
