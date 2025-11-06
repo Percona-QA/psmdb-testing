@@ -2,7 +2,8 @@
   apt:
     update_cache: yes
     name:
-      - krb5-user
+      - jq
+      - vim
       - python3-docker
     state: present
   become: yes

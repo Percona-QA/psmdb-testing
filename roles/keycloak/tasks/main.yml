@@ -16,7 +16,7 @@
     group: root
     mode: "0750"
 
-- name: Copy KDC configuration file to host
+- name: Copy test_realm file to host
   template:
     src: test_realm.json
     dest: "/opt/keycloak/data/import/test_realm.json"
@@ -33,7 +33,9 @@
       - "/etc/keycloak:/etc/keycloak"
       - "/opt/keycloak/data/import/test_realm.json:/opt/keycloak/data/import/test_realm.json"
 
-- name: Add kerberos user to /etc/hosts
+
+
+- name: Add keycloak user to /etc/hosts
   lineinfile:
     state: present
     dest: /etc/hosts
