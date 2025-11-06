@@ -52,7 +52,7 @@
   git:
     repo: 'https://github.com/Percona-QA/psmdb-testing.git'
     dest: /package-testing
-    version: "main"
+    version: "PSMDB-1777"
 
 - name: Check if mongo cli exists in PATH
   stat:
