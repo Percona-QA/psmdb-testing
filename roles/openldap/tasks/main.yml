@@ -7,14 +7,35 @@
 - include_vars: "RedHat8-vars.yml"
   when: ansible_os_family == "RedHat" and ansible_distribution_major_version|int >= 8
 
-- name: Install Dependencies
+- name: Ensure venv tools present
   become: true
   ansible.builtin.apt:
     name:
-      - python3-requests
-      - python3-docker
-    update_cache: true
+      - python3-venv
+      - python3-full   # ensures venv has pip
     state: present
+    update_cache: true
+
+- name: Create virtualenv for Ansible deps
+  become: true
+  ansible.builtin.command: python3 -m venv /opt/ansible-venv
+  args:
+    creates: /opt/ansible-venv/bin/activate
+
+- name: Install Python packages into the venv
+  become: true
+  ansible.builtin.pip:
+    name:
+      - requests
+      - docker
+    virtualenv: /opt/ansible-venv
+    virtualenv_python: python3
+    state: present
+
+# Tell subsequent tasks to use the venv’s Python (so docker SDK is found)
+- name: Set interpreter to the venv for the rest of the play
+  ansible.builtin.set_fact:
+    ansible_python_interpreter: /opt/ansible-venv/bin/python
 
 - name: Ensure Docker network exists
   community.docker.docker_network:
