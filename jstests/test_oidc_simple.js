@@ -2,43 +2,55 @@
     'use strict';
 
     var conn = MongoRunner.runMongod();
-    var db = conn.getDB("external");
 
-    // create administrator
-    db.createRole({
-        role: "keycloak/Everyone", privileges: [], roles: [ "readWriteAnyDatabase"]
+    var admin = conn.getDB("admin");
+
+    admin.createRole({
+        role: "keycloak/Everyone", privileges: [],
+        roles: [ "readWriteAnyDatabase"]
     });
 
-    db.createUser({
-        user: 'keycloak/pbmclient',
-        pwd: 'password',
-        roles: [ 'keycloak/Everyone' ]
+    admin.logout()
+
+    var ext = conn.getDB("$external");
+
+    ext.createUser({
+        user: "keycloak/pbmclient",
+        roles: [ { role: "keycloak/Everyone", db: "admin" } ]
     });
 
-    db.logout();
+    ext.logout()
+
+    // db.createUser({
+    //     user: 'keycloak/pbmclient',
+    //     roles: [ 'keycloak/Everyone' ]
+    // });
 
     MongoRunner.stopMongod(conn);
+
+    var oidcProviders = JSON.stringify(
+        [
+                {
+                    issuer: "https://keycloak:8443/realms/test",
+                    clientId: "pbmclient",
+                    audience: "account",
+                    authNamePrefix: "keycloak",
+                    useAuthorizationClaim: false,
+                    supportsHumanFlows: false,
+                    principalName: "client_id"
+                }
+        ]
+    );
 
     // test command line parameters related to LDAP authorization
     conn = MongoRunner.runMongod({
         restart: conn,
         auth: '',
-        setParameter: {authenticationMechanisms: 'SCRAM-SHA-1,MONGODB-OIDC', oidcIdentityProviders: '[{' +
-                '     "issuer": "https://keycloak:8443/realms/test",' +
-                '     "clientId": "test-client",' +
-                '     "audience": "account",' +
-                '     "authNamePrefix": "keycloak",' +
-                '     "useAuthorizationClaim": false,' +
-                '     "supportsHumanFlows": false,' +
-                '     "principalName": "client_id"' +
-                '  }]'},
+        setParameter: {authenticationMechanisms: 'SCRAM-SHA-1,MONGODB-OIDC', oidcIdentityProviders: oidcProviders},
         noCleanData: true
     });
 
     assert(conn, "Cannot start mongod instance");
-
-    const username = 'cn=exttestrw,ou=people,dc=percona,dc=com';
-    const password = 'exttestrw9a5S'
 
     var clientConnect = function(conn) {
         const exitCode = runMongoProgram("/usr/bin/mongo",
@@ -47,11 +59,7 @@
                                          "--authenticationDatabase",
                                          '$external',
                                          "--authenticationMechanism",
-                                         "PLAIN",
-                                         "--username",
-                                         username,
-                                         "--password",
-                                         password,
+                                         "MONGODB-OIDC",
                                          "--verbose",
                                          "--eval",
                                          "db.runCommand({connectionStatus: 1});");
