@@ -8,11 +8,13 @@
   when: ansible_os_family == "RedHat" and ansible_distribution_major_version|int >= 8
 
 - name: Install Dependencies
-  ansible.builtin.pip:
+  become: true
+  ansible.builtin.apt:
     name:
-      - requests
-      - docker
-    executable: pip3
+      - python3-requests
+      - python3-docker
+    update_cache: true
+    state: present
 
 - name: Ensure Docker network exists
   community.docker.docker_network:
