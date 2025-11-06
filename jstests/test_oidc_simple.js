@@ -21,11 +21,6 @@
 
     ext.logout()
 
-    // db.createUser({
-    //     user: 'keycloak/pbmclient',
-    //     roles: [ 'keycloak/Everyone' ]
-    // });
-
     MongoRunner.stopMongod(conn);
 
     var oidcProviders = JSON.stringify(
@@ -42,7 +37,7 @@
         ]
     );
 
-    // test command line parameters related to LDAP authorization
+    // test command line parameters related to OIDC authorization
     conn = MongoRunner.runMongod({
         restart: conn,
         auth: '',
@@ -52,15 +47,24 @@
 
     assert(conn, "Cannot start mongod instance");
 
+    const token_raw = "/tmp/oidc_token.txt"
+
+    let token_command = runProgram("bash", "-lc",
+      "curl --silent --show-error " +
+      "-X POST 'https://keycloak:8443/realms/test/protocol/openid-connect/token' " +
+      "-d 'grant_type=client_credentials&client_id=pbmclient&client_secret=pbm-secret' " +
+      "| jq -r .access_token > " + token_raw
+    );
+
+    const token = cat(token_raw).trim();
+
     var clientConnect = function(conn) {
-        const exitCode = runMongoProgram("/usr/bin/mongo",
-                                         "--port",
-                                         conn.port,
-                                         "--authenticationDatabase",
-                                         '$external',
-                                         "--authenticationMechanism",
-                                         "MONGODB-OIDC",
-                                         "--verbose",
+        const exitCode = runMongoProgram("/percona-server-mongodb/mongo",
+                                         "--quiet",
+                                         "--port", conn.port,
+                                         "--authenticationDatabase", '$external',
+                                         "--authenticationMechanism", "MONGODB-OIDC",
+                                         "--oidcAccessToken", token,
                                          "--eval",
                                          "db.runCommand({connectionStatus: 1});");
         return exitCode;
