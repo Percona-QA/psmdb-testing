@@ -47,7 +47,7 @@
 
     assert(conn, "Cannot start mongod instance");
 
-    const token_raw = "/tmp/oidc_token.txt"
+    const token_raw = MongoRunner.dataPath + "oidc_token.txt";
 
     let token_command = runProgram("bash", "-lc",
       "curl --silent --show-error " +
