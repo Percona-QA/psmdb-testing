@@ -54,3 +54,35 @@
     dest: /etc/hosts
     line: '{{ keycloak_ip }} keycloak'
     unsafe_writes: yes
+
+- name: Wait for keycloak:8443 to accept TCP connections
+  ansible.builtin.wait_for:
+    host: keycloak
+    port: 8443
+    timeout: 120
+    delay: 0
+
+- name: Probe token endpoint until access token is issued
+  ansible.builtin.uri:
+    url: "https://keycloak:8443/realms/test/protocol/openid-connect/token"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      grant_type: client_credentials
+      client_id: "pbmclient"
+      client_secret: "pbm-secret"
+    status_code: 200
+    validate_certs: yes
+    return_content: yes
+  register: kc_token_resp
+  retries: 10
+  delay: 3
+  until:
+    - kc_token_resp.status == 200
+    - kc_token_resp.json is defined
+    - kc_token_resp.json.access_token is defined
+    - kc_token_resp.json.access_token | length > 0
+    - kc_token_resp.json.access_token is regex("^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$")
+
+
+
