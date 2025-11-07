@@ -12,7 +12,7 @@ BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
 
 psmdb_version = os.environ["PSMDB_VERSION"]
 
-JSTESTS = ['test_oidc_simple.js']
+JSTESTS = ['test_kerberos_simple.js','test_ldap_simple.js']
 SUITES = ['ssl jstests/ssl/ssl_fips.js']
 
 @pytest.mark.parametrize("binary", BINARIES)

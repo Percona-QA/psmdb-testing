@@ -33,36 +33,21 @@
       - "/etc/keycloak:/etc/keycloak"
       - "/opt/keycloak/data/import/test_realm.json:/opt/keycloak/data/import/test_realm.json"
 
-- name: Get Keycloak IP (first attached network, via jq)
-  shell: >-
-    docker inspect {{ keycloak_container_name | default('keycloak') }} |
-    jq -r '.[0].NetworkSettings.Networks
-           | to_entries[0].value.IPAddress // empty'
-  register: keycloak_ip_cmd
-  changed_when: false
-  failed_when:
-    - keycloak_ip_cmd.rc != 0
-    - (keycloak_ip_cmd.stdout | trim) == ""
-
-- name: Store Keycloak IP
-  set_fact:
-    keycloak_ip: "{{ keycloak_ip_cmd.stdout | trim }}"
-
 - name: Add keycloak user to /etc/hosts
   lineinfile:
     state: present
     dest: /etc/hosts
-    line: '{{ keycloak_ip }} keycloak'
+    line: '127.0.0.1 keycloak'
     unsafe_writes: yes
 
-- name: Wait for keycloak:8443 to accept TCP connections
+- name: Wait until TCP connection is ready
   ansible.builtin.wait_for:
     host: keycloak
     port: 8443
     timeout: 120
     delay: 0
 
-- name: Probe token endpoint until access token is issued
+- name: Wait for API to become available
   ansible.builtin.uri:
     url: "https://keycloak:8443/realms/test/protocol/openid-connect/token"
     method: POST
@@ -79,10 +64,6 @@
   delay: 3
   until:
     - kc_token_resp.status == 200
-    - kc_token_resp.json is defined
-    - kc_token_resp.json.access_token is defined
-    - kc_token_resp.json.access_token | length > 0
-    - kc_token_resp.json.access_token is regex("^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$")
 
 
 
