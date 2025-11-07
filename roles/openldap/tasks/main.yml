@@ -7,15 +7,6 @@
 - include_vars: "RedHat8-vars.yml"
   when: ansible_os_family == "RedHat" and ansible_distribution_major_version|int >= 8
 
-- name: Install Dependencies
-  become: true
-  ansible.builtin.apt:
-    name:
-      - python3-requests
-      - python3-docker
-    update_cache: true
-    state: present
-
 - name: Ensure Docker network exists
   community.docker.docker_network:
     name: test
