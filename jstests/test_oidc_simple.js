@@ -47,10 +47,12 @@
 
     assert(conn, "Cannot start mongod instance");
 
+    const ca = "/etc/keycloak/keycloak.crt";
     const token_raw = MongoRunner.dataPath + "oidc_token.txt";
 
     let token_command = runProgram("bash", "-lc",
       "curl --silent --show-error " +
+      "--cacert " + ca + " " +
       "-X POST 'https://keycloak:8443/realms/test/protocol/openid-connect/token' " +
       "-d 'grant_type=client_credentials&client_id=pbmclient&client_secret=pbm-secret' " +
       "| jq -r .access_token > " + token_raw
