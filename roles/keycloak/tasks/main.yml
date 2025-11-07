@@ -33,25 +33,24 @@
       - "/etc/keycloak:/etc/keycloak"
       - "/opt/keycloak/data/import/test_realm.json:/opt/keycloak/data/import/test_realm.json"
 
-- name: Get Keycloak container info
-  community.docker.docker_container_info:
-    name: keycloak
-  register: kc
+- name: Get Keycloak IP (first attached network, via jq)
+  shell: >-
+    docker inspect {{ keycloak_container_name | default('keycloak') }} |
+    jq -r '.[0].NetworkSettings.Networks
+           | to_entries[0].value.IPAddress // empty'
+  register: keycloak_ip_cmd
+  changed_when: false
+  failed_when:
+    - keycloak_ip_cmd.rc != 0
+    - (keycloak_ip_cmd.stdout | trim) == ""
 
-- name: Extract IP from a specific network
+- name: Store Keycloak IP
   set_fact:
-    keycloak_ip: "{{ kc.containers[0].NetworkSettings.Networks['testnet'].IPAddress }}"
-
-- name: Extract IP from the first attached network
-  set_fact:
-    keycloak_ip: >-
-      {{ (kc.containers[0].NetworkSettings.Networks
-          | dict2items | first).value.IPAddress }}
-  when: keycloak_ip is not defined or keycloak_ip == ""
+    keycloak_ip: "{{ keycloak_ip_cmd.stdout | trim }}"
 
 - name: Add keycloak user to /etc/hosts
   lineinfile:
     state: present
     dest: /etc/hosts
-    line: '127.0.0.1 {{ keycloak_ip }}'
+    line: '{{ keycloak_ip }} keycloak'
     unsafe_writes: yes
