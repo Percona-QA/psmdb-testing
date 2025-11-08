@@ -1,57 +1,15 @@
 import pytest
 import pymongo
 import time
-import docker
-import threading
 
-from cluster import Cluster
-from clustersync import Clustersync
-from data_integrity_check import compare_data_rs
+from data_integrity_check import compare_data
 
-
-@pytest.fixture(scope="module")
-def docker_client():
-    return docker.from_env()
-
-@pytest.fixture(scope="module")
-def dstRS():
-    return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]})
-
-@pytest.fixture(scope="module")
-def srcRS():
-    return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]})
-
-@pytest.fixture(scope="module")
-def csync(srcRS,dstRS):
-    return Clustersync('csync',srcRS.csync_connection, dstRS.csync_connection)
-
-@pytest.fixture(scope="function")
-def start_cluster(srcRS, dstRS, csync, request):
-    try:
-        srcRS.destroy()
-        dstRS.destroy()
-        csync.destroy()
-        src_create_thread = threading.Thread(target=srcRS.create)
-        dst_create_thread = threading.Thread(target=dstRS.create)
-        src_create_thread.start()
-        dst_create_thread.start()
-        src_create_thread.join()
-        dst_create_thread.join()
-        csync.create()
-        yield True
-    finally:
-        if request.config.getoption("--verbose"):
-            logs = csync.logs()
-            print(f"\n\ncsync Last 50 Logs for csync:\n{logs}\n\n")
-        srcRS.destroy()
-        dstRS.destroy()
-        csync.destroy()
-
+@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_rs_csync_PML_T50(start_cluster, srcRS, dstRS, csync):
+def test_csync_PML_T50(start_cluster, src_cluster, dst_cluster, csync):
     """Test for array slicing, reversing, filtering, extending, pull, push, concat+slice, nested array updates"""
-    src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
+    src = pymongo.MongoClient(src_cluster.connection)
+    dst = pymongo.MongoClient(dst_cluster.connection)
     db, coll = "pipeline_test_db", "array_operations"
     collection = src[db][coll]
     collection.insert_many([
@@ -119,14 +77,15 @@ def test_rs_csync_PML_T50(start_cluster, srcRS, dstRS, csync):
     assert dst[db][coll].find_one({"_id": 12})["arr"] == ["A", "B"]
     assert dst[db][coll].find_one({"_id": 13})["arr"] == ["A", "X", "Y", "B"]
     assert dst[db][coll].find_one({"_id": 14})["doubled"] == [2, 4, 6]
-    assert compare_data_rs(srcRS, dstRS)[0]
+    assert compare_data(src_cluster, dst_cluster)[0]
     assert csync.check_csync_errors()[0]
 
+@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_rs_csync_PML_T51(start_cluster, srcRS, dstRS, csync):
+def test_csync_PML_T51(start_cluster, src_cluster, dst_cluster, csync):
     """Test for nested path updates, replaceRoot, array mutations, reduce, objectToArray"""
-    src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
+    src = pymongo.MongoClient(src_cluster.connection)
+    dst = pymongo.MongoClient(dst_cluster.connection)
     db, coll = "pipeline_test_db", "structural_changes"
     collection = src[db][coll]
     collection.insert_many([
@@ -221,14 +180,15 @@ def test_rs_csync_PML_T51(start_cluster, srcRS, dstRS, csync):
     doc = dst[db][coll].find_one({"_id": 14})
     assert isinstance(doc["arr_form"], list)
     assert doc["reconstructed"] == {"a": 1, "b": 2}
-    assert compare_data_rs(srcRS, dstRS)[0]
+    assert compare_data(src_cluster, dst_cluster)[0]
     assert csync.check_csync_errors()[0]
 
+@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_rs_csync_PML_T52(start_cluster, srcRS, dstRS, csync):
+def test_csync_PML_T52(start_cluster, src_cluster, dst_cluster, csync):
     """Test for $mergeObjects, $replaceWith, $let, $type, $switch, $cond"""
-    src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
+    src = pymongo.MongoClient(src_cluster.connection)
+    dst = pymongo.MongoClient(dst_cluster.connection)
     db, coll = "pipeline_test_db", "extra_operations"
     collection = src[db][coll]
     collection.insert_many([
@@ -310,7 +270,7 @@ def test_rs_csync_PML_T52(start_cluster, srcRS, dstRS, csync):
     doc3 = dst[db][coll].find_one({"_id": 10})
     assert doc3["quoted"] == {"$expr": {"$eq": ["$x", 5]}}
     assert doc3["escaped"] == "$config.nested.key"
-    result, summary = compare_data_rs(srcRS, dstRS)
+    result, summary = compare_data(src_cluster, dst_cluster)
     if not result:
         critical_mismatches = {"record count mismatch", "missing in dst DB", "missing in src DB"}
         has_critical = any(mismatch[1] in critical_mismatches for mismatch in summary)
@@ -318,11 +278,12 @@ def test_rs_csync_PML_T52(start_cluster, srcRS, dstRS, csync):
             pytest.fail("Critical mismatch found:\n" + "\n".join(str(m) for m in summary))
     assert csync.check_csync_errors()[0]
 
+@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_rs_csync_PML_T53(start_cluster, srcRS, dstRS, csync):
+def test_csync_PML_T53(start_cluster, src_cluster, dst_cluster, csync):
     """Test for $addFields, $project in updateMany and upsert=True with pipeline"""
-    src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
+    src = pymongo.MongoClient(src_cluster.connection)
+    dst = pymongo.MongoClient(dst_cluster.connection)
     db, coll = "pipeline_test_db", "misc_pipeline_stages"
     collection = src[db][coll]
     collection.insert_many([
@@ -347,14 +308,15 @@ def test_rs_csync_PML_T53(start_cluster, srcRS, dstRS, csync):
     upserted_doc = dst[db][coll].find_one({"_id": 99})
     assert upserted_doc["note"] == "inserted via upsert"
     assert "ts" in upserted_doc
-    assert compare_data_rs(srcRS, dstRS)[0]
+    assert compare_data(src_cluster, dst_cluster)[0]
     assert csync.check_csync_errors()[0]
 
+@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_rs_csync_PML_T54(start_cluster, srcRS, dstRS, csync):
+def test_csync_PML_T54(start_cluster, src_cluster, dst_cluster, csync):
     """Test for documents with '.' and '$' in field names."""
-    src = pymongo.MongoClient(srcRS.connection)
-    dst = pymongo.MongoClient(dstRS.connection)
+    src = pymongo.MongoClient(src_cluster.connection)
+    dst = pymongo.MongoClient(dst_cluster.connection)
     db, coll = "pipeline_test_db", "special_char_fields"
     collection = src[db][coll]
     collection.insert_one({
@@ -372,7 +334,7 @@ def test_rs_csync_PML_T54(start_cluster, srcRS, dstRS, csync):
         assert doc_dst is not None
         assert doc_dst.get("field.with.dot") == "updated_dot"
         assert doc_dst.get("field$with$dollar") == "updated_dollar"
-        assert compare_data_rs(srcRS, dstRS)[0]
+        assert compare_data(src_cluster, dst_cluster)[0]
     except AssertionError:
         pytest.xfail("Known limitation: PCSM-139")
     assert csync.check_csync_errors()[0]

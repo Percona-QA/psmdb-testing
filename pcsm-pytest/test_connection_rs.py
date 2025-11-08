@@ -7,7 +7,7 @@ import threading
 from cluster import Cluster
 from clustersync import Clustersync
 from data_generator import create_all_types_db, stop_all_crud_operations
-from data_integrity_check import compare_data_rs
+from data_integrity_check import compare_data
 
 @pytest.fixture(scope="module")
 def docker_client():
@@ -108,11 +108,9 @@ def test_rs_csync_PML_T45(start_cluster, srcRS, dstRS, csync, docker_client):
     """
     try:
         _, operation_threads_1 = create_all_types_db(srcRS.connection, "init_test_db", start_crud=True)
-        result = csync.start()
-        assert result is True, "Failed to start csync service"
+        assert csync.start(), "Failed to start csync service"
         _, operation_threads_2 = create_all_types_db(srcRS.connection, "clone_test_db", start_crud=True)
-        result = csync.wait_for_repl_stage()
-        assert result is True, "Failed to start replication stage"
+        assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         # Check if all connections from PCSM are using correct appName
         csync_container = docker_client.containers.get('csync')
         csync_network = list(csync_container.attrs['NetworkSettings']['Networks'].values())[0]
@@ -143,11 +141,9 @@ def test_rs_csync_PML_T45(start_cluster, srcRS, dstRS, csync, docker_client):
             all_threads += operation_threads_3
         for thread in all_threads:
             thread.join()
-    result = csync.wait_for_zero_lag()
-    assert result is True, "Failed to catch up on replication"
-    result = csync.finalize()
-    assert result is True, "Failed to finalize csync service"
-    result, _ = compare_data_rs(srcRS, dstRS)
+    assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+    assert csync.finalize(), "Failed to finalize csync service"
+    result, _ = compare_data(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
     csync_error, error_logs = csync.check_csync_errors()
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"

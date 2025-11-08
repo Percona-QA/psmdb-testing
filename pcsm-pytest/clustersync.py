@@ -53,8 +53,24 @@ class Clustersync:
         except docker.errors.NotFound:
             pass
 
+    def _wait_for_http_server(self, timeout=30):
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                result = self.container.exec_run("curl -s -m 2 http://localhost:2242/status -d '{}'")
+                if result.exit_code == 0:
+                    return True
+            except Exception:
+                pass
+            time.sleep(0.1)
+        Cluster.log(f"HTTP server not ready after {timeout} seconds")
+        return False
+
     def start(self, include_namespaces=None, exclude_namespaces=None, mode="http"):
         try:
+            if not self._wait_for_http_server():
+                Cluster.log("Failed to connect to HTTP server - server may not be ready")
+                return False
             if mode == "cli":
                 Cluster.log("Using CLI Mode")
                 args = []
@@ -296,7 +312,8 @@ class Clustersync:
 
     def wait_for_zero_lag(self, timeout=120, interval=1):
         start_time = time.time()
-        last_events_processed = None
+        last_events_read = None
+        last_events_applied = None
         counter = 0
 
         try:
@@ -325,7 +342,8 @@ class Clustersync:
 
             status_data = status_response["data"]
             last_repl_op = status_data.get("lastReplicatedOpTime", {}).get("ts")
-            current_events_processed = status_data.get("eventsProcessed")
+            current_events_read = status_data.get("eventsRead")
+            current_events_applied = status_data.get("eventsApplied")
 
             if last_repl_op is None:
                 Cluster.log("Error: No 'lastReplicatedOpTime' field found in status response")
@@ -342,22 +360,26 @@ class Clustersync:
                 return False
 
             if last_ts >= cluster_time:
-                Cluster.log(f"Src and dst are in sync: last repl TS {last_ts} >= cluster time {cluster_time}")
+                Cluster.log(f"Src and dst are in sync: last repl TS {last_ts} >= cluster time {cluster_time}, "
+                            f"eventsRead={current_events_read}, eventsApplied={current_events_applied}")
                 return True
 
-            if cluster_time.time == last_ts.time + 1:
-                if last_events_processed is not None and current_events_processed == last_events_processed:
+            if cluster_time.time <= last_ts.time + 2:
+                if (last_events_read is not None and last_events_applied is not None and
+                    current_events_read == last_events_read and
+                    current_events_applied == last_events_applied):
                     counter += 1
                     if counter >= 5:
-                        Cluster.log(f"Src and dst are in sync: 1s lag detected but no new events, "
+                        Cluster.log(f"Src and dst are in sync: 1-2s lag detected but eventsApplied=eventsRead and unchanged, "
                                 f"last repl TS {last_ts}, cluster time {cluster_time}, "
-                                f"eventsProcessed={current_events_processed}, last_eventsProcessed={last_events_processed}")
+                                f"eventsRead={current_events_read}, eventsApplied={current_events_applied}")
                         return True
                 else:
                     counter = 0
             else:
                 counter = 0
-            last_events_processed = current_events_processed
+            last_events_read = current_events_read
+            last_events_applied = current_events_applied
             time.sleep(interval)
 
         Cluster.log("Error: Timeout reached while waiting for replication to catch up")

@@ -31,7 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         psmdb: ["6.0", "7.0", "8.0"]
-        shard: [0, 1]
+        shard: [0, 1, 2, 3, 4]
     env:
       PCSM_BRANCH: ${{ github.event.inputs.pcsm_branch || 'main' }}
       GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
@@ -45,7 +45,7 @@ jobs:
       working-directory: ./pcsm-pytest
     - name: Run pytest shard ${{ matrix.shard }} on PSMDB ${{ matrix.psmdb }} and PCSM branch ${{ env.PCSM_BRANCH }}
       run: |
-        docker compose run --rm test pytest -s -v --junitxml=junit.xml --shard-id=${{ matrix.shard }} --num-shards=2 -m 'not jenkins'
+        docker compose run --rm test pytest -s -v --junitxml=junit.xml --shard-id=${{ matrix.shard }} --num-shards=5 -m 'not jenkins'
       working-directory: ./pcsm-pytest
     - name: Publish Test Report
       uses: mikepenz/action-junit-report@v5

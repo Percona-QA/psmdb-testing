@@ -4,27 +4,42 @@ from pymongo.errors import PyMongoError
 
 from cluster import Cluster
 
-def compare_data_rs(db1, db2):
+def compare_data(db1, db2):
+    """
+    Unified function to compare data between two MongoDB setups,
+    works with both replica set and sharded clusters
+    """
     def resolve_container_or_uri(db):
         if hasattr(db, "connection"):
             return db.connection
         elif isinstance(db, str) and (db.startswith("mongodb://") or db.startswith("mongodb+srv://")):
             return db
+        return None
 
     db1_container = resolve_container_or_uri(db1)
     db2_container = resolve_container_or_uri(db2)
+    if db1_container is None or db2_container is None:
+        raise ValueError("Invalid database argument: must be cluster object or connection string")
 
-    all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1_container, db2_container)
-    all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1_container, db2_container)
-    mismatch_metadata = compare_collection_metadata(db1_container, db2_container)
-    mismatch_indexes = compare_collection_indexes(db1_container, db2_container, all_coll_hash)
+    is_sharded = False
+    if hasattr(db1, "layout") and db1.layout == "sharded":
+        is_sharded = True
+    elif hasattr(db2, "layout") and db2.layout == "sharded":
+        is_sharded = True
 
     mismatch_summary = []
+    # Hash mismatch is only checked for replica sets, not sharded clusters
+    if not is_sharded:
+        all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1_container, db2_container)
+        if mismatch_dbs_hash:
+            mismatch_summary.extend(mismatch_dbs_hash)
+        if mismatch_coll_hash:
+            mismatch_summary.extend(mismatch_coll_hash)
 
-    if mismatch_dbs_hash:
-        mismatch_summary.extend(mismatch_dbs_hash)
-    if mismatch_coll_hash:
-        mismatch_summary.extend(mismatch_coll_hash)
+    all_collections, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1_container, db2_container)
+    mismatch_metadata = compare_collection_metadata(db1_container, db2_container)
+    mismatch_indexes = compare_collection_indexes(db1_container, db2_container, all_collections)
+
     if mismatch_dbs_count:
         mismatch_summary.extend(mismatch_dbs_count)
     if mismatch_coll_count:
@@ -34,27 +49,17 @@ def compare_data_rs(db1, db2):
     if mismatch_indexes:
         mismatch_summary.extend(mismatch_indexes)
 
+    if is_sharded:
+        mismatch_sharding = compare_collection_sharding(db1_container, db2_container, all_collections)
+        if mismatch_sharding:
+            mismatch_summary.extend(mismatch_sharding)
+
     if not mismatch_summary:
         Cluster.log("Data and indexes are consistent between source and destination databases")
         return True, []
 
     Cluster.log(f"Mismatched databases, collections, or indexes found: {mismatch_summary}")
     return False, mismatch_summary
-
-def compare_data_sharded(db1, db2):
-    db1_container = db1.connection
-    db2_container = db2.connection
-
-    all_collections, mismatched_dbs, mismatched_collections = compare_entries_number(db1_container, db2_container)
-
-    mismatched_indexes = compare_collection_indexes(db1_container, db2_container, all_collections)
-
-    if not mismatched_dbs and not mismatched_collections and not mismatched_indexes:
-        Cluster.log("Data and indexes are consistent between source and destination databases")
-        return True
-    else:
-        Cluster.log("Mismatched databases, collections, or indexes found")
-    return False
 
 def compare_database_hashes(db1_container, db2_container):
     def get_db_hashes_and_collections(uri):
@@ -283,3 +288,58 @@ def get_indexes(uri, collection_name):
         ], key=lambda x: x["name"])
     except PyMongoError:
         return []
+
+def compare_collection_sharding(db1_container, db2_container, all_collections):
+    Cluster.log("Comparing collection sharding information...")
+    mismatched_sharding = []
+
+    def get_sharding_info(uri):
+        client = MongoClient(uri)
+        sharding_info = {}
+        try:
+            config_db = client.get_database("config")
+            collection_names = config_db.list_collection_names()
+            if "collections" in collection_names:
+                for coll_doc in config_db["collections"].find({}):
+                    ns = coll_doc.get("_id")
+                    if ns:
+                        sharding_info[ns] = {
+                            "key": coll_doc.get("key"),
+                            "unique": coll_doc.get("unique", False)}
+            else:
+                Cluster.log("Warning: No sharded collections found")
+        except PyMongoError as e:
+            Cluster.log(f"Warning: Could not access sharding info: {str(e)}")
+        return sharding_info
+
+    db1_sharding = get_sharding_info(db1_container)
+    db2_sharding = get_sharding_info(db2_container)
+
+    for coll_name in all_collections:
+        db1_info = db1_sharding.get(coll_name)
+        db2_info = db2_sharding.get(coll_name)
+
+        db1_is_sharded = db1_info is not None and db1_info.get("key") is not None
+        db2_is_sharded = db2_info is not None and db2_info.get("key") is not None
+
+        if db1_is_sharded != db2_is_sharded:
+            mismatched_sharding.append((coll_name, "sharding status mismatch"))
+            Cluster.log(f"Collection '{coll_name}': sharded={db1_is_sharded} in source, sharded={db2_is_sharded} in destination")
+            continue
+
+        if db1_is_sharded and db2_is_sharded:
+            db1_key = db1_info.get("key")
+            db2_key = db2_info.get("key")
+            if db1_key != db2_key:
+                mismatched_sharding.append((coll_name, "shard key mismatch"))
+                Cluster.log(f"Collection '{coll_name}': shard key mismatch")
+                Cluster.log(f"Source_DB shard key: {json.dumps(db1_key, indent=2)}")
+                Cluster.log(f"Destination_DB shard key: {json.dumps(db2_key, indent=2)}")
+
+            db1_unique = db1_info.get("unique", False)
+            db2_unique = db2_info.get("unique", False)
+            if db1_unique != db2_unique:
+                mismatched_sharding.append((coll_name, "shard key unique flag mismatch"))
+                Cluster.log(f"Collection '{coll_name}': shard key unique flag mismatch: {db1_unique} != {db2_unique}")
+
+    return mismatched_sharding

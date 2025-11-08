@@ -1,6 +1,5 @@
 import pytest
 import pymongo
-import docker
 import uuid
 import datetime
 import random
@@ -9,53 +8,15 @@ import threading
 from bson import ObjectId, Decimal128, Binary, DBRef, Timestamp
 from bson.binary import UUID_SUBTYPE
 from cluster import Cluster
-from clustersync import Clustersync
-from data_integrity_check import compare_data_rs
+from data_integrity_check import compare_data
 
-@pytest.fixture(scope="module")
-def docker_client():
-    return docker.from_env()
-
-@pytest.fixture(scope="module")
-def dstRS():
-    return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]})
-
-@pytest.fixture(scope="module")
-def srcRS():
-    return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]})
-
-@pytest.fixture(scope="module")
-def csync(srcRS,dstRS):
-    return Clustersync('csync',srcRS.csync_connection, dstRS.csync_connection)
-
-@pytest.fixture(scope="function")
-def start_cluster(srcRS, dstRS, csync, request):
-    try:
-        srcRS.destroy()
-        dstRS.destroy()
-        csync.destroy()
-        src_create_thread = threading.Thread(target=srcRS.create)
-        dst_create_thread = threading.Thread(target=dstRS.create)
-        src_create_thread.start()
-        dst_create_thread.start()
-        src_create_thread.join()
-        dst_create_thread.join()
-        csync.create()
-        yield True
-    finally:
-        if request.config.getoption("--verbose"):
-            logs = csync.logs()
-            print(f"\n\ncsync Last 50 Logs for csync:\n{logs}\n\n")
-        srcRS.destroy()
-        dstRS.destroy()
-        csync.destroy()
-
+@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300,func_only=True)
-def test_rs_csync_PML_T32(start_cluster, srcRS, dstRS, csync):
+def test_csync_PML_T32(start_cluster, src_cluster, dst_cluster, csync):
     """
     Test case with various edge cases IDs
     """
-    src = pymongo.MongoClient(srcRS.connection)
+    src = pymongo.MongoClient(src_cluster.connection)
 
     db = src["stress_test_db"]
     collections_meta = [
@@ -135,19 +96,20 @@ def test_rs_csync_PML_T32(start_cluster, srcRS, dstRS, csync):
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
     assert csync.finalize(), "Failed to finalize csync service"
 
-    result, _ = compare_data_rs(srcRS, dstRS)
+    result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
 
     csync_error, error_logs = csync.check_csync_errors()
     assert csync_error is True, f"Csync reported errors: {error_logs}"
 
+@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
 @pytest.mark.parametrize("id_type", ["float", "decimal"])
-def test_rs_csync_PML_T34(start_cluster, srcRS, dstRS, csync, id_type):
+def test_csync_PML_T34(start_cluster, src_cluster, dst_cluster, csync, id_type):
     """
     Test case with NaN ID
     """
-    src = pymongo.MongoClient(srcRS.connection)
+    src = pymongo.MongoClient(src_cluster.connection)
 
     db = src["stress_test_db"]
     collections_meta = [
@@ -199,7 +161,7 @@ def test_rs_csync_PML_T34(start_cluster, srcRS, dstRS, csync, id_type):
         ("stress_test_db", "hash mismatch"),
         ("stress_test_db.regular_coll_pre", "hash mismatch")]
 
-    result, summary = compare_data_rs(srcRS, dstRS)
+    result, summary = compare_data(src_cluster, dst_cluster)
     if not result:
         unexpected = [m for m in summary if m not in expected_mismatches]
         missing_expected = [m for m in expected_mismatches if m not in summary]

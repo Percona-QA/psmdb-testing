@@ -206,7 +206,11 @@ class Cluster:
             num_containers += sum(len(shard['members']) for shard in config['shards'])
             num_containers += 1  # for mongos
         mem_per_container = mem_pool // num_containers
-        return mem_per_container // 2 # account for 2 clusters running in parallel during tests
+        # account for 2 clusters running in parallel
+        calculated_limit = int((mem_per_container // 2))
+        # set minimum memory limit for systems with low resources
+        min_mem_limit = int(3 * 1024 * 1024 * 1024)
+        return max(calculated_limit, min_mem_limit)
 
     # configures and starts all docker-containers, creates necessary layout, setups athorization
     def create(self):
