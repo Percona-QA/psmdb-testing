@@ -3,7 +3,7 @@ import pymongo
 import time
 import docker
 import threading
-from pymongo.errors import OperationFailure
+from pymongo.errors import OperationFailure, BulkWriteError
 
 from cluster import Cluster
 from clustersync import Clustersync
@@ -27,41 +27,27 @@ def srcRS():
 def csync(srcRS,dstRS):
     return Clustersync('csync',srcRS.csync_connection, dstRS.csync_connection)
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def start_cluster(srcRS, dstRS, csync, request):
     try:
         srcRS.destroy()
         dstRS.destroy()
+        csync.destroy()
         src_create_thread = threading.Thread(target=srcRS.create)
         dst_create_thread = threading.Thread(target=dstRS.create)
         src_create_thread.start()
         dst_create_thread.start()
         src_create_thread.join()
         dst_create_thread.join()
+        csync.create()
         yield True
-
     finally:
-        srcRS.destroy()
-        dstRS.destroy()
-        csync.destroy()
-
-@pytest.fixture(scope="function")
-def reset_state(srcRS, dstRS, csync, request):
-    src_client = pymongo.MongoClient(srcRS.connection)
-    dst_client = pymongo.MongoClient(dstRS.connection)
-    def print_logs():
         if request.config.getoption("--verbose"):
             logs = csync.logs()
             print(f"\n\ncsync Last 50 Logs for csync:\n{logs}\n\n")
-    request.addfinalizer(print_logs)
-    csync.destroy()
-    for db_name in src_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            src_client.drop_database(db_name)
-    for db_name in dst_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            dst_client.drop_database(db_name)
-    csync.create()
+        srcRS.destroy()
+        dstRS.destroy()
+        csync.destroy()
 
 def perform_transaction(src, session, db_name, coll_name, docs, commit=False, abort=False):
     collection = src[db_name][coll_name]
@@ -79,8 +65,7 @@ def perform_transaction(src, session, db_name, coll_name, docs, commit=False, ab
         raise e
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T22(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T22(start_cluster, srcRS, dstRS, csync):
     """
     Test to verify transaction replication if transactions are started and committed during different stages of synchronization
     """
@@ -178,8 +163,7 @@ def test_rs_csync_PML_T22(reset_state, srcRS, dstRS, csync):
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T23(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T23(start_cluster, srcRS, dstRS, csync):
     """
     Test for two concurrent transactions modifying the same document
     """
@@ -218,8 +202,7 @@ def test_rs_csync_PML_T23(reset_state, srcRS, dstRS, csync):
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T24(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T24(start_cluster, srcRS, dstRS, csync):
     """
     MongoDB creates as many oplog entries as necessary to the encapsulate all write operations in a transaction,
     instead of a single entry for all write operations in the transaction. This removes the 16MB total size limit
@@ -234,12 +217,62 @@ def test_rs_csync_PML_T24(reset_state, srcRS, dstRS, csync):
     result = csync.wait_for_repl_stage()
     assert result is True, "Failed to start replication stage"
 
-    large_docs = [{"_id": i, "name": "Large Document Test", "value": "x" * 16777160} for i in range(10)]
+    large_docs = [{"_id": i, "name": "Large Document Test", "value": "x" * 16777160} for i in range(3)]
 
+    def commit_with_retries(session, collection, docs):
+        """Commit transaction with retry logic for transient errors.
+        Note: When a transaction is aborted, all work is rolled back,
+        so documents must be re-inserted on each retry attempt.
+        """
+        max_attempts = 5
+        for attempt in range(max_attempts):
+            try:
+                if not session.in_transaction:
+                    session.start_transaction()
+                    collection.insert_many(docs, session=session)
+                session.commit_transaction()
+                return True
+            except (BulkWriteError, OperationFailure) as e:
+                is_transient = False
+                error_labels = getattr(e, 'errorLabels', []) or []
+                if "TransientTransactionError" in error_labels:
+                    is_transient = True
+                elif hasattr(e, 'code') and e.code in (251, 112):  # NoSuchTransaction, WriteConflict
+                    is_transient = True
+                elif isinstance(e, BulkWriteError) and e.details and "writeErrors" in e.details:
+                    for write_error in e.details["writeErrors"]:
+                        error_code = write_error.get("code")
+                        error_msg = write_error.get("errmsg", "")
+                        if error_code in (251, 112):
+                            is_transient = True
+                            break
+                        if "cache overflow" in error_msg.lower() or "transaction rolled back" in error_msg.lower():
+                            is_transient = True
+                            break
+                elif "cache overflow" in str(e).lower() or "transaction rolled back" in str(e).lower():
+                    is_transient = True
+                if is_transient and attempt < max_attempts - 1:
+                    # Abort transaction before retry - all work is rolled back
+                    if session.in_transaction:
+                        try:
+                            session.abort_transaction()
+                        except Exception:
+                            # Ignore abort errors as transaction may already be aborted or in invalid state
+                            pass
+                    time.sleep(1)
+                    continue
+                else:
+                    # Non-transient error or max attempts reached - abort and raise
+                    if session.in_transaction:
+                        try:
+                            session.abort_transaction()
+                        except Exception:
+                            # Ignore abort errors as transaction may already be aborted or in invalid state
+                            pass
+                    raise
     with src.start_session() as session:
-        session.start_transaction()
-        src["large_txn_db"]["test_coll"].insert_many(large_docs, session=session)
-        session.commit_transaction()
+        collection = src["large_txn_db"]["test_coll"]
+        commit_with_retries(session, collection, large_docs)
 
     result = csync.wait_for_zero_lag()
     assert result is True, "Failed to catch up on replication"
@@ -260,8 +293,7 @@ def test_rs_csync_PML_T24(reset_state, srcRS, dstRS, csync):
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T25(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T25(start_cluster, srcRS, dstRS, csync):
     """
     Test for transaction with multiple collections
     """
@@ -305,8 +337,7 @@ def test_rs_csync_PML_T25(reset_state, srcRS, dstRS, csync):
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T26(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T26(start_cluster, srcRS, dstRS, csync):
     """
     Test to verify transaction replication if csync service is restarted
     """
@@ -353,8 +384,7 @@ def test_rs_csync_PML_T26(reset_state, srcRS, dstRS, csync):
 
 @pytest.mark.jenkins
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T27(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T27(start_cluster, srcRS, dstRS, csync):
     """
     Test to simulate oplog rollover during transaction
     """

@@ -79,43 +79,30 @@ def csync(srcRS, dstRS, csync_connection_options, request):
     request.addfinalizer(cleanup)
     return csync_instance
 
-@pytest.fixture(scope="module")
-def start_cluster(srcRS, dstRS):
+@pytest.fixture(scope="function")
+def start_cluster(srcRS, dstRS, csync, request):
     try:
         srcRS.destroy()
         dstRS.destroy()
+        csync.destroy()
         src_create_thread = threading.Thread(target=srcRS.create)
         dst_create_thread = threading.Thread(target=dstRS.create)
         src_create_thread.start()
         dst_create_thread.start()
         src_create_thread.join()
         dst_create_thread.join()
+        csync.create()
         yield True
     finally:
-        srcRS.destroy()
-        dstRS.destroy()
-
-@pytest.fixture(scope="function")
-def reset_state(srcRS, dstRS, csync, request):
-    src_client = pymongo.MongoClient(srcRS.connection)
-    dst_client = pymongo.MongoClient(dstRS.connection)
-    def print_logs():
         if request.config.getoption("--verbose"):
             logs = csync.logs()
             print(f"\n\ncsync Last 50 Logs for csync:\n{logs}\n\n")
-    request.addfinalizer(print_logs)
-    csync.destroy()
-    for db_name in src_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            src_client.drop_database(db_name)
-    for db_name in dst_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            dst_client.drop_database(db_name)
-    csync.create()
+        srcRS.destroy()
+        dstRS.destroy()
+        csync.destroy()
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T45(reset_state, srcRS, dstRS, csync, docker_client):
+def test_rs_csync_PML_T45(start_cluster, srcRS, dstRS, csync, docker_client):
     """
     Test to check PCSM connection to DB with different URI options
     """

@@ -79,7 +79,7 @@ def test_sharded_csync_basic(start_cluster, srcCluster, dstCluster, csync):
         stop_all_crud_operations()
         for t in operation_threads_1 + operation_threads_2 + operation_threads_3:
             t.join()
-    assert csync.wait_for_zero_lag(), "Failed to catch up on replication after resuming from failure"
+    assert csync.wait_for_zero_lag(timeout=180), "Failed to catch up on replication after resuming from failure"
     assert csync.finalize(), "Failed to finalize csync service"
 
     # This step is required to ensure that all data is synchronized
