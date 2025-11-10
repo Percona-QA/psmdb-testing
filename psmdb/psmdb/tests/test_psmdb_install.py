@@ -13,7 +13,6 @@ PRO_FEATURES = ['FIPSMode','FCBIS','OIDC']
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
 toolkit = os.environ.get("ENABLE_TOOLKIT")
-pro_build = os.environ.get("GATED_BUILD")
 
 def get_default_conf(node):
     with node.sudo():
@@ -125,9 +124,6 @@ def check_hotbackup(node):
     assert "1000" in result
 
 def test_pro_version(host):
-    if pro_build != "true":
-        pytest.skip("Skipping PSMDB PRO version check")
-
     result = host.run("/usr/bin/mongod --version")
     enabled_features = result.stdout.split('"proFeatures":')[1].split(']')[0]
 
@@ -145,14 +141,9 @@ def test_binary_symbol_visibility(host):
         assert file_result.rc == 0, f"file failed for {binary}"
         file_output = file_result.stdout.lower()
 
-        if pro_build == "true":
-            assert ".symtab" in readelf_result.stdout, f"{binary} is missing .symtab section (PRO build)"
-            assert ".strtab" in readelf_result.stdout, f"{binary} is missing .strtab section (PRO build)"
-            assert "not stripped" in file_output, f"{binary} should NOT be stripped (PRO build)"
-        else:
-            assert ".symtab" not in readelf_result.stdout, f"{binary} should NOT have .symtab (community build)"
-            assert ".strtab" not in readelf_result.stdout, f"{binary} should NOT have .strtab (community build)"
-            assert "not stripped" not in file_output, f"{binary} should be stripped (community build)"
+        assert ".symtab" not in readelf_result.stdout, f"{binary} should NOT have .symtab"
+        assert ".strtab" not in readelf_result.stdout, f"{binary} should NOT have .strtab"
+        assert "not stripped" not in file_output, f"{binary} should be stripped"
 
 def test_version_pt(host):
     if toolkit != "true" :
@@ -263,8 +254,6 @@ def test_profiling(host):
 
 @pytest.mark.parametrize("auth", ['LDAP','GSSAPI','MONGODB-AWS','MONGODB-OIDC'])
 def test_auth(host,auth):
-    if auth == 'MONGODB-OIDC' and pro_build != "true":
-        pytest.skip("Skipping MONGODB-OIDC test for community build")
 
     restore_defaults(host)
 
