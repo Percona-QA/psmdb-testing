@@ -14,7 +14,7 @@ BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
 tarball_url = os.environ["TARBALL"]
 match_exp_version = re.search(r'server-mongodb-(\d+\.\d+\.\d+-\d+)', tarball_url)
 
-JSTESTS = ['test_kerberos_simple.js','test_ldap_simple.js']
+JSTESTS = ['test_kerberos_simple.js','test_ldap_simple.js', 'test_oidc_simple.js']
 SUITES = ['multiversion_kmip', 'multiversion_vault']
 
 @pytest.mark.parametrize("binary", BINARIES)

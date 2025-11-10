@@ -78,3 +78,4 @@
     - role: '../../../roles/openldap'
     - role: '../../../roles/kmip-vault'
     - role: '../../../roles/kerberos-docker'
+    - role: '../../../roles/keycloak'
