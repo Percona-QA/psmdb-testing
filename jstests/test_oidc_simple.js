@@ -49,12 +49,12 @@
 
     const token_raw = MongoRunner.dataPath + "oidc_token.txt";
 
-    let token_command = runProgram("bash", "-lc",
+    assert.eq(0, runProgram("bash", "-lc",
       "curl --silent --show-error " +
       "-X POST 'https://keycloak:8443/realms/test/protocol/openid-connect/token' " +
       "-d 'grant_type=client_credentials&client_id=pbmclient&client_secret=pbm-secret' " +
       "| jq -r .access_token > " + token_raw
-    );
+    ));
 
     const token = cat(token_raw).trim();
 
