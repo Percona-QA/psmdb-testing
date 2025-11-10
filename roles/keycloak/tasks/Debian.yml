@@ -1,0 +1,10 @@
+- name: Install dependencies (Debian)
+  apt:
+    update_cache: yes
+    name:
+      - jq
+      - vim
+      - python3-docker
+    state: present
+  become: yes
+  when: ansible_os_family == "Debian"

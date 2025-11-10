@@ -1,0 +1,39 @@
+- name: Install pip (RedHat)
+  become: true
+  package:
+    name:
+      - jq
+      - python3-pip
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Create venv (RedHat)
+  become: true
+  command: /usr/bin/python3 -m venv /opt/ansible-venv
+  args:
+    creates: /opt/ansible-venv/bin/python
+  when: ansible_os_family == "RedHat"
+
+- name: Upgrade pip in venv (RedHat)
+  become: true
+  command: /opt/ansible-venv/bin/python -m pip install --upgrade pip
+  when: ansible_os_family == "RedHat"
+
+- name: Install packages in venv (RedHat)
+  become: true
+  command: /opt/ansible-venv/bin/python -m pip install --upgrade --ignore-installed docker requests
+  when: ansible_os_family == "RedHat"
+
+- name: Use venv interpreter (RedHat)
+  set_fact:
+    ansible_python_interpreter: /opt/ansible-venv/bin/python
+  when: ansible_os_family == "RedHat"
+
+- name: Install dependencies (Redhat)
+  yum:
+    update_cache: yes
+    name:
+      - krb5-workstation
+    state: present
+  become: yes
+  when: ansible_os_family == "RedHat"
