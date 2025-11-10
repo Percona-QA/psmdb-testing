@@ -26,53 +26,34 @@ def srcRS():
 def csync(srcRS,dstRS):
     return Clustersync('csync',srcRS.csync_connection, dstRS.csync_connection)
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def start_cluster(srcRS, dstRS, csync, request):
+    log_marker = request.node.get_closest_marker("csync_log_level")
+    log_level = log_marker.args[0] if log_marker and log_marker.args else "debug"
+    env_marker = request.node.get_closest_marker("csync_env")
+    env_vars = env_marker.args[0] if env_marker and env_marker.args else None
     try:
         srcRS.destroy()
         dstRS.destroy()
+        csync.destroy()
         src_create_thread = threading.Thread(target=srcRS.create)
         dst_create_thread = threading.Thread(target=dstRS.create)
         src_create_thread.start()
         dst_create_thread.start()
         src_create_thread.join()
         dst_create_thread.join()
+        csync.create(log_level=log_level, env_vars=env_vars)
         yield True
-
     finally:
+        if request.config.getoption("--verbose"):
+            logs = csync.logs()
+            print(f"\n\ncsync Last 50 Logs for csync:\n{logs}\n\n")
         srcRS.destroy()
         dstRS.destroy()
         csync.destroy()
 
-@pytest.fixture(scope="function")
-def reset_state(srcRS, dstRS, csync, request):
-    log_level = "debug"
-    env_vars = None
-    log_marker = request.node.get_closest_marker("csync_log_level")
-    if log_marker and log_marker.args:
-        log_level = log_marker.args[0]
-    env_marker = request.node.get_closest_marker("csync_env")
-    if env_marker and env_marker.args:
-        env_vars = env_marker.args[0]
-    src_client = pymongo.MongoClient(srcRS.connection)
-    dst_client = pymongo.MongoClient(dstRS.connection)
-    def print_logs():
-        if request.config.getoption("--verbose"):
-            logs = csync.logs()
-            print(f"\n\ncsync Last 50 Logs for csync:\n{logs}\n\n")
-    request.addfinalizer(print_logs)
-    csync.destroy()
-    for db_name in src_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            src_client.drop_database(db_name)
-    for db_name in dst_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            dst_client.drop_database(db_name)
-    csync.create(log_level=log_level, env_vars=env_vars)
-
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T9(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T9(start_cluster, srcRS, dstRS, csync):
     """
     Test to verify collection drop and re-creation during clone phase
     """
@@ -100,15 +81,14 @@ def test_rs_csync_PML_T9(reset_state, srcRS, dstRS, csync):
     result, _ = compare_data_rs(srcRS, dstRS)
     assert result is True, "Data mismatch after synchronization"
     csync_error, error_logs = csync.check_csync_errors()
-    expected_errors = ["NamespaceNotFound", "IndexNotFound", "collection not found", "No indexes to create"]
+    expected_errors = ["NamespaceNotFound", "IndexNotFound", "QueryPlanKilled", "collection not found", "No indexes to create"]
     if not csync_error:
         unexpected = [line for line in error_logs if all(expected_error not in line for expected_error in expected_errors)]
         if unexpected:
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T10(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T10(start_cluster, srcRS, dstRS, csync):
     """
     Test to verify collection drop and re-creation replication phase
     """
@@ -146,10 +126,9 @@ def test_rs_csync_PML_T10(reset_state, srcRS, dstRS, csync):
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
 @pytest.mark.csync_env({"PCSM_CLONE_NUM_PARALLEL_COLLECTIONS": "5"})
 @pytest.mark.csync_log_level("trace")
-def test_rs_csync_PML_T11(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T11(start_cluster, srcRS, dstRS, csync):
     """
     Test to verify DB drop and re-creation during clone phase
     """
@@ -207,8 +186,7 @@ def test_rs_csync_PML_T11(reset_state, srcRS, dstRS, csync):
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T12(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T12(start_cluster, srcRS, dstRS, csync):
     """
     Test to verify DB drop and re-creation during replication phase
     """

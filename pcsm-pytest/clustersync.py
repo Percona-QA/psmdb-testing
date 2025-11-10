@@ -144,16 +144,18 @@ class Clustersync:
     def restart(self, timeout=60, reset=False):
         if self.container:
             try:
+                start_log_time = int(time.time())
+                self.container.stop()
                 if reset and self.dst:
                     try:
                         src_client = pymongo.MongoClient(self.dst)
                         result = src_client["percona_clustersync_mongodb"].checkpoints.delete_many({})
-                        assert result.acknowledged
-                    except Exception:
-                        return False
-                start_log_time = int(time.time())
-                self.container.stop()
-                time.sleep(2)
+                        assert result.acknowledged, "Checkpoint deletion not acknowledged"
+                        result = src_client["percona_clustersync_mongodb"].heartbeats.delete_many({})
+                        assert result.acknowledged, "Heartbeat deletion not acknowledged"
+                        Cluster.log("Checkpoints and heartbeats deleted successfully")
+                    except Exception as e:
+                        Cluster.log(f"Warning: Failed to reset PCSM state: {e}. Continuing with restart anyway.")
                 self.container.start()
                 log_stream = self.container.logs(stream=True, follow=True, since=start_log_time)
                 start_time = time.time()

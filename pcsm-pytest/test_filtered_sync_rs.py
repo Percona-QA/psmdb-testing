@@ -1,5 +1,4 @@
 import pytest
-import pymongo
 import docker
 import re
 import threading
@@ -25,41 +24,27 @@ def srcRS():
 def csync(srcRS,dstRS):
     return Clustersync('csync',srcRS.csync_connection, dstRS.csync_connection)
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def start_cluster(srcRS, dstRS, csync, request):
     try:
         srcRS.destroy()
         dstRS.destroy()
+        csync.destroy()
         src_create_thread = threading.Thread(target=srcRS.create)
         dst_create_thread = threading.Thread(target=dstRS.create)
         src_create_thread.start()
         dst_create_thread.start()
         src_create_thread.join()
         dst_create_thread.join()
+        csync.create()
         yield True
-
     finally:
-        srcRS.destroy()
-        dstRS.destroy()
-        csync.destroy()
-
-@pytest.fixture(scope="function")
-def reset_state(srcRS, dstRS, csync, request):
-    src_client = pymongo.MongoClient(srcRS.connection)
-    dst_client = pymongo.MongoClient(dstRS.connection)
-    def print_logs():
         if request.config.getoption("--verbose"):
             logs = csync.logs()
             print(f"\n\ncsync Last 50 Logs for csync:\n{logs}\n\n")
-    request.addfinalizer(print_logs)
-    csync.destroy()
-    for db_name in src_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            src_client.drop_database(db_name)
-    for db_name in dst_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            dst_client.drop_database(db_name)
-    csync.create()
+        srcRS.destroy()
+        dstRS.destroy()
+        csync.destroy()
 
 def check_expected_logs(csync, expected_logs):
     logs = csync.logs(tail=1000)
@@ -69,7 +54,6 @@ def check_expected_logs(csync, expected_logs):
     return True
 
 @pytest.mark.timeout(300, func_only=True)
-@pytest.mark.usefixtures("start_cluster")
 @pytest.mark.parametrize(
     "include_namespaces, exclude_namespaces, skip_entries, skip_prefixes",
     [
@@ -83,7 +67,7 @@ def check_expected_logs(csync, expected_logs):
         ([], ["init_test_db.compound_indexes"],
                             [('init_test_db', 'hash mismatch')], ['init_test_db.compound_indexes']),
     ])
-def test_rs_csync_PML_T35(reset_state, srcRS, dstRS, csync, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes):
+def test_rs_csync_PML_T35(start_cluster, srcRS, dstRS, csync, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes):
     """
     Test to check PCSM functionality with include/exclude namespaces
     """
@@ -125,8 +109,7 @@ def test_rs_csync_PML_T35(reset_state, srcRS, dstRS, csync, include_namespaces, 
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
 @pytest.mark.timeout(300, func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T36(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T36(start_cluster, srcRS, dstRS, csync):
     """
     Test to check that PCSM correctly restores include/exclude filter after restart
     """
@@ -179,7 +162,6 @@ def test_rs_csync_PML_T36(reset_state, srcRS, dstRS, csync):
 
 
 @pytest.mark.timeout(300, func_only=True)
-@pytest.mark.usefixtures("start_cluster")
 @pytest.mark.parametrize(
     "include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, expected_logs",
     [
@@ -200,7 +182,7 @@ def test_rs_csync_PML_T36(reset_state, srcRS, dstRS, csync):
         (" ", " ", [], [], ['Collection "init_test_db.*" cloned', 'Collection "clone_test_db.*" cloned', 'Collection "repl_test_db.*" cloned'])
 
     ])
-def test_rs_csync_PML_T57(reset_state, srcRS, dstRS, csync, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, expected_logs):
+def test_rs_csync_PML_T57(start_cluster, srcRS, dstRS, csync, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, expected_logs):
     """
     Test to check PCSM CLI functionality with include/exclude namespaces
     """

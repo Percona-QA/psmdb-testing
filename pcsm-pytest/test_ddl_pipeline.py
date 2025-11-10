@@ -25,45 +25,30 @@ def srcRS():
 def csync(srcRS,dstRS):
     return Clustersync('csync',srcRS.csync_connection, dstRS.csync_connection)
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def start_cluster(srcRS, dstRS, csync, request):
     try:
         srcRS.destroy()
         dstRS.destroy()
+        csync.destroy()
         src_create_thread = threading.Thread(target=srcRS.create)
         dst_create_thread = threading.Thread(target=dstRS.create)
         src_create_thread.start()
         dst_create_thread.start()
         src_create_thread.join()
         dst_create_thread.join()
+        csync.create()
         yield True
-
     finally:
+        if request.config.getoption("--verbose"):
+            logs = csync.logs()
+            print(f"\n\ncsync Last 50 Logs for csync:\n{logs}\n\n")
         srcRS.destroy()
         dstRS.destroy()
         csync.destroy()
 
-@pytest.fixture(scope="function")
-def reset_state(srcRS, dstRS, csync, request):
-    src_client = pymongo.MongoClient(srcRS.connection)
-    dst_client = pymongo.MongoClient(dstRS.connection)
-    def print_logs():
-        if request.config.getoption("--verbose"):
-            logs = csync.logs()
-            print(f"\n\ncsync Last 50 Logs for csync:\n{logs}\n\n")
-    request.addfinalizer(print_logs)
-    csync.destroy()
-    for db_name in src_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            src_client.drop_database(db_name)
-    for db_name in dst_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            dst_client.drop_database(db_name)
-    csync.create()
-
 @pytest.mark.timeout(300, func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T50(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T50(start_cluster, srcRS, dstRS, csync):
     """Test for array slicing, reversing, filtering, extending, pull, push, concat+slice, nested array updates"""
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
@@ -138,8 +123,7 @@ def test_rs_csync_PML_T50(reset_state, srcRS, dstRS, csync):
     assert csync.check_csync_errors()[0]
 
 @pytest.mark.timeout(300, func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T51(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T51(start_cluster, srcRS, dstRS, csync):
     """Test for nested path updates, replaceRoot, array mutations, reduce, objectToArray"""
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
@@ -241,8 +225,7 @@ def test_rs_csync_PML_T51(reset_state, srcRS, dstRS, csync):
     assert csync.check_csync_errors()[0]
 
 @pytest.mark.timeout(300, func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T52(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T52(start_cluster, srcRS, dstRS, csync):
     """Test for $mergeObjects, $replaceWith, $let, $type, $switch, $cond"""
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
@@ -336,8 +319,7 @@ def test_rs_csync_PML_T52(reset_state, srcRS, dstRS, csync):
     assert csync.check_csync_errors()[0]
 
 @pytest.mark.timeout(300, func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T53(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T53(start_cluster, srcRS, dstRS, csync):
     """Test for $addFields, $project in updateMany and upsert=True with pipeline"""
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)
@@ -369,8 +351,7 @@ def test_rs_csync_PML_T53(reset_state, srcRS, dstRS, csync):
     assert csync.check_csync_errors()[0]
 
 @pytest.mark.timeout(300, func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T54(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T54(start_cluster, srcRS, dstRS, csync):
     """Test for documents with '.' and '$' in field names."""
     src = pymongo.MongoClient(srcRS.connection)
     dst = pymongo.MongoClient(dstRS.connection)

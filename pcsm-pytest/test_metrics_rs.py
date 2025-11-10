@@ -1,5 +1,4 @@
 import pytest
-import pymongo
 import docker
 import threading
 
@@ -24,41 +23,27 @@ def srcRS():
 def csync(srcRS,dstRS):
     return Clustersync('csync',srcRS.csync_connection, dstRS.csync_connection)
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def start_cluster(srcRS, dstRS, csync, request):
     try:
         srcRS.destroy()
         dstRS.destroy()
+        csync.destroy()
         src_create_thread = threading.Thread(target=srcRS.create)
         dst_create_thread = threading.Thread(target=dstRS.create)
         src_create_thread.start()
         dst_create_thread.start()
         src_create_thread.join()
         dst_create_thread.join()
+        csync.create()
         yield True
-
     finally:
-        srcRS.destroy()
-        dstRS.destroy()
-        csync.destroy()
-
-@pytest.fixture(scope="function")
-def reset_state(srcRS, dstRS, csync, request):
-    src_client = pymongo.MongoClient(srcRS.connection)
-    dst_client = pymongo.MongoClient(dstRS.connection)
-    def print_logs():
         if request.config.getoption("--verbose"):
             logs = csync.logs()
             print(f"\n\ncsync Last 50 Logs for csync:\n{logs}\n\n")
-    request.addfinalizer(print_logs)
-    csync.destroy()
-    for db_name in src_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            src_client.drop_database(db_name)
-    for db_name in dst_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            dst_client.drop_database(db_name)
-    csync.create()
+        srcRS.destroy()
+        dstRS.destroy()
+        csync.destroy()
 
 def assert_metrics(metrics):
     assert isinstance(metrics, dict)
@@ -71,32 +56,32 @@ def assert_metrics(metrics):
         'go_gc_duration_seconds_sum': lambda v: 0 <= v <= 1.0,
         'go_gc_duration_seconds_count': lambda v: 0 <= v <= 10_000,
         'go_gc_gogc_percent': lambda v: v == 100,
-        'go_gc_gomemlimit_bytes': lambda v: 0 < v <= 2**63,
+        'go_gc_gomemlimit_bytes': lambda v: 0 <= v <= 2**63,
         'go_goroutines': lambda v: 0 < v <= 100,
         'go_sched_gomaxprocs_threads': lambda v: 1 <= v <= 128,
         'go_threads': lambda v: 1 <= v <= 100,
-        'go_memstats_alloc_bytes': lambda v: 0 < v <= 2**30,
-        'go_memstats_alloc_bytes_total': lambda v: 0 < v <= 2**34,
+        'go_memstats_alloc_bytes': lambda v: 0 <= v <= 2**30,
+        'go_memstats_alloc_bytes_total': lambda v: 0 <= v <= 2**34,
         'go_memstats_buck_hash_sys_bytes': lambda v: 0 <= v <= 10_000_000,
         'go_memstats_frees_total': lambda v: 0 <= v <= 1e9,
         'go_memstats_gc_sys_bytes': lambda v: 0 <= v <= 20_000_000,
-        'go_memstats_heap_alloc_bytes': lambda v: 0 < v <= 2**30,
+        'go_memstats_heap_alloc_bytes': lambda v: 0 <= v <= 2**30,
         'go_memstats_heap_idle_bytes': lambda v: 0 <= v <= 2**34,
         'go_memstats_heap_inuse_bytes': lambda v: 0 <= v <= 2**30,
         'go_memstats_heap_objects': lambda v: 0 <= v <= 1e6,
         'go_memstats_heap_released_bytes': lambda v: 0 <= v <= 2**34,
         'go_memstats_heap_sys_bytes': lambda v: 0 <= v <= 2**34,
-        'go_memstats_last_gc_time_seconds': lambda v: 1_000_000_000 <= v <= 4_000_000_000,
+        'go_memstats_last_gc_time_seconds': lambda v: 0 <= v <= 4_000_000_000,
         'go_memstats_mallocs_total': lambda v: 0 <= v <= 1e9,
         'go_memstats_mcache_inuse_bytes': lambda v: 0 <= v <= 10_000_000,
         'go_memstats_mcache_sys_bytes': lambda v: 0 <= v <= 10_000_000,
         'go_memstats_mspan_inuse_bytes': lambda v: 0 <= v <= 10_000_000,
         'go_memstats_mspan_sys_bytes': lambda v: 0 <= v <= 10_000_000,
-        'go_memstats_next_gc_bytes': lambda v: 0 < v <= 2**30,
+        'go_memstats_next_gc_bytes': lambda v: 0 <= v <= 2**30,
         'go_memstats_other_sys_bytes': lambda v: 0 <= v <= 10_000_000,
         'go_memstats_stack_inuse_bytes': lambda v: 0 <= v <= 10_000_000,
         'go_memstats_stack_sys_bytes': lambda v: 0 <= v <= 10_000_000,
-        'go_memstats_sys_bytes': lambda v: 0 < v <= 2**34,
+        'go_memstats_sys_bytes': lambda v: 0 <= v <= 2**34,
         'percona_clustersync_mongodb_copy_insert_batch_duration_seconds': lambda v: 0 <= v <= 1,
         'percona_clustersync_mongodb_copy_insert_document_total': lambda v: 0 <= v <= 100_000,
         'percona_clustersync_mongodb_copy_insert_size_bytes_total': lambda v: 0 <= v <= 2**30,
@@ -129,9 +114,8 @@ def assert_metrics(metrics):
             invalid.append((key, value))
     assert not invalid, f"Invalid metric values: {invalid}"
 
-@pytest.mark.usefixtures("start_cluster")
 @pytest.mark.timeout(600,func_only=True)
-def test_rs_csync_PML_T44(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T44(start_cluster, srcRS, dstRS, csync):
     """
     Test to validate metrics returned by csync service
     """

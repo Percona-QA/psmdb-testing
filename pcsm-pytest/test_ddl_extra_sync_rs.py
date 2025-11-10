@@ -28,53 +28,34 @@ def srcRS():
 def csync(srcRS,dstRS):
     return Clustersync('csync',srcRS.csync_connection, dstRS.csync_connection)
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def start_cluster(srcRS, dstRS, csync, request):
+    log_marker = request.node.get_closest_marker("csync_log_level")
+    log_level = log_marker.args[0] if log_marker and log_marker.args else "debug"
+    env_marker = request.node.get_closest_marker("csync_env")
+    env_vars = env_marker.args[0] if env_marker and env_marker.args else None
     try:
         srcRS.destroy()
         dstRS.destroy()
+        csync.destroy()
         src_create_thread = threading.Thread(target=srcRS.create)
         dst_create_thread = threading.Thread(target=dstRS.create)
         src_create_thread.start()
         dst_create_thread.start()
         src_create_thread.join()
         dst_create_thread.join()
+        csync.create(log_level=log_level, env_vars=env_vars)
         yield True
-
     finally:
+        if request.config.getoption("--verbose"):
+            logs = csync.logs()
+            print(f"\n\ncsync Last 50 Logs for csync:\n{logs}\n\n")
         srcRS.destroy()
         dstRS.destroy()
         csync.destroy()
 
-@pytest.fixture(scope="function")
-def reset_state(srcRS, dstRS, csync, request):
-    log_level = "debug"
-    env_vars = None
-    log_marker = request.node.get_closest_marker("csync_log_level")
-    if log_marker and log_marker.args:
-        log_level = log_marker.args[0]
-    env_marker = request.node.get_closest_marker("csync_env")
-    if env_marker and env_marker.args:
-        env_vars = env_marker.args[0]
-    src_client = pymongo.MongoClient(srcRS.connection)
-    dst_client = pymongo.MongoClient(dstRS.connection)
-    def print_logs():
-        if request.config.getoption("--verbose"):
-            logs = csync.logs()
-            print(f"\n\ncsync Last 50 Logs for csync:\n{logs}\n\n")
-    request.addfinalizer(print_logs)
-    csync.destroy()
-    for db_name in src_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            src_client.drop_database(db_name)
-    for db_name in dst_client.list_database_names():
-        if db_name not in {"admin", "local", "config"}:
-            dst_client.drop_database(db_name)
-    csync.create(log_level=log_level, env_vars=env_vars)
-
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T13(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T13(start_cluster, srcRS, dstRS, csync):
     """
     Test collMod on collection with validator, validatorLevel, validatorAction
     """
@@ -126,8 +107,7 @@ def test_rs_csync_PML_T13(reset_state, srcRS, dstRS, csync):
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T14(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T14(start_cluster, srcRS, dstRS, csync):
     """
     Test collMod on collection with changeStreamPreAndPostImages
     """
@@ -174,8 +154,7 @@ def test_rs_csync_PML_T14(reset_state, srcRS, dstRS, csync):
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T15(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T15(start_cluster, srcRS, dstRS, csync):
     """
     Test collMod on view
     """
@@ -236,8 +215,7 @@ def test_rs_csync_PML_T15(reset_state, srcRS, dstRS, csync):
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T16(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T16(start_cluster, srcRS, dstRS, csync):
     """
     Test collMod on capped collection
     """
@@ -290,8 +268,7 @@ def test_rs_csync_PML_T16(reset_state, srcRS, dstRS, csync):
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T17(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T17(start_cluster, srcRS, dstRS, csync):
     """
     Test collMod on indexes: TTL, hidden, prepareUnique, unique, name, keyPattern
     """
@@ -368,8 +345,7 @@ def test_rs_csync_PML_T17(reset_state, srcRS, dstRS, csync):
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T18(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T18(start_cluster, srcRS, dstRS, csync):
     """
     Test collmod when converting to unique fails
     """
@@ -427,7 +403,6 @@ def test_rs_csync_PML_T18(reset_state, srcRS, dstRS, csync):
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
 @pytest.mark.csync_env({"PCSM_CLONE_NUM_PARALLEL_COLLECTIONS": "5"})
 @pytest.mark.csync_log_level("trace")
 @pytest.mark.parametrize(
@@ -442,7 +417,7 @@ def test_rs_csync_PML_T18(reset_state, srcRS, dstRS, csync):
         "rename_after_collection_created",
         "rename_during_batch_copy"
     ])
-def test_rs_csync_PML_T19(reset_state, srcRS, dstRS, csync, clone_stage_pattern):
+def test_rs_csync_PML_T19(start_cluster, srcRS, dstRS, csync, clone_stage_pattern):
     """
     Test to check renameCollection while collection is being cloned
     """
@@ -488,9 +463,8 @@ def test_rs_csync_PML_T19(reset_state, srcRS, dstRS, csync, clone_stage_pattern)
     assert result is True, "Data mismatch after synchronization"
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
 @pytest.mark.csync_env({"PCSM_CLONE_NUM_PARALLEL_COLLECTIONS": "5"})
-def test_rs_csync_PML_T20(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T20(start_cluster, srcRS, dstRS, csync):
     """
     Test to check renameCollection during data clone
     """
@@ -565,8 +539,7 @@ def test_rs_csync_PML_T20(reset_state, srcRS, dstRS, csync):
             pytest.fail("Unexpected mismatches:\n" + "\n".join(str(m) for m in unexpected_mismatches))
 
 @pytest.mark.timeout(300,func_only=True)
-@pytest.mark.usefixtures("start_cluster")
-def test_rs_csync_PML_T21(reset_state, srcRS, dstRS, csync):
+def test_rs_csync_PML_T21(start_cluster, srcRS, dstRS, csync):
     """
     Test to check renameCollection during repl stage
     """
