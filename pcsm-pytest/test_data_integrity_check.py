@@ -8,6 +8,7 @@ from data_integrity_check import compare_data
 def test_data_integrity_check_PML_T1(start_cluster, src_cluster, dst_cluster):
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
+    is_sharded = src_cluster.is_sharded and dst_cluster.is_sharded
 
     collections = [
         ("test_db1", "test_coll1"),
@@ -55,9 +56,6 @@ def test_data_integrity_check_PML_T1(start_cluster, src_cluster, dst_cluster):
 
     # Test 6: Record count mismatch
     dst["test_db1"]["test_coll7"].delete_one({"key": 9})
-
-    is_sharded = (hasattr(src_cluster, "layout") and src_cluster.layout == "sharded") or \
-                 (hasattr(dst_cluster, "layout") and dst_cluster.layout == "sharded")
 
     expected_mismatches = [
         ("test_db1.test_coll7", "record count mismatch"),
@@ -157,13 +155,9 @@ def test_data_integrity_check_PML_T1(start_cluster, src_cluster, dst_cluster):
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data should match again after reverting modifications"
 
-    is_sharded = (hasattr(src_cluster, "layout") and src_cluster.layout == "sharded")
     if is_sharded:
-        try:
-            src.admin.command("enableSharding", "test_db2")
-            dst.admin.command("enableSharding", "test_db2")
-        except pymongo.errors.OperationFailure:
-            pass
+        src.admin.command("enableSharding", "test_db2")
+        dst.admin.command("enableSharding", "test_db2")
 
         shard_test_data = [{"shard_key": i, "value": f"data_{i}"} for i in range(20)]
         src.admin.command("shardCollection", "test_db2.sharded_coll1", key={"shard_key": 1})

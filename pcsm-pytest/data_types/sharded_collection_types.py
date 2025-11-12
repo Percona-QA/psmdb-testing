@@ -1,10 +1,11 @@
 import pymongo
 import datetime
 import random
+import time
 from bson import ObjectId
 from pymongo.collation import Collation
 
-def create_sharded_collection_types(db, create_ts=False, drop_before_creation=False):
+def create_sharded_collection_types(db, create_ts=False, drop_before_creation=False, create_unique_sharded=False):
     collections_metadata = []
 
     if drop_before_creation:
@@ -12,12 +13,10 @@ def create_sharded_collection_types(db, create_ts=False, drop_before_creation=Fa
         db.drop_collection("sharded_hashed_key_collection")
         db.drop_collection("sharded_compound_key_collection")
         db.drop_collection("sharded_collation_collection")
+        db.drop_collection("sharded_unique_key_collection")
         db.drop_collection("sharded_timeseries_collection")
 
-    try:
-        db.client.admin.command("enableSharding", db.name)
-    except pymongo.errors.OperationFailure:
-        pass
+    db.client.admin.command("enableSharding", db.name)
 
     # Sharded collection with range-based shard key
     sharded_range_key = db.sharded_range_key_collection
@@ -60,6 +59,16 @@ def create_sharded_collection_types(db, create_ts=False, drop_before_creation=Fa
     collections_metadata.append({"collection": sharded_collation, "timeseries": False,
                                 "sharded": True, "shard_key": "text_key"})
 
+    # Sharded collection with unique shard key
+    if create_unique_sharded:
+        sharded_unique_key = db.sharded_unique_key_collection
+        db.client.admin.command("shardCollection", f"{db.name}.sharded_unique_key_collection", key={"key_id": 1}, unique=True)
+        unique_key_docs = [{"key_id": i, "name": f"unique_item_{i}", "value": f"value_{i}", "status": "active"}
+            for i in range(20)]
+        sharded_unique_key.insert_many(unique_key_docs)
+        collections_metadata.append({"collection": sharded_unique_key, "timeseries": False,
+                                    "sharded": True, "shard_key": "key_id", "unique": True})
+
     # Sharded timeseries collection
     if create_ts:
         db.client.admin.command("shardCollection", f"{db.name}.sharded_timeseries_collection", key={"sensor_id": 1, "timestamp": 1},
@@ -85,7 +94,9 @@ def create_sharded_collection_types(db, create_ts=False, drop_before_creation=Fa
 
     return collections_metadata
 
-def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_shard_key=True, update_shard_key=True, timeseries=False):
+def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_shard_key=True,
+                                        update_shard_key=True, timeseries=False, unique=False):
+    # sharded_timeseries_collection
     if timeseries:
         sensor_id = f"sensor_{random.randint(0, 10)}"
         base_time = datetime.datetime.now(datetime.timezone.utc)
@@ -136,6 +147,7 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
             pymongo.DeleteOne({"sensor_id": sensor_id, "timestamp": base_time + datetime.timedelta(seconds=3)})]
         collection.bulk_write(bulk_operations)
 
+    # sharded_compound_key_collection
     elif isinstance(shard_key, list):
         category = f"cat_{random.randint(0, 10)}"
         item_id = random.randint(100, 999)
@@ -202,6 +214,7 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
         ]
         collection.bulk_write(bulk_operations)
 
+    # sharded_hashed_key_collection
     elif hashed:
         new_doc = {
             "_id": ObjectId(),
@@ -266,7 +279,9 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
             pymongo.DeleteOne({"item_id": new_docs[3]["item_id"]})
         ]
         collection.bulk_write(bulk_operations)
+    # Single field ranged shard keys
     else:
+        # sharded_collation_collection
         if shard_key == "text_key":
             key_id = random.randint(100, 999)
             new_doc = {
@@ -329,8 +344,12 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
                 pymongo.DeleteOne({"text_key": key_id + 4})
             ]
             collection.bulk_write(bulk_operations)
+        # sharded_range_key_collection, sharded_unique_key_collection
         else:
-            key_id = random.randint(100, 999)
+            if unique:
+                key_id = int(time.time() * 1000000) + random.randint(0, 999999)
+            else:
+                key_id = random.randint(100, 999)
             new_doc = {
                 "_id": ObjectId(),
                 "key_id": key_id,
@@ -339,16 +358,29 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
                 "region": f"region_{random.randint(0, 5)}"
             }
             collection.insert_one(new_doc)
-            new_docs = [
-                {
-                    "_id": ObjectId(),
-                    "key_id": key_id + i,
-                    "name": f"item_batch_{i}",
-                    "value": f"value_{key_id + i}",
-                    "region": f"region_{i % 3}"
-                }
-                for i in range(1, 6)
-            ]
+            if unique:
+                base_timestamp = int(time.time() * 1000000)
+                new_docs = []
+                for i in range(1, 6):
+                    batch_key_id = base_timestamp + random.randint(1000000 + i * 100000, 1999999 + i * 100000)
+                    new_docs.append({
+                        "_id": ObjectId(),
+                        "key_id": batch_key_id,
+                        "name": f"item_batch_{i}",
+                        "value": f"value_{batch_key_id}",
+                        "region": f"region_{i % 3}"
+                    })
+            else:
+                new_docs = [
+                    {
+                        "_id": ObjectId(),
+                        "key_id": key_id + i,
+                        "name": f"item_batch_{i}",
+                        "value": f"value_{key_id + i}",
+                        "region": f"region_{i % 3}"
+                    }
+                    for i in range(1, 6)
+                ]
             collection.insert_many(new_docs)
             collection.update_one(
                 {"key_id": key_id},
@@ -392,6 +424,7 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
             ]
             collection.bulk_write(bulk_operations)
 
+    # Documents without shard key fields
     if no_shard_key and not timeseries:
         no_shard_key_doc = {
             "name": f"item_no_shard_{random.randint(10000, 99999)}",
@@ -453,7 +486,9 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
         ]
         collection.bulk_write(bulk_operations_no_shard)
 
+    # Shard key updates
     if update_shard_key and not hashed and not timeseries:
+        # sharded_compound_key_collection
         if isinstance(shard_key, list):
             category = f"cat_{random.randint(0, 10)}"
             item_id = random.randint(100, 999)
@@ -477,6 +512,7 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
                 {"category": new_category, "item_id": new_item_id},
                 {"category": new_category, "item_id": new_item_id, "name": "Replaced With New Shard Key", "price": 2000.0}
             )
+        # sharded_collation_collection
         elif shard_key == "text_key":
             key_id = random.randint(100, 999)
             new_key_id = random.randint(2000, 9999)
@@ -498,9 +534,14 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
                 {"text_key": new_key_id},
                 {"text_key": new_key_id, "string": "Replaced With New Shard Key", "value": new_key_id}
             )
+        # sharded_range_key_collection, sharded_unique_key_collection
         else:
-            key_id = random.randint(100, 999)
-            new_key_id = random.randint(2000, 9999)
+            if unique:
+                key_id = int(time.time() * 1000000) + random.randint(0, 999999)
+                new_key_id = int(time.time() * 1000000) + random.randint(1000000, 1999999)
+            else:
+                key_id = random.randint(100, 999)
+                new_key_id = random.randint(2000, 9999)
 
             shard_key_update_doc = {
                 "_id": ObjectId(),

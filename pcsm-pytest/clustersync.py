@@ -310,11 +310,11 @@ class Clustersync:
         errors_found = list(error_lines())
         return not bool(errors_found), errors_found
 
-    def wait_for_zero_lag(self, timeout=120, interval=1):
+    def wait_for_zero_lag(self, timeout=180, interval=1):
         start_time = time.time()
         last_events_read = None
         last_events_applied = None
-        counter = 0
+        stability_counter = 0
 
         try:
             src_client = pymongo.MongoClient(self.src_internal or self.src)
@@ -359,25 +359,21 @@ class Clustersync:
                 Cluster.log(f"Error: Failed to parse lastReplicatedOpTime: {e}")
                 return False
 
-            if last_ts >= cluster_time:
-                Cluster.log(f"Src and dst are in sync: last repl TS {last_ts} >= cluster time {cluster_time}, "
-                            f"eventsRead={current_events_read}, eventsApplied={current_events_applied}")
-                return True
-
-            if cluster_time.time <= last_ts.time + 2:
-                if (last_events_read is not None and last_events_applied is not None and
-                    current_events_read == last_events_read and
-                    current_events_applied == last_events_applied):
-                    counter += 1
-                    if counter >= 5:
-                        Cluster.log(f"Src and dst are in sync: 1-2s lag detected but eventsApplied=eventsRead and unchanged, "
-                                f"last repl TS {last_ts}, cluster time {cluster_time}, "
-                                f"eventsRead={current_events_read}, eventsApplied={current_events_applied}")
-                        return True
-                else:
-                    counter = 0
+            events_stable = (last_events_read is not None and last_events_applied is not None and
+                           current_events_read == last_events_read and
+                           current_events_applied == last_events_applied)
+            if events_stable:
+                stability_counter += 1
             else:
-                counter = 0
+                stability_counter = 0
+            is_caught_up = cluster_time.time <= last_ts.time + 2
+
+            if is_caught_up and events_stable and stability_counter >= 5:
+                lag_info = "0 lag" if last_ts >= cluster_time else "1-2s lag"
+                Cluster.log(f"Src and dst are in sync ({lag_info}): last repl TS {last_ts} >= cluster time {cluster_time}, "
+                          f"eventsRead={current_events_read}, eventsApplied={current_events_applied}, "
+                          f"stability={stability_counter} checks")
+                return True
             last_events_read = current_events_read
             last_events_applied = current_events_applied
             time.sleep(interval)

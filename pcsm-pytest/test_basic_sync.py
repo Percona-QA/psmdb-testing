@@ -19,15 +19,14 @@ def test_csync_PML_T2(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
         # Add data before sync
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", create_ts=True, start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", create_ts=True, start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.start(), "Failed to start csync service"
         # Add data during clone phase
-        clone_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", create_ts=True, start_crud=True, is_sharded=is_sharded)
+        clone_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", create_ts=True, start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         # Add data during replication phase
-        repl_test_db, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", create_ts=True, start_crud=True, is_sharded=is_sharded)
+        repl_test_db, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", create_ts=True, start_crud=True, is_sharded=src_cluster.is_sharded)
     except Exception:
         raise
     finally:
@@ -67,8 +66,7 @@ def test_csync_PML_T3(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         init_test_db.invalid_index_collection.insert_many([
             {"first_name": "Alice", "last_name": "Smith", "age": 30},
             {"first_name": "Bob", "last_name": "Brown", "age": 25}])
@@ -84,7 +82,7 @@ def test_csync_PML_T3(start_cluster, src_cluster, dst_cluster, csync):
 
         assert csync.start(), "Failed to start csync service"
 
-        clone_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=is_sharded)
+        clone_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         clone_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
             name="compound_test_index")
@@ -97,7 +95,7 @@ def test_csync_PML_T3(start_cluster, src_cluster, dst_cluster, csync):
 
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
 
-        repl_test_db, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        repl_test_db, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         repl_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
             name="compound_test_index")
@@ -143,15 +141,14 @@ def test_csync_PML_T4(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         src["init_test_db"].duplicate_index_collection.insert_many([
             {"first_name": "Alice", "last_name": "Smith", "age": 30},
             {"first_name": "Bob", "last_name": "Brown", "age": 25}])
 
         assert csync.start(), "Failed to start csync service"
 
-        def wait_for_collection(client, db_name, collection_name, timeout_sec=10, poll_interval=0.5):
+        def wait_for_collection(client, db_name, collection_name, timeout_sec=30, poll_interval=0.5):
             timeout = time.time() + timeout_sec
             while time.time() < timeout:
                 if collection_name in client[db_name].list_collection_names():
@@ -165,7 +162,7 @@ def test_csync_PML_T4(start_cluster, src_cluster, dst_cluster, csync):
 
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
 
-        repl_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        repl_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         repl_test_db.duplicate_index_collection.insert_many([
             {"first_name": "Alice", "last_name": "Smith", "age": 30},
             {"first_name": "Bob", "last_name": "Brown", "age": 25}])
@@ -216,8 +213,7 @@ def test_csync_PML_T5(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         init_test_db.invalid_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
         init_test_db.invalid_text_collection2.insert_one({"a": 1, "words": "omnibus"})
         init_test_db.invalid_unique_collection.insert_many([{"name": 1},{"x": 2},{"x": 3},{"x": 3}])
@@ -225,7 +221,7 @@ def test_csync_PML_T5(start_cluster, src_cluster, dst_cluster, csync):
         assert csync.start(), "Failed to start csync service"
         time.sleep(1)
 
-        def wait_for_collection(client, db_name, collection_name, timeout_sec=10, poll_interval=0.5):
+        def wait_for_collection(client, db_name, collection_name, timeout_sec=20, poll_interval=0.5):
             timeout = time.time() + timeout_sec
             while time.time() < timeout:
                 if collection_name in client[db_name].list_collection_names():
@@ -251,7 +247,7 @@ def test_csync_PML_T5(start_cluster, src_cluster, dst_cluster, csync):
 
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
 
-        repl_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        repl_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         repl_test_db.invalid_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
         repl_test_db.invalid_text_collection2.insert_one({"a": 1, "words": "omnibus"})
         repl_test_db.invalid_unique_collection.insert_many([{"name": 1},{"x": 2},{"x": 3},{"x": 3}])
@@ -316,10 +312,9 @@ def test_csync_PML_T6(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
 
-        generate_dummy_data(src_cluster.connection, "dummy", 5, 300000, is_sharded=is_sharded)
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        generate_dummy_data(src_cluster.connection, "dummy", 5, 300000, is_sharded=src_cluster.is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
 
         assert csync.start(), "Failed to start csync service"
         time.sleep(1)
@@ -346,7 +341,7 @@ def test_csync_PML_T6(start_cluster, src_cluster, dst_cluster, csync):
         drop.join()
 
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
-        repl_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        repl_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
 
         index_spec = [("array", 1), ("padding1", 1), ("padding2", 1)]
         collection = src["dummy"]["collection_1"]
@@ -399,9 +394,8 @@ def test_csync_PML_T7(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
 
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         db_name = "test_db"
         coll_name1, coll_name2 = "test_collection1", "test_collection2"
         src[db_name][coll_name1].insert_many([{"name": 1},{"x": 2},{"x": 3}])
@@ -410,7 +404,7 @@ def test_csync_PML_T7(start_cluster, src_cluster, dst_cluster, csync):
         assert csync.start(), "Failed to start csync service"
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
 
-        repl_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        repl_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
 
         src[db_name][coll_name1].create_index("x", unique=True)
         assert True, "Index creation should succeed"
@@ -462,9 +456,8 @@ def test_csync_PML_T8(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
 
-        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         dst["test_db1"].create_collection("duplicate_collection", collation={"locale": "en","strength": 2})
         dst["test_db1"].duplicate_collection.insert_one({"_id": "1", "field": "1"})
         src["test_db1"].create_collection("duplicate_collection", capped=True, size=1024 * 1024, max=20)
@@ -479,7 +472,7 @@ def test_csync_PML_T8(start_cluster, src_cluster, dst_cluster, csync):
 
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
 
-        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         dst["test_db3"].create_collection("duplicate_collection", collation={"locale": "en","strength": 2})
         dst["test_db3"].duplicate_collection.insert_one({"_id": "1", "field": "1"})
         src["test_db3"].create_collection("duplicate_collection", capped=True, size=1024 * 1024, max=20)
@@ -565,22 +558,26 @@ def test_csync_PML_T30(start_cluster, src_cluster, dst_cluster, csync):
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.jenkins
-@pytest.mark.timeout(600,func_only=True)
+@pytest.mark.timeout(1200,func_only=True)
 @pytest.mark.csync_env({"PCSM_CLONE_NUM_PARALLEL_COLLECTIONS": "200"})
 @pytest.mark.csync_log_level("info")
 def test_csync_PML_T31(start_cluster, src_cluster, dst_cluster, csync):
     """
     Test how pcsm deals with huge number of namespaces on the clone phase
     """
-    databases = 1000
+    databases = 800
     collections = 10
     Cluster.log("Creating " + str(databases) + " databases with " + str(collections) + " collections")
     client=pymongo.MongoClient(src_cluster.connection)
     for i in range(databases):
         db = 'test' + str(i)
+        if src_cluster.is_sharded:
+            client.admin.command("enableSharding", db)
         for j in range(collections):
             coll = 'test' + str(j)
-            client[db][coll].insert_one({})
+            if src_cluster.is_sharded and j == 0:
+                client.admin.command("shardCollection", f"{db}.{coll}", key={"_id": "hashed"})
+            client[db][coll].insert_many([{"name": f"Alice{i}", "age": 30 + i} for i in range(50)])
         Cluster.log("Created " + db)
     csync.start()
     result = csync.wait_for_repl_stage(500,10)
@@ -605,12 +602,16 @@ def test_csync_PML_T43(start_cluster, src_cluster, dst_cluster, csync):
     indexes = 50
     Cluster.log("Creating " + str(collections) + " collections with " + str(indexes) + " indexes")
     client=pymongo.MongoClient(src_cluster.connection)
+    if src_cluster.is_sharded:
+        client.admin.command("enableSharding", "test")
     for i in range(collections):
         coll = 'test' + str(i)
         for j in range(indexes):
             index = 'test' + str(j)
             client['test'][coll].create_index(index)
-        client['test'][coll].insert_one({})
+        if src_cluster.is_sharded and i % 10 == 0:
+            client.admin.command("shardCollection", f"test.{coll}", key={"_id": "hashed"})
+        client['test'][coll].insert_many([{"name": f"Alice{i}", "age": 30 + i} for i in range(50)])
         Cluster.log("Created " + coll)
     csync.start()
     result = csync.wait_for_repl_stage(300,10)

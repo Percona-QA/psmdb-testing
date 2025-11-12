@@ -128,6 +128,10 @@ class Cluster:
         else:
             return "sharded"
 
+    @property
+    def is_sharded(self):
+        return self.layout == "sharded"
+
     # returns mongodb connection string to cluster
     @property
     def connection(self):
@@ -223,7 +227,7 @@ class Cluster:
         if self.layout == "replicaset":
             for host in self.config['members']:
                 Cluster.log("Creating container " + host['host'])
-                cmd = f"mongod --port 27017 --bind_ip 0.0.0.0 --dbpath {self.mongod_datadir} --replSet {self.config['_id']} --keyFile /etc/keyfile {self.mongod_extra_args}"
+                cmd = f"mongod --port 27017 --bind_ip 0.0.0.0 --dbpath {self.mongod_datadir} --replSet {self.config['_id']} --keyFile /etc/keyfile --setParameter periodicNoopIntervalSecs=1 {self.mongod_extra_args}"
                 docker.from_env().containers.run(
                     image=self.mongo_image,
                     name=host['host'],
@@ -242,7 +246,7 @@ class Cluster:
                 conn = shard['_id'] + "/"
                 for host in shard['members']:
                     Cluster.log("Creating container " + host['host'])
-                    cmd = f"mongod --port 27017 --bind_ip 0.0.0.0 --dbpath {self.mongod_datadir} --replSet {shard['_id']} --shardsvr --keyFile /etc/keyfile {self.mongod_extra_args}"
+                    cmd = f"mongod --port 27017 --bind_ip 0.0.0.0 --dbpath {self.mongod_datadir} --replSet {shard['_id']} --shardsvr --keyFile /etc/keyfile --setParameter periodicNoopIntervalSecs=1 {self.mongod_extra_args}"
                     docker.from_env().containers.run(
                         image=self.mongo_image,
                         name=host['host'],
@@ -259,7 +263,7 @@ class Cluster:
             conn = self.config['configserver']['_id'] + "/"
             for host in self.config['configserver']['members']:
                 Cluster.log("Creating container " + host['host'])
-                cmd = f"mongod --port 27017 --bind_ip 0.0.0.0 --dbpath {self.mongod_datadir} --replSet {self.config['configserver']['_id']} --configsvr --keyFile /etc/keyfile {self.mongod_extra_args}"
+                cmd = f"mongod --port 27017 --bind_ip 0.0.0.0 --dbpath {self.mongod_datadir} --replSet {self.config['configserver']['_id']} --configsvr --keyFile /etc/keyfile --setParameter periodicNoopIntervalSecs=1 {self.mongod_extra_args}"
                 docker.from_env().containers.run(
                     image=self.mongo_image,
                     name=host['host'],
