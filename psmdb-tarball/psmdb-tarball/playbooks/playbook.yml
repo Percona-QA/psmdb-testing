@@ -4,67 +4,65 @@
   connection: local
   gather_facts: false
   tasks:
-    - set_fact:
-        tarball: "{{ lookup('env', 'TARBALL') | default('https://downloads.percona.com/downloads/TESTING/psmdb-6.0.16/percona-server-mongodb-6.0.16-13-x86_64.glibc2.17-minimal.tar.gz', true) }}"
-
-    - name: Get tarball template
-      set_fact:
-        tarball_template: "{{ tarball | regex_replace('glibc.+', '') }}"
-
-    - name: Debug tarball tarball template
-      debug:
-        msg: "{{ tarball_template }}"
-
     - name: Get mongodb version
       set_fact:
-        mongodb_ver: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+        full_ver: "{{ lookup('env', 'PSMDB_VERSION') }}"
+        repo: "{{ lookup('env', 'REPO') }}"
+        os_arch: "{{ 'amd64' if ansible_architecture == 'x86_64'
+                       else 'arm64' if ansible_architecture == 'arm64'
+                       else ansible_architecture }}"
 
     - name: Get mongodb major version
       set_fact:
-        maj_version={{ mongodb_ver[0].split('.')[0] }}
+        maj_version: "{{ full_ver[0].split('.')[0] }}"
+        minor_version: "{{ full_ver.split('-')[0] }}"
 
     - name: Debug mongodb major version
       debug:
         msg: "{{ maj_version }}"
 
+    - name: Debug mongodb minor version
+      debug:
+        msg: "{{ minor_version }}"
+
+    - set_fact:
+        tarball: "https://downloads.percona.com/downloads/TESTING/psmdb-{{ minor_version }}/percona-server-mongodb-{{ full_ver }}-{{ ansible_architecture }}"
+
+    - name: Debug mongodb URL
+      debug:
+        msg: "{{ tarball }}"
+
+    - name: Detect OS
+      set_fact:
+        os: "{{ item }}"
+      loop:
+        - ol7
+        - ol8
+        - ol9
+        - ol2023
+        - jammy
+        - focal
+        - noble
+        - bookworm
+        - bullseye
+        - buster
+      when:
+        - ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "20" and item == "focal") or
+          ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "22" and item == "jammy") or
+          ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24" and item == "noble") or
+          ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" and item == "buster") or
+          ( ansible_distribution == "Debian" and ansible_distribution_major_version == "11" and item == "bullseye") or
+          ( ansible_distribution == "Debian" and ansible_distribution_major_version == "12" and item == "bookworm") or
+          ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "7" and item == "ol7") or
+          ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and item == "ol8") or
+          ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "9" and item == "ol9") or
+          ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "2023" and item == "ol2023")
+
     - name: Download tarball from url
       get_url:
-        url: '{{ tarball_template }}{{ item }}-minimal.tar.gz'
-        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}-{{ item }}.tar.gz
+        url: '{{ tarball }}.{{ os }}-minimal.tar.gz'
+        dest: /tmp/percona-server-mongodb.tar.gz
         mode: '0644'
-      loop:
-        - ol7
-        - ol8
-        - ol9
-        - ol2023
-        - jammy
-        - focal
-        - noble
-        - buster
-        - bookworm
-        - bullseye
-      when: tarball.startswith('http')
-      ignore_errors: yes
-
-    - name: Download tarball from s3
-      aws_s3:
-        bucket: "{{ tarball_template | urlsplit('hostname') }}"
-        object: "{{ tarball_template | urlsplit('path') }}{{ item }}-minimal.tar.gz"
-        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}-{{ item }}.tar.gz
-        mode: get
-      loop:
-        - ol7
-        - ol8
-        - ol9
-        - ol2023
-        - jammy
-        - focal
-        - noble
-        - buster
-        - bookworm
-        - bullseye
-      when: tarball.startswith('s3')
-      ignore_errors: yes
 
 - name: Converge
   hosts: all
