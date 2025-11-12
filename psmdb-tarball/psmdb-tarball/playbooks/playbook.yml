@@ -2,12 +2,15 @@
 - name: Download packages to localhost
   hosts: localhost
   connection: local
-  gather_facts: false
+  gather_facts: true
   tasks:
     - name: Get mongodb version
       set_fact:
         full_ver: "{{ lookup('env', 'PSMDB_VERSION') }}"
         repo: "{{ lookup('env', 'REPO') }}"
+        os_arch: "{{ 'amd64' if ansible_architecture == 'x86_64'
+                       else 'arm64' if ansible_architecture == 'arm64'
+                       else ansible_architecture }}"
 
     - name: Get mongodb major version
       set_fact:
