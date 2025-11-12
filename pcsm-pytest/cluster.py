@@ -458,6 +458,7 @@ class Cluster:
 
     @staticmethod
     def setup_replicaset(replicaset):
+        Cluster.log(f"Setting up replicaset {replicaset.get('_id', 'unknown')}")
         primary = replicaset['members'][0]['host']
         primary = testinfra.get_host("docker://" + primary)
         rs = copy.deepcopy(replicaset)
@@ -478,9 +479,14 @@ class Cluster:
         Cluster.log("Setup replicaset " + json.dumps(rs) + ":\n" + result.stdout.strip())
 
     def __setup_replicasets(self, replicasets):
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        Cluster.log(f"Setting up {len(replicasets)} replicasets: {[rs.get('_id', 'unknown') for rs in replicasets]}")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(replicasets)) as executor:
+            futures = []
             for rs in replicasets:
-                executor.submit(Cluster.setup_replicaset, rs)
+                future = executor.submit(Cluster.setup_replicaset, rs)
+                futures.append(future)
+            for future in futures:
+                future.result()
 
     @staticmethod
     def setup_authorization(host):
@@ -513,11 +519,11 @@ class Cluster:
             "mongosh -u root -p root --quiet --eval " + x509_csync_user)
 
     def __setup_authorizations(self, replicasets):
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            for rs in replicasets:
-                executor.submit(Cluster.setup_authorization,
-                                rs['members'][0]['host'])
-        time.sleep(0.5)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(replicasets)) as executor:
+            futures = [executor.submit(Cluster.setup_authorization, rs['members'][0]['host'])
+                       for rs in replicasets]
+            for future in futures:
+                future.result()
 
     @staticmethod
     def wait_for_primary(host, connection):
@@ -541,10 +547,14 @@ class Cluster:
 
     def wait_for_primaries(self):
         Cluster.log(self.primary_hosts)
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(self.primary_hosts)) as executor:
+            futures = []
             for primary in self.primary_hosts:
-                executor.submit(Cluster.wait_for_primary, primary,
+                future = executor.submit(Cluster.wait_for_primary, primary,
                                 "mongodb://root:root@127.0.0.1:27017")
+                futures.append(future)
+            for future in futures:
+                future.result()
 
     @staticmethod
     def log(*args, **kwargs):
