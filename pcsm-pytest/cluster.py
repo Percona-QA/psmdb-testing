@@ -22,6 +22,7 @@ class Cluster:
     def __init__(self, config, **kwargs):
         self.config = config
         self.mongod_extra_args = kwargs.get('mongod_extra_args', "")
+        self.mongos_extra_args = kwargs.get('mongos_extra_args', "")
         self.mongod_datadir = kwargs.get('mongod_datadir', "/data/db")
         self.mongo_image = kwargs.get('mongo_image', "mongodb/local")
 
@@ -37,6 +38,15 @@ class Cluster:
     def mongod_extra_args(self, value):
         assert isinstance(value, str)
         self._mongod_extra_args = value
+
+    @property
+    def mongos_extra_args(self):
+        return self._mongos_extra_args
+
+    @mongos_extra_args.setter
+    def mongos_extra_args(self, value):
+        assert isinstance(value, str)
+        self._mongos_extra_args = value
 
     @property
     def mongod_datadir(self):
@@ -145,7 +155,7 @@ class Cluster:
     def csync_connection(self):
         if self.layout == "replicaset":
             hosts = ",".join(f"{member['host']}:27017" for member in self.config["members"])
-            return (f"mongodb://root:root@{hosts}/"f"?replicaSet={self.config['_id']}")
+            return (f"mongodb://csync:test1234@{hosts}/"f"?replicaSet={self.config['_id']}")
         else:
             return "mongodb://csync:test1234@" + self.config['mongos'] + ":27017/"
 
@@ -282,11 +292,12 @@ class Cluster:
                 self.config['shards'] + [self.config['configserver']])
             self.__setup_authorizations(self.config['shards'])
             Cluster.log("Creating container " + self.config['mongos'])
+            mongos_cmd = f'mongos --keyFile=/etc/keyfile --configdb {configdb} --port 27017 --bind_ip 0.0.0.0 {self.mongos_extra_args}'
             docker.from_env().containers.run(
                 image=self.mongo_image,
                 name=self.config['mongos'],
                 hostname=self.config['mongos'],
-                command='mongos --keyFile=/etc/keyfile --configdb ' + configdb + ' --port 27017 --bind_ip 0.0.0.0',
+                command=mongos_cmd,
                 detach=True,
                 network='test',
                 mem_limit=mem_limit,

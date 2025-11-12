@@ -36,12 +36,12 @@ def add_data(connection_string, db_name, stop_event=None):
 @pytest.mark.parametrize("cluster_configs", ["replicaset_3n", "sharded_3n"], indirect=True)
 @pytest.mark.timeout(300,func_only=True)
 @pytest.mark.csync_log_level("trace")
-@pytest.mark.parametrize("fail_node", ["src", "dst"])
-def test_csync_PML_T46(start_cluster, src_cluster, dst_cluster, csync, fail_node):
+def test_csync_PML_T46(start_cluster, src_cluster, dst_cluster, csync):
     """
-    Test to check PCSM failure tolerance when SRC or DST primary goes down during clone stage
+    Test to check PCSM failure tolerance when DST primary goes down during clone stage.
+    Note: SRC primary failure during clone stage is not checked here because PCSM doesn't
+    tolerate it - sync fails and requires manual intervention with reset-state option
     """
-    target = src_cluster if fail_node == "src" else dst_cluster
     try:
         generate_dummy_data(src_cluster.connection, is_sharded=src_cluster.is_sharded)
         _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
@@ -54,7 +54,7 @@ def test_csync_PML_T46(start_cluster, src_cluster, dst_cluster, csync, fail_node
                 line = raw_line.decode("utf-8").strip()
                 if pattern.search(line):
                     break
-            target.restart_primary(2, force=True)
+            dst_cluster.restart_primary(2, force=True)
         t1 = threading.Thread(target=start_csync)
         t2 = threading.Thread(target=restart_primary)
         t1.start()
@@ -62,12 +62,7 @@ def test_csync_PML_T46(start_cluster, src_cluster, dst_cluster, csync, fail_node
         t1.join()
         t2.join()
         _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
-        result = csync.wait_for_repl_stage()
-        if not result and fail_node == "src":
-            # PCSM doesn't tolerate SRC primary failure during clone stage
-            csync.create(log_level="trace", extra_args="--reset-state")
-            assert csync.start(), "Failed to restart csync service after repl_stage failure"
-            assert csync.wait_for_repl_stage() is True, "Failed to start replication stage"
+        assert csync.wait_for_repl_stage() is True, "Failed to start replication stage after DST primary restart"
         _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
     except Exception:
         raise
