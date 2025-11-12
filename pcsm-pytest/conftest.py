@@ -142,8 +142,8 @@ def start_cluster(src_cluster, dst_cluster, csync, request):
             exceptions[cluster_name] = e
     try:
         # Lambda wraps create_cluster with arguments since threading.Thread expects a zero-argument callable
-        src_create_thread = threading.Thread(target=lambda: create_cluster("src", src_cluster), daemon=True)
-        dst_create_thread = threading.Thread(target=lambda: create_cluster("dst", dst_cluster), daemon=True)
+        src_create_thread = threading.Thread(target=lambda: create_cluster("src", src_cluster))
+        dst_create_thread = threading.Thread(target=lambda: create_cluster("dst", dst_cluster))
         src_create_thread.start()
         dst_create_thread.start()
         def wait_for_thread(thread, cluster_name):

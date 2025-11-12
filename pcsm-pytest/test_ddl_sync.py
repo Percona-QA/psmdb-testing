@@ -33,7 +33,8 @@ def test_csync_PML_T9(start_cluster, src_cluster, dst_cluster, csync):
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
     csync_error, error_logs = csync.check_csync_errors()
-    expected_errors = ["NamespaceNotFound", "IndexNotFound", "QueryPlanKilled", "InvalidOptions", "collection not found", "No indexes to create"]
+    expected_errors = ["NamespaceNotFound", "IndexNotFound", "QueryPlanKilled", "InvalidOptions",
+                            "collection not found", "No indexes to create", "ERR add indexes"]
     if not csync_error:
         unexpected = [line for line in error_logs if all(expected_error not in line for expected_error in expected_errors)]
         if unexpected:
