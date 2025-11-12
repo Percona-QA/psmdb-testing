@@ -21,6 +21,8 @@
 
     - set_fact: to_repo_pro="{{ lookup('env', 'TO_REPO_PRO') }}"
 
+    - set_fact: pro_build="{{ lookup('env', 'TO_REPO_PRO') }}"
+
     - name: check maj version
       debug: msg={{to_maj_version}}_{{from_maj_version}}
 
