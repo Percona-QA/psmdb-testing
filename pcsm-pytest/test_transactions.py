@@ -405,7 +405,7 @@ def test_csync_PML_T27(start_cluster, src_cluster, dst_cluster, csync):
 
     stop_generation = threading.Event()
     try:
-        dummy_thread = threading.Thread(target=generate_dummy_data,args=(src_cluster.connection, "dummy", 20, 150000, 500, stop_generation, 0.05))
+        dummy_thread = threading.Thread(target=generate_dummy_data, args=(src_cluster.connection, "dummy", 20, 150000, 500, stop_generation, 0.05, True, is_sharded))
         dummy_thread.start()
         def keep_transaction_alive(session, db_name, coll_name):
             coll = src[db_name][coll_name]

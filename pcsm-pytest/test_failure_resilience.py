@@ -44,7 +44,7 @@ def test_csync_PML_T46(start_cluster, src_cluster, dst_cluster, csync, fail_node
     target = src_cluster if fail_node == "src" else dst_cluster
     try:
         is_sharded = src_cluster.layout == "sharded"
-        generate_dummy_data(src_cluster.connection)
+        generate_dummy_data(src_cluster.connection, is_sharded=is_sharded)
         _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
         def start_csync():
             assert csync.start() is True, "Failed to start csync service"

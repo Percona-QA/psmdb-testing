@@ -367,10 +367,11 @@ def test_csync_PML_T19(start_cluster, src_cluster, dst_cluster, csync, clone_sta
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
+        is_sharded = src_cluster.layout == "sharded"
         db_name = "test_db"
         old_name = "collection_4"
         new_name = "renamed_collection_4"
-        generate_dummy_data(src_cluster.connection, db_name)
+        generate_dummy_data(src_cluster.connection, db_name, is_sharded=is_sharded)
         def start_csync():
             assert csync.start(), "Failed to start csync service"
         def rename_collection():
@@ -415,7 +416,7 @@ def test_csync_PML_T20(start_cluster, src_cluster, dst_cluster, csync):
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
         is_sharded = src_cluster.layout == "sharded"
-        generate_dummy_data(src_cluster.connection, "dummy")
+        generate_dummy_data(src_cluster.connection, "dummy", is_sharded=is_sharded)
         db_name1, db_name2 = "test_db1", "test_db2"
         old_name1, old_name2, old_name3  = "test_collection1", "test_collection2", "test_collection3"
         new_name1, new_name2, new_name3 = "renamed_collection1", "renamed_collection2", "renamed_collection3"

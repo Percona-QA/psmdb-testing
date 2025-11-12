@@ -32,7 +32,7 @@ def create_all_types_db(connection_string, db_name="init_test_db", create_ts=Fal
     create_diff_coll_types(db, drop_before_creation)
 
     if is_sharded:
-        sharded_collection_metadata = create_sharded_collection_types(db, drop_before_creation)
+        sharded_collection_metadata = create_sharded_collection_types(db, create_ts, drop_before_creation)
         create_sharded_index_types(db, drop_before_creation)
         collection_metadata.extend(sharded_collection_metadata)
 
@@ -74,7 +74,8 @@ def stop_all_crud_operations():
         stop_event.set()
 
 def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, doc_size=150000,
-                        batch_size=10000, stop_event=None, sleep_between_batches=0, drop_before_creation=True):
+                        batch_size=10000, stop_event=None, sleep_between_batches=0, drop_before_creation=True,
+                        is_sharded=False):
     """
     With default parameters generates ~500MB of data within 10 seconds
     If stop_event is provided, it can be used to stop generation early.
@@ -86,6 +87,12 @@ def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, d
 
     if drop_before_creation:
         client.drop_database(db_name)
+
+    if is_sharded:
+        try:
+            client.admin.command("enableSharding", db_name)
+        except pymongo.errors.OperationFailure:
+            pass
 
     collections = [f"collection_{i}" for i in range(num_collections)]
 
@@ -102,6 +109,12 @@ def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, d
         if stop_event and stop_event.is_set():
             break
         collection = db[coll_name]
+
+        if is_sharded:
+            try:
+                client.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"_id": "hashed"})
+            except pymongo.errors.OperationFailure:
+                pass
 
         for _ in range(doc_size // batch_size):
             if stop_event and stop_event.is_set():

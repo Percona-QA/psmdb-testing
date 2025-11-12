@@ -41,7 +41,6 @@ def test_csync_PML_T2(start_cluster, src_cluster, dst_cluster, csync):
             all_threads += operation_threads_3
         for thread in all_threads:
             thread.join()
-
     # This step is required to ensure that all data is synchronized except for time-series
     # collections which are not supported. Existence of TS collections in source cluster
     # will cause the comparison to fail, but collections existence is important to verify
@@ -49,6 +48,7 @@ def test_csync_PML_T2(start_cluster, src_cluster, dst_cluster, csync):
     databases = ["init_test_db", "clone_test_db", "repl_test_db"]
     for db in databases:
         src[db].drop_collection("timeseries_data")
+        src[db].drop_collection("sharded_timeseries_collection")
 
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
     assert csync.finalize(), "Failed to finalize csync service"
@@ -68,60 +68,45 @@ def test_csync_PML_T3(start_cluster, src_cluster, dst_cluster, csync):
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
         is_sharded = src_cluster.layout == "sharded"
-
-        # Add data before sync
         init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
         init_test_db.invalid_index_collection.insert_many([
             {"first_name": "Alice", "last_name": "Smith", "age": 30},
-            {"first_name": "Bob", "last_name": "Brown", "age": 25}
-        ])
+            {"first_name": "Bob", "last_name": "Brown", "age": 25}])
         init_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
-            name="compound_test_index"
-        )
+            name="compound_test_index")
         init_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
-            name="compound_test_unique_index", unique=True
-        )
+            name="compound_test_unique_index", unique=True)
         init_test_db.invalid_index_collection.create_index(
         [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
-        name="compound_test_sparse_index", sparse=True
-        )
+        name="compound_test_sparse_index", sparse=True)
 
         assert csync.start(), "Failed to start csync service"
 
-        # Add data during clone phase
         clone_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=is_sharded)
         clone_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
-            name="compound_test_index"
-        )
+            name="compound_test_index")
         clone_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
-            name="compound_test_unique_index", unique=True
-        )
+            name="compound_test_unique_index", unique=True)
         clone_test_db.invalid_index_collection.create_index(
         [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
-        name="compound_test_sparse_index", sparse=True
-        )
+        name="compound_test_sparse_index", sparse=True)
 
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
 
-        # Add data during replication phase
         repl_test_db, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
         repl_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
-            name="compound_test_index"
-        )
+            name="compound_test_index")
         repl_test_db.invalid_index_collection.create_index(
             [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
-            name="compound_test_unique_index", unique=True
-        )
+            name="compound_test_unique_index", unique=True)
         repl_test_db.invalid_index_collection.create_index(
         [("first_name", pymongo.ASCENDING), ("last_name", pymongo.ASCENDING)],
-        name="compound_test_sparse_index", sparse=True
-        )
-
+        name="compound_test_sparse_index", sparse=True)
     except Exception:
         raise
     finally:
@@ -135,14 +120,11 @@ def test_csync_PML_T3(start_cluster, src_cluster, dst_cluster, csync):
             all_threads += operation_threads_3
         for thread in all_threads:
             thread.join()
-
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
-
     assert csync.finalize(), "Failed to finalize csync service"
 
     result, summary = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
-
     csync_error, error_logs = csync.check_csync_errors()
     expected_error = "ERR One or more indexes failed to create"
     if not csync_error:
@@ -162,12 +144,10 @@ def test_csync_PML_T4(start_cluster, src_cluster, dst_cluster, csync):
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
         is_sharded = src_cluster.layout == "sharded"
-
         init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
         src["init_test_db"].duplicate_index_collection.insert_many([
             {"first_name": "Alice", "last_name": "Smith", "age": 30},
-            {"first_name": "Bob", "last_name": "Brown", "age": 25}
-        ])
+            {"first_name": "Bob", "last_name": "Brown", "age": 25}])
 
         assert csync.start(), "Failed to start csync service"
 
@@ -178,7 +158,6 @@ def test_csync_PML_T4(start_cluster, src_cluster, dst_cluster, csync):
                     return True
                 time.sleep(poll_interval)
             return False
-
         assert wait_for_collection(dst, "init_test_db", "duplicate_index_collection"), \
             "Collection 'duplicate_index_collection' was not replicated to dst in time"
         dst["init_test_db"].duplicate_index_collection.create_index([("age", pymongo.ASCENDING)], name="conflict_index")
@@ -189,14 +168,11 @@ def test_csync_PML_T4(start_cluster, src_cluster, dst_cluster, csync):
         repl_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
         repl_test_db.duplicate_index_collection.insert_many([
             {"first_name": "Alice", "last_name": "Smith", "age": 30},
-            {"first_name": "Bob", "last_name": "Brown", "age": 25}
-        ])
-
+            {"first_name": "Bob", "last_name": "Brown", "age": 25}])
         assert wait_for_collection(dst, "repl_test_db", "duplicate_index_collection"), \
             "Collection 'duplicate_index_collection' was not replicated to dst in time"
         dst["repl_test_db"].duplicate_index_collection.create_index([("age", pymongo.ASCENDING)], name="conflict_index")
         src["repl_test_db"].duplicate_index_collection.create_index([("name", pymongo.ASCENDING)], name="conflict_index")
-
     except Exception:
         raise
     finally:
@@ -208,9 +184,7 @@ def test_csync_PML_T4(start_cluster, src_cluster, dst_cluster, csync):
             all_threads += operation_threads_2
         for thread in all_threads:
             thread.join()
-
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
-
     assert csync.finalize(), "Failed to finalize csync service"
 
     result, summary = compare_data(src_cluster, dst_cluster)
@@ -243,7 +217,6 @@ def test_csync_PML_T5(start_cluster, src_cluster, dst_cluster, csync):
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
         is_sharded = src_cluster.layout == "sharded"
-
         init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
         init_test_db.invalid_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
         init_test_db.invalid_text_collection2.insert_one({"a": 1, "words": "omnibus"})
@@ -259,7 +232,6 @@ def test_csync_PML_T5(start_cluster, src_cluster, dst_cluster, csync):
                     return True
                 time.sleep(poll_interval)
             return False
-
         # Check index build failure on src
         try:
             init_test_db.invalid_text_collection1.create_index([("a.b", 1), ("words", "text")])
@@ -271,7 +243,6 @@ def test_csync_PML_T5(start_cluster, src_cluster, dst_cluster, csync):
             assert False, "Index build should fail due to duplicate values"
         except pymongo.errors.OperationFailure as e:
             assert e.code == 11000 or "duplicate" in str(e), f"Unexpected error: {e}"
-
         # Check index build failure on dst
         assert wait_for_collection(dst, "init_test_db", "invalid_text_collection2"), \
             "Collection 'invalid_text_collection2' was not replicated to dst in time"
@@ -284,7 +255,6 @@ def test_csync_PML_T5(start_cluster, src_cluster, dst_cluster, csync):
         repl_test_db.invalid_text_collection1.insert_one({"a": {"b": []}, "words": "omnibus"})
         repl_test_db.invalid_text_collection2.insert_one({"a": 1, "words": "omnibus"})
         repl_test_db.invalid_unique_collection.insert_many([{"name": 1},{"x": 2},{"x": 3},{"x": 3}])
-
         # Check index build failure on src
         try:
             repl_test_db.invalid_text_collection1.create_index([("a.b", 1), ("words", "text")])
@@ -296,13 +266,11 @@ def test_csync_PML_T5(start_cluster, src_cluster, dst_cluster, csync):
             assert False, "Index build should fail due to duplicate values"
         except pymongo.errors.OperationFailure as e:
             assert e.code == 11000 or "duplicate" in str(e), f"Unexpected error: {e}"
-
         # Check index build failure on dst
         assert wait_for_collection(dst, "repl_test_db", "invalid_text_collection2"), \
             "Collection 'invalid_text_collection2' was not replicated to dst in time"
         dst["repl_test_db"].invalid_text_collection2.insert_one({"a": {"b": []}, "words": "omnibus_new"})
         repl_test_db.invalid_text_collection2.create_index([("a.b", 1), ("words", "text")])
-
     except Exception:
         raise
     finally:
@@ -316,11 +284,9 @@ def test_csync_PML_T5(start_cluster, src_cluster, dst_cluster, csync):
             thread.join()
 
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
-
     # Remove manually added documents to dst collections
     dst["init_test_db"].invalid_text_collection2.delete_one({"a": {"b": []}, "words": "omnibus_new"})
     dst["repl_test_db"].invalid_text_collection2.delete_one({"a": {"b": []}, "words": "omnibus_new"})
-
     assert csync.finalize(), "Failed to finalize csync service"
 
     result, summary = compare_data(src_cluster, dst_cluster)
@@ -352,7 +318,7 @@ def test_csync_PML_T6(start_cluster, src_cluster, dst_cluster, csync):
         dst = pymongo.MongoClient(dst_cluster.connection)
         is_sharded = src_cluster.layout == "sharded"
 
-        generate_dummy_data(src_cluster.connection, "dummy", 5, 300000)
+        generate_dummy_data(src_cluster.connection, "dummy", 5, 300000, is_sharded=is_sharded)
         init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
 
         assert csync.start(), "Failed to start csync service"

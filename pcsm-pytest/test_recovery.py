@@ -12,7 +12,7 @@ def test_csync_PML_T28(start_cluster, src_cluster, dst_cluster, csync):
     """
     try:
         is_sharded = src_cluster.layout == "sharded"
-        generate_dummy_data(src_cluster.connection)
+        generate_dummy_data(src_cluster.connection, is_sharded=is_sharded)
         init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
         assert csync.start(), "Failed to start csync service"
         clone_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=is_sharded)
@@ -57,7 +57,7 @@ def test_csync_PML_T29(start_cluster, src_cluster, dst_cluster, csync):
     """
     try:
         is_sharded = src_cluster.layout == "sharded"
-        generate_dummy_data(src_cluster.connection)
+        generate_dummy_data(src_cluster.connection, is_sharded=is_sharded)
         _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
         assert csync.start(), "Failed to start csync service"
         _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=is_sharded)
@@ -118,7 +118,7 @@ def test_csync_PML_T37(start_cluster, src_cluster, dst_cluster, csync):
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         result = csync.pause()
         assert result is True, "Replication is paused"
-        generate_dummy_data(src_cluster.connection, "dummy", 15, 300000)
+        generate_dummy_data(src_cluster.connection, "dummy", 15, 300000, is_sharded=is_sharded)
         result = csync.resume()
         assert result is True, "Replication is resumed"
     except Exception:

@@ -4,7 +4,7 @@ import random
 from bson import ObjectId
 from pymongo.collation import Collation
 
-def create_sharded_collection_types(db, drop_before_creation=False):
+def create_sharded_collection_types(db, create_ts=False, drop_before_creation=False):
     collections_metadata = []
 
     if drop_before_creation:
@@ -12,6 +12,7 @@ def create_sharded_collection_types(db, drop_before_creation=False):
         db.drop_collection("sharded_hashed_key_collection")
         db.drop_collection("sharded_compound_key_collection")
         db.drop_collection("sharded_collation_collection")
+        db.drop_collection("sharded_timeseries_collection")
 
     try:
         db.client.admin.command("enableSharding", db.name)
@@ -24,8 +25,8 @@ def create_sharded_collection_types(db, drop_before_creation=False):
     range_key_docs = [{"key_id": i, "name": f"item_{i}", "value": f"value_{i}", "region": f"region_{i % 3}"}
         for i in range(20)]
     sharded_range_key.insert_many(range_key_docs)
-    collections_metadata.append({"collection": sharded_range_key, "capped": False,
-                            "timeseries": False, "sharded": True, "shard_key": "key_id"})
+    collections_metadata.append({"collection": sharded_range_key, "timeseries": False, "sharded": True,
+                                "shard_key": "key_id"})
 
     # Sharded collection with hashed shard key
     sharded_hashed_key = db.sharded_hashed_key_collection
@@ -33,8 +34,8 @@ def create_sharded_collection_types(db, drop_before_creation=False):
     hashed_key_docs = [{"item_id": f"item_{i}", "category_id": i % 10, "amount": 100.0 + i, "status": "pending"}
         for i in range(30)]
     sharded_hashed_key.insert_many(hashed_key_docs)
-    collections_metadata.append({"collection": sharded_hashed_key, "capped": False,
-                            "timeseries": False, "sharded": True, "shard_key": "_id", "hashed": True})
+    collections_metadata.append({"collection": sharded_hashed_key, "timeseries": False,
+                                "sharded": True, "shard_key": "_id", "hashed": True})
 
     # Sharded collection with compound shard key
     sharded_compound_key = db.sharded_compound_key_collection
@@ -43,8 +44,8 @@ def create_sharded_collection_types(db, drop_before_creation=False):
     sharded_compound_key.insert_many(compound_key_docs)
     sharded_compound_key.create_index([("category", pymongo.ASCENDING), ("item_id", pymongo.ASCENDING)], name="category_item_id_shard_key_index")
     db.client.admin.command("shardCollection", f"{db.name}.sharded_compound_key_collection", key={"category": 1, "item_id": 1})
-    collections_metadata.append({"collection": sharded_compound_key, "capped": False,
-                            "timeseries": False, "sharded": True, "shard_key": ["category", "item_id"]})
+    collections_metadata.append({"collection": sharded_compound_key, "timeseries": False,
+                                "sharded": True, "shard_key": ["category", "item_id"]})
 
     # Sharded collection with collation
     fr_collation = Collation(locale='fr', strength=2)
@@ -56,13 +57,86 @@ def create_sharded_collection_types(db, drop_before_creation=False):
     sharded_collation.insert_many(collation_docs)
     sharded_collation.create_index([("text_key", pymongo.ASCENDING)], name="text_key_shard_key_index", collation={"locale": "simple"})
     db.client.admin.command("shardCollection", f"{db.name}.sharded_collation_collection", key={"text_key": 1}, collation={"locale": "simple"})
-    collections_metadata.append({"collection": sharded_collation, "capped": False,
-                            "timeseries": False, "sharded": True, "shard_key": "text_key"})
+    collections_metadata.append({"collection": sharded_collation, "timeseries": False,
+                                "sharded": True, "shard_key": "text_key"})
+
+    # Sharded timeseries collection
+    if create_ts:
+        db.client.admin.command("shardCollection", f"{db.name}.sharded_timeseries_collection", key={"sensor_id": 1, "timestamp": 1},
+            timeseries={
+                "timeField": "timestamp",
+                "metaField": "sensor_id",
+                "granularity": "seconds"})
+        sharded_timeseries = db.sharded_timeseries_collection
+        base_time = datetime.datetime.now(datetime.timezone.utc)
+        timeseries_docs = []
+        for sensor_id in range(5):
+            for i in range(10):
+                timeseries_docs.append({
+                    "sensor_id": f"sensor_{sensor_id}",
+                    "timestamp": base_time + datetime.timedelta(seconds=i),
+                    "temperature": 20.0 + random.uniform(-5, 5),
+                    "humidity": 50.0 + random.uniform(-10, 10),
+                    "pressure": 1013.25 + random.uniform(-10, 10)
+                })
+        sharded_timeseries.insert_many(timeseries_docs)
+        collections_metadata.append({"collection": sharded_timeseries,"timeseries": True,
+                                    "sharded": True, "shard_key": ["sensor_id", "timestamp"]})
 
     return collections_metadata
 
-def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_shard_key=True, update_shard_key=True):
-    if isinstance(shard_key, list):
+def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_shard_key=True, update_shard_key=True, timeseries=False):
+    if timeseries:
+        sensor_id = f"sensor_{random.randint(0, 10)}"
+        base_time = datetime.datetime.now(datetime.timezone.utc)
+        new_doc = {
+            "sensor_id": sensor_id,
+            "timestamp": base_time,
+            "temperature": round(20.0 + random.uniform(-5, 5), 2),
+            "humidity": round(50.0 + random.uniform(-10, 10), 2),
+            "pressure": round(1013.25 + random.uniform(-10, 10), 2)}
+        collection.insert_one(new_doc)
+        new_docs = [
+            {
+                "sensor_id": sensor_id,
+                "timestamp": base_time + datetime.timedelta(seconds=i),
+                "temperature": round(20.0 + random.uniform(-5, 5), 2),
+                "humidity": round(50.0 + random.uniform(-10, 10), 2),
+                "pressure": round(1013.25 + random.uniform(-10, 10), 2)
+            }
+            for i in range(1, 6)]
+        collection.insert_many(new_docs)
+        collection.update_one(
+            {"sensor_id": sensor_id, "timestamp": base_time},
+            {"$set": {"temperature": 25.0, "humidity": 60.0}})
+        collection.update_many(
+            {"sensor_id": sensor_id},
+            {"$set": {"last_updated": datetime.datetime.now(datetime.timezone.utc)}})
+        collection.delete_one({"sensor_id": sensor_id, "timestamp": base_time + datetime.timedelta(seconds=1)})
+        collection.delete_many({"sensor_id": sensor_id, "temperature": {"$lt": 15.0}})
+        upsert_time = base_time + datetime.timedelta(seconds=100)
+        collection.update_one(
+            {"sensor_id": sensor_id, "timestamp": upsert_time},
+            {"$set": {
+                "sensor_id": sensor_id,
+                "timestamp": upsert_time,
+                "temperature": 30.0,
+                "humidity": 70.0,
+                "pressure": 1020.0
+            }},
+            upsert=True)
+        bulk_operations = [
+            pymongo.UpdateOne(
+                {"sensor_id": sensor_id, "timestamp": base_time + datetime.timedelta(seconds=2)},
+                {"$set": {"status": "active"}},
+                upsert=True),
+            pymongo.UpdateMany(
+                {"sensor_id": sensor_id},
+                {"$set": {"bulk_updated": True}}),
+            pymongo.DeleteOne({"sensor_id": sensor_id, "timestamp": base_time + datetime.timedelta(seconds=3)})]
+        collection.bulk_write(bulk_operations)
+
+    elif isinstance(shard_key, list):
         category = f"cat_{random.randint(0, 10)}"
         item_id = random.randint(100, 999)
         new_doc = {
@@ -318,7 +392,7 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
             ]
             collection.bulk_write(bulk_operations)
 
-    if no_shard_key:
+    if no_shard_key and not timeseries:
         no_shard_key_doc = {
             "name": f"item_no_shard_{random.randint(10000, 99999)}",
             "value": f"value_no_shard_{random.randint(1000, 9999)}",
@@ -379,7 +453,7 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
         ]
         collection.bulk_write(bulk_operations_no_shard)
 
-    if update_shard_key and not hashed:
+    if update_shard_key and not hashed and not timeseries:
         if isinstance(shard_key, list):
             category = f"cat_{random.randint(0, 10)}"
             item_id = random.randint(100, 999)
