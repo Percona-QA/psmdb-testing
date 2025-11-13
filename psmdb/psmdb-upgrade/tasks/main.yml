@@ -3,6 +3,9 @@
 - set_fact:
     from_repo_pro: "{{ lookup('env', 'FROM_REPO_PRO') }}"
 
+- set_fact:
+    pro_build: "{{ lookup('env', 'FROM_REPO_PRO') }}"
+
 - name: remove the Percona apt main repository
   apt_repository: repo='deb http://repo.percona.com/apt {{ ansible_distribution_release }} main' state=absent update_cache=yes
   when: ansible_os_family == "Debian"

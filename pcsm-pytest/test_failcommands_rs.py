@@ -70,7 +70,7 @@ def disable_failpoint(connection):
     Cluster.log(result)
 
 @pytest.mark.timeout(300,func_only=True)
-def test_rs_csync_PML_T33(start_cluster, srcRS, dstRS, csync):
+def test_csync_PML_T33(start_cluster, srcRS, dstRS, csync):
     """
     Test insufficient oplog for replication
     Configured delay on the destination cluster for bulkInsert command for 10 sec
@@ -92,7 +92,7 @@ def test_rs_csync_PML_T33(start_cluster, srcRS, dstRS, csync):
     assert status['data']['error'] == "change replication: oplog history is lost"
 
 @pytest.mark.timeout(300,func_only=True)
-def test_rs_csync_PML_T39(start_cluster, srcRS, dstRS, csync):
+def test_csync_PML_T39(start_cluster, srcRS, dstRS, csync):
     """
     Test capped collection replication failure due to CappedPositionLost. Capped cursor returns
     CappedPositionLost if the document it was positioned on has been overwritten (deleted).
@@ -114,10 +114,8 @@ def test_rs_csync_PML_T39(start_cluster, srcRS, dstRS, csync):
                 break
     t1 = threading.Thread(target=capped_insert)
     t1.start()
-    result = csync.start()
-    assert result is True, "Failed to start csync service"
-    result = csync.wait_for_repl_stage()
-    assert result is True, "Failed to start replication stage"
+    assert csync.start(), "Failed to start csync service"
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
     configure_failpoint_delay_all(srcRS.connection,'alwaysOn',30000)
     time.sleep(30)
     disable_failpoint(srcRS.connection)

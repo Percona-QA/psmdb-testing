@@ -5,7 +5,7 @@ import docker
 from cluster import Cluster
 from clustersync import Clustersync
 from data_generator import generate_dummy_data
-from data_integrity_check import compare_data_rs
+from data_integrity_check import compare_data
 
 # Sample test for PCSM perfomance testing, to run this test, you need to
 # 1. Rename sample_rs_csync_PML_T1000 to test_rs_csync_PML_T1000
@@ -60,5 +60,5 @@ def sample_rs_csync_PML_T1000(cluster_manager, csync):
     assert csync.wait_for_zero_lag(timeout=800) is True, "Failed to catch up on replication"
     assert csync.finalize() is True, "Failed to finalize csync"
 
-    result, _ = compare_data_rs(srcRS, dstRS)
+    result, _ = compare_data(srcRS, dstRS)
     assert result is True, "Data mismatch after sync"
