@@ -11,8 +11,8 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
 BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
             'mongofiles', 'mongoimport', 'mongorestore', 'mongotop', 'mongostat']
 
-tarball_url = os.environ["TARBALL"]
-match_exp_version = re.search(r'server-mongodb-(\d+\.\d+\.\d+-\d+)', tarball_url)
+psmdb_version = os.environ["PSMDB_VERSION"]
+match_exp_version = re.search(r'(\d+\.\d+\.\d+-\d+)', psmdb_version)
 
 JSTESTS = ['test_kerberos_simple.js','test_ldap_simple.js', 'test_oidc_simple.js']
 SUITES = ['multiversion_kmip', 'multiversion_vault']
