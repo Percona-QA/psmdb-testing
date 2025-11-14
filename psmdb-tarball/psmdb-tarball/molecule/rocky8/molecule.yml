@@ -6,7 +6,7 @@ driver:
 platforms:
   - name: rocky8-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
-    image: "${MOLECULE_R0CKY8_AMI:-ami-04310224db1f2a278}"
+    image: "${MOLECULE_ROCKY8_AMI:-ami-04310224db1f2a278}"
     vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: ${INSTANCE_TYPE:-t2.medium}
     ssh_user: rocky
@@ -35,7 +35,7 @@ scenario:
   name: rocky8
   destroy_sequence:
     - destroy
-  clenup_sequence:
+  cleanup_sequence:
     - cleanup
   test_sequence:
     - destroy
