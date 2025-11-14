@@ -9,7 +9,7 @@ from packaging import version
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
-PRO_FEATURES = ['FIPSMode','FCBIS','OIDC']
+MONGO_FEATURES = ['MemoryEngine', 'HotBackup', 'BackupCursorAggregationStage', 'BackupCursorExtendAggregationStage', 'AWSIAM', 'Kerberos', 'LDAP', 'OIDC', 'TDE', 'FIPSMode', 'FCBIS', 'Auditing', 'ProfilingRateLimit', 'LogReduction', 'ngram']
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
 toolkit = os.environ.get("ENABLE_TOOLKIT")
@@ -123,12 +123,12 @@ def check_hotbackup(node):
     result = node.check_output('mongo --quiet --eval "db.series.countDocuments({})"')
     assert "1000" in result
 
-def test_pro_version(host):
+def test_version_features(host):
     result = host.run("/usr/bin/mongod --version")
-    enabled_features = result.stdout.split('"proFeatures":')[1].split(']')[0]
+    enabled_features = result.stdout.split('"perconaFeatures":')[1].split(']')[0]
 
-    for feature in PRO_FEATURES:
-        assert feature in enabled_features, f'"{feature}" not found in proFeatures: {enabled_features}'
+    for feature in MONGO_FEATURES:
+        assert feature in enabled_features, f'"{feature}" not found in perconaFeatures: {enabled_features}'
 
 def test_binary_symbol_visibility(host):
     binaries = ["/usr/bin/mongod", "/usr/bin/mongos"]
