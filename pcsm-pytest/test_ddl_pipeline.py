@@ -10,13 +10,9 @@ def test_csync_PML_T50(start_cluster, src_cluster, dst_cluster, csync):
     """Test for array slicing, reversing, filtering, extending, pull, push, concat+slice, nested array updates"""
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
-    is_sharded = src_cluster.layout == "sharded"
     db, coll = "pipeline_test_db", "array_operations"
-    if is_sharded:
-        try:
-            src.admin.command("enableSharding", db)
-        except pymongo.errors.OperationFailure:
-            pass
+    if src_cluster.is_sharded:
+        src.admin.command("enableSharding", db)
     collection = src[db][coll]
     docs = [
         {"_id": 1, "email": "old@test.com", "phone": "123", "arr": list(range(10))},
@@ -35,17 +31,14 @@ def test_csync_PML_T50(start_cluster, src_cluster, dst_cluster, csync):
         {"_id": 14, "nums": [1, 2, 3]}]
     collection.insert_many(docs)
     sharded_collection = None
-    if is_sharded:
+    if src_cluster.is_sharded:
         sharded_coll = "sharded_array_operations"
         sharded_collection = src[db][sharded_coll]
-        try:
-            src.admin.command("shardCollection", f"{db}.{sharded_coll}", key={"_id": "hashed"})
-        except pymongo.errors.OperationFailure:
-            pass
+        src.admin.command("shardCollection", f"{db}.{sharded_coll}", key={"_id": "hashed"})
         sharded_collection.insert_many(docs)
     assert csync.start() and csync.wait_for_repl_stage()
     collections_to_update = [collection]
-    if is_sharded and sharded_collection is not None:
+    if src_cluster.is_sharded and sharded_collection is not None:
         collections_to_update.append(sharded_collection)
     for coll_obj in collections_to_update:
         coll_obj.update_one({"_id": 1}, [
@@ -81,7 +74,7 @@ def test_csync_PML_T50(start_cluster, src_cluster, dst_cluster, csync):
     assert csync.wait_for_zero_lag() and csync.finalize()
     time.sleep(1)
     collections_to_check = [coll]
-    if is_sharded and sharded_collection is not None:
+    if src_cluster.is_sharded and sharded_collection is not None:
         collections_to_check.append("sharded_array_operations")
     for coll_name in collections_to_check:
         dst_coll = dst[db][coll_name]
@@ -109,13 +102,9 @@ def test_csync_PML_T51(start_cluster, src_cluster, dst_cluster, csync):
     """Test for nested path updates, replaceRoot, array mutations, reduce, objectToArray"""
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
-    is_sharded = src_cluster.layout == "sharded"
     db, coll = "pipeline_test_db", "structural_changes"
-    if is_sharded:
-        try:
-            src.admin.command("enableSharding", db)
-        except pymongo.errors.OperationFailure:
-            pass
+    if src_cluster.is_sharded:
+        src.admin.command("enableSharding", db)
     collection = src[db][coll]
     docs = [
         {"_id": 1, "wrap": {"x": 1, "y": "z"}, "meta": "drop"},
@@ -141,17 +130,14 @@ def test_csync_PML_T51(start_cluster, src_cluster, dst_cluster, csync):
         {"_id": 14, "obj": {"a": 1, "b": 2}}]
     collection.insert_many(docs)
     sharded_collection = None
-    if is_sharded:
+    if src_cluster.is_sharded:
         sharded_coll = "sharded_structural_changes"
         sharded_collection = src[db][sharded_coll]
-        try:
-            src.admin.command("shardCollection", f"{db}.{sharded_coll}", key={"_id": "hashed"})
-        except pymongo.errors.OperationFailure:
-            pass
+        src.admin.command("shardCollection", f"{db}.{sharded_coll}", key={"_id": "hashed"})
         sharded_collection.insert_many(docs)
     assert csync.start() and csync.wait_for_repl_stage()
     collections_to_update = [collection]
-    if is_sharded and sharded_collection is not None:
+    if src_cluster.is_sharded and sharded_collection is not None:
         collections_to_update.append(sharded_collection)
     for coll_obj in collections_to_update:
         coll_obj.update_one({"_id": 1}, [{"$replaceRoot": {"newRoot": "$wrap"}}])
@@ -198,7 +184,7 @@ def test_csync_PML_T51(start_cluster, src_cluster, dst_cluster, csync):
     assert csync.wait_for_zero_lag() and csync.finalize()
     time.sleep(1)
     collections_to_check = [coll]
-    if is_sharded and sharded_collection is not None:
+    if src_cluster.is_sharded and sharded_collection is not None:
         collections_to_check.append("sharded_structural_changes")
     for coll_name in collections_to_check:
         dst_coll = dst[db][coll_name]
@@ -235,13 +221,9 @@ def test_csync_PML_T52(start_cluster, src_cluster, dst_cluster, csync):
     """Test for $mergeObjects, $replaceWith, $let, $type, $switch, $cond"""
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
-    is_sharded = src_cluster.layout == "sharded"
     db, coll = "pipeline_test_db", "extra_operations"
-    if is_sharded:
-        try:
-            src.admin.command("enableSharding", db)
-        except pymongo.errors.OperationFailure:
-            pass
+    if src_cluster.is_sharded:
+        src.admin.command("enableSharding", db)
     collection = src[db][coll]
     docs = [
         {"_id": 1, "nested": {"x": 1}, "score": 93},
@@ -258,17 +240,14 @@ def test_csync_PML_T52(start_cluster, src_cluster, dst_cluster, csync):
         {"_id": 10, "config": {"nested": {"key": "val"}}}]
     collection.insert_many(docs)
     sharded_collection = None
-    if is_sharded:
+    if src_cluster.is_sharded:
         sharded_coll = "sharded_extra_operations"
         sharded_collection = src[db][sharded_coll]
-        try:
-            src.admin.command("shardCollection", f"{db}.{sharded_coll}", key={"_id": "hashed"})
-        except pymongo.errors.OperationFailure:
-            pass
+        src.admin.command("shardCollection", f"{db}.{sharded_coll}", key={"_id": "hashed"})
         sharded_collection.insert_many(docs)
     assert csync.start() and csync.wait_for_repl_stage()
     collections_to_update = [collection]
-    if is_sharded and sharded_collection is not None:
+    if src_cluster.is_sharded and sharded_collection is not None:
         collections_to_update.append(sharded_collection)
     for coll_obj in collections_to_update:
         coll_obj.update_one({"_id": 1}, [
@@ -317,7 +296,7 @@ def test_csync_PML_T52(start_cluster, src_cluster, dst_cluster, csync):
     assert csync.wait_for_zero_lag() and csync.finalize()
     time.sleep(1)
     collections_to_check = [coll]
-    if is_sharded and sharded_collection is not None:
+    if src_cluster.is_sharded and sharded_collection is not None:
         collections_to_check.append("sharded_extra_operations")
     for coll_name in collections_to_check:
         dst_coll = dst[db][coll_name]
@@ -353,13 +332,9 @@ def test_csync_PML_T53(start_cluster, src_cluster, dst_cluster, csync):
     """Test for $addFields, $project in updateMany and upsert=True with pipeline"""
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
-    is_sharded = src_cluster.layout == "sharded"
     db, coll = "pipeline_test_db", "misc_pipeline_stages"
-    if is_sharded:
-        try:
-            src.admin.command("enableSharding", db)
-        except pymongo.errors.OperationFailure:
-            pass
+    if src_cluster.is_sharded:
+        src.admin.command("enableSharding", db)
     collection = src[db][coll]
     docs = [
         {"_id": 1, "a": 2, "b": 3},
@@ -367,17 +342,14 @@ def test_csync_PML_T53(start_cluster, src_cluster, dst_cluster, csync):
         {"_id": 3, "a": 10, "b": 20}]
     collection.insert_many(docs)
     sharded_collection = None
-    if is_sharded:
+    if src_cluster.is_sharded:
         sharded_coll = "sharded_misc_pipeline_stages"
         sharded_collection = src[db][sharded_coll]
-        try:
-            src.admin.command("shardCollection", f"{db}.{sharded_coll}", key={"_id": "hashed"})
-        except pymongo.errors.OperationFailure:
-            pass
+        src.admin.command("shardCollection", f"{db}.{sharded_coll}", key={"_id": "hashed"})
         sharded_collection.insert_many(docs)
     assert csync.start() and csync.wait_for_repl_stage()
     collections_to_update = [collection]
-    if is_sharded and sharded_collection is not None:
+    if src_cluster.is_sharded and sharded_collection is not None:
         collections_to_update.append(sharded_collection)
     for coll_obj in collections_to_update:
         coll_obj.update_many({}, [
@@ -390,7 +362,7 @@ def test_csync_PML_T53(start_cluster, src_cluster, dst_cluster, csync):
     assert csync.wait_for_zero_lag() and csync.finalize()
     time.sleep(1)
     collections_to_check = [coll]
-    if is_sharded and sharded_collection is not None:
+    if src_cluster.is_sharded and sharded_collection is not None:
         collections_to_check.append("sharded_misc_pipeline_stages")
     for coll_name in collections_to_check:
         dst_coll = dst[db][coll_name]
@@ -409,13 +381,9 @@ def test_csync_PML_T54(start_cluster, src_cluster, dst_cluster, csync):
     """Test for documents with '.' and '$' in field names."""
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
-    is_sharded = src_cluster.layout == "sharded"
     db, coll = "pipeline_test_db", "special_char_fields"
-    if is_sharded:
-        try:
-            src.admin.command("enableSharding", db)
-        except pymongo.errors.OperationFailure:
-            pass
+    if src_cluster.is_sharded:
+        src.admin.command("enableSharding", db)
     collection = src[db][coll]
     doc = {
         "_id": 1,
@@ -423,24 +391,21 @@ def test_csync_PML_T54(start_cluster, src_cluster, dst_cluster, csync):
         "field$with$dollar": "initial_dollar"}
     collection.insert_one(doc)
     sharded_collection = None
-    if is_sharded:
+    if src_cluster.is_sharded:
         sharded_coll = "sharded_special_char_fields"
         sharded_collection = src[db][sharded_coll]
-        try:
-            src.admin.command("shardCollection", f"{db}.{sharded_coll}", key={"_id": "hashed"})
-        except pymongo.errors.OperationFailure:
-            pass
+        src.admin.command("shardCollection", f"{db}.{sharded_coll}", key={"_id": "hashed"})
         sharded_collection.insert_one(doc)
     assert csync.start() and csync.wait_for_repl_stage()
     collections_to_update = [collection]
-    if is_sharded and sharded_collection is not None:
+    if src_cluster.is_sharded and sharded_collection is not None:
         collections_to_update.append(sharded_collection)
     for coll_obj in collections_to_update:
         coll_obj.update_one({"_id": 1},{"$set": {"field.with.dot": "updated_dot","field$with$dollar": "updated_dollar"}})
     assert csync.wait_for_zero_lag() and csync.finalize()
     time.sleep(1)
     collections_to_check = [coll]
-    if is_sharded and sharded_collection is not None:
+    if src_cluster.is_sharded and sharded_collection is not None:
         collections_to_check.append("sharded_special_char_fields")
     for coll_name in collections_to_check:
         dst_coll = dst[db][coll_name]

@@ -14,8 +14,7 @@ def test_csync_PML_T9(start_cluster, src_cluster, dst_cluster, csync):
     Test to verify collection drop and re-creation during clone phase
     """
     src = pymongo.MongoClient(src_cluster.connection)
-    is_sharded = src_cluster.layout == "sharded"
-    generate_dummy_data(src_cluster.connection, 'dummy', 5, 200000, drop_before_creation=False, is_sharded=is_sharded)
+    generate_dummy_data(src_cluster.connection, 'dummy', 5, 200000, drop_before_creation=False, is_sharded=src_cluster.is_sharded)
     for i in range(5):
         src["dummy"].create_collection(f"test_collection_{i}", capped=True, size=2147483648, max=500000)
     for i in range(5):
@@ -47,14 +46,13 @@ def test_csync_PML_T10(start_cluster, src_cluster, dst_cluster, csync):
     Test to verify collection drop and re-creation replication phase
     """
     try:
-        is_sharded = src_cluster.layout == "sharded"
-        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.start(), "Failed to start csync service"
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
-        _, _ = create_all_types_db(src_cluster.connection, "repl_test_db", create_ts=True, is_sharded=is_sharded)
+        _, _ = create_all_types_db(src_cluster.connection, "repl_test_db", create_ts=True, is_sharded=src_cluster.is_sharded)
         # Re-create data during replication phase by dropping and re-creating the collections
         _, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db",
-                                                                drop_before_creation=True, start_crud=True, is_sharded=is_sharded)
+                                                                drop_before_creation=True, start_crud=True, is_sharded=src_cluster.is_sharded)
     except Exception:
         raise
     finally:
@@ -83,8 +81,7 @@ def test_csync_PML_T11(start_cluster, src_cluster, dst_cluster, csync):
     """
     try:
         src = pymongo.MongoClient(src_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
-        generate_dummy_data(src_cluster.connection, "init_test_db", is_sharded=is_sharded)
+        generate_dummy_data(src_cluster.connection, "init_test_db", is_sharded=src_cluster.is_sharded)
         # Re-create data during clone phase by dropping DB
         def start_csync():
             assert csync.start(), "Failed to start csync service"
@@ -102,7 +99,7 @@ def test_csync_PML_T11(start_cluster, src_cluster, dst_cluster, csync):
         t2.start()
         t1.join()
         t2.join()
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
     except Exception:
         raise
@@ -132,15 +129,14 @@ def test_csync_PML_T12(start_cluster, src_cluster, dst_cluster, csync):
     Test to verify DB drop and re-creation during replication phase
     """
     try:
-        is_sharded = src_cluster.layout == "sharded"
         src = pymongo.MongoClient(src_cluster.connection)
-        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.start(), "Failed to start csync service"
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
-        _, _ = create_all_types_db(src_cluster.connection, "repl_test_db", is_sharded=is_sharded)
+        _, _ = create_all_types_db(src_cluster.connection, "repl_test_db", is_sharded=src_cluster.is_sharded)
         # Re-create data during replication phase by dropping DB
         src.drop_database("repl_test_db")
-        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
     except Exception:
         raise
     finally:

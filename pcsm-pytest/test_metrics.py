@@ -79,18 +79,17 @@ def test_csync_PML_T44(start_cluster, src_cluster, dst_cluster, csync):
     Test to validate metrics returned by csync service
     """
     try:
-        is_sharded = src_cluster.layout == "sharded"
-        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.start(), "Failed to start csync service"
         metrics = csync.metrics()
         assert metrics["success"], f"Failed to fetch metrics after start: {metrics.get('error')}"
         assert_metrics(metrics["data"])
-        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         metrics = csync.metrics()
         assert metrics["success"], f"Failed to fetch metrics after start: {metrics.get('error')}"
         assert_metrics(metrics["data"])
-        _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
     except Exception:
         raise
     finally:

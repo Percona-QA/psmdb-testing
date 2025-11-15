@@ -43,9 +43,8 @@ def test_csync_PML_T46(start_cluster, src_cluster, dst_cluster, csync, fail_node
     """
     target = src_cluster if fail_node == "src" else dst_cluster
     try:
-        is_sharded = src_cluster.layout == "sharded"
-        generate_dummy_data(src_cluster.connection, is_sharded=is_sharded)
-        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        generate_dummy_data(src_cluster.connection, is_sharded=src_cluster.is_sharded)
+        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         def start_csync():
             assert csync.start() is True, "Failed to start csync service"
         def restart_primary():
@@ -62,14 +61,14 @@ def test_csync_PML_T46(start_cluster, src_cluster, dst_cluster, csync, fail_node
         t2.start()
         t1.join()
         t2.join()
-        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         result = csync.wait_for_repl_stage()
         if not result and fail_node == "src":
             # PCSM doesn't tolerate SRC primary failure during clone stage
             csync.create(log_level="trace", extra_args="--reset-state")
             assert csync.start(), "Failed to restart csync service after repl_stage failure"
             assert csync.wait_for_repl_stage() is True, "Failed to start replication stage"
-        _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
     except Exception:
         raise
     finally:
@@ -98,15 +97,14 @@ def test_csync_PML_T47(start_cluster, src_cluster, dst_cluster, csync, fail_node
     """
     target = src_cluster if fail_node == "src" else dst_cluster
     try:
-        is_sharded = src_cluster.layout == "sharded"
-        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.start() is True, "Failed to start csync service"
-        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.wait_for_repl_stage() is True, "Failed to start replication stage"
-        _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db1", start_crud=True, is_sharded=is_sharded)
-        _, operation_threads_4 = create_all_types_db(src_cluster.connection, "repl_test_db2", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db1", start_crud=True, is_sharded=src_cluster.is_sharded)
+        _, operation_threads_4 = create_all_types_db(src_cluster.connection, "repl_test_db2", start_crud=True, is_sharded=src_cluster.is_sharded)
         target.restart_primary(5, force=False)
-        _, operation_threads_5 = create_all_types_db(src_cluster.connection, "repl_test_db3", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_5 = create_all_types_db(src_cluster.connection, "repl_test_db3", start_crud=True, is_sharded=src_cluster.is_sharded)
         target.restart_primary(5, force=True)
     except Exception:
         raise
@@ -143,8 +141,7 @@ def test_csync_PML_T48(start_cluster, src_cluster, dst_cluster, csync, fail_node
     stop_event = threading.Event()
     bg_threads = []
     try:
-        is_sharded = src_cluster.layout == "sharded"
-        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         bg_threads += operation_threads_1
         assert csync.start(), "Failed to start csync service"
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
@@ -179,8 +176,7 @@ def test_csync_PML_T49(start_cluster, src_cluster, dst_cluster, csync, fail_node
     stop_event = threading.Event()
     bg_threads = []
     try:
-        is_sharded = src_cluster.layout == "sharded"
-        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         bg_threads += operation_threads_1
         assert csync.start(), "Failed to start csync service"
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"

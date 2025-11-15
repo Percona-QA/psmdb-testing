@@ -17,19 +17,20 @@ def test_csync_PML_T13(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
-
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         db_name = "test_db"
         coll_name = "test_collection"
+        if src_cluster.is_sharded:
+            src.admin.command({"enableSharding": db_name, "primaryShard": "rs1"})
         src[db_name].create_collection(
             coll_name,
             validator={"age": {"$gte": 18}},
             validationAction="warn",
             validationLevel="moderate"
         )
-        src[db_name][coll_name].insert_one({"name": "Alice", "age": 30})
-
+        if src_cluster.is_sharded:
+            src.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"_id": "hashed"})
+        src[db_name][coll_name].insert_many([{"name": f"Alice{i}", "age": 30 + i} for i in range(50)])
         assert csync.start(), "Failed to start csync service"
 
         res = src[db_name].command(
@@ -40,7 +41,6 @@ def test_csync_PML_T13(start_cluster, src_cluster, dst_cluster, csync):
             validationLevel="strict"
         )
         assert res.get("ok") == 1.0, f"collMod failed: {res}"
-
     except Exception:
         raise
     finally:
@@ -52,7 +52,6 @@ def test_csync_PML_T13(start_cluster, src_cluster, dst_cluster, csync):
     assert csync.wait_for_repl_stage(), "Failed to finish init sync"
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
     assert csync.finalize(), "Failed to finalize csync service"
-
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
     csync_error, error_logs = csync.check_csync_errors()
@@ -67,17 +66,20 @@ def test_csync_PML_T14(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
 
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         db_name = "test_db"
         coll_name1 = "test_collection1"
         coll_name2 = "test_collection2"
+        if src_cluster.is_sharded:
+            src.admin.command({"enableSharding": db_name, "primaryShard": "rs1"})
         src[db_name].create_collection(coll_name1)
         src[db_name].create_collection(coll_name2, changeStreamPreAndPostImages={"enabled": True})
-        src[db_name][coll_name1].insert_one({"name": "Alice", "age": 30})
-        src[db_name][coll_name2].insert_one({"name": "Alice", "age": 30})
-
+        if src_cluster.is_sharded:
+            src.admin.command("shardCollection", f"{db_name}.{coll_name1}", key={"_id": "hashed"})
+            src.admin.command("shardCollection", f"{db_name}.{coll_name2}", key={"_id": "hashed"})
+        src[db_name][coll_name1].insert_many([{"name": f"Alice{i}", "age": 30 + i} for i in range(50)])
+        src[db_name][coll_name2].insert_many([{"name": f"Alice{i}", "age": 30 + i} for i in range(50)])
         assert csync.start(), "Failed to start csync service"
 
         res = src[db_name].command(
@@ -112,9 +114,8 @@ def test_csync_PML_T15(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
 
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         db_name = "test_db"
         coll_name1, coll_name2 = "test_collection1", "test_collection2"
         view_name = "test_view"
@@ -171,9 +172,8 @@ def test_csync_PML_T16(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
 
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         db_name = "test_db"
         coll_name = "test_collection"
         src[db_name].create_collection(coll_name, capped=True, size=1024 * 1024, max=1000)
@@ -222,9 +222,8 @@ def test_csync_PML_T17(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
 
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         db_name = "test_db"
         coll_name = "test_collection"
         coll = src[db_name][coll_name]
@@ -297,11 +296,10 @@ def test_csync_PML_T18(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
 
         db_name = "test_db"
         coll_name = "test_collection"
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         src[db_name][coll_name].insert_many([
             {"x": 1},
             {"x": 1},
@@ -367,11 +365,10 @@ def test_csync_PML_T19(start_cluster, src_cluster, dst_cluster, csync, clone_sta
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
         db_name = "test_db"
         old_name = "collection_4"
         new_name = "renamed_collection_4"
-        generate_dummy_data(src_cluster.connection, db_name, is_sharded=is_sharded)
+        generate_dummy_data(src_cluster.connection, db_name, is_sharded=src_cluster.is_sharded)
         def start_csync():
             assert csync.start(), "Failed to start csync service"
         def rename_collection():
@@ -410,26 +407,30 @@ def test_csync_PML_T19(start_cluster, src_cluster, dst_cluster, csync, clone_sta
 @pytest.mark.csync_env({"PCSM_CLONE_NUM_PARALLEL_COLLECTIONS": "5"})
 def test_csync_PML_T20(start_cluster, src_cluster, dst_cluster, csync):
     """
-    Test to check renameCollection during data clone
+    Test to check renameCollection during data clone.
+    To use renameCollection in sharded cluster, source and destination collections
+    must be on the same shard (if unsharded) and within the same database (if sharded)
     """
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
-        generate_dummy_data(src_cluster.connection, "dummy", is_sharded=is_sharded)
+        generate_dummy_data(src_cluster.connection, "dummy", is_sharded=src_cluster.is_sharded)
         db_name1, db_name2 = "test_db1", "test_db2"
         old_name1, old_name2, old_name3  = "test_collection1", "test_collection2", "test_collection3"
+        sh_old_name1, sh_old_name2  = "sh_test_collection1", "sh_test_collection2"
         new_name1, new_name2, new_name3 = "renamed_collection1", "renamed_collection2", "renamed_collection3"
+        sh_new_name1, sh_new_name2 = "sh_renamed_collection1", "sh_renamed_collection2"
+        if src_cluster.is_sharded:
+            src.admin.command({"enableSharding": db_name1, "primaryShard": "rs1"})
+            src.admin.command({"enableSharding": db_name2, "primaryShard": "rs1"})
+            for coll_name in [sh_old_name1, sh_old_name2, sh_new_name2]:
+                src.admin.command("shardCollection", f"{db_name1}.{coll_name}", key={"_id": "hashed"})
         initial_docs_1 = [{"_id": i, "value": f"doc{i}", "email": f"user{i}@test.com", "field": i} for i in range(10)]
         initial_docs_2 = [{"_id": i, "value": f"doc{i}", "email_new": f"user{i}@test.com", "field": i} for i in range(10)]
-        for coll_name in [old_name1, old_name2, old_name3]:
+        for coll_name in [old_name1, old_name2, old_name3, sh_old_name1, sh_old_name2]:
             src[db_name1][coll_name].insert_many(initial_docs_1)
         src[db_name1][new_name2].insert_many(initial_docs_2)
-        if is_sharded:
-            try:
-                src.admin.command("enableSharding", db_name2)
-            except pymongo.errors.OperationFailure:
-                pass
+        src[db_name1][sh_new_name2].insert_many(initial_docs_2)
         def start_csync():
             assert csync.start(), "Failed to start csync service"
         def rename_collection():
@@ -440,7 +441,12 @@ def test_csync_PML_T20(start_cluster, src_cluster, dst_cluster, csync):
                 f"{db_name1}.{new_name2}": False,
                 f"{db_name1}.{old_name3}": False,
             }
-            rename1_done = rename2_done = rename3_done = False
+            if src_cluster.is_sharded:
+                watched_collections.update({
+                    f"{db_name1}.{sh_old_name1}": False,
+                    f"{db_name1}.{sh_old_name2}": False,
+                    f"{db_name1}.{sh_new_name2}": False})
+            rename1_done = rename2_done = rename3_done = rename4_done = rename5_done = False
             for raw_line in log_stream:
                 line = raw_line.decode("utf-8").strip()
                 for coll in watched_collections:
@@ -459,8 +465,21 @@ def test_csync_PML_T20(start_cluster, src_cluster, dst_cluster, csync):
                     res = src.admin.command("renameCollection", f"{db_name1}.{old_name3}", to=f"{db_name2}.{new_name3}")
                     assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
                     rename3_done = True
-                if rename1_done and rename2_done and rename3_done:
-                    break
+                if src_cluster.is_sharded:
+                    if watched_collections[f"{db_name1}.{sh_old_name1}"] and not rename4_done:
+                        res = src.admin.command("renameCollection", f"{db_name1}.{sh_old_name1}", to=f"{db_name1}.{sh_new_name1}")
+                        assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
+                        rename4_done = True
+                    if watched_collections[f"{db_name1}.{sh_old_name2}"] and watched_collections[f"{db_name1}.{sh_new_name2}"] and not rename5_done:
+                        res = src.admin.command("renameCollection", f"{db_name1}.{sh_old_name2}", to=f"{db_name1}.{sh_new_name2}", dropTarget=True)
+                        assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
+                        rename5_done = True
+                if src_cluster.is_sharded:
+                    if rename1_done and rename2_done and rename3_done and rename4_done and rename5_done:
+                        break
+                else:
+                    if rename1_done and rename2_done and rename3_done:
+                        break
         t1 = threading.Thread(target=start_csync)
         t2 = threading.Thread(target=rename_collection)
         t1.start()
@@ -480,6 +499,11 @@ def test_csync_PML_T20(start_cluster, src_cluster, dst_cluster, csync):
     for name in [old_name1, old_name2, old_name3]:
         assert name not in dst_collections1, f"Old collection '{name}' still exists in {db_name1}"
     assert new_name3 in dst_collections2, f"Renamed collection '{new_name3}' not found in {db_name2}"
+    if src_cluster.is_sharded:
+        for name in [sh_new_name1, sh_new_name2]:
+            assert name in dst_collections1, f"Expected collection '{name}' not found in {db_name1}"
+        for name in [sh_old_name1, sh_old_name2]:
+            assert name not in dst_collections1, f"Old collection '{name}' still exists in {db_name1}"
     result, summary = compare_data(src_cluster, dst_cluster)
     if not result:
         expected_mismatches = ["hash mismatch"]
@@ -496,31 +520,41 @@ def test_csync_PML_T21(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         db_name1, db_name2 = "test_db1", "test_db2"
         old_name1, old_name2, old_name3  = "test_collection1", "test_collection2", "test_collection3"
+        sh_old_name1, sh_old_name2  = "sh_test_collection1", "sh_test_collection2"
         new_name1, new_name2, new_name3 = "renamed_collection1", "renamed_collection2", "renamed_collection3"
+        sh_new_name1, sh_new_name2 = "sh_renamed_collection1", "sh_renamed_collection2"
+        if src_cluster.is_sharded:
+            src.admin.command({"enableSharding": db_name1, "primaryShard": "rs1"})
+            src.admin.command({"enableSharding": db_name2, "primaryShard": "rs1"})
+            for coll_name in [sh_old_name1, sh_old_name2, sh_new_name2]:
+                src.admin.command("shardCollection", f"{db_name1}.{coll_name}", key={"_id": "hashed"})
         initial_docs = [{"_id": i, "value": f"doc{i}", "email": f"user{i}@test.com", "field": i} for i in range(10)]
         collection_names = [old_name1, old_name2, old_name3, new_name2]
         for coll_name in collection_names:
             src[db_name1][coll_name].insert_many(initial_docs)
+        if src_cluster.is_sharded:
+            for coll_name in [sh_old_name1, sh_old_name2]:
+                src[db_name1][coll_name].insert_many(initial_docs)
+            src[db_name1][sh_new_name2].insert_many(initial_docs)
         src[db_name1][new_name2].create_index("email", unique=True, name="email_unique22")
         src[db_name1][old_name3].create_index("email", unique=True, name="email_unique31")
-        if is_sharded:
-            try:
-                src.admin.command("enableSharding", db_name2)
-            except pymongo.errors.OperationFailure:
-                pass
         assert csync.start(), "Failed to start csync service"
         assert csync.wait_for_repl_stage(), "Failed to finish init sync"
-        repl_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        repl_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         res = src.admin.command("renameCollection", f"{db_name1}.{old_name1}", to=f"{db_name1}.{new_name1}")
         assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
         res = src.admin.command("renameCollection", f"{db_name1}.{old_name2}", to=f"{db_name1}.{new_name2}", dropTarget=True)
         assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
         res = src.admin.command("renameCollection", f"{db_name1}.{old_name3}", to=f"{db_name2}.{new_name3}")
         assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
+        if src_cluster.is_sharded:
+            res = src.admin.command("renameCollection", f"{db_name1}.{sh_old_name1}", to=f"{db_name1}.{sh_new_name1}")
+            assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
+            res = src.admin.command("renameCollection", f"{db_name1}.{sh_old_name2}", to=f"{db_name1}.{sh_new_name2}", dropTarget=True)
+            assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
     except Exception:
         raise
     finally:
@@ -542,5 +576,10 @@ def test_csync_PML_T21(start_cluster, src_cluster, dst_cluster, csync):
     for name in [old_name1, old_name2, old_name3]:
         assert name not in dst_collections1, f"Old collection '{name}' still exists in {db_name1}"
     assert new_name3 in dst_collections2, f"Renamed collection '{new_name3}' not found in {db_name2}"
+    if src_cluster.is_sharded:
+        for name in [sh_new_name1, sh_new_name2]:
+            assert name in dst_collections1, f"Expected collection '{name}' not found in {db_name1}"
+        for name in [sh_old_name1, sh_old_name2]:
+            assert name not in dst_collections1, f"Old collection '{name}' still exists in {db_name1}"
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
