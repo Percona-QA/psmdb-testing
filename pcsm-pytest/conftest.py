@@ -131,7 +131,10 @@ def cluster_configs(request):
 
 @pytest.fixture(scope="module")
 def src_cluster(cluster_configs):
-    return Cluster(cluster_configs["src_config"])
+    config = cluster_configs["src_config"]
+    if "mongos" in config:
+        return Cluster(config, mongod_extra_args="--setParameter periodicNoopIntervalSecs=1")
+    return Cluster(config)
 
 @pytest.fixture(scope="module")
 def dst_cluster(cluster_configs):
