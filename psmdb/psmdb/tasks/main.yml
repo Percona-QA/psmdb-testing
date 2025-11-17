@@ -157,7 +157,7 @@
     - wget --no-check-certificate -O main.zip https://github.com/Percona-QA/psmdb-testing/archive/refs/heads/PSMDB-1849.zip
     - unzip main.zip
     - rm -f main.zip
-    - mv psmdb-testing-main /package-testing
+    - mv psmdb-testing-PSMDB-1849 /package-testing
 
 - name: setup tools repo with percona-release
   command: percona-release enable tools
