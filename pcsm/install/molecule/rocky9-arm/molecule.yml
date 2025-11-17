@@ -1,0 +1,42 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: ec2
+platforms:
+  - name: rocky9-arm-${BUILD_NUMBER}-${JOB_NAME}
+    region: us-west-2
+    image: "${MOLECULE_ROCKY9_ARM_AMI:-ami-0e1cdd57350503889}"
+    vpc_subnet_id: subnet-03136d8c244f56036
+    instance_type: c6g.large
+    ssh_user: rocky
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+      job-name: ${JOB_NAME}
+provisioner:
+  name: ansible
+  log: True
+  playbooks:
+    create: ../../../../playbooks/create.yml
+    destroy: ../../../../playbooks/destroy.yml
+    prepare: ../../playbooks/prepare.yml
+    converge: ../../playbooks/redhat.yml
+verifier:
+  name: testinfra
+  directory: ../../../tests/
+  options:
+    verbose: true
+    s: true
+    junitxml: report.xml
+scenario:
+  name: rocky9-arm
+  destroy_sequence:
+    - destroy
+  test_sequence:
+    - destroy
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy
