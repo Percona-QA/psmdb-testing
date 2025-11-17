@@ -31,8 +31,7 @@ def test_csync_PML_T22(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
-        is_sharded = src_cluster.layout == "sharded"
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
 
         # Verify transactions started before sync and committed during data clone stage / before sync finalize
         session0 = src.start_session()
@@ -43,7 +42,7 @@ def test_csync_PML_T22(start_cluster, src_cluster, dst_cluster, csync):
 
         assert csync.start(), "Failed to start csync service"
 
-        clone_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=is_sharded)
+        clone_test_db, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
 
         session1.commit_transaction()
         session1.end_session()
@@ -54,7 +53,7 @@ def test_csync_PML_T22(start_cluster, src_cluster, dst_cluster, csync):
 
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
 
-        repl_test_db, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        repl_test_db, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
 
         session2.commit_transaction()
         session2.end_session()
@@ -103,7 +102,7 @@ def test_csync_PML_T22(start_cluster, src_cluster, dst_cluster, csync):
     expected_mismatches = [
         ("transaction_db.after_sync", "missing in dst DB"),
         ("transaction_db.after_sync", "_id_")]
-    if not is_sharded:
+    if not src_cluster.is_sharded:
         expected_mismatches.append(("transaction_db", "hash mismatch"))
 
     result, summary = compare_data(src_cluster, dst_cluster)
@@ -190,20 +189,22 @@ def test_csync_PML_T24(start_cluster, src_cluster, dst_cluster, csync):
                 error_labels = getattr(e, 'errorLabels', []) or []
                 if "TransientTransactionError" in error_labels:
                     is_transient = True
-                elif hasattr(e, 'code') and e.code in (251, 112):  # NoSuchTransaction, WriteConflict
-                    is_transient = True
-                elif isinstance(e, BulkWriteError) and e.details and "writeErrors" in e.details:
-                    for write_error in e.details["writeErrors"]:
-                        error_code = write_error.get("code")
-                        error_msg = write_error.get("errmsg", "")
-                        if error_code in (251, 112):
-                            is_transient = True
-                            break
-                        if "cache overflow" in error_msg.lower() or "transaction rolled back" in error_msg.lower():
-                            is_transient = True
-                            break
-                elif "cache overflow" in str(e).lower() or "transaction rolled back" in str(e).lower():
-                    is_transient = True
+                else:
+                    error_code = getattr(e, 'code', None)
+                    error_msg = str(e).lower()
+                    if (error_code in (251, 112) or  # NoSuchTransaction, WriteConflict
+                        "cache overflow" in error_msg or
+                        "transaction rolled back" in error_msg):
+                        is_transient = True
+                    elif isinstance(e, BulkWriteError) and e.details and "writeErrors" in e.details:
+                        for write_error in e.details["writeErrors"]:
+                            write_error_code = write_error.get("code")
+                            write_error_msg = write_error.get("errmsg", "").lower()
+                            if (write_error_code in (251, 112) or
+                                "cache overflow" in write_error_msg or
+                                "transaction rolled back" in write_error_msg):
+                                is_transient = True
+                                break
                 if is_transient and attempt < max_attempts - 1:
                     # Abort transaction before retry - all work is rolled back
                     if session.in_transaction:
@@ -225,21 +226,20 @@ def test_csync_PML_T24(start_cluster, src_cluster, dst_cluster, csync):
                     raise
     with src.start_session() as session:
         collection = src["large_txn_db"]["test_coll"]
-        commit_with_retries(session, collection, large_docs)
+        assert commit_with_retries(session, collection, large_docs), "Failed to commit transaction after retries"
 
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
-
     assert csync.finalize(), "Failed to finalize csync service"
+
+    result, _ = compare_data(src_cluster, dst_cluster)
+    assert result is True, "Data mismatch after synchronization"
 
     docs_in_dst = {doc["_id"]: doc for doc in dst["large_txn_db"]["test_coll"].find({})}
     missing_docs = [doc["_id"] for doc in large_docs if doc["_id"] not in docs_in_dst]
     mismatched_docs = [doc["_id"] for doc in large_docs if docs_in_dst.get(doc["_id"]) != doc]
-
     assert not missing_docs, f"Missing documents in destination: {missing_docs}"
     assert not mismatched_docs, f"Document mismatch in destination: {mismatched_docs}"
 
-    result, _ = compare_data(src_cluster, dst_cluster)
-    assert result is True, "Data mismatch after synchronization"
     csync_error, error_logs = csync.check_csync_errors()
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
@@ -251,7 +251,6 @@ def test_csync_PML_T25(start_cluster, src_cluster, dst_cluster, csync):
     """
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
-    is_sharded = src_cluster.layout == "sharded"
 
     assert csync.start(), "Failed to start csync service"
     assert csync.wait_for_repl_stage(), "Failed to start replication stage"
@@ -259,18 +258,12 @@ def test_csync_PML_T25(start_cluster, src_cluster, dst_cluster, csync):
     large_docs = [{"_id": i, "value": f"doc_{i}"} for i in range(2000)]
 
     # For sharded clusters collections must exist before starting a distributed transaction
-    if is_sharded:
+    if src_cluster.is_sharded:
         dst_dbs = ["large_txn_db1", "large_txn_db2", "large_txn_db3"]
         collections = ["test_coll1", "test_coll2", "test_coll3"]
         for db_name, coll_name in zip(dst_dbs, collections):
-            try:
-                src.admin.command("enableSharding", db_name)
-            except pymongo.errors.OperationFailure:
-                pass
-            try:
-                src.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"_id": "hashed"})
-            except pymongo.errors.OperationFailure:
-                raise
+            src.admin.command("enableSharding", db_name)
+            src.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"_id": "hashed"})
 
     max_retries = 5
     for attempt in range(max_retries):
@@ -317,8 +310,7 @@ def test_csync_PML_T26(start_cluster, src_cluster, dst_cluster, csync):
     """
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
-    is_sharded = src_cluster.layout == "sharded"
-    if is_sharded:
+    if src_cluster.is_sharded:
         for shard in src_cluster.config['shards']:
             shard_primary = shard['members'][0]['host']
             shard_rs = shard['_id']
@@ -376,9 +368,8 @@ def test_csync_PML_T27(start_cluster, src_cluster, dst_cluster, csync):
     """
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
-    is_sharded = src_cluster.layout == "sharded"
 
-    if is_sharded:
+    if src_cluster.is_sharded:
         for shard in src_cluster.config['shards']:
             shard_primary = shard['members'][0]['host']
             shard_rs = shard['_id']
@@ -405,7 +396,7 @@ def test_csync_PML_T27(start_cluster, src_cluster, dst_cluster, csync):
 
     stop_generation = threading.Event()
     try:
-        dummy_thread = threading.Thread(target=generate_dummy_data, args=(src_cluster.connection, "dummy", 20, 150000, 500, stop_generation, 0.05, True, is_sharded))
+        dummy_thread = threading.Thread(target=generate_dummy_data, args=(src_cluster.connection, "dummy", 20, 150000, 500, stop_generation, 0.05, True, src_cluster.is_sharded))
         dummy_thread.start()
         def keep_transaction_alive(session, db_name, coll_name):
             coll = src[db_name][coll_name]

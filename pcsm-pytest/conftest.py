@@ -46,14 +46,12 @@ def get_cluster_config(setup_type):
     if setup_type == "replicaset":
         return {
             "src_config": {"_id": "rs1", "members": [{"host": "rs101"}]},
-            "dst_config": {"_id": "rs2", "members": [{"host": "rs201"}]},
-            "layout": "replicaset"
+            "dst_config": {"_id": "rs2", "members": [{"host": "rs201"}]}
         }
     elif setup_type == "replicaset_3n":
         return {
             "src_config": {"_id": "rs1", "members": [{"host": "rs101"}, {"host": "rs102"}, {"host": "rs103"}]},
-            "dst_config": {"_id": "rs2", "members": [{"host": "rs201"}, {"host": "rs202"}, {"host": "rs203"}]},
-            "layout": "replicaset"
+            "dst_config": {"_id": "rs2", "members": [{"host": "rs201"}, {"host": "rs202"}, {"host": "rs203"}]}
         }
     elif setup_type == "sharded":
         return {
@@ -72,8 +70,7 @@ def get_cluster_config(setup_type):
                     {"_id": "rs3", "members": [{"host": "rs301"}]},
                     {"_id": "rs4", "members": [{"host": "rs401"}]}
                 ]
-            },
-            "layout": "sharded"
+            }
         }
     elif setup_type == "sharded_3n":
         return {
@@ -92,8 +89,31 @@ def get_cluster_config(setup_type):
                     {"_id": "rs3", "members": [{"host": "rs301"}, {"host": "rs302"}, {"host": "rs303"}]},
                     {"_id": "rs4", "members": [{"host": "rs401"}, {"host": "rs402"}, {"host": "rs403"}]}
                 ]
+            }
+        }
+    elif setup_type == "rs_sharded":
+        return {
+            "src_config": {"_id": "rs1", "members": [{"host": "rs101"}]},
+            "dst_config": {
+                "mongos": "mongos2",
+                "configserver": {"_id": "rscfg2", "members": [{"host": "rscfg201"}, {"host": "rscfg202"}, {"host": "rscfg203"}]},
+                "shards": [
+                    {"_id": "rs3", "members": [{"host": "rs301"}, {"host": "rs302"}, {"host": "rs303"}]},
+                    {"_id": "rs4", "members": [{"host": "rs401"}, {"host": "rs402"}, {"host": "rs403"}]}
+                ]
+            }
+        }
+    elif setup_type == "sharded_rs":
+        return {
+            "src_config": {
+                "mongos": "mongos1",
+                "configserver": {"_id": "rscfg1", "members": [{"host": "rscfg101"}, {"host": "rscfg102"}, {"host": "rscfg103"}]},
+                "shards": [
+                    {"_id": "rs1", "members": [{"host": "rs101"}, {"host": "rs102"}, {"host": "rs103"}]},
+                    {"_id": "rs2", "members": [{"host": "rs201"}, {"host": "rs202"}, {"host": "rs203"}]}
+                ]
             },
-            "layout": "sharded"
+            "dst_config": {"_id": "rs3", "members": [{"host": "rs301"}]}
         }
     else:
         raise ValueError(f"Unknown setup type: {setup_type}")
@@ -111,7 +131,10 @@ def cluster_configs(request):
 
 @pytest.fixture(scope="module")
 def src_cluster(cluster_configs):
-    return Cluster(cluster_configs["src_config"])
+    config = cluster_configs["src_config"]
+    if "mongos" in config:
+        return Cluster(config, mongod_extra_args="--setParameter periodicNoopIntervalSecs=1")
+    return Cluster(config)
 
 @pytest.fixture(scope="module")
 def dst_cluster(cluster_configs):

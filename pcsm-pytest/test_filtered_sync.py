@@ -31,12 +31,11 @@ def test_csync_PML_T35(start_cluster, src_cluster, dst_cluster, csync, include_n
     Test to check PCSM functionality with include/exclude namespaces
     """
     try:
-        is_sharded = src_cluster.layout == "sharded"
-        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.start(include_namespaces=include_namespaces, exclude_namespaces=exclude_namespaces), "Failed to start csync service"
-        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
-        _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
     except Exception:
         raise
     finally:
@@ -71,15 +70,14 @@ def test_csync_PML_T36(start_cluster, src_cluster, dst_cluster, csync):
     Test to check that PCSM correctly restores include/exclude filter after restart
     """
     try:
-        is_sharded = src_cluster.layout == "sharded"
-        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.start(include_namespaces=["init_test_db.*", "repl_test_db.*"],
                              exclude_namespaces=["init_test_db.compound_indexes"]), "Failed to start csync service"
-        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         result = csync.wait_for_checkpoint()
         assert result is True, "Clustersync failed to save checkpoint"
-        _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         csync.restart()
     except Exception:
         raise
@@ -142,10 +140,9 @@ def test_csync_PML_T57(start_cluster, src_cluster, dst_cluster, csync, include_n
     Test to check PCSM CLI functionality with include/exclude namespaces
     """
     try:
-        is_sharded = src_cluster.layout == "sharded"
-        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=is_sharded)
-        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=is_sharded)
-        _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=is_sharded)
+        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
+        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
+        _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.start(include_namespaces=include_namespaces, exclude_namespaces=exclude_namespaces, mode="cli"), "Failed to start csync service"
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
     except Exception:

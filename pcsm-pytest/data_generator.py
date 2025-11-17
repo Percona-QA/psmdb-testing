@@ -14,15 +14,19 @@ from data_types.sharded_index_types import create_sharded_index_types
 DEFAULT_NO_SHARD_KEY = False
 # Set update_shard_key to False due to PCSM-221
 DEFAULT_UPDATE_SHARD_KEY = False
+# Set create_unique_sharded to False due to PCSM-214
+DEFAULT_CREATE_UNIQUE_SHARDED = False
 
 stop_operations_map = {}
 
 def create_all_types_db(connection_string, db_name="init_test_db", create_ts=False, drop_before_creation=False,
-                        start_crud=False, is_sharded=False, no_shard_key=None, update_shard_key=None):
+                        start_crud=False, is_sharded=False, no_shard_key=None, update_shard_key=None, create_unique_sharded=None):
     if no_shard_key is None:
         no_shard_key = DEFAULT_NO_SHARD_KEY
     if update_shard_key is None:
         update_shard_key = DEFAULT_UPDATE_SHARD_KEY
+    if create_unique_sharded is None:
+        create_unique_sharded = DEFAULT_CREATE_UNIQUE_SHARDED
 
     client = pymongo.MongoClient(connection_string)
     db = client[db_name]
@@ -32,7 +36,7 @@ def create_all_types_db(connection_string, db_name="init_test_db", create_ts=Fal
     create_diff_coll_types(db, drop_before_creation)
 
     if is_sharded:
-        sharded_collection_metadata = create_sharded_collection_types(db, create_ts, drop_before_creation)
+        sharded_collection_metadata = create_sharded_collection_types(db, create_ts, drop_before_creation, create_unique_sharded)
         create_sharded_index_types(db, drop_before_creation)
         collection_metadata.extend(sharded_collection_metadata)
 
@@ -58,7 +62,10 @@ def continuous_crud_ops_collection_background(collection_metadata, stop_event, n
                 if metadata.get("sharded"):
                     shard_key = metadata.get("shard_key")
                     hashed = metadata.get("hashed")
-                    perform_crud_ops_sharded_collection(metadata["collection"], shard_key, hashed, no_shard_key, update_shard_key)
+                    timeseries = metadata.get("timeseries")
+                    unique = metadata.get("unique")
+                    perform_crud_ops_sharded_collection(metadata["collection"], shard_key, hashed,
+                                                        no_shard_key, update_shard_key, timeseries, unique)
                 else:
                     perform_crud_ops_collection(metadata["collection"], metadata["capped"], metadata["timeseries"])
             except Exception:
@@ -89,10 +96,7 @@ def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, d
         client.drop_database(db_name)
 
     if is_sharded:
-        try:
-            client.admin.command("enableSharding", db_name)
-        except pymongo.errors.OperationFailure:
-            pass
+        client.admin.command("enableSharding", db_name)
 
     collections = [f"collection_{i}" for i in range(num_collections)]
 
@@ -111,10 +115,7 @@ def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, d
         collection = db[coll_name]
 
         if is_sharded:
-            try:
-                client.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"_id": "hashed"})
-            except pymongo.errors.OperationFailure:
-                pass
+            client.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"_id": "hashed"})
 
         for _ in range(doc_size // batch_size):
             if stop_event and stop_event.is_set():
