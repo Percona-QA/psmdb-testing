@@ -1,7 +1,10 @@
 ---
 - set_fact:
-    psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') }} | default('7.0.24-13', true)"
+    psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('7.0.24-13', true) }}"
     psmdb_testing_version: "{{ lookup('env', 'TESTING_BRANCH') | default('main', true) }}"
+
+- debug:
+    var: psmdb_version
 
 - name: Get mongodb version
   set_fact:
