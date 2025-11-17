@@ -35,22 +35,17 @@
 - name: Install percona release package
   include_tasks: ../../../tasks/install_percona_release.yml
 
-# KEITH COMMENT CHANGE WHEN BUILD READY
-- name: enable psmdb PRO repo
-  command: percona-release enable psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro {{ repo }} --user_name={{ client_id }} --repo_token={{ client_token }}
+- name: enable psmdb repo
+  command: percona-release enable psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }} {{ repo }}
   vars:
     repo: "{{ lookup('env', 'REPO') }}"
     version: "{{ lookup('env', 'PSMDB_VERSION') }}"
-    client_id: "{{ lookup('env', 'USERNAME') }}"
-    client_token: "{{ lookup('env', 'PASSWORD') }}"
 
 - block:
     - name: include tasks for PSMDB install
       include_tasks: ../../../tasks/install_psmdb.yml
       vars:
         psmdb_to_test: "{{ lookup('env', 'PSMDB_VERSION') }}"
-        # KEITH COMMENT CHANGE WHEN BUILD READY
-        psmdb_pkg_name_addon: "-pro"
   environment:
     PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
 
