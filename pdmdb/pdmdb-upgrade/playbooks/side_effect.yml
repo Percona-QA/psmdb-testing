@@ -70,7 +70,6 @@
         include_tasks: ../../../tasks/install_psmdb.yml
         vars:
           psmdb_to_test: "{{ psmdb_server_version }}"
-          psmdb_pkg_name_addon: "{{ '' }}"
       environment:
         PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
 

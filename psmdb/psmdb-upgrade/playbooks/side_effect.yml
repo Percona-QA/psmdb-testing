@@ -54,10 +54,6 @@
         - apt-utils
       when: ansible_os_family == "Debian" and from_version is version(to_version, '>')
 
-    - name: Set extra suffix for pkg name
-      set_fact:
-        psmdb_pkg_name_addon: "{{ '-pro' if from_repo_pro == true else '' }}"
-
     - name: uninstall psmdb deb packages for downgrade
       apt:
         name: "{{ packages }}"
@@ -65,10 +61,10 @@
         state: absent
       vars:
         packages:
-        - percona-server-mongodb{{ psmdb_pkg_name_addon }}
+        - percona-server-mongodb
         - percona-mongodb-mongosh
-        - percona-server-mongodb-server{{ psmdb_pkg_name_addon }}
-        - percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
         - percona-server-mongodb-shell
         - percona-server-mongodb-tools
 #        - percona-server-mongodb-dbg
@@ -81,10 +77,10 @@
         state: absent
       vars:
         packages:
-        - percona-server-mongodb{{ psmdb_pkg_name_addon }}
+        - percona-server-mongodb
         - percona-mongodb-mongosh
-        - percona-server-mongodb-server{{ psmdb_pkg_name_addon }}
-        - percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
         - percona-server-mongodb-shell
         - percona-server-mongodb-tools
 #        - percona-server-mongodb-debugsource
@@ -101,10 +97,10 @@
         state: absent
       vars:
         packages:
-        - percona-server-mongodb{{ psmdb_pkg_name_addon }}
+        - percona-server-mongodb
         - percona-mongodb-mongosh
-        - percona-server-mongodb-server{{ psmdb_pkg_name_addon }}
-        - percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
         - percona-server-mongodb-shell
         - percona-server-mongodb-tools
 #        - percona-server-mongodb-debuginfo
@@ -124,19 +120,15 @@
         client_token: "{{ lookup('env', 'PASSWORD') }}"
       when: pro_build == true
 
-    - name: Set extra suffix for pkg name
-      set_fact:
-        psmdb_pkg_name_addon: "{{ '-pro' if to_repo_pro == true else '' }}"
-
     - name: update psmdb deb packages
       apt:
         name: "{{ packages }}"
         update_cache: yes
       vars:
         packages:
-        - percona-server-mongodb{{ psmdb_pkg_name_addon }}={{ to_version }}*
-        - percona-server-mongodb-server{{ psmdb_pkg_name_addon }}={{ to_version }}*
-        - percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}={{ to_version }}*
+        - percona-server-mongodb={{ to_version }}*
+        - percona-server-mongodb-server={{ to_version }}*
+        - percona-server-mongodb-mongos={{ to_version }}*
         - percona-server-mongodb-tools={{ to_version }}*
 #        - percona-server-mongodb-dbg={{ to_version }}*
       when: ansible_os_family == "Debian"
@@ -167,9 +159,9 @@
         allowerasing: "{{ 'true' if (from_repo_pro == true or to_repo_pro == true) else 'false' }}"
       vars:
         packages:
-        - percona-server-mongodb{{ psmdb_pkg_name_addon }}-{{ to_version }}
-        - percona-server-mongodb-server{{ psmdb_pkg_name_addon }}-{{ to_version }}
-        - percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}-{{ to_version }}
+        - percona-server-mongodb-{{ to_version }}
+        - percona-server-mongodb-server-{{ to_version }}
+        - percona-server-mongodb-mongos-{{ to_version }}
         - percona-server-mongodb-tools-{{ to_version }}
 #        - percona-server-mongodb-debugsource-{{ to_version }}
 #        - percona-server-mongodb-tools-debuginfo-{{ to_version }}
@@ -184,9 +176,9 @@
         state: latest
       vars:
         packages:
-        - percona-server-mongodb{{ psmdb_pkg_name_addon }}-{{ to_version }}
-        - percona-server-mongodb-server{{ psmdb_pkg_name_addon }}-{{ to_version }}
-        - percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}-{{ to_version }}
+        - percona-server-mongodb-{{ to_version }}
+        - percona-server-mongodb-server-{{ to_version }}
+        - percona-server-mongodb-mongos-{{ to_version }}
         - percona-server-mongodb-tools-{{ to_version }}
 #        - percona-server-mongodb-debuginfo-{{ to_version }}
       when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7"
