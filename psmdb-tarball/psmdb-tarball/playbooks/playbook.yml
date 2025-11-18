@@ -28,6 +28,8 @@
     - set_fact:
         tarball: "https://downloads.percona.com/downloads/TESTING/psmdb-{{ minor_version }}/percona-server-mongodb-{{ full_ver }}-{{ ansible_architecture }}"
 
+
+
     - name: Debug mongodb URL
       debug:
         msg: "{{ tarball }}"
@@ -63,6 +65,10 @@
         url: '{{ tarball }}.{{ os }}-minimal.tar.gz'
         dest: /tmp/percona-server-mongodb.tar.gz
         mode: '0644'
+
+    - name: Debug mongodb URL
+      debug:
+        msg: "{{ tarball }}.{{ os }}-minimal.tar.gz"
 
 - name: Converge
   hosts: all
