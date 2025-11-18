@@ -14,12 +14,7 @@
 
     - name: Get mongodb major version
       set_fact:
-        maj_version: "{{ full_ver[0].split('.')[0] }}"
         minor_version: "{{ full_ver.split('-')[0] }}"
-
-    - name: Debug mongodb major version
-      debug:
-        msg: "{{ maj_version }}"
 
     - name: Debug mongodb minor version
       debug:
