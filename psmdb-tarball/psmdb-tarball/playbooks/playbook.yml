@@ -13,16 +13,8 @@
       set_fact:
         minor_version: "{{ full_ver.split('-')[0] }}"
 
-    - name: Debug mongodb minor version
-      debug:
-        msg: "{{ minor_version }}"
-
     - set_fact:
         tarball: "https://downloads.percona.com/downloads/TESTING/psmdb-{{ minor_version }}/percona-server-mongodb-{{ full_ver }}-{{ ansible_architecture }}"
-
-    - name: Debug mongodb URL
-      debug:
-        msg: "{{ tarball }}"
 
     - name: Download tarball from url
       get_url:

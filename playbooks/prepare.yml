@@ -156,4 +156,3 @@
         - iproute
         - openssl
       when: ansible_distribution == "Amazon"
-

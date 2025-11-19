@@ -69,6 +69,20 @@
     - name: enable psmdb repo
       command: percona-release enable {{ psmdb_to_test }} {{ repo }} --user_name={{ client_id }} --repo_token={{ client_token }}
 
+    - name: install psmdb deb packages
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+          - percona-server-mongodb
+          - percona-server-mongodb-server
+          - percona-server-mongodb-mongos
+          - percona-server-mongodb-tools
+          - percona-mongodb-mongosh
+      when: ansible_os_family == "Debian"
+
     - name: install psmdb rpm packages
       yum:
         name: "{{ packages }}"
