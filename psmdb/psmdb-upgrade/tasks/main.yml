@@ -50,6 +50,7 @@
       vars:
         psmdb_to_test: "{{ lookup('env', 'FROM_PSMDB_VERSION') }}"
         dbg_packages: false
+        psmdb_pkg_name_addon: "{{ '-pro' if from_repo_pro == true else '' }}"
   environment:
     PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
     PERCONA_TELEMETRY_DISABLE: "1"
