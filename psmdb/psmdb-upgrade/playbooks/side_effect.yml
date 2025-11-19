@@ -168,8 +168,8 @@
       vars:
         packages:
         - percona-server-mongodb{{ psmdb_pkg_name_addon }}-{{ to_version }}
-        - percona-server-mongodb{{ psmdb_pkg_name_addon }}-server-{{ to_version }}
-        - percona-server-mongodb-{{ psmdb_pkg_name_addon }}-{{ to_version }}
+        - percona-server-mongodb-server{{ psmdb_pkg_name_addon }}-{{ to_version }}
+        - percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}-{{ to_version }}
         - percona-server-mongodb-tools-{{ to_version }}
 #        - percona-server-mongodb-debugsource-{{ to_version }}
 #        - percona-server-mongodb-tools-debuginfo-{{ to_version }}
@@ -184,9 +184,9 @@
         state: latest
       vars:
         packages:
-        - percona-server-mongodb-{{ to_version }}
-        - percona-server-mongodb-server-{{ to_version }}
-        - percona-server-mongodb-mongos-{{ to_version }}
+        - percona-server-mongodb{{ psmdb_pkg_name_addon }}-{{ to_version }}
+        - percona-server-mongodb-server{{ psmdb_pkg_name_addon }}-{{ to_version }}
+        - percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}-{{ to_version }}
         - percona-server-mongodb-tools-{{ to_version }}
 #        - percona-server-mongodb-debuginfo-{{ to_version }}
       when: ansible_os_family == "RedHat"  and ansible_distribution_major_version <= "7"
