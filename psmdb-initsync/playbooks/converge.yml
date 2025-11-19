@@ -76,11 +76,11 @@
         state: latest
       vars:
         packages:
-          - percona-server-mongodb
-          - percona-server-mongodb-server
-          - percona-server-mongodb-mongos
-          - percona-server-mongodb-tools
-          - percona-mongodb-mongosh
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-tools
+        - percona-mongodb-mongosh
       when: ansible_os_family == "Debian"
 
     - name: install psmdb rpm packages
