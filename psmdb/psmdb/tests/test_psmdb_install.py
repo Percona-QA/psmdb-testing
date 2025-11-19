@@ -218,6 +218,7 @@ def test_telemetry(host):
         telemetry_file = host.check_output("ls -1 /usr/local/percona/telemetry/psmdb/").strip()
         telemetry_path = f"/usr/local/percona/telemetry/psmdb/{telemetry_file}"
         telemetry_content = host.check_output(f"cat {telemetry_path}")
+        print("\n\n\n\nKEITH TEST\n\n\n\n\n" + telemetry_content + "\n\n\n\nKEITH TEST\n\n\n\n\n")
         try:
             data = json.loads(telemetry_content)
         except Exception as e:
