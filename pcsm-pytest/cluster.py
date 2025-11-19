@@ -128,6 +128,10 @@ class Cluster:
         else:
             return "sharded"
 
+    @property
+    def is_sharded(self):
+        return self.layout == "sharded"
+
     # returns mongodb connection string to cluster
     @property
     def connection(self):
