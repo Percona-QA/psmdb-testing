@@ -58,7 +58,7 @@
     state: latest
   vars:
     packages:
-    - "percona-server-mongodb}-{{ psmdb_to_test }}"
+    - "percona-server-mongodb-{{ psmdb_to_test }}"
     - "percona-server-mongodb-server-{{ psmdb_to_test }}"
     - "percona-server-mongodb-mongos-{{ psmdb_to_test }}"
     - "percona-server-mongodb-tools-{{ psmdb_to_test }}"
