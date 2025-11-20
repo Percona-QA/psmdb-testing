@@ -30,7 +30,7 @@ def create_all_types_db(connection_string, db_name="init_test_db", create_ts=Fal
         update_shard_key = DEFAULT_UPDATE_SHARD_KEY
     if create_unique_sharded is None:
         create_unique_sharded = DEFAULT_CREATE_UNIQUE_SHARDED
-    if create_collation_sharded  is None:
+    if create_collation_sharded is None:
         create_collation_sharded = DEFAULT_CREATE_COLLATION_SHARDED
 
     client = pymongo.MongoClient(connection_string)
