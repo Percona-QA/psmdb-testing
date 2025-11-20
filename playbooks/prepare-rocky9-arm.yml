@@ -1,0 +1,33 @@
+---
+- name: Prepare node for running tests
+  hosts: all
+  become: true
+  become_method: sudo
+  gather_facts: true
+  tasks:
+    - name: Check partitions
+      shell: |
+        lsblk
+      register: partitions
+
+    - name: Debug partitions
+      debug:
+        msg: "{{ partitions }}"
+
+
+    - name: setup ca-certificates release
+      yum:
+        name: ca-certificates
+        update_cache: yes
+        state: present
+
+    - name: install needed packages for running tests with yum on RHEL
+      yum:
+        name: "{{ packages }}"
+        state: latest
+      vars:
+        packages:
+        - unzip
+        - git
+        - wget
+
