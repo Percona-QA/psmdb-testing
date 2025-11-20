@@ -21,7 +21,7 @@ def test_csync_PML_T13(start_cluster, src_cluster, dst_cluster, csync):
         db_name = "test_db"
         coll_name = "test_collection"
         if src_cluster.is_sharded:
-            src.admin.command({"enableSharding": db_name, "primaryShard": "rs1"})
+            src.admin.command({"enableSharding": db_name})
         src[db_name].create_collection(
             coll_name,
             validator={"age": {"$gte": 18}},
@@ -72,7 +72,7 @@ def test_csync_PML_T14(start_cluster, src_cluster, dst_cluster, csync):
         coll_name1 = "test_collection1"
         coll_name2 = "test_collection2"
         if src_cluster.is_sharded:
-            src.admin.command({"enableSharding": db_name, "primaryShard": "rs1"})
+            src.admin.command({"enableSharding": db_name})
         src[db_name].create_collection(coll_name1)
         src[db_name].create_collection(coll_name2, changeStreamPreAndPostImages={"enabled": True})
         if src_cluster.is_sharded:
@@ -227,6 +227,9 @@ def test_csync_PML_T17(start_cluster, src_cluster, dst_cluster, csync):
         db_name = "test_db"
         coll_name = "test_collection"
         coll = src[db_name][coll_name]
+        if src_cluster.is_sharded:
+            src.admin.command({"enableSharding": db_name})
+            src.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"c": 1})
         coll.insert_many([{"createdAt": datetime.datetime.now(datetime.timezone.utc), "a": i, "b": i, "c": -i, "d": i}
                           for i in range(5)])
 
@@ -234,6 +237,7 @@ def test_csync_PML_T17(start_cluster, src_cluster, dst_cluster, csync):
         coll.create_index([("a", 1), ("b", -1)], name="ab_index")
         coll.create_index("c")
         coll.create_index("d")
+        coll.create_index([("c", 1), ("d", 1)], name="cd_index")
 
         assert csync.start(), "Failed to start csync service"
 
@@ -242,17 +246,17 @@ def test_csync_PML_T17(start_cluster, src_cluster, dst_cluster, csync):
         assert res.get("ok") == 1.0
 
         # Hide /unhide index by keyPattern / name
-        res = src[db_name].command("collMod", coll_name, index={"keyPattern": {"c": 1}, "hidden": True})
+        res = src[db_name].command("collMod", coll_name, index={"keyPattern": {"c": 1, "d": 1}, "hidden": True})
         assert res.get("ok") == 1.0
         res = src[db_name].command("collMod", coll_name, index={"name": "ab_index", "hidden": True})
         assert res.get("ok") == 1.0
-        res = src[db_name].command("collMod", coll_name, index={"keyPattern": {"c": 1}, "hidden": False})
+        res = src[db_name].command("collMod", coll_name, index={"keyPattern": {"c": 1, "d": 1}, "hidden": False})
         assert res.get("ok") == 1.0
 
         # PrepareUnique and dry run for unique
-        res = src[db_name].command("collMod", coll_name, index={"keyPattern": {"d": 1}, "prepareUnique": True})
+        res = src[db_name].command("collMod", coll_name, index={"name": "cd_index", "prepareUnique": True})
         assert res.get("ok") == 1.0
-        res = src[db_name].command("collMod", coll_name, index={"keyPattern": {"d": 1}, "unique": True}, dryRun=True)
+        res = src[db_name].command("collMod", coll_name, index={"name": "cd_index", "unique": True}, dryRun=True)
         assert res.get("ok") == 1.0
 
         # Prepare unique and convert to unique
@@ -280,7 +284,7 @@ def test_csync_PML_T17(start_cluster, src_cluster, dst_cluster, csync):
     assert index_by_name["c_1"].get("unique") is True
     assert index_by_name["c_1"].get("hidden") is None
     assert index_by_name["ab_index"].get("hidden") is True
-    assert index_by_name["d_1"].get("prepareUnique") is True
+    assert index_by_name["cd_index"].get("prepareUnique") is True
 
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
@@ -300,6 +304,9 @@ def test_csync_PML_T18(start_cluster, src_cluster, dst_cluster, csync):
         db_name = "test_db"
         coll_name = "test_collection"
         init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
+        if src_cluster.is_sharded:
+            src.admin.command({"enableSharding": db_name})
+            src.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"x": 1})
         src[db_name][coll_name].insert_many([
             {"x": 1},
             {"x": 1},

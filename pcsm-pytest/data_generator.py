@@ -14,19 +14,24 @@ from data_types.sharded_index_types import create_sharded_index_types
 DEFAULT_NO_SHARD_KEY = False
 # Set update_shard_key to False due to PCSM-221
 DEFAULT_UPDATE_SHARD_KEY = False
-# Set create_unique_sharded to False due to PCSM-214
-DEFAULT_CREATE_UNIQUE_SHARDED = False
+# Set create_unique_sharded to True, support added in PCSM-194/PCSM-214
+DEFAULT_CREATE_UNIQUE_SHARDED = True
+# Set create_collation_sharded to True, support added in PCSM-200
+DEFAULT_CREATE_COLLATION_SHARDED = True
 
 stop_operations_map = {}
 
 def create_all_types_db(connection_string, db_name="init_test_db", create_ts=False, drop_before_creation=False,
-                        start_crud=False, is_sharded=False, no_shard_key=None, update_shard_key=None, create_unique_sharded=None):
+                        start_crud=False, is_sharded=False, no_shard_key=None, update_shard_key=None,
+                        create_unique_sharded=None, create_collation_sharded=None):
     if no_shard_key is None:
         no_shard_key = DEFAULT_NO_SHARD_KEY
     if update_shard_key is None:
         update_shard_key = DEFAULT_UPDATE_SHARD_KEY
     if create_unique_sharded is None:
         create_unique_sharded = DEFAULT_CREATE_UNIQUE_SHARDED
+    if create_collation_sharded is None:
+        create_collation_sharded = DEFAULT_CREATE_COLLATION_SHARDED
 
     client = pymongo.MongoClient(connection_string)
     db = client[db_name]
@@ -36,7 +41,8 @@ def create_all_types_db(connection_string, db_name="init_test_db", create_ts=Fal
     create_diff_coll_types(db, drop_before_creation)
 
     if is_sharded:
-        sharded_collection_metadata = create_sharded_collection_types(db, create_ts, drop_before_creation, create_unique_sharded)
+        sharded_collection_metadata = create_sharded_collection_types(db, create_ts, drop_before_creation,
+                                                                    create_unique_sharded, create_collation_sharded)
         create_sharded_index_types(db, drop_before_creation)
         collection_metadata.extend(sharded_collection_metadata)
 
@@ -61,11 +67,12 @@ def continuous_crud_ops_collection_background(collection_metadata, stop_event, n
             try:
                 if metadata.get("sharded"):
                     shard_key = metadata.get("shard_key")
-                    hashed = metadata.get("hashed")
-                    timeseries = metadata.get("timeseries")
-                    unique = metadata.get("unique")
-                    perform_crud_ops_sharded_collection(metadata["collection"], shard_key, hashed,
-                                                        no_shard_key, update_shard_key, timeseries, unique)
+                    hashed = metadata.get("hashed", False)
+                    timeseries = metadata.get("timeseries", False)
+                    unique = metadata.get("unique", False)
+                    collation_id_shard = metadata.get("collation_id_shard", False)
+                    perform_crud_ops_sharded_collection(metadata["collection"], shard_key, timeseries, hashed,
+                                                        no_shard_key, update_shard_key, unique, collation_id_shard)
                 else:
                     perform_crud_ops_collection(metadata["collection"], metadata["capped"], metadata["timeseries"])
             except Exception:

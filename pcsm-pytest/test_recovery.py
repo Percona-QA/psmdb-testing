@@ -82,7 +82,7 @@ def test_csync_PML_T29(start_cluster, src_cluster, dst_cluster, csync):
             all_threads += operation_threads_3
         for thread in all_threads:
             thread.join()
-    assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+    assert csync.wait_for_zero_lag(timeout=240), "Failed to catch up on replication"
     assert csync.finalize(), "Failed to finalize csync service"
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
