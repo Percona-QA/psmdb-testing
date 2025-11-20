@@ -14,7 +14,7 @@
       debug:
         msg: "{{ partitions }}"
 
-    - name: Check partitions
+    - name: Extend partition /dev/nvme0n1p3
       shell: |
         growpart /dev/nvme0n1 3
 
@@ -26,6 +26,19 @@
     - name: Debug partitions
       debug:
         msg: "{{ partitions }}"
+
+    - name: Check filesystem
+      shell: |
+        df -hT
+      register: filesystem
+
+    - name: Debug filesystem
+      debug:
+        msg: "{{ filesystem }}"
+
+    - name: Extend filesystem
+      shell: |
+        xfs_growfs -d /
 
     - name: Check filesystem
       shell: |
