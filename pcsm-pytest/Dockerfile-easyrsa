@@ -12,7 +12,7 @@ RUN apk add --no-cache bash git openssl && cd ~ && \
     ./easyrsa init-pki && \
     ./easyrsa --req-cn=Percona --batch build-ca nopass
 WORKDIR /root/easy-rsa/easyrsa3
-RUN ./easyrsa --req-ou=server --subject-alt-name=DNS:localhost,DNS:rs101,DNS:rs201,IP:127.0.0.1 --batch build-server-full psmdb nopass && \
+RUN ./easyrsa --req-ou=server --subject-alt-name=DNS:localhost,DNS:rs101,DNS:rs201,DNS:mongos1,DNS:mongos2,IP:127.0.0.1 --batch build-server-full psmdb nopass && \
     ./easyrsa --req-ou=client --batch build-client-full pcsm nopass && \
     mkdir -p /etc/x509 && \
     cp pki/ca.crt /etc/x509/ && \

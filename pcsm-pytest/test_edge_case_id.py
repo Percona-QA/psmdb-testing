@@ -20,11 +20,18 @@ def test_csync_PML_T32(start_cluster, src_cluster, dst_cluster, csync):
 
     db = src["stress_test_db"]
     collections_meta = [
-        {"name": "regular_coll", "options": {}, "capped": False, "collation": False},
+        {"name": "regular_coll", "options": {}, "capped": False, "collation": False, "shard_key": {"_id": "hashed"}},
+        {"name": "regular_coll2", "options": {}, "capped": False, "collation": False, "shard_key": {"_id": 1}},
         {"name": "capped_coll", "options": {"capped": True, "size": 2147483648}, "capped": True, "collation": False}]
     for meta in collections_meta:
         db.create_collection(meta["name"], **meta["options"])
         meta["collection"] = db[meta["name"]]
+    if src_cluster.is_sharded:
+        src.admin.command({"enableSharding": "stress_test_db"})
+        for meta in collections_meta:
+            if not meta["capped"]:
+                shard_key = meta.get("shard_key", {"_id": "hashed"})
+                src.admin.command("shardCollection", f"stress_test_db.{meta['name']}", key=shard_key)
     weird_ids = [
         Decimal128("9999999999999999999999999999.9999"), "", " " * 100, True, False,
         "🤞", 0, -1, 2**63 - 1, float("inf"), float("-inf"), None, ObjectId(),
@@ -113,14 +120,22 @@ def test_csync_PML_T34(start_cluster, src_cluster, dst_cluster, csync, id_type):
 
     db = src["stress_test_db"]
     collections_meta = [
-        {"name": "regular_coll_pre", "options": {}, "capped": False, "collation": False},
-        {"name": "regular_coll_post", "options": {}, "capped": False, "collation": False},
+        {"name": "regular_coll_pre", "options": {}, "capped": False, "collation": False, "shard_key": {"_id": "hashed"}},
+        {"name": "regular_coll_post", "options": {}, "capped": False, "collation": False, "shard_key": {"_id": "hashed"}},
+        {"name": "regular_coll2_pre", "options": {}, "capped": False, "collation": False, "shard_key": {"_id": 1}},
+        {"name": "regular_coll2_post", "options": {}, "capped": False, "collation": False, "shard_key": {"_id": 1}},
         {"name": "capped_coll_pre", "options": {"capped": True, "size": 2147483648}, "capped": True, "collation": False},
         {"name": "capped_coll_post", "options": {"capped": True, "size": 2147483648}, "capped": True, "collation": False}]
 
     for meta in collections_meta:
         db.create_collection(meta["name"], **meta["options"])
         meta["collection"] = db[meta["name"]]
+    if src_cluster.is_sharded:
+        src.admin.command({"enableSharding": "stress_test_db"})
+        for meta in collections_meta:
+            if not meta["capped"]:
+                shard_key = meta.get("shard_key", {"_id": "hashed"})
+                src.admin.command("shardCollection", f"stress_test_db.{meta['name']}", key=shard_key)
 
     def add_data(target_suffix):
         batch_size = 500
@@ -159,7 +174,8 @@ def test_csync_PML_T34(start_cluster, src_cluster, dst_cluster, csync, id_type):
 
     expected_mismatches = [
         ("stress_test_db", "hash mismatch"),
-        ("stress_test_db.regular_coll_pre", "hash mismatch")]
+        ("stress_test_db.regular_coll_pre", "hash mismatch"),
+        ("stress_test_db.regular_coll2_pre", "hash mismatch")]
 
     result, summary = compare_data(src_cluster, dst_cluster)
     if not result:

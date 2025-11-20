@@ -5,16 +5,21 @@ import time
 from bson import ObjectId
 from pymongo.collation import Collation
 
-def create_sharded_collection_types(db, create_ts=False, drop_before_creation=False, create_unique_sharded=False):
+def create_sharded_collection_types(db, create_ts=False, drop_before_creation=False,
+                                    create_unique_sharded=False, create_collation_sharded=False):
     collections_metadata = []
 
     if drop_before_creation:
         db.drop_collection("sharded_range_key_collection")
         db.drop_collection("sharded_hashed_key_collection")
         db.drop_collection("sharded_compound_key_collection")
-        db.drop_collection("sharded_collation_collection")
         db.drop_collection("sharded_unique_key_collection")
         db.drop_collection("sharded_timeseries_collection")
+        db.drop_collection("sharded_collation_collection")
+        db.drop_collection("sharded_collation_id_shard_collection")
+        db.drop_collection("sharded_collation_compound_collection")
+        db.drop_collection("sharded_collation_compound_unique_collection")
+        db.drop_collection("sharded_compound_hashed_collection")
 
     db.client.admin.command("enableSharding", db.name)
 
@@ -46,18 +51,15 @@ def create_sharded_collection_types(db, create_ts=False, drop_before_creation=Fa
     collections_metadata.append({"collection": sharded_compound_key, "timeseries": False,
                                 "sharded": True, "shard_key": ["category", "item_id"]})
 
-    # Sharded collection with collation
-    fr_collation = Collation(locale='fr', strength=2)
-    sharded_collation = db.create_collection("sharded_collation_collection", collation=fr_collation)
-    fr_strings = ["cote", "coté", "côte", "côté"]
-    collation_docs = [{"text_key": idx, "string": string, "value": idx}
-        for string_idx, string in enumerate(fr_strings)
-        for idx in range(string_idx * 10, string_idx * 10 + 10)]
-    sharded_collation.insert_many(collation_docs)
-    sharded_collation.create_index([("text_key", pymongo.ASCENDING)], name="text_key_shard_key_index", collation={"locale": "simple"})
-    db.client.admin.command("shardCollection", f"{db.name}.sharded_collation_collection", key={"text_key": 1}, collation={"locale": "simple"})
-    collections_metadata.append({"collection": sharded_collation, "timeseries": False,
-                                "sharded": True, "shard_key": "text_key"})
+    # Sharded collection with compound hashed shard key {a: 1, b: "hashed", c: 1}
+    sharded_compound_hashed = db.sharded_compound_hashed_collection
+    compound_hashed_docs = [{"a": i, "b": f"hashed_{i % 10}", "c": i * 2, "name": f"item_{i}", "value": f"value_{i}"}
+        for i in range(25)]
+    sharded_compound_hashed.insert_many(compound_hashed_docs)
+    sharded_compound_hashed.create_index([("a", pymongo.ASCENDING), ("b", pymongo.HASHED), ("c", pymongo.ASCENDING)], name="a_asc_b_hashed_c_asc_shard_key_index")
+    db.client.admin.command("shardCollection", f"{db.name}.sharded_compound_hashed_collection", key={"a": 1, "b": "hashed", "c": 1})
+    collections_metadata.append({"collection": sharded_compound_hashed, "timeseries": False,
+                                "sharded": True, "shard_key": ["a", "b", "c"], "hashed": True})
 
     # Sharded collection with unique shard key
     if create_unique_sharded:
@@ -68,6 +70,54 @@ def create_sharded_collection_types(db, create_ts=False, drop_before_creation=Fa
         sharded_unique_key.insert_many(unique_key_docs)
         collections_metadata.append({"collection": sharded_unique_key, "timeseries": False,
                                     "sharded": True, "shard_key": "key_id", "unique": True})
+
+    # Sharded collections with collation
+    if create_collation_sharded:
+        fr_collation = Collation(locale='fr', strength=2)
+
+        # Sharded collection with collation and non-_id shard key
+        sharded_collation = db.create_collection("sharded_collation_collection", collation=fr_collation)
+        sharded_collation.create_index([("key_id", pymongo.ASCENDING)], name="key_id_shard_key_index", collation={"locale": "simple"})
+        db.client.admin.command("shardCollection", f"{db.name}.sharded_collation_collection", key={"key_id": 1}, collation={"locale": "simple"})
+        collation_docs = [{"key_id": i, "name": f"item_{i}", "value": f"value_{i}", "region": f"region_{i % 3}"}
+            for i in range(20)]
+        sharded_collation.insert_many(collation_docs)
+        collections_metadata.append({"collection": sharded_collation, "timeseries": False,
+                                    "sharded": True, "shard_key": "key_id"})
+
+        # Sharded collection with collation and _id as shard key (hashed)
+        sharded_collation_id_shard = db.create_collection("sharded_collation_id_shard_collection", collation=fr_collation)
+        db.client.admin.command("shardCollection", f"{db.name}.sharded_collation_id_shard_collection", key={"_id": "hashed"}, collation={"locale": "simple"})
+        collation_id_shard_docs = [{"_id": ObjectId(), "item_id": f"item_{i}", "category_id": i % 10, "amount": 100.0 + i, "status": "pending"}
+            for i in range(30)]
+        sharded_collation_id_shard.insert_many(collation_id_shard_docs)
+        collections_metadata.append({"collection": sharded_collation_id_shard, "timeseries": False,
+                                    "sharded": True, "shard_key": "_id", "hashed": True, "collation_id_shard": True})
+
+        # Sharded collection with collation and compound shard key
+        sharded_collation_compound = db.create_collection("sharded_collation_compound_collection", collation=fr_collation)
+        sharded_collation_compound.create_index([("category", pymongo.ASCENDING), ("item_id", pymongo.ASCENDING)],
+            name="category_item_id_shard_key_index", collation={"locale": "simple"})
+        db.client.admin.command("shardCollection", f"{db.name}.sharded_collation_compound_collection",
+            key={"category": 1, "item_id": 1}, collation={"locale": "simple"})
+        collation_compound_docs = [{"item_id": i, "category": f"cat_{i % 5}", "name": f"item_{i}", "price": 50.0 + i}
+            for i in range(25)]
+        sharded_collation_compound.insert_many(collation_compound_docs)
+        collections_metadata.append({"collection": sharded_collation_compound, "timeseries": False,
+                                    "sharded": True, "shard_key": ["category", "item_id"]})
+
+        # Sharded collection with collation, compound and unique shard key
+        if create_unique_sharded and create_collation_sharded:
+            sharded_collation_compound_unique = db.create_collection("sharded_collation_compound_unique_collection", collation=fr_collation)
+            sharded_collation_compound_unique.create_index([("category", pymongo.ASCENDING), ("item_id", pymongo.ASCENDING)],
+                name="category_item_id_shard_key_index", unique=True, collation={"locale": "simple"})
+            db.client.admin.command("shardCollection", f"{db.name}.sharded_collation_compound_unique_collection",
+                key={"category": 1, "item_id": 1}, unique=True, collation={"locale": "simple"})
+            collation_compound_unique_docs = [{"item_id": i, "category": f"cat_{i % 5}", "name": f"item_{i}", "price": 50.0 + i}
+                for i in range(25)]
+            sharded_collation_compound_unique.insert_many(collation_compound_unique_docs)
+            collections_metadata.append({"collection": sharded_collation_compound_unique, "timeseries": False,
+                                        "sharded": True, "shard_key": ["category", "item_id"], "unique": True})
 
     # Sharded timeseries collection
     if create_ts:
@@ -94,8 +144,8 @@ def create_sharded_collection_types(db, create_ts=False, drop_before_creation=Fa
 
     return collections_metadata
 
-def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_shard_key=True,
-                                        update_shard_key=True, timeseries=False, unique=False):
+def perform_crud_ops_sharded_collection(collection, shard_key, timeseries=False, hashed=False, no_shard_key=True,
+                                        update_shard_key=True, unique=False, collation_id_shard=False):
     # sharded_timeseries_collection
     if timeseries:
         sensor_id = f"sensor_{random.randint(0, 10)}"
@@ -147,74 +197,210 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
             pymongo.DeleteOne({"sensor_id": sensor_id, "timestamp": base_time + datetime.timedelta(seconds=3)})]
         collection.bulk_write(bulk_operations)
 
-    # sharded_compound_key_collection
-    elif isinstance(shard_key, list):
-        category = f"cat_{random.randint(0, 10)}"
-        item_id = random.randint(100, 999)
-        new_doc = {
-            "item_id": item_id,
-            "category": category,
-            "name": f"item_crud_{random.randint(1000, 9999)}",
-            "price": round(random.uniform(10.0, 1000.0), 2)
-        }
-        collection.insert_one(new_doc)
+        # findOneAnd* operations for timeseries collections
+        findoneand_time = base_time + datetime.timedelta(seconds=200)
+        collection.find_one_and_update(
+            {"sensor_id": sensor_id, "timestamp": findoneand_time},
+            {"$set": {"sensor_id": sensor_id, "timestamp": findoneand_time, "temperature": 35.0, "humidity": 75.0, "pressure": 1030.0}},
+            upsert=True
+        )
+        collection.find_one_and_update(
+            {"sensor_id": sensor_id, "timestamp": findoneand_time},
+            {"$set": {"temperature": 36.0, "humidity": 76.0}}
+        )
+        collection.find_one_and_replace(
+            {"sensor_id": sensor_id, "timestamp": findoneand_time + datetime.timedelta(seconds=1)},
+            {"sensor_id": sensor_id, "timestamp": findoneand_time + datetime.timedelta(seconds=1), "temperature": 40.0, "humidity": 80.0, "pressure": 1040.0},
+            upsert=True
+        )
+        collection.find_one_and_delete({"sensor_id": sensor_id, "timestamp": findoneand_time + datetime.timedelta(seconds=1)})
 
-        new_docs = [
-            {
-                "_id": ObjectId(),
-                "item_id": item_id + i,
+    # sharded_compound_key_collection, sharded_collation_compound_collection, sharded_collation_compound_unique_collection
+    # sharded_compound_hashed_collection
+    elif isinstance(shard_key, list):
+        collection_name = collection.name
+        is_compound_hashed = "compound_hashed" in collection_name and len(shard_key) == 3
+
+        if is_compound_hashed:
+            # Handle compound hashed shard key collection {a: 1, b: "hashed", c: 1}
+            a_val = int(time.time() * 1000000) + random.randint(0, 999999)
+            b_val = f"hashed_{random.randint(0, 10)}"
+            c_val = a_val * 2
+            new_doc = {
+                "a": a_val,
+                "b": b_val,
+                "c": c_val,
+                "name": f"item_crud_{random.randint(1000, 9999)}",
+                "value": f"value_{a_val}"
+            }
+            query_key1 = {"a": a_val}
+            query_key2 = {"a": a_val, "b": b_val, "c": c_val}
+        else:
+            # Handle standard compound shard key collections
+            category = f"cat_{random.randint(0, 10)}"
+            item_id = int(time.time() * 1000000) + random.randint(0, 999999)
+            new_doc = {
+                "item_id": item_id,
                 "category": category,
-                "name": f"item_batch_{i}",
+                "name": f"item_crud_{random.randint(1000, 9999)}",
                 "price": round(random.uniform(10.0, 1000.0), 2)
             }
-            for i in range(1, 6)
-        ]
+            query_key1 = {"category": category}
+            query_key2 = {"category": category, "item_id": item_id}
+            a_val = category
+            b_val = item_id
+
+        collection.insert_one(new_doc)
+
+        if is_compound_hashed:
+            new_docs = [
+                {
+                    "_id": ObjectId(),
+                    "a": a_val + i,
+                    "b": f"{b_val.split('_')[0]}_{(int(b_val.split('_')[1]) + i) % 10}",
+                    "c": (a_val + i) * 2,
+                    "name": f"item_batch_{i}",
+                    "value": f"value_{a_val + i}"
+                }
+                for i in range(1, 6)
+            ]
+        else:
+            new_docs = [
+                {
+                    "_id": ObjectId(),
+                    "item_id": item_id + i,
+                    "category": category,
+                    "name": f"item_batch_{i}",
+                    "price": round(random.uniform(10.0, 1000.0), 2)
+                }
+                for i in range(1, 6)
+            ]
         collection.insert_many(new_docs)
 
-        collection.update_one(
-            {"category": category, "item_id": item_id},
-            {"$set": {"name": "Updated Item Name", "price": 999.99}}
-        )
+        if is_compound_hashed:
+            collection.update_one(
+                query_key2,
+                {"$set": {"name": "Updated Item Name", "value": "updated_value"}}
+            )
+        else:
+            collection.update_one(
+                query_key2,
+                {"$set": {"name": "Updated Item Name", "price": 999.99}}
+            )
 
         collection.update_many(
-            {"category": category},
+            query_key1,
             {"$set": {"last_updated": datetime.datetime.now(datetime.timezone.utc)}}
         )
 
-        collection.replace_one(
-            {"category": category, "item_id": item_id},
-            {"category": category, "item_id": item_id, "name": "Replaced Item", "price": 500.0}
-        )
+        if is_compound_hashed:
+            replace_doc = dict(query_key2)
+            replace_doc.update({"name": "Replaced Item", "value": "replaced_value"})
+        else:
+            replace_doc = {"category": category, "item_id": item_id, "name": "Replaced Item", "price": 500.0}
+        collection.replace_one(query_key2, replace_doc)
 
-        collection.delete_one({"category": category, "item_id": item_id + 1})
-        collection.delete_many({"category": category, "price": {"$lt": 50.0}})
+        if is_compound_hashed:
+            delete_query = {"a": a_val, "b": new_docs[0]["b"], "c": new_docs[0]["c"]}
+        else:
+            delete_query = {"category": category, "item_id": item_id + 1}
+        collection.delete_one(delete_query)
 
-        collection.update_one(
-            {"category": category, "item_id": 9999},
-            {"$set": {"category": category, "item_id": 9999, "name": "Upserted Item", "price": 200.0}},
-            upsert=True
-        )
+        if is_compound_hashed:
+            collection.delete_many(query_key1)
+        else:
+            collection.delete_many({"category": category, "price": {"$lt": 50.0}})
+
+        if is_compound_hashed:
+            upsert_a = int(time.time() * 1000000) + random.randint(1000000, 9999999)
+            upsert_b = f"hashed_{random.randint(0, 10)}"
+            upsert_c = upsert_a * 2
+            upsert_query = {"a": upsert_a, "b": upsert_b, "c": upsert_c}
+            upsert_doc = {"a": upsert_a, "b": upsert_b, "c": upsert_c, "name": "Upserted Item", "value": "upserted_value"}
+        else:
+            upsert_item_id = int(time.time() * 1000000) + random.randint(1000000, 9999999)
+            upsert_query = {"category": category, "item_id": upsert_item_id}
+            upsert_doc = {"category": category, "item_id": upsert_item_id, "name": "Upserted Item", "price": 200.0}
+        collection.update_one(upsert_query, {"$set": upsert_doc}, upsert=True)
+
+        if is_compound_hashed:
+            bulk_update_query = {"a": a_val, "b": new_docs[1]["b"], "c": new_docs[1]["c"]}
+            bulk_replace_query = {"a": a_val, "b": new_docs[2]["b"], "c": new_docs[2]["c"]}
+            bulk_replace_doc = {"a": a_val, "b": new_docs[2]["b"], "c": new_docs[2]["c"], "name": "Bulk Replaced", "value": "bulk_value"}
+            bulk_delete_query = {"a": a_val, "b": new_docs[3]["b"], "c": new_docs[3]["c"]}
+        else:
+            bulk_update_query = {"category": category, "item_id": item_id + 2}
+            bulk_replace_query = {"category": category, "item_id": item_id + 3}
+            bulk_replace_doc = {"category": category, "item_id": item_id + 3, "name": "Bulk Replaced", "price": 300.0}
+            bulk_delete_query = {"category": category, "item_id": item_id + 4}
 
         bulk_operations = [
             pymongo.UpdateOne(
-                {"category": category, "item_id": item_id + 2},
+                bulk_update_query,
                 {"$set": {"status": "active"}},
                 upsert=True
             ),
             pymongo.UpdateMany(
-                {"category": category},
+                query_key1,
                 {"$set": {"bulk_updated": True}}
             ),
             pymongo.ReplaceOne(
-                {"category": category, "item_id": item_id + 3},
-                {"category": category, "item_id": item_id + 3, "name": "Bulk Replaced", "price": 300.0},
+                bulk_replace_query,
+                bulk_replace_doc,
                 upsert=True
             ),
-            pymongo.DeleteOne({"category": category, "item_id": item_id + 4})
+            pymongo.DeleteOne(bulk_delete_query)
         ]
         collection.bulk_write(bulk_operations)
 
-    # sharded_hashed_key_collection
+        if is_compound_hashed:
+            findoneand_a = int(time.time() * 1000000) + random.randint(2000000, 2999999)
+            findoneand_b = f"hashed_{random.randint(0, 10)}"
+            findoneand_c = findoneand_a * 2
+            findoneand_query = {"a": findoneand_a, "b": findoneand_b, "c": findoneand_c}
+            findoneand_doc = {"a": findoneand_a, "b": findoneand_b, "c": findoneand_c, "name": "FindOneAndUpdate Upsert", "value": "findoneand_update_value"}
+            findoneand_replace_query = {"a": findoneand_a + 1, "b": findoneand_b, "c": (findoneand_a + 1) * 2}
+            findoneand_replace_doc = {"a": findoneand_a + 1, "b": findoneand_b, "c": (findoneand_a + 1) * 2, "name": "FindOneAndReplace Upserted", "value": "findoneand_replace_value"}
+        else:
+            findoneand_item_id = int(time.time() * 1000000) + random.randint(2000000, 2999999)
+            findoneand_query = {"category": category, "item_id": findoneand_item_id}
+            findoneand_doc = {"category": category, "item_id": findoneand_item_id, "name": "FindOneAndUpdate Upsert", "price": 250.0}
+            findoneand_replace_query = {"category": category, "item_id": findoneand_item_id + 1}
+            findoneand_replace_doc = {"category": category, "item_id": findoneand_item_id + 1, "name": "FindOneAndReplace Upserted", "price": 450.0}
+
+        collection.find_one_and_update(
+            findoneand_query,
+            {"$set": findoneand_doc},
+            upsert=True
+        )
+        if is_compound_hashed:
+            collection.find_one_and_update(
+                findoneand_query,
+                {"$set": {"name": "FindOneAndUpdate Upserted New", "value": "findoneand_update_value_new"}}
+            )
+        else:
+            collection.find_one_and_update(
+                findoneand_query,
+                {"$set": {"name": "FindOneAndUpdate Upserted New", "price": 350.0}}
+            )
+        collection.find_one_and_replace(
+            findoneand_replace_query,
+            findoneand_replace_doc,
+            upsert=True
+        )
+        if is_compound_hashed:
+            collection.find_one_and_replace(
+                findoneand_replace_query,
+                {**findoneand_replace_query, "name": "FindOneAndReplace Upserted New", "value": "findoneand_replace_value_new"}
+            )
+        else:
+            collection.find_one_and_replace(
+                findoneand_replace_query,
+                {"category": category, "item_id": findoneand_item_id + 1, "name": "FindOneAndReplace Upserted New", "price": 550.0}
+            )
+        collection.find_one_and_delete(findoneand_replace_query)
+
+    # sharded_hashed_key_collection, sharded_collation_id_shard_collection
     elif hashed:
         new_doc = {
             "_id": ObjectId(),
@@ -279,150 +465,116 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
             pymongo.DeleteOne({"item_id": new_docs[3]["item_id"]})
         ]
         collection.bulk_write(bulk_operations)
-    # Single field ranged shard keys
+
+        findoneand_id = ObjectId()
+        collection.find_one_and_update(
+            {"_id": findoneand_id},
+            {"$set": {"_id": findoneand_id, "item_id": "findoneand_update_upsert", "category_id": 666, "amount": 500.0, "status": "findoneand"}},
+            upsert=True
+        )
+        collection.find_one_and_update(
+            {"_id": findoneand_id},
+            {"$set": {"status": "findoneand_updated", "amount": 600.0}}
+        )
+        findoneand_replace_id = ObjectId()
+        collection.find_one_and_replace(
+            {"_id": findoneand_replace_id},
+            {"_id": findoneand_replace_id, "item_id": "findoneand_replace_upsert", "category_id": 555, "amount": 700.0, "status": "findoneand_replace"},
+            upsert=True
+        )
+        collection.find_one_and_replace(
+            {"_id": findoneand_replace_id},
+            {"_id": findoneand_replace_id, "item_id": "findoneand_replace_upserted_new", "category_id": 444, "amount": 800.0, "status": "findoneand_replace_new"}
+        )
+        collection.find_one_and_delete({"_id": findoneand_replace_id})
+    # sharded_range_key_collection, sharded_unique_key_collection, sharded_collation_collection
     else:
-        # sharded_collation_collection
-        if shard_key == "text_key":
-            key_id = random.randint(100, 999)
-            new_doc = {
+        key_id = int(time.time() * 1000000) + random.randint(0, 999999)
+        new_doc = {
+            "_id": ObjectId(),
+            "key_id": key_id,
+            "name": f"item_crud_{random.randint(1000, 9999)}",
+            "value": f"value_{key_id}",
+            "region": f"region_{random.randint(0, 5)}"
+        }
+        collection.insert_one(new_doc)
+
+        new_docs = [
+            {
                 "_id": ObjectId(),
-                "text_key": key_id,
-                "string": "cote",
-                "value": key_id
+                "key_id": key_id + i,
+                "name": f"item_batch_{i}",
+                "value": f"value_{key_id + i}",
+                "region": f"region_{i % 3}"
             }
-            collection.insert_one(new_doc)
+            for i in range(1, 6)
+        ]
+        collection.insert_many(new_docs)
+        collection.update_one(
+            {"key_id": key_id},
+            {"$set": {"name": "Updated Item", "value": "updated_value"}}
+        )
+        collection.update_many(
+            {"region": new_doc["region"]},
+            {"$set": {"last_updated": datetime.datetime.now(datetime.timezone.utc)}}
+        )
 
-            new_docs = [
-                {
-                    "_id": ObjectId(),
-                    "text_key": key_id + i,
-                    "string": ["cote", "coté", "côte", "côté"][i % 4],
-                    "value": key_id + i
-                }
-                for i in range(1, 6)
-            ]
-            collection.insert_many(new_docs)
+        collection.replace_one(
+            {"key_id": key_id},
+            {"key_id": key_id, "name": "Replaced Item", "value": "replaced_value", "region": "region_new"}
+        )
 
-            collection.update_one(
-                {"text_key": key_id},
-                {"$set": {"string": "updated", "value": 9999}}
-            )
-            collection.update_many(
-                {"string": "cote"},
-                {"$set": {"last_updated": datetime.datetime.now(datetime.timezone.utc)}}
-            )
+        collection.delete_one({"key_id": key_id + 1})
+        collection.delete_many({"region": new_doc["region"], "key_id": {"$lt": key_id + 10}})
 
-            collection.replace_one(
-                {"text_key": key_id},
-                {"text_key": key_id, "string": "replaced", "value": 5000}
-            )
+        upsert_key_id = int(time.time() * 1000000) + random.randint(1000000, 9999999)
+        collection.update_one(
+            {"key_id": upsert_key_id},
+            {"$set": {"key_id": upsert_key_id, "name": "Upserted Item", "value": "upserted_value", "region": "region_upsert"}},
+            upsert=True
+        )
 
-            collection.delete_one({"text_key": key_id + 1})
-            collection.delete_many({"value": {"$lt": key_id + 10}})
-
-            collection.update_one(
-                {"text_key": 9999},
-                {"$set": {"text_key": 9999, "string": "upserted", "value": 2000}},
+        bulk_operations = [
+            pymongo.UpdateOne(
+                {"key_id": key_id + 2},
+                {"$set": {"status": "active"}},
                 upsert=True
-            )
-
-            bulk_operations = [
-                pymongo.UpdateOne(
-                    {"text_key": key_id + 2},
-                    {"$set": {"status": "active"}},
-                    upsert=True
-                ),
-                pymongo.UpdateMany(
-                    {"string": "cote"},
-                    {"$set": {"bulk_updated": True}}
-                ),
-                pymongo.ReplaceOne(
-                    {"text_key": key_id + 3},
-                    {"text_key": key_id + 3, "string": "bulk_replaced", "value": 3000},
-                    upsert=True
-                ),
-                pymongo.DeleteOne({"text_key": key_id + 4})
-            ]
-            collection.bulk_write(bulk_operations)
-        # sharded_range_key_collection, sharded_unique_key_collection
-        else:
-            if unique:
-                key_id = int(time.time() * 1000000) + random.randint(0, 999999)
-            else:
-                key_id = random.randint(100, 999)
-            new_doc = {
-                "_id": ObjectId(),
-                "key_id": key_id,
-                "name": f"item_crud_{random.randint(1000, 9999)}",
-                "value": f"value_{key_id}",
-                "region": f"region_{random.randint(0, 5)}"
-            }
-            collection.insert_one(new_doc)
-            if unique:
-                base_timestamp = int(time.time() * 1000000)
-                new_docs = []
-                for i in range(1, 6):
-                    batch_key_id = base_timestamp + random.randint(1000000 + i * 100000, 1999999 + i * 100000)
-                    new_docs.append({
-                        "_id": ObjectId(),
-                        "key_id": batch_key_id,
-                        "name": f"item_batch_{i}",
-                        "value": f"value_{batch_key_id}",
-                        "region": f"region_{i % 3}"
-                    })
-            else:
-                new_docs = [
-                    {
-                        "_id": ObjectId(),
-                        "key_id": key_id + i,
-                        "name": f"item_batch_{i}",
-                        "value": f"value_{key_id + i}",
-                        "region": f"region_{i % 3}"
-                    }
-                    for i in range(1, 6)
-                ]
-            collection.insert_many(new_docs)
-            collection.update_one(
-                {"key_id": key_id},
-                {"$set": {"name": "Updated Item", "value": "updated_value"}}
-            )
-            collection.update_many(
+            ),
+            pymongo.UpdateMany(
                 {"region": new_doc["region"]},
-                {"$set": {"last_updated": datetime.datetime.now(datetime.timezone.utc)}}
-            )
-
-            collection.replace_one(
-                {"key_id": key_id},
-                {"key_id": key_id, "name": "Replaced Item", "value": "replaced_value", "region": "region_new"}
-            )
-
-            collection.delete_one({"key_id": key_id + 1})
-            collection.delete_many({"region": new_doc["region"], "key_id": {"$lt": key_id + 10}})
-
-            collection.update_one(
-                {"key_id": 9999},
-                {"$set": {"key_id": 9999, "name": "Upserted Item", "value": "upserted_value", "region": "region_upsert"}},
+                {"$set": {"bulk_updated": True}}
+            ),
+            pymongo.ReplaceOne(
+                {"key_id": key_id + 3},
+                {"key_id": key_id + 3, "name": "Bulk Replaced", "value": "bulk_value", "region": "region_bulk"},
                 upsert=True
-            )
+            ),
+            pymongo.DeleteOne({"key_id": key_id + 4})
+        ]
+        collection.bulk_write(bulk_operations)
 
-            bulk_operations = [
-                pymongo.UpdateOne(
-                    {"key_id": key_id + 2},
-                    {"$set": {"status": "active"}},
-                    upsert=True
-                ),
-                pymongo.UpdateMany(
-                    {"region": new_doc["region"]},
-                    {"$set": {"bulk_updated": True}}
-                ),
-                pymongo.ReplaceOne(
-                    {"key_id": key_id + 3},
-                    {"key_id": key_id + 3, "name": "Bulk Replaced", "value": "bulk_value", "region": "region_bulk"},
-                    upsert=True
-                ),
-                pymongo.DeleteOne({"key_id": key_id + 4})
-            ]
-            collection.bulk_write(bulk_operations)
+        # findOneAnd* operations for range shard key collections
+        findoneand_key_id = int(time.time() * 1000000) + random.randint(3000000, 3999999)
+        collection.find_one_and_update(
+            {"key_id": findoneand_key_id},
+            {"$set": {"key_id": findoneand_key_id, "name": "FindOneAndUpdate Upsert", "value": "findoneand_update_value", "region": "region_findoneand"}},
+            upsert=True
+        )
+        collection.find_one_and_update(
+            {"key_id": findoneand_key_id},
+            {"$set": {"name": "FindOneAndUpdate Upserted New", "value": "findoneand_update_value_new"}}
+        )
+        findoneand_replace_key_id = int(time.time() * 1000000) + random.randint(4000000, 4999999)
+        collection.find_one_and_replace(
+            {"key_id": findoneand_replace_key_id},
+            {"key_id": findoneand_replace_key_id, "name": "FindOneAndReplace Upserted", "value": "findoneand_replace_value", "region": "region_findoneand_replace"},
+            upsert=True
+        )
+        collection.find_one_and_replace(
+            {"key_id": findoneand_replace_key_id},
+            {"key_id": findoneand_replace_key_id, "name": "FindOneAndReplace Upserted New", "value": "findoneand_replace_value_new", "region": "region_findoneand_replace_new"}
+        )
+        collection.find_one_and_delete({"key_id": findoneand_replace_key_id})
 
     # Documents without shard key fields
     if no_shard_key and not timeseries:
@@ -488,7 +640,7 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
 
     # Shard key updates
     if update_shard_key and not hashed and not timeseries:
-        # sharded_compound_key_collection
+        # sharded_compound_key_collection, sharded_collation_compound_collection, sharded_collation_compound_unique_collection
         if isinstance(shard_key, list):
             category = f"cat_{random.randint(0, 10)}"
             item_id = random.randint(100, 999)
@@ -512,36 +664,10 @@ def perform_crud_ops_sharded_collection(collection, shard_key, hashed=False, no_
                 {"category": new_category, "item_id": new_item_id},
                 {"category": new_category, "item_id": new_item_id, "name": "Replaced With New Shard Key", "price": 2000.0}
             )
-        # sharded_collation_collection
-        elif shard_key == "text_key":
-            key_id = random.randint(100, 999)
-            new_key_id = random.randint(2000, 9999)
-
-            shard_key_update_doc = {
-                "_id": ObjectId(),
-                "text_key": key_id,
-                "string": "shard_key_update",
-                "value": key_id
-            }
-            collection.insert_one(shard_key_update_doc)
-
-            collection.update_one(
-                {"text_key": key_id},
-                {"$set": {"text_key": new_key_id, "value": new_key_id, "shard_key_updated": True}}
-            )
-
-            collection.replace_one(
-                {"text_key": new_key_id},
-                {"text_key": new_key_id, "string": "Replaced With New Shard Key", "value": new_key_id}
-            )
-        # sharded_range_key_collection, sharded_unique_key_collection
+        # sharded_range_key_collection, sharded_unique_key_collection, sharded_collation_collection
         else:
-            if unique:
-                key_id = int(time.time() * 1000000) + random.randint(0, 999999)
-                new_key_id = int(time.time() * 1000000) + random.randint(1000000, 1999999)
-            else:
-                key_id = random.randint(100, 999)
-                new_key_id = random.randint(2000, 9999)
+            key_id = int(time.time() * 1000000) + random.randint(0, 999999)
+            new_key_id = int(time.time() * 1000000) + random.randint(1000000, 1999999)
 
             shard_key_update_doc = {
                 "_id": ObjectId(),
