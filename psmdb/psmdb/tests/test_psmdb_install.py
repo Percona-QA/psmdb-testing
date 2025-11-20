@@ -9,7 +9,7 @@ from packaging import version
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
-MONGO_FEATURES = ['MemoryEngine', 'HotBackup', 'BackupCursorAggregationStage', 'BackupCursorExtendAggregationStage', 'AWSIAM', 'Kerberos', 'LDAP', 'OIDC', 'TDE', 'FIPSMode', 'FCBIS', 'Auditing', 'ProfilingRateLimit', 'LogReduction', 'ngram']
+MONGO_FEATURES = ['MemoryEngine', 'HotBackup', 'BackupCursorAggregationStage', 'BackupCursorExtendAggregationStage', 'AWSIAM', 'Kerberos', 'LDAP', 'OIDC', 'TDE', 'FIPSMode', 'FCBIS', 'Auditing', 'ProfilingRateLimit', 'LogRedaction', 'ngram']
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
 toolkit = os.environ.get("ENABLE_TOOLKIT")
