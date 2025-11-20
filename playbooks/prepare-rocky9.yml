@@ -1,0 +1,72 @@
+---
+- name: Prepare node for running tests
+  hosts: all
+  become: true
+  become_method: sudo
+  gather_facts: true
+  tasks:
+    - name: Check partitions
+      shell: |
+        lsblk
+      register: partitions
+
+    - name: Debug partitions
+      debug:
+        msg: "{{ partitions }}"
+
+#    - name: Extend partition /dev/nvme0n1p3
+#      shell: |
+#        growpart /dev/nvme0n1 3
+
+#    - name: Check partitions
+#      shell: |
+#        lsblk
+#      register: partitions
+
+#    - name: Debug partitions
+
+#      debug:
+#        msg: "{{ partitions }}"
+
+    - name: Check filesystem
+      shell: |
+        df -hT
+      register: filesystem
+
+    - name: Debug filesystem
+      debug:
+        msg: "{{ filesystem }}"
+
+#    - name: Extend the logical volume to take all remaining space and resize the underlying XFS filesystem
+#      community.general.lvol:
+#        vg: rocky
+#        lv: lvroot
+#        size: "+100%FREE"
+#        resizefs: true
+#        force: true
+
+    - name: Check filesystem
+      shell: |
+        df -hT
+      register: filesystem
+
+    - name: Debug filesystem
+      debug:
+        msg: "{{ filesystem }}"
+
+    - name: setup ca-certificates release
+      yum:
+        name: ca-certificates
+        update_cache: yes
+        state: present
+
+    - name: install needed packages for running tests with yum on RHEL
+      yum:
+        name: "{{ packages }}"
+        state: latest
+      vars:
+        packages:
+        - unzip
+        - git
+        - wget
+
