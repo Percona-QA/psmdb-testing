@@ -14,6 +14,27 @@
       debug:
         msg: "{{ partitions }}"
 
+    - name: Check partitions
+      shell: |
+        growpart /dev/nvme0n1 3
+
+    - name: Check partitions
+      shell: |
+        lsblk
+      register: partitions
+
+    - name: Debug partitions
+      debug:
+        msg: "{{ partitions }}"
+
+    - name: Check filesystem
+      shell: |
+        df -hT
+      register: filesystem
+
+    - name: Debug filesystem
+      debug:
+        msg: "{{ filesystem }}"
 
     - name: setup ca-certificates release
       yum:
