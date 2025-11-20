@@ -16,6 +16,14 @@ JSTESTS = ['test_kerberos_simple.js','test_ldap_simple.js', 'test_oidc_simple.js
 SUITES = ['multiversion_kmip', 'multiversion_vault']
 FIPS = ['ssl jstests/ssl/ssl_fips.js']
 
+def is_ubuntu_pro(host):
+    proStatus = host.run("sudo pro status")
+
+    if "This machine is not attached to an Ubuntu Pro subscription." in proStatus.stdout:
+        return False
+    else:
+        return True
+
 @pytest.mark.parametrize("binary", BINARIES)
 def test_binary_version(host, binary):
     result = host.check_output(f"/usr/bin/{binary} --version")
@@ -39,9 +47,9 @@ def test_suites(host, suites):
 
 @pytest.mark.parametrize("fips", FIPS)
 def test_fips(host, fips):
-    if host.system_info.distribution == "debian" or (host.system_info.distribution == "ubuntu" and "24.04" in host.system_info.release):
+    if host.system_info.distribution == "debian" or (host.system_info.distribution == "ubuntu" and not (is_ubuntu_pro(host) and ("22.04" in host.system_info.release or "24.04" in host.system_info.release))):
         pytest.skip("Skip debian12 as no openssl with FIPS available")
-    cmd = "cd /percona-server-mongodb && /opt/venv/bin/python buildscripts/resmoke.py run --suite "  + FIPS
+    cmd = "cd /percona-server-mongodb && /opt/venv/bin/python buildscripts/resmoke.py run --suite {fips}"
     with host.sudo():
         result = host.run(cmd)
         print(result.stderr)
