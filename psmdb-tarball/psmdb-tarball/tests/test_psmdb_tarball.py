@@ -49,7 +49,7 @@ def test_suites(host, suites):
 def test_fips(host, fips):
     if host.system_info.distribution == "debian" or (host.system_info.distribution == "ubuntu" and not (is_ubuntu_pro(host) and ("22.04" in host.system_info.release or "24.04" in host.system_info.release))):
         pytest.skip("Skip debian12 as no openssl with FIPS available")
-    cmd = "cd /percona-server-mongodb && /opt/venv/bin/python buildscripts/resmoke.py run --suite {fips}"
+    cmd = f"cd /percona-server-mongodb && /opt/venv/bin/python buildscripts/resmoke.py run --suite {fips}"
     with host.sudo():
         result = host.run(cmd)
         print(result.stderr)
