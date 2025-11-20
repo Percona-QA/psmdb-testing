@@ -125,7 +125,7 @@ def check_hotbackup(node):
 
 def test_version_features(host):
     result = host.run("/usr/bin/mongod --version")
-    enabled_features = result.stdout.split('"percona_features":')[1].split(']')[0]
+    enabled_features = result.stdout.split('"perconaFeatures":')[1].split(']')[0]
 
     for feature in MONGO_FEATURES:
         assert feature in enabled_features, f'"{feature}" not found in percona_features: {enabled_features}'
