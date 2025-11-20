@@ -36,9 +36,13 @@
       debug:
         msg: "{{ filesystem }}"
 
-    - name: Extend filesystem
-      shell: |
-        xfs_growfs -d /
+    - name: Extend the logical volume to take all remaining space and resize the underlying XFS filesystem
+      community.general.lvol:
+        vg: rocky
+        lv: lvroot
+        size: "+100%FREE"
+        resizefs: true
+        force: true
 
     - name: Check filesystem
       shell: |
