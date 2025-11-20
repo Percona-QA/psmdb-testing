@@ -141,9 +141,9 @@ def test_binary_symbol_visibility(host):
         assert file_result.rc == 0, f"file failed for {binary}"
         file_output = file_result.stdout.lower()
 
-        assert ".symtab" not in readelf_result.stdout, f"{binary} should NOT have .symtab"
-        assert ".strtab" not in readelf_result.stdout, f"{binary} should NOT have .strtab"
-        assert "not stripped" not in file_output, f"{binary} should be stripped"
+        assert ".symtab" in readelf_result.stdout, f"{binary} is missing .symtab section"
+        assert ".strtab" in readelf_result.stdout, f"{binary} is missing .strtab section"
+        assert "not stripped" in file_output, f"{binary} should NOT be stripped"
 
 def test_version_pt(host):
     if toolkit != "true" :
