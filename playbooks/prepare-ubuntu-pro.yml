@@ -8,6 +8,22 @@
     - name: Subscribe for fips-updates
       command: pro enable fips-updates --assume-yes
 
+    - name: Install virtualenv
+      pip:
+        name:
+          - virtualenv
+        state: latest
+        executable: /opt/python/bin/pip3
+
+    - name: Upgrade pip and create venv
+      pip:
+        name:
+          - pip
+        state: latest
+        virtualenv: /opt/venv
+        virtualenv_command: /opt/python/bin/virtualenv
+        virtualenv_python: /opt/python/bin/python3
+
     - name: install needed packages for running tests with apt
       apt:
         name: "{{ packages }}"
