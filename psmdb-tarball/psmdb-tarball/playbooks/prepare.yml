@@ -212,18 +212,10 @@
       virtualenv_command: /opt/python/bin/virtualenv
       virtualenv_python: /opt/python/bin/python3
 
-  - name: Check Ubuntu Pro subscription
-    command: pro status --format json
+  - name: Check if Ubuntu Pro
+    command: pro status
     register: pro_status
-    changed_when: false
     failed_when: false
-
-  - set_fact:
-      is_ubuntu_pro: >-
-        {{
-          pro_status.rc == 0 and
-          (pro_status.stdout | from_json)['subscription'] is defined
-        }}
 
   - name: Enable FIPS on Ubuntu Pro Jammy/Noble
     block:
@@ -240,7 +232,8 @@
     when:
       - ansible_facts['distribution'] == 'Ubuntu'
       - ansible_facts['distribution_release'] in ['jammy', 'noble']
-      - is_ubuntu_pro
+      - pro_status.rc == 0
+      - '"This machine is not attached to an Ubuntu Pro subscription" not in (pro_status.stdout | default(""))'
 
   - set_fact:
       ssh_pubkey: "{{ lookup('env', 'SSH_PUBKEY') | default('none', true) }}"
