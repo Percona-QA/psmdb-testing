@@ -212,6 +212,23 @@
       virtualenv_command: /opt/python/bin/virtualenv
       virtualenv_python: /opt/python/bin/python3
 
+  - name: Enable FIPS on Ubuntu Pro Jammy/Noble
+    block:
+      - name: Enable FIPS updates
+        ansible.builtin.command: pro enable fips-updates --assume-yes
+        register: pro_result
+        changed_when: "'FIPS Updates enabled' in pro_result.stdout"
+
+      - name: Reboot after enabling FIPS
+        ansible.builtin.reboot:
+          msg: "Rebooting Ubuntu Pro for Fips enablement"
+          reboot_timeout: 900
+        when: pro_result is changed
+    when:
+      - ansible_facts['distribution'] == 'Ubuntu'
+      - ansible_facts['distribution_release'] in ['jammy', 'noble']
+      - "'Ubuntu Pro' in (ansible_facts['lsb']['description'] | default(''))"
+
   - set_fact:
       ssh_pubkey: "{{ lookup('env', 'SSH_PUBKEY') | default('none', true) }}"
 
