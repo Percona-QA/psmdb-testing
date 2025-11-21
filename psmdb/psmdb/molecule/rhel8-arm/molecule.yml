@@ -44,4 +44,4 @@ scenario:
     - prepare
     - converge
     - verify
-    - cleanupz
+    - cleanup

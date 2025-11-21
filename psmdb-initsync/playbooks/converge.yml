@@ -67,7 +67,7 @@
       include_tasks: ../../tasks/install_percona_release.yml
 
     - name: enable psmdb repo
-      command: percona-release enable {{ psmdb_to_test }} {{ repo }} --user_name={{ client_id }} --repo_token={{ client_token }}
+      command: percona-release enable {{ psmdb_to_test }} {{ repo }}
 
     - name: install psmdb deb packages
       apt:
