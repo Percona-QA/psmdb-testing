@@ -51,7 +51,7 @@
 
 - name: Wait for API to become available
   ansible.builtin.uri:
-    url: "https://127.0.0.1:8443/realms/test/protocol/openid-connect/token"
+    url: "https://keycloak:8443/realms/test/protocol/openid-connect/token"
     method: POST
     body_format: form-urlencoded
     body:
