@@ -19,9 +19,9 @@ provisioner:
   log: True
   playbooks:
     create: ../../../../playbooks/create.yml
-#    destroy: ../../../../playbooks/destroy.yml
+    destroy: ../../../../playbooks/destroy.yml
     prepare: ../../../../playbooks/prepare.yml
-#    cleanup: ../../playbooks/cleanup.yml
+    cleanup: ../../playbooks/cleanup.yml
     converge: ../../playbooks/playbook.yml
 verifier:
   name: testinfra
@@ -34,8 +34,8 @@ verifier:
     junitxml: rocky8-arm-report.xml
 scenario:
   name: rocky8-arm
-#  destroy_sequence:
-#    - destroy
+  destroy_sequence:
+    - destroy
   cleanup_sequence:
     - cleanup
   test_sequence:
@@ -44,5 +44,5 @@ scenario:
     - prepare
     - converge
     - verify
-#    - cleanup
-#    - destroy
+    - cleanup
+    - destroy

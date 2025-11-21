@@ -19,9 +19,9 @@ provisioner:
   log: True
   playbooks:
     create: ../../../../playbooks/create.yml
-#    destroy: ../../../../playbooks/destroy.yml
+    destroy: ../../../../playbooks/destroy.yml
     prepare: ../../../../playbooks/prepare.yml
-#    cleanup: ../../playbooks/cleanup.yml
+    cleanup: ../../playbooks/cleanup.yml
     converge: ../../playbooks/playbook.yml
 verifier:
   name: testinfra
@@ -34,14 +34,14 @@ verifier:
     junitxml: debian11-report.xml
 scenario:
   name: debian-11
-#  destroy_sequence:
-#    - destroy
-#  cleanup_sequence:
-#    - cleanup
+  destroy_sequence:
+    - destroy
+  cleanup_sequence:
+    - cleanup
   test_sequence:
     - destroy
     - create
     - prepare
     - converge
     - verify
-#    - destroy
+    - destroy
