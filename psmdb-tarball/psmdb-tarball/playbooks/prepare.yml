@@ -273,7 +273,3 @@
       regexp: '^%sudo'
       line: '%sudo ALL=(ALL) NOPASSWD: ALL'
     when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'Debian'
-
-
-
-
