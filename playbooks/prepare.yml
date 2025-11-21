@@ -156,3 +156,32 @@
         - iproute
         - openssl
       when: ansible_distribution == "Amazon"
+
+    - set_fact:
+        ssh_pubkey: "{{ lookup('env', 'SSH_PUBKEY') | default('none', true) }}"
+
+    - set_fact:
+        ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
+
+    - name: Add user
+      user:
+        name: "{{ ssh_user }}"
+        shell: /bin/bash
+        groups: wheel
+        append: yes
+      when: ssh_user != "none" and ssh_pubkey != "none"
+
+    - name: Add pub key
+      authorized_key:
+        user: "{{ ssh_user }}"
+        state: present
+        key: "{{ ssh_pubkey }}"
+      when: ssh_user != "none" and ssh_pubkey != "none"
+
+    - name: Allow sudo without password
+      lineinfile:
+        dest: /etc/sudoers
+        state: present
+        regexp: '^%wheel'
+        line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+      when: ssh_user != "none" and ssh_pubkey != "none"
