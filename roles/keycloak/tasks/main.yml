@@ -53,7 +53,7 @@
   ansible.builtin.wait_for:
     host: keycloak
     port: 8443
-    timeout: 120
+    timeout: 180
     delay: 0
 
 - name: Wait for API to become available
