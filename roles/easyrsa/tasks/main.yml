@@ -34,7 +34,7 @@
     creates: /root/easyrsa/easyrsa3/pki
 
 - name: Generate CA Cert and CA Private Key
-  command: ./easyrsa --req-cn=Percona --batch build-ca nopass
+  command: ./easyrsa --days=5 --req-cn=Percona --batch build-ca nopass
   args:
     chdir: /root/easyrsa/easyrsa3
     creates: /root/easyrsa/easyrsa3/pki/ca.crt
