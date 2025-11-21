@@ -22,9 +22,9 @@
   shell: |
     cd /pykmip_workdir/easy-rsa
     [ -d pki ] || easyrsa3/easyrsa init-pki
-    easyrsa3/easyrsa --req-cn=Percona --batch build-ca nopass
-    easyrsa3/easyrsa --req-ou=server --subject-alt-name=DNS:*,IP:127.0.0.1 --batch build-server-full 127.0.0.1 nopass
-    easyrsa3/easyrsa --batch build-client-full mongod nopass
+    easyrsa3/easyrsa --days=5 --req-cn=Percona --batch build-ca nopass
+    easyrsa3/easyrsa --days=5 --req-ou=server --subject-alt-name=DNS:*,IP:127.0.0.1 --batch build-server-full 127.0.0.1 nopass
+    easyrsa3/easyrsa --days=5 --batch build-client-full mongod nopass
     cat pki/issued/mongod.crt pki/private/mongod.key > /pykmip_workdir/mongod.pem
     cp pki/issued/127.0.0.1.crt pki/private/127.0.0.1.key pki/ca.crt /pykmip_workdir/
 

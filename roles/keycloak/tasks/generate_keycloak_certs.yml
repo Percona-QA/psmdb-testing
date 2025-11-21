@@ -1,5 +1,5 @@
 - name: Generate Build CA Cert and CA Private Key
-  command: ./easyrsa --batch build-server-full keycloak nopass
+  command: ./easyrsa --days=5 --batch build-server-full keycloak nopass
   args:
     chdir: /root/easyrsa/easyrsa3
     creates: /root/easyrsa/easyrsa3/pki/reqs/keycloak.req
