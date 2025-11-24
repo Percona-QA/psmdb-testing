@@ -1,5 +1,5 @@
 - name: Generate Build CA Cert and CA Private Key
-  command: ./easyrsa --batch build-server-full vault nopass
+  command: ./easyrsa --days=90 --batch build-server-full vault nopass
   args:
     chdir: /root/easyrsa/easyrsa3
     creates: /root/easyrsa/easyrsa3/pki/reqs/vault.req

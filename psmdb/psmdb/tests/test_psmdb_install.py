@@ -9,11 +9,10 @@ from packaging import version
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
-PRO_FEATURES = ['FIPSMode','FCBIS','OIDC']
+MONGO_FEATURES = ['MemoryEngine', 'HotBackup', 'BackupCursorAggregationStage', 'BackupCursorExtendAggregationStage', 'AWSIAM', 'Kerberos', 'LDAP', 'OIDC', 'TDE', 'FIPSMode', 'FCBIS', 'Auditing', 'ProfilingRateLimit', 'LogRedaction', 'ngram']
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
 toolkit = os.environ.get("ENABLE_TOOLKIT")
-pro_build = os.environ.get("GATED_BUILD")
 
 def get_default_conf(node):
     with node.sudo():
@@ -124,15 +123,12 @@ def check_hotbackup(node):
     result = node.check_output('mongo --quiet --eval "db.series.countDocuments({})"')
     assert "1000" in result
 
-def test_pro_version(host):
-    if pro_build != "true":
-        pytest.skip("Skipping PSMDB PRO version check")
-
+def test_version_features(host):
     result = host.run("/usr/bin/mongod --version")
-    enabled_features = result.stdout.split('"proFeatures":')[1].split(']')[0]
+    enabled_features = result.stdout.split('"perconaFeatures":')[1].split(']')[0]
 
-    for feature in PRO_FEATURES:
-        assert feature in enabled_features, f'"{feature}" not found in proFeatures: {enabled_features}'
+    for feature in MONGO_FEATURES:
+        assert feature in enabled_features, f'"{feature}" not found in percona_features: {enabled_features}'
 
 def test_binary_symbol_visibility(host):
     binaries = ["/usr/bin/mongod", "/usr/bin/mongos"]
@@ -145,14 +141,9 @@ def test_binary_symbol_visibility(host):
         assert file_result.rc == 0, f"file failed for {binary}"
         file_output = file_result.stdout.lower()
 
-        if pro_build == "true":
-            assert ".symtab" in readelf_result.stdout, f"{binary} is missing .symtab section (PRO build)"
-            assert ".strtab" in readelf_result.stdout, f"{binary} is missing .strtab section (PRO build)"
-            assert "not stripped" in file_output, f"{binary} should NOT be stripped (PRO build)"
-        else:
-            assert ".symtab" not in readelf_result.stdout, f"{binary} should NOT have .symtab (community build)"
-            assert ".strtab" not in readelf_result.stdout, f"{binary} should NOT have .strtab (community build)"
-            assert "not stripped" not in file_output, f"{binary} should be stripped (community build)"
+        assert ".symtab" in readelf_result.stdout, f"{binary} is missing .symtab section"
+        assert ".strtab" in readelf_result.stdout, f"{binary} is missing .strtab section"
+        assert "not stripped" in file_output, f"{binary} should NOT be stripped"
 
 def test_version_pt(host):
     if toolkit != "true" :
@@ -263,8 +254,6 @@ def test_profiling(host):
 
 @pytest.mark.parametrize("auth", ['LDAP','GSSAPI','MONGODB-AWS','MONGODB-OIDC'])
 def test_auth(host,auth):
-    if auth == 'MONGODB-OIDC' and pro_build != "true":
-        pytest.skip("Skipping MONGODB-OIDC test for community build")
 
     restore_defaults(host)
 

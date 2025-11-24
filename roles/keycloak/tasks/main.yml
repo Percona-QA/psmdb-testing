@@ -49,13 +49,6 @@
     line: '{{ keycloak_ip }} keycloak'
     unsafe_writes: yes
 
-- name: Wait until TCP connection is ready
-  ansible.builtin.wait_for:
-    host: keycloak
-    port: 8443
-    timeout: 120
-    delay: 0
-
 - name: Wait for API to become available
   ansible.builtin.uri:
     url: "https://keycloak:8443/realms/test/protocol/openid-connect/token"
@@ -69,8 +62,8 @@
     validate_certs: yes
     return_content: yes
   register: kc_token_resp
-  retries: 10
-  delay: 3
+  retries: 20
+  delay: 10
   until:
     - kc_token_resp.status == 200
 

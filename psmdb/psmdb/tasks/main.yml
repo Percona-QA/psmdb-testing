@@ -3,9 +3,6 @@
 - set_fact:
     toolkit: "{{ lookup('env', 'ENABLE_TOOLKIT') | default('false', true) }}"
 
-- set_fact:
-    pro_build: "{{ lookup('env', 'GATED_BUILD') | default('false', true) }}"
-
 - name: Install Readelf for RHEL 8
   yum:
     name: "{{ packages }}"
@@ -43,23 +40,13 @@
   vars:
     repo: "{{ lookup('env', 'REPO') }}"
     version: "{{ lookup('env', 'PSMDB_VERSION') }}"
-  when: pro_build != true
-
-- name: enable psmdb PRO repo
-  command: percona-release enable psmdb-{{ version.split('.')[0] }}{{ version.split('.')[1] }}-pro {{ repo }} --user_name={{ client_id }} --repo_token={{ client_token }}
-  vars:
-    repo: "{{ lookup('env', 'REPO') }}"
-    version: "{{ lookup('env', 'PSMDB_VERSION') }}"
-    client_id: "{{ lookup('env', 'USERNAME') }}"
-    client_token: "{{ lookup('env', 'PASSWORD') }}"
-  when: pro_build == true
 
 - block:
     - name: include tasks for PSMDB install
       include_tasks: ../../../tasks/install_psmdb.yml
       vars:
         psmdb_to_test: "{{ lookup('env', 'PSMDB_VERSION') }}"
-        psmdb_pkg_name_addon: "{{ '-pro' if pro_build == true else '' }}"
+        psmdb_pkg_name_addon: "{{ '' }}"
   environment:
     PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
 

@@ -2,35 +2,24 @@
 - name: Download packages to localhost
   hosts: localhost
   connection: local
-  gather_facts: false
+  gather_facts: true
   tasks:
-    - set_fact:
-        tarball: "{{ lookup('env', 'TARBALL') | default('https://downloads.percona.com/downloads/TESTING/psmdb-6.0.16/percona-server-mongodb-6.0.16-13-x86_64.glibc2.17-minimal.tar.gz', true) }}"
-
-    - name: Get tarball template
-      set_fact:
-        tarball_template: "{{ tarball | regex_replace('glibc.+', '') }}"
-
-    - name: Debug tarball tarball template
-      debug:
-        msg: "{{ tarball_template }}"
-
     - name: Get mongodb version
       set_fact:
-        mongodb_ver: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+        full_ver: "{{ lookup('env', 'PSMDB_VERSION') }}"
+        repo: "{{ lookup('env', 'REPO') }}"
 
     - name: Get mongodb major version
       set_fact:
-        maj_version={{ mongodb_ver[0].split('.')[0] }}
+        minor_version: "{{ full_ver.split('-')[0] }}"
 
-    - name: Debug mongodb major version
-      debug:
-        msg: "{{ maj_version }}"
+    - set_fact:
+        tarball: "https://downloads.percona.com/downloads/TESTING/psmdb-{{ minor_version }}/percona-server-mongodb-{{ full_ver }}-{{ ansible_architecture }}"
 
     - name: Download tarball from url
       get_url:
-        url: '{{ tarball_template }}{{ item }}-minimal.tar.gz'
-        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}-{{ item }}.tar.gz
+        url: '{{ tarball }}.{{ item }}-minimal.tar.gz'
+        dest: /tmp/percona-server-mongodb-{{ item }}.tar.gz
         mode: '0644'
       loop:
         - ol7
@@ -43,27 +32,6 @@
         - buster
         - bookworm
         - bullseye
-      when: tarball.startswith('http')
-      ignore_errors: yes
-
-    - name: Download tarball from s3
-      aws_s3:
-        bucket: "{{ tarball_template | urlsplit('hostname') }}"
-        object: "{{ tarball_template | urlsplit('path') }}{{ item }}-minimal.tar.gz"
-        dest: /tmp/percona-server-mongodb-{{mongodb_ver[0]}}-{{ item }}.tar.gz
-        mode: get
-      loop:
-        - ol7
-        - ol8
-        - ol9
-        - ol2023
-        - jammy
-        - focal
-        - noble
-        - buster
-        - bookworm
-        - bullseye
-      when: tarball.startswith('s3')
       ignore_errors: yes
 
 - name: Converge
@@ -78,3 +46,4 @@
     - role: '../../../roles/openldap'
     - role: '../../../roles/kmip-vault'
     - role: '../../../roles/kerberos-docker'
+    - role: '../../../roles/keycloak'

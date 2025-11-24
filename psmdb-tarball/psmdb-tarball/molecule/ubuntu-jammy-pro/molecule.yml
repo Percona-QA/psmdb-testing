@@ -4,12 +4,12 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: rhel9-${BUILD_NUMBER}-${JOB_NAME}
+  - name: ujammy-pro-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
-    image: "${MOLECULE_RHEL9_AMI:-ami-0357fd8270bb3203e}"
+    image: "${MOLECULE_UJAMMY_PRO_AMI:-ami-058168290d30b9c52}"
     vpc_subnet_id: subnet-03136d8c244f56036
-    instance_type: t3.medium
-    ssh_user: ec2-user
+    instance_type: t3.large
+    ssh_user: ubuntu
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
@@ -20,26 +20,21 @@ provisioner:
   playbooks:
     create: ../../../../playbooks/create.yml
     destroy: ../../../../playbooks/destroy.yml
-    prepare: ../../../../playbooks/prepare.yml
+    prepare: ../../playbooks/prepare.yml
     cleanup: ../../playbooks/cleanup.yml
     converge: ../../playbooks/playbook.yml
 verifier:
   name: testinfra
-  directory: ../../../tests/
-  additional_files_or_dirs:
-    - ../psmdb/tests/
+  directory: ../../tests/
   options:
     verbose: true
     s: true
-    junitxml: rhel9-report.xml
+    junitxml: ubuntu-jammy-pro-report.xml
 scenario:
-  name: rhel9
-  converge_sequence:
-    - prepare
-    - converge
+  name: ubuntu-jammy-pro
   destroy_sequence:
     - destroy
-  cleanup_sequence:
+  clenup_sequence:
     - cleanup
   test_sequence:
     - destroy
