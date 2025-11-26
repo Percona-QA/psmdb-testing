@@ -4,7 +4,7 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: jenkins-pcsm-source
+  - name: keith-pcsm-source
     groups:
       - psmdb
     region: us-west-2
@@ -15,7 +15,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: jenkins-pcsm-destination
+  - name: keith-pcsm-destination
     groups:
       - psmdb
     region: us-west-2
@@ -26,7 +26,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: jenkins-pcsm-clustersync
+  - name: keith-pcsm-clustersync
     region: us-west-2
     image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
     vpc_subnet_id: subnet-0dc7518100473f19d

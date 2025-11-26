@@ -42,7 +42,7 @@
           - host: "{{ private_source_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "jenkins-pcsm-source"
+      when: inventory_hostname == "keith-pcsm-source"
 
     - name: Create a replicaset rs for Destination
       community.mongodb.mongodb_replicaset:
@@ -52,7 +52,7 @@
           - host: "{{ private_destination_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "jenkins-pcsm-destination"
+      when: inventory_hostname == "keith-pcsm-destination"
 
     - name: Reload systemd
       systemd:
@@ -86,21 +86,21 @@
         owner: root
         group: root
         mode: '0644'
-      when: inventory_hostname == "jenkins-pcsm-clustersync"
+      when: inventory_hostname == "keith-pcsm-clustersync"
 
     - name: Reload systemd and start pcsm service
       service:
         daemon_reload: yes
         name: pcsm.service
         state: started
-      when: inventory_hostname == "jenkins-pcsm-clustersync"
+      when: inventory_hostname == "keith-pcsm-clustersync"
 
     - name: Download runc binary
       get_url:
         url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
         dest: /usr/local/bin/runc
         mode: '0755'
-      when: inventory_hostname == "jenkins-pcsm-clustersync"
+      when: inventory_hostname == "keith-pcsm-clustersync"
 
     - name: Move runc to /usr/bin
       copy:
@@ -109,20 +109,20 @@
         remote_src: yes
         mode: '0755'
         force: yes
-      when: inventory_hostname == "jenkins-pcsm-clustersync"
+      when: inventory_hostname == "keith-pcsm-clustersync"
 
     - name: Ensure docker group exists
       group:
         name: docker
         state: present
-      when: inventory_hostname == "jenkins-pcsm-clustersync"
+      when: inventory_hostname == "keith-pcsm-clustersync"
 
     - name: Add user ssh-user to docker group
       user:
         name: "{{ ssh_user }}"
         groups: docker
         append: yes
-      when: inventory_hostname == "jenkins-pcsm-clustersync"
+      when: inventory_hostname == "keith-pcsm-clustersync"
 
     - name: Install and configure PMM Client
       include_tasks: ../scripts/install_pmm.yml

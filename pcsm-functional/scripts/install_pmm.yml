@@ -3,7 +3,7 @@
     curl -fsSL https://www.percona.com/get/pmm | /bin/bash
   args:
     executable: /bin/bash
-  when: inventory_hostname == "jenkins-pcsm-clustersync"
+  when: inventory_hostname == "keith-pcsm-clustersync"
 
 - name: Enable pmm3-client repository
   command: percona-release enable pmm3-client
