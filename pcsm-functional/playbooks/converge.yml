@@ -34,29 +34,45 @@
     - name: Install PSMDB and PCSM Source and Destination
       include_tasks: ../scripts/install_pcsm_psmdb.yml
 
-    - name: Create a replicaset rs for Source
-      community.mongodb.mongodb_replicaset:
-        replica_set: rs
-        login_host: "{{ private_source_ip }}"
-        members:
-          - host: "{{ private_source_ip }}:27017"
-            priority: 1
-        validate: no
-      when: inventory_hostname == "keith-pcsm-source"
+#    - name: Create a replicaset rs for Source
+#      community.mongodb.mongodb_replicaset:
+#        replica_set: rs
+#        login_host: "{{ private_source_ip }}"
+#        members:
+#          - host: "{{ private_source_ip }}:27017"
+#            priority: 1
+#        validate: no
+#      when: inventory_hostname == "keith-pcsm-source"
+#
+#    - name: Create a replicaset rs for Destination
+#      community.mongodb.mongodb_replicaset:
+#        replica_set: rs
+#        login_host: "{{ private_destination_ip }}"
+#        members:
+#          - host: "{{ private_destination_ip }}:27017"
+#            priority: 1
+#        validate: no
+#      when: inventory_hostname == "keith-pcsm-destination"
+#
+#    - name: Reload systemd
+#      systemd:
+#        daemon_reload: yes
+#      when: inventory_hostname in groups['psmdb']
 
-    - name: Create a replicaset rs for Destination
-      community.mongodb.mongodb_replicaset:
-        replica_set: rs
-        login_host: "{{ private_destination_ip }}"
-        members:
-          - host: "{{ private_destination_ip }}:27017"
-            priority: 1
-        validate: no
-      when: inventory_hostname == "keith-pcsm-destination"
+    - name: Set replSetName to configReplSet
+      ansible.builtin.replace:
+        path: /etc/mongod.conf
+        regexp: '^(replication:\s*\n\s*replSetName:\s*).*'
+        replace: '\1"configReplSet"'
+      when: inventory_hostname in groups['psmdb']
 
-    - name: Reload systemd
-      systemd:
-        daemon_reload: yes
+    - name: Ensure configsvr role is present
+      ansible.builtin.blockinfile:
+        path: /etc/mongod.conf
+        marker: "# {mark} ANSIBLE CONFIGSVR BLOCK"
+        block: |
+          sharding:
+            clusterRole: "configsvr"
       when: inventory_hostname in groups['psmdb']
 
     - name: Create PCSM system unit file with optional environment variables
