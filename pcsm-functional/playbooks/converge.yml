@@ -67,10 +67,10 @@
       when: inventory_hostname in groups['psmdb']
 
     - name: Ensure configsvr role is present
-      ansible.builtin.blockinfile:
+      ansible.builtin.replace:
         path: /etc/mongod.conf
-        marker: "# {mark} ANSIBLE CONFIGSVR BLOCK"
-        block: |
+        regexp: '^#sharding:\s*$'
+        replace: |-
           sharding:
             clusterRole: "configsvr"
       when: inventory_hostname in groups['psmdb']
