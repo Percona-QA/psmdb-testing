@@ -1,0 +1,149 @@
+- name: Install PMM Server
+  shell: |
+    curl -fsSL https://www.percona.com/get/pmm | /bin/bash
+  args:
+    executable: /bin/bash
+  when: inventory_hostname == "jenkins-pcsm-clustersync"
+
+- name: Enable pmm3-client repository
+  command: percona-release enable pmm3-client
+  when: inventory_hostname in groups['psmdb']
+
+- name: Install deps RHEL
+  yum:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+      - pmm-client
+  when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
+
+- name: Install pmm client Debian
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+      - pmm-client
+  when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
+
+- name: Configure PMM on source psmdb node
+  shell: >
+    pmm-admin config --server-insecure-tls --server-url=https://admin:admin@{{ private_clustersync_ip }}:443 --force
+  register: pmm_config_result
+  until: "pmm_config_result.rc == 0"
+  retries: 3
+  delay: 5
+  when: inventory_hostname in groups['psmdb']
+
+- name: Check if pmmMonitor role exists
+  shell: |
+    mongo --quiet --eval 'db.getSiblingDB("admin").getRole("pmmMonitor")'
+  register: pmm_role_check
+  failed_when: false
+  changed_when: false
+  when: inventory_hostname in groups['psmdb']
+
+- name: Create MongoDB pmmMonitor role
+  community.mongodb.mongodb_shell:
+    eval: |
+      db.getSiblingDB("admin").createRole({
+        "role": "pmmMonitor",
+        "privileges": [
+          {
+            "resource": { "db": "", "collection": "" },
+            "actions": [ "dbHash", "find", "listIndexes", "listCollections", "collStats", "dbStats", "indexStats" ]
+          },
+          {
+            "resource": { "db": "", "collection": "system.version" },
+            "actions": [ "find" ]
+          },
+          {
+            "resource": { "db": "", "collection": "system.profile" },
+            "actions": [ "dbStats", "collStats", "indexStats" ]
+          }
+        ],
+        "roles": []
+      })
+  when: inventory_hostname in groups['psmdb'] and pmm_role_check.stdout == "null"
+
+- name: Check if pmm user exists
+  shell: |
+    mongo --quiet --eval 'db.getSiblingDB("admin").getUser("pmm")'
+  register: pmm_user_check
+  failed_when: false
+  changed_when: false
+  when: inventory_hostname in groups['psmdb']
+
+- name: Create MongoDB PMM User role on psmdb >= 8
+  community.mongodb.mongodb_shell:
+    eval: |
+      db.getSiblingDB("admin").createUser({
+          "user": "pmm",
+          "pwd": "password123",
+          "roles": [
+              { "db": "admin", "role": "pmmMonitor" },
+              { "db": "local", "role": "read" },
+              { "db": "admin", "role": "clusterMonitor" },
+              { "db": "admin", "role": "directShardOperations" }
+          ]
+      })
+  when:
+    - inventory_hostname in groups['psmdb']
+    - pmm_user_check.stdout == "null"
+    - psmdb_version | int >= 8
+
+- name: Create MongoDB PMM User role on psmdb < 8
+  community.mongodb.mongodb_shell:
+    eval: |
+      db.getSiblingDB("admin").createUser({
+          "user": "pmm",
+          "pwd": "password123",
+          "roles": [
+              { "db": "admin", "role": "pmmMonitor" },
+              { "db": "local", "role": "read" },
+              { "db": "admin", "role": "clusterMonitor" }
+          ]
+      })
+  when:
+    - inventory_hostname in groups['psmdb']
+    - pmm_user_check.stdout == "null"
+    - psmdb_version | int < 8
+
+- name: Check if MongoDB is already registered in PMM
+  shell: pmm-admin list | grep mongodb
+  register: mongodb_service_check
+  changed_when: false
+  failed_when: false
+  when: inventory_hostname in groups['psmdb']
+
+- name: Configure PMM on psmdb nodes
+  shell: >
+    pmm-admin add mongodb \
+    --username=pmm \
+    --password=password123 \
+  register: pmm_config_result
+  until: "pmm_config_result.rc == 0"
+  retries: 3
+  delay: 5
+  when:
+  - inventory_hostname in groups['psmdb']
+  - mongodb_service_check.stdout == ""
+
+- name: Restart pmm-agent service
+  service: name=pmm-agent state=started
+  when: inventory_hostname in groups['psmdb']
+
+- name: Check PMM client connection to PMM server
+  shell: pmm-admin status | grep "Connected        :"
+  register: pmm_connection_check
+  changed_when: false
+  failed_when: false
+
+- name: Check PMM Client connection to PMM server
+  debug:
+    msg: "PMM client is connected to the server."
+  when:
+  - "'Connected        : true' in pmm_connection_check.stdout"
+  - inventory_hostname in groups['psmdb']
