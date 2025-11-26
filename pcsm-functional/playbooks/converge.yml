@@ -75,6 +75,16 @@
             clusterRole: "configsvr"
       when: inventory_hostname in groups['psmdb']
 
+    - name: Start mongos router
+      become: true
+      ansible.builtin.command: >
+        mongos
+        --configdb configReplSet/pcsm-source:27017
+        --port 27018
+        --bind_ip 0.0.0.0
+        --logpath /var/log/mongodb/mongos.log
+        --fork
+
     - name: Create PCSM system unit file with optional environment variables
       copy:
         dest: /etc/systemd/system/pcsm.service
