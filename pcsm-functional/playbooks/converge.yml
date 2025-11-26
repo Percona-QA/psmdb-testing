@@ -32,7 +32,7 @@
         ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
 
     - name: Install PSMDB and PCSM Source and Destination
-      include_tasks: scripts/install_pcsm_psmdb.yml
+      include_tasks: ../scripts/install_pcsm_psmdb.yml
 
     - name: Create a replicaset rs for Source
       community.mongodb.mongodb_replicaset:
@@ -125,4 +125,4 @@
       when: inventory_hostname == "jenkins-pcsm-clustersync"
 
     - name: Install and configure PMM Client
-      include_tasks: scripts/install_pmm.yml
+      include_tasks: ../scripts/install_pmm.yml
