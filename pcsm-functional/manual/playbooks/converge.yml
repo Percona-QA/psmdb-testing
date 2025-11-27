@@ -77,7 +77,7 @@
             src: "/tmp/{{ go_tarball }}"
             dest: "{{ go_install_dir }}"
             remote_src: yes
-      when: inventory_hostname == "jenkins-pcsm-clustersync" or inventory_hostname == "jenkins-pcsm-source"
+      when: inventory_hostname == "keith-pcsm-clustersync" or inventory_hostname == "keith-pcsm-source"
 
     - name: Check Go is available
       command: go version
@@ -85,7 +85,7 @@
         PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
       register: go_version_output
       ignore_errors: true
-      when: inventory_hostname == "jenkins-pcsm-clustersync" or inventory_hostname == "jenkins-pcsm-source"
+      when: inventory_hostname == "keith-pcsm-clustersync" or inventory_hostname == "keith-pcsm-source"
 
     - name: Clone pcsm repo
       timeout: 180
@@ -93,7 +93,7 @@
         repo: "https://{{ token }}@github.com/percona/percona-clustersync-mongodb.git"
         dest: /tmp/percona-clustersync-mongodb
         version: "{{ pcsm_branch }}"
-      when: inventory_hostname == "jenkins-pcsm-clustersync"
+      when: inventory_hostname == "keith-pcsm-clustersync"
 
     - name: Build pcsm
       command: make build
@@ -103,7 +103,7 @@
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
         GOBIN: /usr/local/go/bin
-      when: inventory_hostname == "jenkins-pcsm-clustersync"
+      when: inventory_hostname == "keith-pcsm-clustersync"
 
     - name: Move clustersync binary to /usr/local/bin
       copy:
@@ -111,14 +111,14 @@
         dest: /usr/local/bin/
         mode: "0755"
         remote_src: true
-      when: inventory_hostname == "jenkins-pcsm-clustersync"
+      when: inventory_hostname == "keith-pcsm-clustersync"
 
     - name: Clone Mgodatagen repo
       git:
         repo: "https://github.com/feliixx/mgodatagen.git"
         dest: /tmp/mgodatagen
         version: "master"
-      when: inventory_hostname == "jenkins-pcsm-source"
+      when: inventory_hostname == "keith-pcsm-source"
 
     - name: Build Mgodatagen
       command: go build
@@ -128,7 +128,7 @@
         PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
         GOROOT: /usr/local/go/
         GOBIN: /usr/local/go/bin
-      when: inventory_hostname == "jenkins-pcsm-source"
+      when: inventory_hostname == "keith-pcsm-source"
 
     - name: Move mgodatagen binary to /usr/local/bin
       copy:
@@ -136,15 +136,15 @@
         dest: /usr/local/bin/
         mode: "0755"
         remote_src: true
-      when: inventory_hostname == "jenkins-pcsm-source"
+      when: inventory_hostname == "keith-pcsm-source"
 
     - name: Get private source ip address
       set_fact:
-        private_source_ip: "{{ hostvars['jenkins-pcsm-source']['ansible_default_ipv4']['address'] }}"
+        private_source_ip: "{{ hostvars['keith-pcsm-source']['ansible_default_ipv4']['address'] }}"
 
     - name: Get private destination ip address
       set_fact:
-        private_destination_ip: "{{ hostvars['jenkins-pcsm-destination']['ansible_default_ipv4']['address'] }}"
+        private_destination_ip: "{{ hostvars['keith-pcsm-destination']['ansible_default_ipv4']['address'] }}"
 
     - name: Add source and destination to /etc/hosts in pcsm
       blockinfile:
@@ -154,7 +154,7 @@
           {{ private_destination_ip }}    destination
         create: false
         unsafe_writes: true
-      when: inventory_hostname == "jenkins-pcsm-clustersync"
+      when: inventory_hostname == "keith-pcsm-clustersync"
 
     - name: Install GPG key for epel 8
       rpm_key:
@@ -313,7 +313,7 @@
           - host: "{{ private_source_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "jenkins-pcsm-source"
+      when: inventory_hostname == "keith-pcsm-source"
 
     - name: Create a replicaset rs
       community.mongodb.mongodb_replicaset:
@@ -323,7 +323,7 @@
           - host: "{{ private_destination_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "jenkins-pcsm-destination"
+      when: inventory_hostname == "keith-pcsm-destination"
 
     - name: Reload systemd
       systemd:
@@ -348,11 +348,11 @@
         owner: root
         group: root
         mode: "0644"
-      when: inventory_hostname == "jenkins-pcsm-clustersync"
+      when: inventory_hostname == "keith-pcsm-clustersync"
 
     - name: Reload systemd and start pcsm service
       ansible.builtin.service:
         daemon_reload: yes
         name: pcsm.service
         state: started
-      when: inventory_hostname == "jenkins-pcsm-clustersync"
+      when: inventory_hostname == "keith-pcsm-clustersync"
