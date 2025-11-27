@@ -8,6 +8,16 @@
     name: pcsm-destination
   when: inventory_hostname == "keith-pcsm-destination"
 
+- name: Change Source shard node hostname
+  hostname:
+    name: pcsm-source-shard
+  when: inventory_hostname == "keith-pcsm-source-shard"
+
+- name: Change Destination shard node hostname
+  hostname:
+    name: pcsm-destination-shard
+  when: inventory_hostname == "keith-pcsm-destination-shard"
+
 - name: Change PCSM node hostname
   hostname:
     name: pcsm-clustersync
