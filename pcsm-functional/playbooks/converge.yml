@@ -196,7 +196,7 @@
       service:
         daemon_reload: yes
         name: mongod.service
-        state: started
+        state: restarted
       when: inventory_hostname in groups['psmdb']
 
     - name: Initiate config server replica set on source
