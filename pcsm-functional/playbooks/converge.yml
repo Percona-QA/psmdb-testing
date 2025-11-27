@@ -160,28 +160,16 @@
       community.mongodb.mongodb_shell:
         login_host: "{{ private_source_ip }}"
         login_port: 27017
-        eval: |    
-          rs.initiate({
-            _id: "configReplSet",
-            configsvr: true,
-            members: [
-              { _id: 0, host: "{{ private_source_ip }}:27017" }
-            ]
-          });
+        eval: >
+          rs.initiate({_id: "configReplSet", configsvr: true, members: [{ _id: 0, host: "{{ private_source_ip }}:27017" }]})
       when: inventory_hostname == "keith-pcsm-source"
 
     - name: Initiate config server replica set on destination
       community.mongodb.mongodb_shell:
         login_host: "{{ private_destination_ip }}"
         login_port: 27017
-        eval: |    
-          rs.initiate({
-            _id: "configReplSet",
-            configsvr: true,
-            members: [
-              { _id: 0, host: "{{ private_destination_ip }}:27017" }
-            ]
-          });
+        eval: >
+          rs.initiate({_id: "configReplSet", configsvr: true, members: [{ _id: 0, host: "{{ private_destination_ip }}:27017" }]})
       when: inventory_hostname == "keith-pcsm-destination"
 
     - name: Start mongos router on source
