@@ -177,7 +177,7 @@
 
 - name: Get private source shard ip address
   set_fact:
-    private_source_shard_ip: "{{ hostvars['keith-pcsm-source_shard']['ansible_default_ipv4']['address'] }}"
+    private_source_shard_ip: "{{ hostvars['keith-pcsm-source-shard']['ansible_default_ipv4']['address'] }}"
 
 - name: Get private destination shard ip address
   set_fact:
