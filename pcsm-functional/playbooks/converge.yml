@@ -157,30 +157,34 @@
       when: inventory_hostname == "keith-pcsm-clustersync"
 
     - name: Initiate config server replica set on source
-      community.mongodb.mongodb_replicaset:
-        replica_set: configReplSet
+      community.mongodb.mongodb_shell:
         login_host: "{{ private_source_ip }}"
         login_port: 27017
-        members:
-          - host: "{{ private_source_ip }}:27017"
-            priority: 1
-        config_server: true
-        validate: no
+        eval: |    
+          rs.initiate({
+            _id: "configReplSet",
+            configsvr: true,
+            members: [
+              { _id: 0, host: "{{ private_source_ip }}:27017" }
+            ]
+          });
       when: inventory_hostname == "keith-pcsm-source"
 
     - name: Initiate config server replica set on destination
-      community.mongodb.mongodb_replicaset:
-        replica_set: configReplSet
+      community.mongodb.mongodb_shell:
         login_host: "{{ private_destination_ip }}"
         login_port: 27017
-        members:
-          - host: "{{ private_destination_ip }}:27017"
-            priority: 1
-        config_server: true
-        validate: no
+        eval: |    
+          rs.initiate({
+            _id: "configReplSet",
+            configsvr: true,
+            members: [
+              { _id: 0, host: "{{ private_destination_ip }}:27017" }
+            ]
+          });
       when: inventory_hostname == "keith-pcsm-destination"
 
-    - name: Start mongos router
+    - name: Start mongos router on source
       become: true
       ansible.builtin.command: >
         mongos \
@@ -189,6 +193,18 @@
         --bind_ip 0.0.0.0 \
         --logpath /var/log/mongodb/mongos.log \
         --fork
+      when: inventory_hostname == "keith-pcsm-source"
+
+    - name: Start mongos router on destination
+      become: true
+      ansible.builtin.command: >
+        mongos \
+        --configdb configReplSet/pcsm-destination:27017 \
+        --port 27018 \
+        --bind_ip 0.0.0.0 \
+        --logpath /var/log/mongodb/mongos.log \
+        --fork
+      when: inventory_hostname == "keith-pcsm-destination"
 
 
 #    - name: Install and configure PMM Client
