@@ -111,15 +111,15 @@
         state: started
       when: inventory_hostname == "keith-pcsm-clustersync"
 
-    - name: Start mongos router
-      become: true
-      ansible.builtin.command: >
-        mongos
-        --configdb configReplSet/pcsm-source:27017
-        --port 27018
-        --bind_ip 0.0.0.0
-        --logpath /var/log/mongodb/mongos.log
-        --fork
+#    - name: Start mongos router
+#      become: true
+#      ansible.builtin.command: >
+#        mongos
+#        --configdb configReplSet/pcsm-source:27017
+#        --port 27018
+#        --bind_ip 0.0.0.0
+#        --logpath /var/log/mongodb/mongos.log
+#        --fork
 
     - set_fact:
         ssh_pubkey: "{{ lookup('env', 'SSH_PUBKEY') | default('none', true) }}"
