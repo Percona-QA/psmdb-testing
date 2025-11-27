@@ -289,32 +289,3 @@
     regexp: '^  dbPath: /var/lib/mongo(?:db)?'
     replace: '  dbPath: /mnt/data/db'
   when: inventory_hostname in groups['psmdb']
-
-- name: Add replica set name into mongod config
-  replace:
-    path: /etc/mongod.conf
-    regexp: '^#replication:'
-    replace: 'replication:\n  replSetName: "rs"'
-  when: inventory_hostname in groups['psmdb']
-
-- name: Bind mongod to 0.0.0.0
-  replace:
-    path: /etc/mongod.conf
-    regexp: '^  bindIp: 127.0.0.1'
-    replace: '  bindIp: 0.0.0.0'
-  when: inventory_hostname in groups['psmdb']
-
-- name: Enabling Operation Profiling for PMM QAN
-  replace:
-    path: /etc/mongod.conf
-    regexp: '^#operationProfiling:'
-    replace: |
-      operationProfiling:
-        mode: all
-        slowOpThresholdMs: 1
-        rateLimit: 100
-  when: inventory_hostname in groups['psmdb']
-
-- name: start mongod service
-  service: name=mongod state=started
-  when: inventory_hostname in groups['psmdb']
