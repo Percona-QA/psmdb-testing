@@ -133,12 +133,19 @@
 #        daemon_reload: yes
 #      when: inventory_hostname in groups['psmdb']
 
-    - name: Set replSetName to configReplSet
-      ansible.builtin.replace:
+    - name: Add replica set name into mongod config
+      replace:
         path: /etc/mongod.conf
-        regexp: '^(replication:\s*\n\s*replSetName:\s*).*'
-        replace: '\1"configReplSet"'
+        regexp: '^#replication:'
+        replace: 'replication:\n  replSetName: "configReplSet"'
       when: inventory_hostname in groups['psmdb']
+
+#    - name: Set replSetName to configReplSet
+#      ansible.builtin.replace:
+#        path: /etc/mongod.conf
+#        regexp: '^(replication:\s*\n\s*replSetName:\s*).*'
+#        replace: '\1"configReplSet"'
+#      when: inventory_hostname in groups['psmdb']
 
     - name: Ensure configsvr role is present
       ansible.builtin.replace:
