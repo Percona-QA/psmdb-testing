@@ -165,6 +165,14 @@
   set_fact:
     private_destination_ip: "{{ hostvars['keith-pcsm-destination']['ansible_default_ipv4']['address'] }}"
 
+- name: Get private source shard ip address
+  set_fact:
+    private_source_shard_ip: "{{ hostvars['keith-pcsm-source_shard']['ansible_default_ipv4']['address'] }}"
+
+- name: Get private destination shard ip address
+  set_fact:
+    private_destination_shard_ip: "{{ hostvars['keith-pcsm-destination-shard']['ansible_default_ipv4']['address'] }}"
+
 - name: Get private pcsm ip address
   set_fact:
     private_clustersync_ip: "{{ hostvars['keith-pcsm-clustersync']['ansible_default_ipv4']['address'] }}"
@@ -178,6 +186,16 @@
   debug:
     var: private_destination_ip
   when: private_destination_ip is defined and inventory_hostname == "keith-pcsm-destination"
+
+- name: Show source shard IP (Debug)
+  debug:
+    var: private_source_shard_ip
+  when: private_source_shard_ip is defined and inventory_hostname == "keith-pcsm-source_shard"
+
+- name: Show destination shard IP (Debug)
+  debug:
+    var: private_destination_shard_ip
+  when: private_destination_shard_ip is defined and inventory_hostname == "keith-pcsm-destination-shard"
 
 - name: Show Clustersync IP (Debug)
   debug:
