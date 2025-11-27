@@ -1,0 +1,25 @@
+services:
+  psmdb:
+    image: ${IMAGE:-percona/percona-server-mongodb}
+    container_name: psmdb
+    hostname: psmdb
+    user: root
+    command: mongod --bind_ip 0.0.0.0
+    networks:
+      - test
+
+  ycsb:
+    image: ycsb/local
+    build:
+      dockerfile: ./Dockerfile_ycsb
+      context: .
+    container_name: ycsb
+    hostname: ycsb
+    entrypoint: bin/ycsb.sh
+    command: " load mongodb -s -P /ycsb/workloads/workloada -p recordcount=1000000 -threads 100 -p mongodb.url='mongodb://psmdb:27017/ycsb'"
+    networks:
+      - test
+
+networks:
+  test:
+    name: test
