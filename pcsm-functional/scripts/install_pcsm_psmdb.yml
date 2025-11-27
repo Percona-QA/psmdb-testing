@@ -200,7 +200,7 @@
 - name: Show source shard IP (Debug)
   debug:
     var: private_source_shard_ip
-  when: private_source_shard_ip is defined and inventory_hostname == "keith-pcsm-source_shard"
+  when: private_source_shard_ip is defined and inventory_hostname == "keith-pcsm-source-shard"
 
 - name: Show destination shard IP (Debug)
   debug:
