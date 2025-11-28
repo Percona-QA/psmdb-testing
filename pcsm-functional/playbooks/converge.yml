@@ -27,10 +27,6 @@
         # Go Version
         golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.2', true) }}"
 
-    - set_fact:
-        # User to log into each AWS Instance
-        ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
-
     - name: Install PSMDB and PCSM Source and Destination
       include_tasks: ../scripts/install_pcsm_psmdb.yml
 
@@ -138,7 +134,7 @@
         path: /etc/mongod.conf
         regexp: '^#replication:'
         replace: 'replication:\n  replSetName: "configReplSet"'
-      when: inventory_hostname in groups['psmdb']
+      when: inventory_hostname == "keith-pcsm-source" or inventory_hostname == "keith-pcsm-destination"
 
 #    - name: Set replSetName to configReplSet
 #      ansible.builtin.replace:
@@ -154,7 +150,7 @@
         replace: |-
           sharding:
             clusterRole: "configsvr"
-      when: inventory_hostname in groups['psmdb']
+      when: inventory_hostname == "keith-pcsm-source" or inventory_hostname == "keith-pcsm-destination"
 
     - name: Create PCSM system unit file with optional environment variables
       copy:
@@ -197,7 +193,7 @@
         daemon_reload: yes
         name: mongod.service
         state: restarted
-      when: inventory_hostname in groups['psmdb']
+      when: inventory_hostname == "keith-pcsm-source" or inventory_hostname == "keith-pcsm-destination"
 
     - name: Initiate config server replica set on source
       community.mongodb.mongodb_shell:

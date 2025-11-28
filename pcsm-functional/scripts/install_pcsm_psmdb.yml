@@ -212,6 +212,24 @@
     var: private_clustersync_ip
   when: private_clustersync_ip is defined and inventory_hostname == "keith-pcsm-clustersync"
 
+- name: Add source shard to /etc/hosts of source
+  blockinfile:
+    path: /etc/hosts
+    block: |
+      {{ private_source_shard_ip }} shard
+    create: false
+    unsafe_writes: true
+  when: inventory_hostname == "keith-pcsm-source"
+
+- name: Add destination shard to /etc/hosts of destination
+  blockinfile:
+    path: /etc/hosts
+    block: |
+      {{ private_destination_shard_ip }} shard
+    create: false
+    unsafe_writes: true
+  when: inventory_hostname == "keith-pcsm-destination"
+
 - name: Add source and destination to /etc/hosts in pcsm
   blockinfile:
     path: /etc/hosts
