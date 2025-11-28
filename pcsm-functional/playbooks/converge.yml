@@ -141,14 +141,14 @@
         path: /etc/mongod.conf
         regexp: '^#replication:'
         replace: 'replication:\n  replSetName: "rs1"'
-      when: inventory_hostname == "keith-pcsm-source"
+      when: inventory_hostname == "keith-pcsm-source-shard"
 
     - name: Add replica set name for RS2 Shard
       replace:
         path: /etc/mongod.conf
         regexp: '^#replication:'
         replace: 'replication:\n  replSetName: "rs2"'
-      when: inventory_hostname == "keith-pcsm-destination"
+      when: inventory_hostname == "keith-pcsm-destination-shard"
 
 #    - name: Set replSetName to configReplSet
 #      ansible.builtin.replace:
