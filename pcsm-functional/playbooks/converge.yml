@@ -161,7 +161,7 @@
       ansible.builtin.replace:
         path: /etc/mongod.conf
         regexp: '^#sharding:\s*$'
-        replace: 'sharding:\n  clusterRole: "configsvr'
+        replace: 'sharding:\n  clusterRole: "configsvr"'
       when: inventory_hostname == "keith-pcsm-source" or inventory_hostname == "keith-pcsm-destination"
 
     - name: Ensure shardsrv role is present on shards
