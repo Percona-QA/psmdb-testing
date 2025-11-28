@@ -207,6 +207,13 @@
         state: started
       when: inventory_hostname == "keith-pcsm-clustersync"
 
+    - name: Reload systemd and start pcsm service
+      service:
+        daemon_reload: yes
+        name: mongod.service
+        state: restarted
+      when: inventory_hostname in groups['psmdb']
+
     - name: Create a replicaset rs for Source Shard
       community.mongodb.mongodb_replicaset:
         replica_set: rs1
@@ -226,13 +233,6 @@
             priority: 1
         validate: no
       when: inventory_hostname == "keith-pcsm-destination-shard"
-
-    - name: Reload systemd and start pcsm service
-      service:
-        daemon_reload: yes
-        name: mongod.service
-        state: restarted
-      when: inventory_hostname in groups['psmdb']
 
     - name: Initiate config server replica set on source
       community.mongodb.mongodb_shell:
