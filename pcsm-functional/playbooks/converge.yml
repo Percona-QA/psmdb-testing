@@ -136,6 +136,20 @@
         replace: 'replication:\n  replSetName: "configReplSet"'
       when: inventory_hostname == "keith-pcsm-source" or inventory_hostname == "keith-pcsm-destination"
 
+    - name: Add replica set name for RS1 Shard
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#replication:'
+        replace: 'replication:\n  replSetName: "rs1"'
+      when: inventory_hostname == "keith-pcsm-source"
+
+    - name: Add replica set name for RS2 Shard
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#replication:'
+        replace: 'replication:\n  replSetName: "rs2"'
+      when: inventory_hostname == "keith-pcsm-destination"
+
 #    - name: Set replSetName to configReplSet
 #      ansible.builtin.replace:
 #        path: /etc/mongod.conf
@@ -143,14 +157,19 @@
 #        replace: '\1"configReplSet"'
 #      when: inventory_hostname in groups['psmdb']
 
-    - name: Ensure configsvr role is present
+    - name: Ensure configsvr role is present on config servers
       ansible.builtin.replace:
         path: /etc/mongod.conf
         regexp: '^#sharding:\s*$'
-        replace: |-
-          sharding:
-            clusterRole: "configsvr"
+        replace: 'sharding:\n  clusterRole: "configsvr'
       when: inventory_hostname == "keith-pcsm-source" or inventory_hostname == "keith-pcsm-destination"
+
+    - name: Ensure shardsrv role is present on shards
+      ansible.builtin.replace:
+        path: /etc/mongod.conf
+        regexp: '^#sharding:\s*$'
+        replace: 'sharding:\n  clusterRole: "shardsvr'
+      when: inventory_hostname == "keith-pcsm-source-shard" or inventory_hostname == "keith-pcsm-destination-shard"
 
     - name: Create PCSM system unit file with optional environment variables
       copy:
