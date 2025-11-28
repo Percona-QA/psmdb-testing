@@ -168,7 +168,7 @@
       ansible.builtin.replace:
         path: /etc/mongod.conf
         regexp: '^#sharding:\s*$'
-        replace: 'sharding:\n  clusterRole: "shardsvr'
+        replace: 'sharding:\n  clusterRole: "shardsvr"'
       when: inventory_hostname == "keith-pcsm-source-shard" or inventory_hostname == "keith-pcsm-destination-shard"
 
     - name: Create PCSM system unit file with optional environment variables
