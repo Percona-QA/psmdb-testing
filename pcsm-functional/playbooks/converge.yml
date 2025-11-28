@@ -272,6 +272,19 @@
         --fork
       when: inventory_hostname == "keith-pcsm-destination"
 
+    - name: Add shard rs1 to source cluster
+      community.mongodb.mongodb_shell:
+        login_host: "{{ private_source_ip }}"
+        login_port: 27018
+        eval: 'sh.addShard("rs1/{{ private_source_shard_ip }}:27017")'
+      when: inventory_hostname == "keith-pcsm-source"
+
+    - name: Add shard rs2 to destination cluster
+      community.mongodb.mongodb_shell:
+        login_host: "{{ private_destination_ip }}"
+        login_port: 27018
+        eval: 'sh.addShard("rs2/{{ private_destination_shard_ip }}:27017")'
+      when: inventory_hostname == "keith-pcsm-destination"
 
 #    - name: Install and configure PMM Client
 #      include_tasks: ../scripts/install_pmm.yml
