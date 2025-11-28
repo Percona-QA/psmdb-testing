@@ -129,26 +129,6 @@
 #        daemon_reload: yes
 #      when: inventory_hostname in groups['psmdb']
 
-    - name: Create a replicaset rs for Source Shard
-      community.mongodb.mongodb_replicaset:
-        replica_set: rs1
-        login_host: "{{ private_source_shard_ip }}"
-        members:
-          - host: "{{ private_source_shard_ip }}:27017"
-            priority: 1
-        validate: no
-      when: inventory_hostname == "keith-pcsm-source-shard"
-
-    - name: Create a replicaset rs for Destination Shard
-      community.mongodb.mongodb_replicaset:
-        replica_set: rs2
-        login_host: "{{ private_destination_shard_ip }}"
-        members:
-          - host: "{{ private_destination_shard_ip }}:27017"
-            priority: 1
-        validate: no
-      when: inventory_hostname == "keith-pcsm-destination-shard"
-
     - name: Add replica set name into mongod config
       replace:
         path: /etc/mongod.conf
@@ -226,6 +206,26 @@
         name: pcsm.service
         state: started
       when: inventory_hostname == "keith-pcsm-clustersync"
+
+    - name: Create a replicaset rs for Source Shard
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs1
+        login_host: "{{ private_source_shard_ip }}"
+        members:
+          - host: "{{ private_source_shard_ip }}:27017"
+            priority: 1
+        validate: no
+      when: inventory_hostname == "keith-pcsm-source-shard"
+
+    - name: Create a replicaset rs for Destination Shard
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs2
+        login_host: "{{ private_destination_shard_ip }}"
+        members:
+          - host: "{{ private_destination_shard_ip }}:27017"
+            priority: 1
+        validate: no
+      when: inventory_hostname == "keith-pcsm-destination-shard"
 
     - name: Reload systemd and start pcsm service
       service:
