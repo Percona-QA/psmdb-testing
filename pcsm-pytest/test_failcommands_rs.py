@@ -113,9 +113,9 @@ def test_csync_PML_T39(start_cluster, srcRS, dstRS, csync):
             except Exception:
                 break
     t1 = threading.Thread(target=capped_insert)
-    t1.start()
     assert csync.start(), "Failed to start csync service"
     assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+    t1.start()
     configure_failpoint_delay_all(srcRS.connection,'alwaysOn',30000)
     time.sleep(30)
     disable_failpoint(srcRS.connection)

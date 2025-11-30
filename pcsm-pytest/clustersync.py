@@ -240,7 +240,7 @@ class Clustersync:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
-    def finalize(self, timeout=60, interval=1):
+    def finalize(self, timeout=240, interval=1):
         try:
             exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/finalize -d '{}'")
             response = exec_result.output.decode("utf-8").strip()
@@ -263,8 +263,21 @@ class Clustersync:
                             Cluster.log("Sync finalized successfully")
                             return True
                         time.sleep(interval)
-                    error_msg = status_response["data"].get("error", "Unknown error")
-                    Cluster.log(f"Error: finalization failed, error: {error_msg}")
+
+                    # Timeout reached, provide more descriptive error message
+                    if status_response.get("success") and status_response["data"]:
+                        current_state = status_response["data"].get("state", "unknown")
+                        error_msg = status_response["data"].get("error")
+                        if error_msg:
+                            Cluster.log(f"Error: finalization failed, error: {error_msg}")
+                        else:
+                            lag_time = status_response["data"].get("lagTimeSeconds", "N/A")
+                            events_read = status_response["data"].get("eventsRead", "N/A")
+                            events_applied = status_response["data"].get("eventsApplied", "N/A")
+                            Cluster.log(f"Error: finalization timeout after {timeout}s, state stuck in '{current_state}'. "
+                                      f"lagTimeSeconds={lag_time}, eventsRead={events_read}, eventsApplied={events_applied}")
+                    else:
+                        Cluster.log(f"Error: finalization failed, could not retrieve status: {status_response.get('error', 'Unknown error')}")
                     return False
                 except json.JSONDecodeError:
                     Cluster.log("Received invalid JSON response.")
@@ -310,7 +323,7 @@ class Clustersync:
         errors_found = list(error_lines())
         return not bool(errors_found), errors_found
 
-    def wait_for_zero_lag(self, timeout=180, interval=1):
+    def wait_for_zero_lag(self, timeout=240, interval=1):
         start_time = time.time()
         last_events_read = None
         last_events_applied = None

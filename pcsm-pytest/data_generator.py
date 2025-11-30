@@ -10,8 +10,8 @@ from data_types.extended_collection_types import create_diff_coll_types
 from data_types.sharded_collection_types import create_sharded_collection_types, perform_crud_ops_sharded_collection
 from data_types.sharded_index_types import create_sharded_index_types
 
-# Set no_shard_key to False due to PCSM-220
-DEFAULT_NO_SHARD_KEY = False
+# Set no_shard_key to True, support added in PCSM-220
+DEFAULT_NO_SHARD_KEY = True
 # Set update_shard_key to False due to PCSM-221
 DEFAULT_UPDATE_SHARD_KEY = False
 # Set create_unique_sharded to True, support added in PCSM-194/PCSM-214
@@ -54,14 +54,14 @@ def create_all_types_db(connection_string, db_name="init_test_db", create_ts=Fal
 
         operation_thread = threading.Thread(
             target=continuous_crud_ops_collection_background,
-            args=(collection_metadata, stop_operations_map[db_name], no_shard_key, update_shard_key)
+            args=(collection_metadata, stop_operations_map[db_name], no_shard_key, update_shard_key, is_sharded)
         )
         operation_thread.start()
         return db, [operation_thread]
 
     return db, []
 
-def continuous_crud_ops_collection_background(collection_metadata, stop_event, no_shard_key, update_shard_key):
+def continuous_crud_ops_collection_background(collection_metadata, stop_event, no_shard_key, update_shard_key, is_sharded=False):
     while not stop_event.is_set():
         for metadata in collection_metadata:
             try:
@@ -76,7 +76,10 @@ def continuous_crud_ops_collection_background(collection_metadata, stop_event, n
                 else:
                     perform_crud_ops_collection(metadata["collection"], metadata["capped"], metadata["timeseries"])
             except Exception:
-                time.sleep(0.1)
+                if is_sharded:
+                    time.sleep(0.5)
+                else:
+                    time.sleep(0.1)
         time.sleep(0.1)
 
 def stop_db_crud_operations(db_name):

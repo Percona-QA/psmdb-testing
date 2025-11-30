@@ -1,5 +1,6 @@
 [tool.pytest.ini_options]
 markers = [
+    "mongod_extra_args(args): specify custom mongod extra arguments for cluster fixtures",
     "csync_log_level(level): set csync log level for the test",
     "csync_env(env_vars): set csync environment variables for the test",
     "jenkins: mark test to run only in Jenkins or with --jenkins flag"
