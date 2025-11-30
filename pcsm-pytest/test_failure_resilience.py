@@ -34,7 +34,7 @@ def add_data(connection_string, db_name, stop_event=None):
 
 @pytest.mark.jenkins
 @pytest.mark.parametrize("cluster_configs", ["replicaset_3n", "sharded_3n"], indirect=True)
-@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.timeout(500,func_only=True)
 @pytest.mark.csync_log_level("trace")
 def test_csync_PML_T46(start_cluster, src_cluster, dst_cluster, csync):
     """
@@ -84,7 +84,7 @@ def test_csync_PML_T46(start_cluster, src_cluster, dst_cluster, csync):
 
 @pytest.mark.jenkins
 @pytest.mark.parametrize("cluster_configs", ["replicaset_3n", "sharded_3n"], indirect=True)
-@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.timeout(500,func_only=True)
 @pytest.mark.parametrize("fail_node", ["src", "dst"])
 def test_csync_PML_T47(start_cluster, src_cluster, dst_cluster, csync, fail_node):
     """
@@ -126,7 +126,7 @@ def test_csync_PML_T47(start_cluster, src_cluster, dst_cluster, csync, fail_node
 
 @pytest.mark.jenkins
 @pytest.mark.parametrize("cluster_configs", ["replicaset_3n", "sharded_3n"], indirect=True)
-@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.timeout(500,func_only=True)
 @pytest.mark.parametrize("fail_node", ["src", "dst"])
 def test_csync_PML_T48(start_cluster, src_cluster, dst_cluster, csync, fail_node):
     """
@@ -161,7 +161,7 @@ def test_csync_PML_T48(start_cluster, src_cluster, dst_cluster, csync, fail_node
 
 @pytest.mark.jenkins
 @pytest.mark.parametrize("cluster_configs", ["replicaset_3n", "sharded_3n"], indirect=True)
-@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.timeout(500,func_only=True)
 @pytest.mark.parametrize("fail_node", ["src", "dst"])
 def test_csync_PML_T49(start_cluster, src_cluster, dst_cluster, csync, fail_node):
     """

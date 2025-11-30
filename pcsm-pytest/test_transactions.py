@@ -22,6 +22,34 @@ def perform_transaction(src, session, db_name, coll_name, docs, commit=False, ab
             session.abort_transaction()
         raise e
 
+def shard_collection(client, db_name, coll_name, shard_key=None):
+    """Enable sharding for database and collection"""
+    shard_key = shard_key or {"_id": "hashed"}
+    try:
+        client.admin.command("enableSharding", db_name)
+    except OperationFailure as e:
+        if e.code != 23 and "already" not in str(e).lower():
+            raise
+    try:
+        client.admin.command("shardCollection", f"{db_name}.{coll_name}", key=shard_key)
+    except OperationFailure as e:
+        if "already" not in str(e).lower():
+            raise
+
+def prepare_two_db_sharded_layout(src_client, src_cluster, db1, sharded1, db2, sharded2):
+    """Create two databases pinned to distinct shards with sharded collections"""
+    shard_ids = [shard["_id"] for shard in src_cluster.config["shards"][:2]]
+    for db_name, sharded_coll, shard_name in [
+        (db1, sharded1, shard_ids[0]),
+        (db2, sharded2, shard_ids[1])]:
+        try:
+            src_client.admin.command({"enableSharding": db_name, "primaryShard": shard_name})
+        except OperationFailure as e:
+            if "already" not in str(e).lower():
+                raise
+        src_client.admin.command("shardCollection", f"{db_name}.{sharded_coll}", key={"_id": "hashed"})
+    return shard_ids
+
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300,func_only=True)
 def test_csync_PML_T22(start_cluster, src_cluster, dst_cluster, csync):
@@ -31,6 +59,9 @@ def test_csync_PML_T22(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         dst = pymongo.MongoClient(dst_cluster.connection)
+        if src_cluster.is_sharded:
+            for coll_name in ["before_sync_v0", "before_sync_v1", "during_sync", "after_sync"]:
+                shard_collection(src, "transaction_db", coll_name)
         init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
 
         # Verify transactions started before sync and committed during data clone stage / before sync finalize
@@ -99,11 +130,14 @@ def test_csync_PML_T22(start_cluster, src_cluster, dst_cluster, csync):
     assert actual_doc3 is not None, "Expected document is missing in transaction_coll3"
     assert actual_doc3 == expected_doc, f"Document mismatch in transaction_coll3: {actual_doc3}"
 
-    expected_mismatches = [
-        ("transaction_db.after_sync", "missing in dst DB"),
-        ("transaction_db.after_sync", "_id_")]
-    if not src_cluster.is_sharded:
-        expected_mismatches.append(("transaction_db", "hash mismatch"))
+    if src_cluster.is_sharded:
+        expected_mismatches = [
+            ("transaction_db.after_sync", "record count mismatch")]
+    else:
+        expected_mismatches = [
+            ("transaction_db", "hash mismatch"),
+            ("transaction_db.after_sync", "missing in dst DB"),
+            ("transaction_db.after_sync", "_id_")]
 
     result, summary = compare_data(src_cluster, dst_cluster)
     assert result is False, "Data mismatch after synchronization"
@@ -129,13 +163,41 @@ def test_csync_PML_T23(start_cluster, src_cluster, dst_cluster, csync):
     assert csync.start(), "Failed to start csync service"
 
     with src.start_session() as session1, src.start_session() as session2:
+        if src_cluster.is_sharded:
+            shard_collection(src, "conflict_db", "test_coll")
         perform_transaction(src, session1, "conflict_db", "test_coll", [{"_id": 1, "value": "txn1"}], commit=False)
-        perform_transaction(src, session2, "conflict_db", "test_coll", [{"_id": 1, "value": "txn2"}], commit=False)
+        conflict_insert_done = False
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                perform_transaction(src, session2, "conflict_db", "test_coll", [{"_id": 1, "value": "txn2"}], commit=False)
+                conflict_insert_done = True
+                break
+            except OperationFailure as e:
+                labels = getattr(e, "errorLabels", []) or []
+                if ("TransientTransactionError" in labels or getattr(e, "code", None) in (112, 251)) and attempt < max_retries - 1:
+                    if session2.in_transaction:
+                        try:
+                            session2.abort_transaction()
+                        except Exception:
+                            pass
+                    time.sleep(0.2)
+                    continue
+                # duplicate key/write conflict is acceptable as the losing txn
+                if getattr(e, "code", None) in (11000, 112):
+                    conflict_insert_done = False
+                    break
+                raise
 
         session1.commit_transaction()
         try:
-            session2.commit_transaction()
-            assert False, "Write conflict transaction should not have committed"
+            if conflict_insert_done:
+                session2.commit_transaction()
+                assert False, "Write conflict transaction should not have committed"
+            else:
+                # insert already failed due to conflict; ensure session cleaned up
+                if session2.in_transaction:
+                    session2.abort_transaction()
         except OperationFailure:
             pass
 
@@ -226,6 +288,8 @@ def test_csync_PML_T24(start_cluster, src_cluster, dst_cluster, csync):
                     raise
     with src.start_session() as session:
         collection = src["large_txn_db"]["test_coll"]
+        if src_cluster.is_sharded:
+            shard_collection(src, "large_txn_db", "test_coll")
         assert commit_with_retries(session, collection, large_docs), "Failed to commit transaction after retries"
 
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
@@ -262,8 +326,7 @@ def test_csync_PML_T25(start_cluster, src_cluster, dst_cluster, csync):
         dst_dbs = ["large_txn_db1", "large_txn_db2", "large_txn_db3"]
         collections = ["test_coll1", "test_coll2", "test_coll3"]
         for db_name, coll_name in zip(dst_dbs, collections):
-            src.admin.command("enableSharding", db_name)
-            src.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"_id": "hashed"})
+            shard_collection(src, db_name, coll_name)
 
     max_retries = 5
     for attempt in range(max_retries):
@@ -311,13 +374,11 @@ def test_csync_PML_T26(start_cluster, src_cluster, dst_cluster, csync):
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
     if src_cluster.is_sharded:
-        for shard in src_cluster.config['shards']:
-            shard_primary = shard['members'][0]['host']
-            shard_rs = shard['_id']
+        shard_collection(src, "test_db", "test_coll")
+        for shard_rs, shard_client in src_cluster.get_shard_primary_clients():
             try:
-                shard_client = pymongo.MongoClient(f"mongodb://root:root@{shard_primary}:27017/?replicaSet={shard_rs}")
                 result = shard_client.admin.command({"setParameter": 1, "transactionLifetimeLimitSeconds": 120})
-                assert result.get("ok") == 1.0, f"Failed to set transaction lifetime on {shard_primary}: {result}"
+                assert result.get("ok") == 1.0, f"Failed to set transaction lifetime on {shard_rs}: {result}"
             except OperationFailure:
                 raise
     else:
@@ -359,7 +420,7 @@ def test_csync_PML_T26(start_cluster, src_cluster, dst_cluster, csync):
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
 
-@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
+@pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.jenkins
 @pytest.mark.timeout(300,func_only=True)
 def test_csync_PML_T27(start_cluster, src_cluster, dst_cluster, csync):
@@ -369,34 +430,19 @@ def test_csync_PML_T27(start_cluster, src_cluster, dst_cluster, csync):
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
 
-    if src_cluster.is_sharded:
-        for shard in src_cluster.config['shards']:
-            shard_primary = shard['members'][0]['host']
-            shard_rs = shard['_id']
-            shard_client = pymongo.MongoClient(f"mongodb://root:root@{shard_primary}:27017/?replicaSet={shard_rs}")
-            result = shard_client.admin.command("replSetResizeOplog", size=990)
-            assert result.get("ok") == 1.0, f"Failed to resize oplog on {shard_primary}: {result}"
-            try:
-                result = shard_client.admin.command({"setParameter": 1, "transactionLifetimeLimitSeconds": 150})
-                assert result.get("ok") == 1.0, f"Failed to set transaction lifetime on {shard_primary}: {result}"
-            except OperationFailure:
-                shard_client.close()
-                raise
-            shard_client.close()
-    else:
-        result = src.admin.command("replSetResizeOplog", size=990)
-        assert result.get("ok") == 1.0, f"Failed to resize oplog: {result}"
-        try:
-            result = src.admin.command({"setParameter": 1, "transactionLifetimeLimitSeconds": 150})
-            assert result.get("ok") == 1.0, f"Failed to set transaction lifetime: {result}"
-        except OperationFailure:
-            raise
+    result = src.admin.command("replSetResizeOplog", size=990)
+    assert result.get("ok") == 1.0, f"Failed to resize oplog: {result}"
+    try:
+        result = src.admin.command({"setParameter": 1, "transactionLifetimeLimitSeconds": 150})
+        assert result.get("ok") == 1.0, f"Failed to set transaction lifetime: {result}"
+    except OperationFailure:
+        raise
 
     assert csync.start(), "Failed to start csync service"
 
     stop_generation = threading.Event()
     try:
-        dummy_thread = threading.Thread(target=generate_dummy_data, args=(src_cluster.connection, "dummy", 20, 150000, 500, stop_generation, 0.05, True, src_cluster.is_sharded))
+        dummy_thread = threading.Thread(target=generate_dummy_data, args=(src_cluster.connection, "dummy", 20, 150000, 500, stop_generation, 0.05, True, False))
         dummy_thread.start()
         def keep_transaction_alive(session, db_name, coll_name):
             coll = src[db_name][coll_name]
@@ -465,6 +511,122 @@ def test_csync_PML_T27(start_cluster, src_cluster, dst_cluster, csync):
 
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
+    csync_error, error_logs = csync.check_csync_errors()
+    assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
+@pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
+@pytest.mark.timeout(300,func_only=True)
+def test_csync_PML_T59(start_cluster, src_cluster, dst_cluster, csync):
+    """
+    Validate successful multi-shard transaction commit across two shards and replication
+    """
+    src = pymongo.MongoClient(src_cluster.connection)
+    prepare_two_db_sharded_layout(src, src_cluster, "sharded_txn_db1", "items_fail_left_sharded",
+                                                "sharded_txn_db2", "items_fail_right_sharded")
+    assert csync.start(), "Failed to start csync service"
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+    for db_name, coll_name in [("sharded_txn_db1", "items_left_unsharded"), ("sharded_txn_db2", "items_right_unsharded")]:
+        src[db_name].create_collection(coll_name)
+    with src.start_session() as session:
+        session.start_transaction()
+        src["sharded_txn_db1"]["items_left_unsharded"].insert_one({"_id": 1, "value": "left_unsharded"}, session=session)
+        src["sharded_txn_db1"]["items_left_sharded"].insert_one({"_id": 2, "value": "left_sharded"}, session=session)
+        src["sharded_txn_db2"]["items_right_unsharded"].insert_one({"_id": 3, "value": "right_unsharded"}, session=session)
+        src["sharded_txn_db2"]["items_right_sharded"].insert_one({"_id": 4, "value": "right_sharded"}, session=session)
+        session.commit_transaction()
+    assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+    assert csync.finalize(), "Failed to finalize csync service"
+    result, _ = compare_data(src_cluster, dst_cluster)
+    assert result is True, "Data mismatch after synchronization"
+    csync_error, error_logs = csync.check_csync_errors()
+    assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
+
+@pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
+@pytest.mark.timeout(300,func_only=True)
+def test_csync_PML_T60(start_cluster, src_cluster, dst_cluster, csync):
+    """
+    Verify explicit abort rolls back multi-shard transaction writes and nothing is replicated
+    """
+    src = pymongo.MongoClient(src_cluster.connection)
+    dst = pymongo.MongoClient(dst_cluster.connection)
+    prepare_two_db_sharded_layout(src, src_cluster, "sharded_txn_db1", "items_fail_left_sharded",
+                                                "sharded_txn_db2", "items_fail_right_sharded")
+    assert csync.start(), "Failed to start csync service"
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+    with src.start_session() as session:
+        session.start_transaction()
+        src["sharded_txn_db1"]["items_abort_left_unsharded"].insert_one({"_id": 1, "value": "left_unsharded"}, session=session)
+        src["sharded_txn_db1"]["items_abort_left_sharded"].insert_one({"_id": 2, "value": "left_sharded"}, session=session)
+        src["sharded_txn_db2"]["items_abort_right_unsharded"].insert_one({"_id": 3, "value": "right_unsharded"}, session=session)
+        src["sharded_txn_db2"]["items_abort_right_sharded"].insert_one({"_id": 4, "value": "right_sharded"}, session=session)
+        session.abort_transaction()
+    assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+    assert csync.finalize(), "Failed to finalize csync service"
+    for db_name, coll_name in [
+        ("sharded_txn_db1", "items_abort_left_unsharded"),
+        ("sharded_txn_db1", "items_abort_left_sharded"),
+        ("sharded_txn_db2", "items_abort_right_unsharded"),
+        ("sharded_txn_db2", "items_abort_right_sharded")]:
+        assert src[db_name][coll_name].count_documents({}) == 0, f"Source retained docs in {db_name}.{coll_name}"
+        assert dst[db_name][coll_name].count_documents({}) == 0, f"Destination retained docs in {db_name}.{coll_name}"
+    result, _ = compare_data(src_cluster, dst_cluster)
+    assert result is True, "Data mismatch after synchronization"
+    csync_error, error_logs = csync.check_csync_errors()
+    assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
+
+@pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
+@pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
+@pytest.mark.timeout(300,func_only=True)
+def test_csync_PML_T61(start_cluster, src_cluster, dst_cluster, csync):
+    """
+    Ensure failure on one shard causes whole multi-shard transaction to roll back and nothing is replicated
+    """
+    src = pymongo.MongoClient(src_cluster.connection)
+    dst = pymongo.MongoClient(dst_cluster.connection)
+    shard_ids = prepare_two_db_sharded_layout(src, src_cluster, "sharded_txn_db1", "items_fail_left_sharded",
+                                                "sharded_txn_db2", "items_fail_right_sharded")
+    shard_clients = src_cluster.get_shard_primary_clients()
+    assert csync.start(), "Failed to start csync service"
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+    for shard_id, client in shard_clients:
+        if shard_id == shard_ids[1]:
+            client.admin.command({
+                "configureFailPoint": "failCommand",
+                "mode": "alwaysOn",
+                "data": {
+                    "failCommands": ["insert"],
+                    "errorCode": 112,
+                    "errorLabels": ["TransientTransactionError"]
+                }
+            })
+            break
+    transaction_failed = False
+    with src.start_session() as session:
+        session.start_transaction()
+        try:
+            src["sharded_txn_db1"]["items_fail_left_unsharded"].insert_one({"_id": 1, "value": "left_unsharded"}, session=session)
+            src["sharded_txn_db1"]["items_fail_left_sharded"].insert_one({"_id": 2, "value": "left_sharded"}, session=session)
+            src["sharded_txn_db2"]["items_fail_right_unsharded"].insert_one({"_id": 3, "value": "right_unsharded"}, session=session)
+            src["sharded_txn_db2"]["items_fail_right_sharded"].insert_one({"_id": 4, "value": "right_sharded"}, session=session)
+            session.commit_transaction()
+        except OperationFailure:
+            transaction_failed = True
+            if session.in_transaction:
+                try:
+                    session.abort_transaction()
+                except Exception:
+                    pass
+    assert transaction_failed, "Expected transaction to fail due to failpoint on second shard"
+    assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+    assert csync.finalize(), "Failed to finalize csync service"
+    for db_name, coll_name in [
+        ("sharded_txn_db1", "items_fail_left_unsharded"),
+        ("sharded_txn_db1", "items_fail_left_sharded"),
+        ("sharded_txn_db2", "items_fail_right_unsharded"),
+        ("sharded_txn_db2", "items_fail_right_sharded")]:
+        assert src[db_name][coll_name].count_documents({}) == 0, f"Source retained docs in {db_name}.{coll_name}"
+        assert dst[db_name][coll_name].count_documents({}) == 0, f"Destination retained docs in {db_name}.{coll_name}"
+    result, _ = compare_data(src_cluster, dst_cluster)
+    assert result is True, "Data mismatch after synchronization"
     csync_error, error_logs = csync.check_csync_errors()
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"

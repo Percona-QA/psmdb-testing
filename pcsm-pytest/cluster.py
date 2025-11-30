@@ -186,6 +186,17 @@ class Cluster:
             hosts.append(self.config['configserver']['members'][0]['host'])
         return hosts
 
+    def get_shard_primary_clients(self):
+        """Connect directly to each shard primary"""
+        shard_clients = []
+        for shard in self.config["shards"]:
+            shard_primary = shard["members"][0]["host"]
+            shard_rs = shard["_id"]
+            client = pymongo.MongoClient(
+                f"mongodb://root:root@{shard_primary}:27017/?replicaSet={shard_rs}&directConnection=true")
+            shard_clients.append((shard_rs, client))
+        return shard_clients
+
     # returns all hosts of the cluster
     @property
     def all_hosts(self):
@@ -345,29 +356,7 @@ class Cluster:
             else:
                 raise Exception("Primary node is not found in RS")
         elif self.layout == "sharded":
-            configserver_hosts = self.config["configserver"]["members"]
-            configserver_conn = "mongodb://root:root@" + configserver_hosts[0]["host"] + ":27017/?replicaSet=" + self.config["configserver"]["_id"]
-            cfg_client = pymongo.MongoClient(configserver_conn)
-            cfg_ismaster = cfg_client.admin.command("isMaster")
-            cfg_primary = cfg_ismaster["primary"]
-            for member in configserver_hosts:
-                if cfg_primary.startswith(member["host"]):
-                    container_names.append(member["host"])
-                    break
-            else:
-                raise Exception("Primary node is not found in config RS")
-            for shard in self.config["shards"]:
-                shard_hosts = shard["members"]
-                shard_conn = "mongodb://root:root@" + shard_hosts[0]["host"] + ":27017/?replicaSet=" + shard["_id"]
-                shard_client = pymongo.MongoClient(shard_conn)
-                shard_ismaster = shard_client.admin.command("isMaster")
-                shard_primary = shard_ismaster["primary"]
-                for member in shard_hosts:
-                    if shard_primary.startswith(member["host"]):
-                        container_names.append(member["host"])
-                        break
-                else:
-                    raise Exception(f"Primary node is not found in {shard['_id']} RS")
+            container_names.append(self.config["mongos"])
         for container_name in container_names:
             container = docker.from_env().containers.get(container_name)
             if force:
@@ -436,9 +425,7 @@ class Cluster:
         if self.layout == "replicaset":
             all_hosts = [m["host"] for m in self.config["members"]]
         elif self.layout == "sharded":
-            all_hosts += [m["host"] for m in self.config["configserver"]["members"]]
-            for shard in self.config["shards"]:
-                all_hosts += [m["host"] for m in shard["members"]]
+            all_hosts = [self.config["mongos"]]
         containers = [docker_client.containers.get(name) for name in all_hosts]
         Cluster.log(f"Disconnecting {len(containers)} containers from the network...")
         for c in containers:

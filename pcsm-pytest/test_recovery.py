@@ -102,12 +102,9 @@ def test_csync_PML_T37(start_cluster, src_cluster, dst_cluster, csync):
     try:
         src = pymongo.MongoClient(src_cluster.connection)
         if src_cluster.is_sharded:
-            for shard in src_cluster.config['shards']:
-                shard_primary = shard['members'][0]['host']
-                shard_rs = shard['_id']
-                shard_client = pymongo.MongoClient(f"mongodb://root:root@{shard_primary}:27017/?replicaSet={shard_rs}")
+            for shard_rs, shard_client in src_cluster.get_shard_primary_clients():
                 result = shard_client.admin.command("replSetResizeOplog", size=990)
-                assert result.get("ok") == 1.0, f"Failed to resize oplog on {shard_primary}: {result}"
+                assert result.get("ok") == 1.0, f"Failed to resize oplog on {shard_rs}: {result}"
         else:
             result = src.admin.command("replSetResizeOplog", size=990)
             assert result.get("ok") == 1.0, f"Failed to resize oplog: {result}"

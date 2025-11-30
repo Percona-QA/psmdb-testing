@@ -638,6 +638,52 @@ def perform_crud_ops_sharded_collection(collection, shard_key, timeseries=False,
         ]
         collection.bulk_write(bulk_operations_no_shard)
 
+        # Test scenario when document contains only one part of compound shard key
+        if isinstance(shard_key, list) and not hashed:
+            collection_name = collection.name
+            if "compound_key" in collection_name and "compound_hashed" not in collection_name:
+                duplicate_key_test_doc = {
+                    "category": f"cat_{random.randint(0, 10)}",
+                    "name": f"duplicate_key_test_{random.randint(10000, 99999)}",
+                    "price": round(random.uniform(10.0, 1000.0), 2),
+                    "description": "Document with category but missing item_id shard key field"
+                }
+                collection.insert_one(duplicate_key_test_doc)
+
+                duplicate_key_test_docs = [
+                    {
+                        "category": f"cat_{random.randint(0, 10)}",
+                        "name": f"duplicate_key_batch_{i}",
+                        "price": round(random.uniform(10.0, 1000.0), 2),
+                        "description": f"Batch document {i} with category but no item_id"
+                    }
+                    for i in range(3)
+                ]
+                collection.insert_many(duplicate_key_test_docs)
+
+                collection.update_one(
+                    {"category": duplicate_key_test_doc["category"], "name": duplicate_key_test_doc["name"]},
+                    {"$set": {"name": "Updated Duplicate Key Test", "price": 999.99, "updated": True}}
+                )
+
+                collection.replace_one(
+                    {"category": duplicate_key_test_docs[0]["category"], "name": duplicate_key_test_docs[0]["name"]},
+                    {"category": duplicate_key_test_docs[0]["category"], "name": "Replaced Duplicate Key Test", "price": 888.88, "replaced": True}
+                )
+
+                bulk_duplicate_key_ops = [
+                    pymongo.UpdateOne(
+                        {"category": duplicate_key_test_docs[1]["category"], "name": duplicate_key_test_docs[1]["name"]},
+                        {"$set": {"status": "active"}}
+                    ),
+                    pymongo.ReplaceOne(
+                        {"category": duplicate_key_test_docs[2]["category"], "name": duplicate_key_test_docs[2]["name"]},
+                        {"category": duplicate_key_test_docs[2]["category"], "name": "Bulk Replaced Duplicate Key", "price": 777.77}
+                    ),
+                    pymongo.DeleteOne({"category": duplicate_key_test_doc["category"], "name": duplicate_key_test_doc["name"]})
+                ]
+                collection.bulk_write(bulk_duplicate_key_ops)
+
     # Shard key updates
     if update_shard_key and not hashed and not timeseries:
         # sharded_compound_key_collection, sharded_collation_compound_collection, sharded_collation_compound_unique_collection
