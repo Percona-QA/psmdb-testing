@@ -146,37 +146,6 @@
     remote_src: true
   when: inventory_hostname == "keith-pcsm-clustersync"
 
-- name: Clone Mgodatagen repo
-  git:
-    repo: 'https://github.com/feliixx/mgodatagen.git'
-    dest: /tmp/mgodatagen
-    version: "master"
-  when: inventory_hostname == "keith-pcsm-source"
-
-- name: Build Mgodatagen
-  command: go build
-  args:
-    chdir: /tmp/mgodatagen
-  environment:
-    PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
-    GOROOT: /usr/local/go/
-    GOBIN: /usr/local/go/bin
-  when: inventory_hostname == "keith-pcsm-source"
-
-- name: Move mgodatagen binary to /usr/local/bin
-  copy:
-    src: /tmp/mgodatagen/
-    dest: /usr/local/bin/
-    mode: '0755'
-    remote_src: true
-  when: inventory_hostname == "keith-pcsm-source"
-
-- name: Copy load_data.py to /tmp
-  copy:
-    src: ../scripts/load_data.py
-    dest: /tmp/load_data.py
-    mode: '0755'
-
 - name: Get private source ip address
   set_fact:
     private_source_ip: "{{ hostvars['keith-pcsm-source']['ansible_default_ipv4']['address'] }}"
