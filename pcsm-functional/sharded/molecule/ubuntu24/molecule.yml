@@ -26,9 +26,10 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-pcsm-source-shard
+  - name: keith-pcsm-source-shard-1
     groups:
       - psmdb
+      - shard
     region: us-west-2
     image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
     vpc_subnet_id: subnet-0dc7518100473f19d
@@ -37,9 +38,34 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-pcsm-destination-shard
+  - name: keith-pcsm-source-shard-2
     groups:
       - psmdb
+      - shard
+    region: us-west-2
+    image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
+    vpc_subnet_id: subnet-0dc7518100473f19d
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ubuntu
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+  - name: keith-pcsm-destination-shard-1
+    groups:
+      - psmdb
+      - shard
+    region: us-west-2
+    image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
+    vpc_subnet_id: subnet-0dc7518100473f19d
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ubuntu
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+  - name: keith-pcsm-destination-shard-2
+    groups:
+      - psmdb
+      - shard
     region: us-west-2
     image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
     vpc_subnet_id: subnet-0dc7518100473f19d
