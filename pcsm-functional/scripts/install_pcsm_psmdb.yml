@@ -15,7 +15,7 @@
 
 - name: Change Source shard 2 node hostname
   hostname:
-    name: pcsm-source-shard
+    name: pcsm-source-shard-2
   when: inventory_hostname == "keith-pcsm-source-shard-2"
 
 - name: Change Destination shard 1 node hostname
@@ -25,7 +25,7 @@
 
 - name: Change Destination shard 2 node hostname
   hostname:
-    name: pcsm-destination-shard
+    name: pcsm-destination-shard-2
   when: inventory_hostname == "keith-pcsm-destination-shard-2"
 
 - name: Change PCSM node hostname
@@ -232,8 +232,8 @@
 
 - name: Show Destination shard 2 IP (Debug)
   debug:
-    var: private_destination_shard_1_ip
-  when: private_destination_shard_1_ip is defined and inventory_hostname == "keith-pcsm-destination-shard-2"
+    var: private_destination_shard_2_ip
+  when: private_destination_shard_2_ip is defined and inventory_hostname == "keith-pcsm-destination-shard-2"
 
 - name: Show Clustersync IP (Debug)
   debug:
@@ -244,16 +244,8 @@
   blockinfile:
     path: /etc/hosts
     block: |
-      {{ private_source_shard_1_ip }} shard
-    create: false
-    unsafe_writes: true
-  when: inventory_hostname == "keith-pcsm-source"
-
-- name: Add source shard 2 to /etc/hosts of source
-  blockinfile:
-    path: /etc/hosts
-    block: |
-      {{ private_source_shard_2_ip }} shard
+      {{ private_source_shard_1_ip }} shard1
+      {{ private_source_shard_2_ip }} shard2
     create: false
     unsafe_writes: true
   when: inventory_hostname == "keith-pcsm-source"
@@ -262,17 +254,8 @@
   blockinfile:
     path: /etc/hosts
     block: |
-      {{ private_destination_shard_1_ip }} shard
-    create: false
-    unsafe_writes: true
-  when: inventory_hostname == "keith-pcsm-destination"
-
-
-- name: Add destination shard 2 to /etc/hosts of destination
-  blockinfile:
-    path: /etc/hosts
-    block: |
-      {{ private_destination_shard_2_ip }} shard
+      {{ private_destination_shard_1_ip }} shard1
+      {{ private_destination_shard_2_ip }} shard2
     create: false
     unsafe_writes: true
   when: inventory_hostname == "keith-pcsm-destination"
