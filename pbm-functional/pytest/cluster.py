@@ -286,6 +286,7 @@ class Cluster:
                 if "arbiterOnly" in host:
                     if host['arbiterOnly']:
                         self.__delete_pbm(host['host'])
+            time.sleep(2)
             Cluster.setup_replicaset(self.config)
             Cluster.setup_authorization(self.config['members'][0]['host'],self.pbm_mongodb_uri)
         else:
@@ -361,6 +362,7 @@ class Cluster:
                 conn = conn + host['host'] + ':27017,'
             conn = conn[:-1]
             configdb = conn
+            time.sleep(2)
             self.__setup_replicasets(
                 self.config['shards'] + [self.config['configserver']])
             self.__setup_authorizations(self.config['shards'])
