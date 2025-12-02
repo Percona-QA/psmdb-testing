@@ -1115,7 +1115,7 @@ class Cluster:
         blob_service_client = BlobServiceClient.from_connection_string(connect_str)
         container_name = "test-container"
         try:
-            container_client = blob_service_client.create_container(container_name)
+            blob_service_client.create_container(container_name)
             Cluster.log(f"Container '{container_name}' created successfully.")
         except ResourceExistsError:
             Cluster.log(f"Container '{container_name}' already exists.")
