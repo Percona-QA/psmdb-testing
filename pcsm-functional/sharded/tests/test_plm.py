@@ -30,7 +30,7 @@ def obtain_pcsm_address(node):
         "ip -4 addr show scope global | grep inet | awk '{print $2}' | cut -d/ -f1 | head -n 1")
     return ipaddress
 
-def confirm_collection_size(node, datasize, dbname="test_db", port="27017"):
+def confirm_collection_size(node, datasize, dbname="test_db", port="27018"):
     cmd = (
         f'mongosh "mongodb://127.0.0.1:{port}/" --quiet --eval \'let total = 0; '
         f'const dbname = "{dbname}"; const targetdb = db.getSiblingDB(dbname); '
@@ -159,7 +159,7 @@ def test_prepare_data():
     log_step("Starting data generation on source node...")
     load_data(source)
     log_step("Data generation completed. Validating size...")
-    assert confirm_collection_size(source, datasize, "test_db", "27018")
+    assert confirm_collection_size(source, datasize)
     log_step("Source data size confirmed")
 
 def test_data_transfer_PML_T40():

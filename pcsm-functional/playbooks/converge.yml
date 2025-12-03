@@ -185,42 +185,6 @@
         replace: 'sharding:\n  clusterRole: "shardsvr"'
       when: inventory_hostname in groups['shard']
 
-    - name: Create PCSM system unit file with optional environment variables
-      copy:
-        dest: /etc/systemd/system/pcsm.service
-        content: |
-          [Unit]
-          Description=Percona Clustersync Service
-          After=network.target
-
-          [Service]
-          {% if env_vars_parsed %}
-          {% for item in env_vars_parsed | dict2items %}
-          Environment="{{ item.key }}={{ item.value }}"
-          {% endfor %}
-          {% endif %}
-          ExecStart=/usr/local/bin/pcsm \
-            --source mongodb://{{ private_source_ip }}:27018 \
-            --target mongodb://{{ private_destination_ip }}:27018 \
-            --log-level debug \
-            --log-json
-          Restart=on-failure
-          User=root
-
-          [Install]
-          WantedBy=multi-user.target
-        owner: root
-        group: root
-        mode: '0644'
-      when: inventory_hostname == "keith-pcsm-clustersync"
-
-    - name: Reload systemd and start pcsm service
-      service:
-        daemon_reload: yes
-        name: pcsm.service
-        state: started
-      when: inventory_hostname == "keith-pcsm-clustersync"
-
     - name: Reload systemd and start pcsm service
       service:
         daemon_reload: yes
@@ -333,6 +297,42 @@
         login_port: 27018
         eval: 'sh.addShard("dstShard2/{{ private_destination_shard_2_ip }}:27017")'
       when: inventory_hostname == "keith-pcsm-destination"
+
+    - name: Create PCSM system unit file with optional environment variables
+      copy:
+        dest: /etc/systemd/system/pcsm.service
+        content: |
+          [Unit]
+          Description=Percona Clustersync Service
+          After=network.target
+
+          [Service]
+          {% if env_vars_parsed %}
+          {% for item in env_vars_parsed | dict2items %}
+          Environment="{{ item.key }}={{ item.value }}"
+          {% endfor %}
+          {% endif %}
+          ExecStart=/usr/local/bin/pcsm \
+            --source mongodb://{{ private_source_ip }}:27018 \
+            --target mongodb://{{ private_destination_ip }}:27018 \
+            --log-level debug \
+            --log-json
+          Restart=on-failure
+          User=root
+
+          [Install]
+          WantedBy=multi-user.target
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname == "keith-pcsm-clustersync"
+
+    - name: Reload systemd and start pcsm service
+      service:
+        daemon_reload: yes
+        name: pcsm.service
+        state: started
+      when: inventory_hostname == "keith-pcsm-clustersync"
 
 #    - name: Install and configure PMM Client
 #      include_tasks: ../scripts/install_pmm.yml
