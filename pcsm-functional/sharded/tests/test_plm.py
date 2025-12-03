@@ -30,14 +30,15 @@ def obtain_pcsm_address(node):
         "ip -4 addr show scope global | grep inet | awk '{print $2}' | cut -d/ -f1 | head -n 1")
     return ipaddress
 
-def confirm_collection_size(node, datasize, dbname="test_db"):
+def confirm_collection_size(node, datasize, dbname="test_db", port="27017"):
     cmd = (
-        f'mongosh "mongodb://127.0.0.1:27017/" --quiet --eval \'let total = 0; '
+        f'mongosh "mongodb://127.0.0.1:{port}/" --quiet --eval \'let total = 0; '
         f'const dbname = "{dbname}"; const targetdb = db.getSiblingDB(dbname); '
         f'targetdb.getCollectionNames().forEach(name => {{ '
         f'let stats = targetdb.getCollection(name).stats(); '
         f'if (stats && typeof stats.size === "number") {{ total += stats.size; }} }}); '
         f'print((total / (1024 * 1024)).toFixed(2));\'')
+
     try:
         result = node.check_output(cmd)
         size_mb = float(result.strip())
@@ -154,13 +155,13 @@ def wait_for_repl_stage(timeout=3600, interval=1, stable_duration=2):
 def log_step(message):
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}")
 
-# def test_prepare_data():
-#     log_step("Starting data generation on source node...")
-#     load_data(source)
-#     log_step("Data generation completed. Validating size...")
-#     assert confirm_collection_size(source, datasize)
-#     log_step("Source data size confirmed")
-#
+def test_prepare_data():
+    log_step("Starting data generation on source node...")
+    load_data(source)
+    log_step("Data generation completed. Validating size...")
+    assert confirm_collection_size(source, datasize, "test_db", "27018")
+    log_step("Source data size confirmed")
+
 # def test_data_transfer_PML_T40():
 #     log_step("Starting PCSM sync...")
 #     assert pcsm_start()
@@ -174,8 +175,8 @@ def log_step(message):
 #     log_step("Validating destination data size...")
 #     assert confirm_collection_size(destination, datasize)
 #     log_step("Destination data size confirmed")
-
-def test_data_integrity_PML_T42():
-    log_step("Comparing data integrity between source and destination...")
-    assert compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE, "sharded")
-    log_step("Data integrity check completed successfully")
+#
+# def test_data_integrity_PML_T42():
+#     log_step("Comparing data integrity between source and destination...")
+#     assert compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE, "sharded")
+#     log_step("Data integrity check completed successfully")
