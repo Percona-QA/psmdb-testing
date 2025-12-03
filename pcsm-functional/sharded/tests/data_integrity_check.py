@@ -32,24 +32,57 @@ def compare_data_rs(db1, db2, port, full_comparison, state):
     return False, mismatch_summary
 
 def compare_database_hashes(db1, db2, port, state):
-    query = (
-        'db.getMongo().getDBNames().forEach(function(dbName) { '
-        '    if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(dbName)) { '
-        '        var collections = []; '
-        '        db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
-        '            if ((!coll.type || coll.type !== "view") && !(dbName === "test" && coll.name === "system.profile")) { '
-        '                collections.push(coll.name); '
-        '            } '
-        '        }); '
-        '        if (collections.length > 0) { '
-        '            var result = db.getSiblingDB(dbName).runCommand({ dbHash: 1, collections: collections }); '
-        '            print(JSON.stringify({ db: dbName, md5: result.md5, collections: result.collections })); '
-        '        } else { '
-        '            print(JSON.stringify({ db: dbName, md5: null, collections: {} })); '
-        '        } '
-        '    } '
-        '});'
-    )
+    if state != "sharded":
+        # Original single-RS / standalone query
+        query = (
+            'db.getMongo().getDBNames().forEach(function(dbName) { '
+            '    if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(dbName)) { '
+            '        var collections = []; '
+            '        db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
+            '            if ((!coll.type || coll.type !== "view") && !(dbName === "test" && coll.name === "system.profile")) { '
+            '                collections.push(coll.name); '
+            '            } '
+            '        }); '
+            '        if (collections.length > 0) { '
+            '            var result = db.getSiblingDB(dbName).runCommand({ dbHash: 1, collections: collections }); '
+            '            print(JSON.stringify({ db: dbName, md5: result.md5, collections: result.collections })); '
+            '        } else { '
+            '            print(JSON.stringify({ db: dbName, md5: null, collections: {} })); '
+            '        } '
+            '    } '
+            '});'
+        )
+    else:
+        # Sharded query (Option A) – run via mongos, but dbHash per shard
+        query = (
+            'var ignoredDbs = ["admin", "local", "config", "percona_clustersync_mongodb"]; '
+            'var conn = db.getMongo(); '
+            'var configDb = conn.getDB("config"); '
+            'var shards = configDb.shards.find().toArray(); '
+            'conn.getDBNames().forEach(function(dbName) { '
+            '  if (ignoredDbs.includes(dbName)) { return; } '
+            '  var collections = []; '
+            '  conn.getDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
+            '    if ((!coll.type || coll.type !== "view") && !(dbName === "test" && coll.name === "system.profile")) { '
+            '      collections.push(coll.name); '
+            '    } '
+            '  }); '
+            '  shards.forEach(function(shardDoc) { '
+            '    var shardName = shardDoc._id; '
+            '    var shardHost = shardDoc.host; '
+            '    var seed = shardHost.indexOf("/") !== -1 ? shardHost.split("/")[1] : shardHost; '
+            '    var firstMember = seed.split(",")[0]; '
+            '    try { '
+            '      var shardConn = new Mongo(firstMember); '
+            '      var shardDb = shardConn.getDB(dbName); '
+            '      var result = shardDb.runCommand({ dbHash: 1, collections: collections }); '
+            '      print(JSON.stringify({ db: dbName, shard: shardName, md5: result.md5, collections: result.collections })); '
+            '    } catch (err) { '
+            '      print(JSON.stringify({ db: dbName, shard: shardDoc._id, md5: null, collections: {} })); '
+            '    } '
+            '  }); '
+            '});'
+        )
 
     def get_db_hashes_and_collections(db, state):
         if state != "sharded":
@@ -62,16 +95,43 @@ def compare_database_hashes(db1, db2, port, state):
         db_hashes = {}
         collection_hashes = {}
 
+        # for line in response.split("\n"):
+        #     try:
+        #         db_info = json.loads(line)
+        #         db_name = db_info["db"]
+        #         db_hashes[db_name] = db_info["md5"]
+        #
+        #         for coll, coll_hash in db_info["collections"].items():
+        #             collection_hashes[f"{db_name}.{coll}"] = coll_hash
+        #     except json.JSONDecodeError:
+        #         print(f"Warning: Skipping invalid JSON line: {line}")
+        #
+        # return db_hashes, collection_hashes
+
         for line in response.split("\n"):
+            line = line.strip()
+            if not line:
+                continue
             try:
                 db_info = json.loads(line)
-                db_name = db_info["db"]
-                db_hashes[db_name] = db_info["md5"]
-
-                for coll, coll_hash in db_info["collections"].items():
-                    collection_hashes[f"{db_name}.{coll}"] = coll_hash
             except json.JSONDecodeError:
                 print(f"Warning: Skipping invalid JSON line: {line}")
+                continue
+
+            db_name = db_info["db"]
+            shard = db_info.get("shard")
+
+            # 👇 key includes shard in sharded mode
+            if state == "sharded" and shard:
+                db_key = f"{db_name}:{shard}"
+            else:
+                db_key = db_name
+
+            db_hashes[db_key] = db_info["md5"]
+
+            for coll, coll_hash in db_info.get("collections", {}).items():
+                coll_key = f"{db_key}.{coll}"
+                collection_hashes[coll_key] = coll_hash
 
         return db_hashes, collection_hashes
 
