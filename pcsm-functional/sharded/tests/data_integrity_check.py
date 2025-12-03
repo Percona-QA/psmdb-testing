@@ -12,7 +12,7 @@ def compare_data_rs(db1, db2, port, full_comparison, state):
 
     if full_comparison:
         all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port, state)
-        mismatch_metadata = compare_collection_metadata(db1, db2, port)
+        mismatch_metadata = compare_collection_metadata(db1, db2, port, state)
         mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port)
 
         if mismatch_dbs_hash:
@@ -131,7 +131,7 @@ def compare_entries_number(db1, db2, port, state):
         '});'
     )
 
-    def get_collection_counts(db):
+    def get_collection_counts(db, state):
 
         if state != "sharded":
             response = db.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
@@ -151,8 +151,8 @@ def compare_entries_number(db1, db2, port, state):
 
         return collection_counts
 
-    db1_counts = get_collection_counts(db1)
-    db2_counts = get_collection_counts(db2)
+    db1_counts = get_collection_counts(db1,state)
+    db2_counts = get_collection_counts(db2, state)
 
     print("Comparing collection record counts...")
     mismatched_dbs = []
@@ -173,12 +173,12 @@ def compare_entries_number(db1, db2, port, state):
 
     return db1_counts.keys() | db2_counts.keys(), mismatched_dbs, mismatched_collections
 
-def compare_collection_metadata(db1, db2, port):
+def compare_collection_metadata(db1, db2, port, state):
     print("Comparing collection metadata...")
     mismatched_metadata = []
 
-    db1_metadata = get_all_collection_metadata(db1, port)
-    db2_metadata = get_all_collection_metadata(db2, port)
+    db1_metadata = get_all_collection_metadata(db1, port, state)
+    db2_metadata = get_all_collection_metadata(db2, port, state)
 
     db1_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db1_metadata}
     db2_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db2_metadata}
