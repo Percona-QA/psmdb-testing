@@ -13,7 +13,7 @@ def compare_data_rs(db1, db2, port, full_comparison, state):
     if full_comparison:
         all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port, state)
         mismatch_metadata = compare_collection_metadata(db1, db2, port, state)
-        mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port)
+        mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port, state)
 
         if mismatch_dbs_hash:
             mismatch_summary.extend(mismatch_dbs_hash)
@@ -298,7 +298,7 @@ def get_all_collection_metadata(db, port, state):
         print(f"Raw response: {response}")
         return []
 
-def compare_collection_indexes(db1, db2, all_collections, port):
+def compare_collection_indexes(db1, db2, all_collections, port, state):
     print("Comparing collection indexes...")
     mismatched_indexes = []
 
