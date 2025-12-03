@@ -155,12 +155,12 @@ def wait_for_repl_stage(timeout=3600, interval=1, stable_duration=2):
 def log_step(message):
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}")
 
-# def test_prepare_data():
-#     log_step("Starting data generation on source node...")
-#     load_data(source)
-#     log_step("Data generation completed. Validating size...")
-#     assert confirm_collection_size(source, datasize, "test_db", "27018")
-#     log_step("Source data size confirmed")
+def test_prepare_data():
+    log_step("Starting data generation on source node...")
+    load_data(source)
+    log_step("Data generation completed. Validating size...")
+    assert confirm_collection_size(source, datasize, "test_db", "27018")
+    log_step("Source data size confirmed")
 
 def test_data_transfer_PML_T40():
     log_step("Starting PCSM sync...")
