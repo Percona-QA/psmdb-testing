@@ -57,7 +57,7 @@ def compare_database_hashes(db1, db2, port, state):
                 "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
         else:
             response = db.check_output(
-                "mongo mongodb://127.0.0.1:27018/test --eval " + query + " --quiet")
+                "mongo mongodb://127.0.0.1:27018/test --eval '" + query + "' --quiet")
 
         db_hashes = {}
         collection_hashes = {}
@@ -137,7 +137,7 @@ def compare_entries_number(db1, db2, port, state):
             response = db.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
         else:
             response = db.check_output(
-                "mongo mongodb://127.0.0.1:27018/test --eval " + query + " --quiet")
+                "mongo mongodb://127.0.0.1:27018/test --eval '" + query + "' --quiet")
 
         collection_counts = {}
 
@@ -226,7 +226,7 @@ def get_all_collection_metadata(db, port, state):
             "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
     else:
         response = db.check_output(
-            "mongo mongodb://127.0.0.1:27018/test --eval " + query + " --quiet")
+            "mongo mongodb://127.0.0.1:27018/test --eval '" + query + "' --quiet")
 
     try:
         metadata_list = []
@@ -290,7 +290,7 @@ def get_indexes(db, collection_name, port, state):
             "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
     else:
         response = db.check_output(
-            "mongo mongodb://127.0.0.1:27018/test --eval " + query + " --quiet")
+            "mongo mongodb://127.0.0.1:27018/test --eval '" + query + "' --quiet")
 
     try:
         indexes = json.loads(response)
