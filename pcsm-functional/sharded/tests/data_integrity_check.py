@@ -303,8 +303,8 @@ def compare_collection_indexes(db1, db2, all_collections, port):
     mismatched_indexes = []
 
     for coll_name in all_collections:
-        db1_indexes = get_indexes(db1, coll_name, port)
-        db2_indexes = get_indexes(db2, coll_name, port)
+        db1_indexes = get_indexes(db1, coll_name, port, state)
+        db2_indexes = get_indexes(db2, coll_name, port, state)
 
         db1_index_dict = {index["name"]: index for index in db1_indexes if "name" in index}
         db2_index_dict = {index["name"]: index for index in db2_indexes if "name" in index}
