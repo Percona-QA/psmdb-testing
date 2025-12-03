@@ -177,5 +177,5 @@ def test_datasize_PML_T41():
 
 def test_data_integrity_PML_T42():
     log_step("Comparing data integrity between source and destination...")
-    assert compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE)
+    assert compare_data_rs(source, destination, "27018", FULL_DATA_COMPARE, "sharded")
     log_step("Data integrity check completed successfully")
