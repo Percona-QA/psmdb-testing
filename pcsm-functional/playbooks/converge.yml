@@ -200,8 +200,8 @@
           {% endfor %}
           {% endif %}
           ExecStart=/usr/local/bin/pcsm \
-            --source mongodb://{{ private_source_ip }}:27017 \
-            --target mongodb://{{ private_destination_ip }}:27017 \
+            --source mongodb://{{ private_source_ip }}:27018 \
+            --target mongodb://{{ private_destination_ip }}:27018 \
             --log-level debug \
             --log-json
           Restart=on-failure
