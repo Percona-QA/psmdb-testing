@@ -23,7 +23,7 @@ TIMEOUT = int(os.getenv("TIMEOUT",default = 3600))
 
 def load_data(node):
     env_vars = f"COLLECTIONS={collections} DATASIZE={datasize} DISTRIBUTE={distribute} DOC_TEMPLATE={doc_template}"
-    node.run_test(f"{env_vars} python3 /tmp/load_data_sharded.py")
+    node.run_test(f"{env_vars} python3 /tmp/load_data.py")
 
 def obtain_pcsm_address(node):
     ipaddress = node.check_output(
