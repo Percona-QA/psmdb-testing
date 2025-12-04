@@ -119,13 +119,12 @@ def compare_database_hashes(db1, db2, port, state):
                 continue
 
             db_name = db_info["db"]
-            shard = db_info.get("shard")
+            collections = db_info.get("collections", {})
 
-            # 👇 key includes shard in sharded mode
-            if state == "sharded" and shard:
-                db_key = f"{db_name}:{shard}"
-            else:
-                db_key = db_name
+            if state == "sharded" and not collections:
+                continue
+
+            db_key = db_name
 
             db_hashes[db_key] = db_info["md5"]
 
