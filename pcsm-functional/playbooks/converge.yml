@@ -27,60 +27,308 @@
         # Go Version
         golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.2', true) }}"
 
-    - name: Install PSMDB and PCSM Source and Destination
-      include_tasks: ../scripts/install_pcsm_psmdb.yml
-
     - set_fact:
-        ssh_pubkey: "{{ lookup('env', 'SSH_PUBKEY') | default('none', true) }}"
-
-    - set_fact:
+        # User to log into each AWS Instance
         ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
 
-    - name: Add user to Redhat
-      user:
-        name: "{{ ssh_user }}"
-        shell: /bin/bash
-        groups: wheel
-        append: yes
-      when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'RedHat'
+    - name: Change Source node hostname
+      hostname:
+        name: pcsm-source
+      when: inventory_hostname == "jenkins-pcsm-source"
 
-    - name: Add user to Debian
-      user:
-        name: "{{ ssh_user }}"
-        shell: /bin/bash
-        groups: sudo
-        append: yes
-      when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'Debian'
+    - name: Change Destination node hostname
+      hostname:
+        name: pcsm-destination
+      when: inventory_hostname == "jenkins-pcsm-destination"
 
-    - name: Add pub key
-      authorized_key:
-        user: "{{ ssh_user }}"
+    - name: Change PCSM node hostname
+      hostname:
+        name: pcsm-clustersync
+      when: inventory_hostname == "jenkins-pcsm-clustersync"
+
+    - name: Prerequisite for debian 11
+      apt:
+        name: iproute2
+        update_cache: yes
+      when: ansible_distribution == "Debian" and ansible_distribution_major_version >= "11"
+
+    - name: Install deps
+      yum:
+        name: "{{ packages }}"
         state: present
-        key: "{{ ssh_pubkey }}"
-      when: ssh_user != "none" and ssh_pubkey != "none"
+        update_cache: yes
+      vars:
+        packages:
+        - jq
+        - vim
+        - zlib-devel
+        - libjpeg-devel
+        - freetype-devel
+        - gcc
+        - python3-devel
+        - python3.12
+        - python3-pip
+        - make
+        - wget
+        - git
+      when: ansible_os_family == "RedHat"
 
-    - name: Allow sudo without password
-      lineinfile:
-        dest: /etc/sudoers
+    - name: Install deps
+      apt:
+        name: "{{ packages }}"
         state: present
-        regexp: '^%wheel'
-        line: '%wheel ALL=(ALL) NOPASSWD: ALL'
-      when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'RedHat'
+        update_cache: yes
+      vars:
+        packages:
+        - jq
+        - vim
+        - zlib1g-dev
+        - libjpeg-dev
+        - libfreetype6-dev
+        - gcc
+        - python3-dev
+        - python3.12
+        - python3-pip
+        - make
+        - wget
+        - git
+        - iputils-ping
+      when: ansible_os_family == "Debian"
 
-    - name: Allow sudo without password
-      lineinfile:
-        dest: /etc/sudoers
+    - name: Install Go from official tarball on PCSM host
+      vars:
+        go_version: "{{ golang_version }}"
+        go_tarball: "go{{ go_version }}.linux-amd64.tar.gz"
+        go_url: "https://go.dev/dl/{{ go_tarball }}"
+        go_install_dir: "/usr/local"
+      block:
+        - name: Download Go {{ go_version }}
+          get_url:
+            url: "{{ go_url }}"
+            dest: "/tmp/{{ go_tarball }}"
+            mode: '0644'
+
+        - name: Extract Go
+          unarchive:
+            src: "/tmp/{{ go_tarball }}"
+            dest: "{{ go_install_dir }}"
+            remote_src: yes
+      when: inventory_hostname == "jenkins-pcsm-clustersync" or inventory_hostname == "jenkins-pcsm-source"
+
+    - name: Check Go is available
+      command: go version
+      environment:
+        PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
+      register: go_version_output
+      ignore_errors: true
+      when: inventory_hostname == "jenkins-pcsm-clustersync" or inventory_hostname == "jenkins-pcsm-source"
+
+    - name: Install Pymongo for Redhat
+      pip:
+        name:
+          - pymongo
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Install Pymongo on Debian
+      command: python3 -m pip install --break-system-packages pymongo
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Clone PCSM repo
+      timeout: 180
+      git:
+        repo: 'https://github.com/percona/percona-clustersync-mongodb.git'
+        dest: /tmp/percona-clustersync-mongodb
+        version: "{{ pcsm_branch }}"
+      when: inventory_hostname == "jenkins-pcsm-clustersync"
+
+    - name: Build PCSM
+      command: make build
+      args:
+        chdir: /tmp/percona-clustersync-mongodb
+      environment:
+        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
+        GOROOT: /usr/local/go/
+        GOBIN: /usr/local/go/bin
+      when: inventory_hostname == "jenkins-pcsm-clustersync"
+
+    - name: Move PCSM binary to /usr/local/bin
+      copy:
+        src: /tmp/percona-clustersync-mongodb/bin/pcsm
+        dest: /usr/local/bin/
+        mode: '0775'
+        remote_src: true
+      when: inventory_hostname == "jenkins-pcsm-clustersync"
+
+    - name: Clone Mgodatagen repo
+      git:
+        repo: 'https://github.com/feliixx/mgodatagen.git'
+        dest: /tmp/mgodatagen
+        version: "master"
+      when: inventory_hostname == "jenkins-pcsm-source"
+
+    - name: Build Mgodatagen
+      command: go build
+      args:
+        chdir: /tmp/mgodatagen
+      environment:
+        PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
+        GOROOT: /usr/local/go/
+        GOBIN: /usr/local/go/bin
+      when: inventory_hostname == "jenkins-pcsm-source"
+
+    - name: Move mgodatagen binary to /usr/local/bin
+      copy:
+        src: /tmp/mgodatagen/
+        dest: /usr/local/bin/
+        mode: '0755'
+        remote_src: true
+      when: inventory_hostname == "jenkins-pcsm-source"
+
+    - name: Copy load_data.py to /tmp
+      copy:
+        src: ../scripts/load_data.py
+        dest: /tmp/load_data.py
+        mode: '0755'
+
+    - name: Get private source ip address
+      set_fact:
+        private_source_ip: "{{ hostvars['jenkins-pcsm-source']['ansible_default_ipv4']['address'] }}"
+
+    - name: Get private destination ip address
+      set_fact:
+        private_destination_ip: "{{ hostvars['jenkins-pcsm-destination']['ansible_default_ipv4']['address'] }}"
+
+    - name: Get private pcsm ip address
+      set_fact:
+        private_clustersync_ip: "{{ hostvars['jenkins-pcsm-clustersync']['ansible_default_ipv4']['address'] }}"
+
+    - name: Show source IP (Debug)
+      debug:
+        var: private_source_ip
+      when: private_source_ip is defined and inventory_hostname == "jenkins-pcsm-source"
+
+    - name: Show destination IP (Debug)
+      debug:
+        var: private_destination_ip
+      when: private_destination_ip is defined and inventory_hostname == "jenkins-pcsm-destination"
+
+    - name: Show Clustersync IP (Debug)
+      debug:
+        var: private_clustersync_ip
+      when: private_clustersync_ip is defined and inventory_hostname == "jenkins-pcsm-clustersync"
+
+    - name: Add source and destination to /etc/hosts in pcsm
+      blockinfile:
+        path: /etc/hosts
+        block: |
+          {{ private_source_ip }}    source
+          {{ private_clustersync_ip }}    destination
+        create: false
+        unsafe_writes: true
+      when: inventory_hostname == "jenkins-pcsm-clustersync"
+
+    - name: Install GPG key for epel 8
+      rpm_key:
         state: present
-        regexp: '^%sudo'
-        line: '%sudo ALL=(ALL) NOPASSWD: ALL'
-      when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'Debian'
+        key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
+      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
 
-#    - name: Add replica set name into mongod config
-#      replace:
-#        path: /etc/mongod.conf
-#        regexp: '^#replication:'
-#        replace: 'replication:\n  replSetName: "rs"'
-#      when: inventory_hostname in groups['psmdb']
+    - name: Install GPG key for Percona repos
+      rpm_key:
+        state: present
+        key: https://repo.percona.com/yum/RPM-GPG-KEY-Percona
+      when: ansible_os_family == "RedHat"
+
+    - name: Install Percona Release package on Debian
+      apt:
+        deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
+
+    - name: Install latest percona-release RHEL
+      command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
+
+    - name: setup psmdb repo with percona-release
+      command: percona-release enable psmdb-{{ psmdb_version }}0 release
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Install psmdb deb packages
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-tools
+      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
+
+    - name: Install latest psmdb rpm packages on redhat
+      yum:
+        name: "{{ packages }}"
+        update_cache: yes
+        state: latest
+      vars:
+        packages:
+        - percona-server-mongodb
+        - percona-server-mongodb-server
+        - percona-server-mongodb-mongos
+        - percona-server-mongodb-tools
+      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
+
+    - name: Install mongosh deb package
+      apt:
+        name: "{{ packages }}"
+        update_cache: yes
+      vars:
+        packages:
+        - percona-mongodb-mongosh
+      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
+
+    - name: Install mongosh rpm package
+      yum:
+        name: "{{ packages }}"
+        state: latest
+      vars:
+        packages:
+        - percona-mongodb-mongosh
+      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
+
+    - name: Copy mongosh binary to mongo path for test scripts
+      file:
+        src: /usr/bin/mongosh
+        dest: /usr/bin/mongo
+        state: link
+      when: inventory_hostname in groups['psmdb']
+
+    - name: stop mongod service
+      service: name=mongod state=stopped
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Create data directory for mongod
+      file:
+        path: /mnt/data/db
+        state: directory
+        mode: '0755'
+        owner: mongod
+        group: mongod
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Switch mongod to new dbPath
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^  dbPath: /var/lib/mongo(?:db)?'
+        replace: '  dbPath: /mnt/data/db'
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Add replica set name into mongod config
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#replication:'
+        replace: 'replication:\n  replSetName: "rs"'
+      when: inventory_hostname in groups['psmdb']
 
     - name: Bind mongod to 0.0.0.0
       replace:
@@ -104,199 +352,30 @@
       service: name=mongod state=started
       when: inventory_hostname in groups['psmdb']
 
-#    - name: Create a replicaset rs for Source
-#      community.mongodb.mongodb_replicaset:
-#        replica_set: rs
-#        login_host: "{{ private_source_ip }}"
-#        members:
-#          - host: "{{ private_source_ip }}:27017"
-#            priority: 1
-#        validate: no
-#      when: inventory_hostname == "keith-pcsm-source"
-#
-#    - name: Create a replicaset rs for Destination
-#      community.mongodb.mongodb_replicaset:
-#        replica_set: rs
-#        login_host: "{{ private_destination_ip }}"
-#        members:
-#          - host: "{{ private_destination_ip }}:27017"
-#            priority: 1
-#        validate: no
-#      when: inventory_hostname == "keith-pcsm-destination"
-#
-#    - name: Reload systemd
-#      systemd:
-#        daemon_reload: yes
-#      when: inventory_hostname in groups['psmdb']
+    - name: Create a replicaset rs for Source
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs
+        login_host: "{{ private_source_ip }}"
+        members:
+          - host: "{{ private_source_ip }}:27017"
+            priority: 1
+        validate: no
+      when: inventory_hostname == "jenkins-pcsm-source"
 
-    - name: Add replica set name into mongod config
-      replace:
-        path: /etc/mongod.conf
-        regexp: '^#replication:'
-        replace: 'replication:\n  replSetName: "configReplSet"'
-      when: inventory_hostname == "keith-pcsm-source" or inventory_hostname == "keith-pcsm-destination"
+    - name: Create a replicaset rs for Destination
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs
+        login_host: "{{ private_destination_ip }}"
+        members:
+          - host: "{{ private_destination_ip }}:27017"
+            priority: 1
+        validate: no
+      when: inventory_hostname == "jenkins-pcsm-destination"
 
-    - name: Add replica set name for source shard 1
-      replace:
-        path: /etc/mongod.conf
-        regexp: '^#replication:'
-        replace: 'replication:\n  replSetName: "srcShard1"'
-      when: inventory_hostname == "keith-pcsm-source-shard-1"
-
-    - name: Add replica set name for source shard 2
-      replace:
-        path: /etc/mongod.conf
-        regexp: '^#replication:'
-        replace: 'replication:\n  replSetName: "srcShard2"'
-      when: inventory_hostname == "keith-pcsm-source-shard-2"
-
-    - name: Add replica set name for destination shard 1
-      replace:
-        path: /etc/mongod.conf
-        regexp: '^#replication:'
-        replace: 'replication:\n  replSetName: "dstShard1"'
-      when: inventory_hostname == "keith-pcsm-destination-shard-1"
-
-    - name: Add replica set name for destination shard 2
-      replace:
-        path: /etc/mongod.conf
-        regexp: '^#replication:'
-        replace: 'replication:\n  replSetName: "dstShard2"'
-      when: inventory_hostname == "keith-pcsm-destination-shard-2"
-
-#    - name: Set replSetName to configReplSet
-#      ansible.builtin.replace:
-#        path: /etc/mongod.conf
-#        regexp: '^(replication:\s*\n\s*replSetName:\s*).*'
-#        replace: '\1"configReplSet"'
-#      when: inventory_hostname in groups['psmdb']
-
-    - name: Ensure configsvr role is present on config servers
-      ansible.builtin.replace:
-        path: /etc/mongod.conf
-        regexp: '^#sharding:\s*$'
-        replace: 'sharding:\n  clusterRole: "configsvr"'
-      when: inventory_hostname == "keith-pcsm-source" or inventory_hostname == "keith-pcsm-destination"
-
-    - name: Ensure shardsrv role is present on shards
-      ansible.builtin.replace:
-        path: /etc/mongod.conf
-        regexp: '^#sharding:\s*$'
-        replace: 'sharding:\n  clusterRole: "shardsvr"'
-      when: inventory_hostname in groups['shard']
-
-    - name: Reload systemd and start pcsm service
-      service:
+    - name: Reload systemd
+      systemd:
         daemon_reload: yes
-        name: mongod.service
-        state: restarted
       when: inventory_hostname in groups['psmdb']
-
-    - name: Create a replicaset rs for Source Shard 1
-      community.mongodb.mongodb_replicaset:
-        replica_set: srcShard1
-        login_host: "{{ private_source_shard_1_ip }}"
-        members:
-          - host: "{{ private_source_shard_1_ip }}:27017"
-            priority: 1
-        validate: no
-      when: inventory_hostname == "keith-pcsm-source-shard-1"
-
-    - name: Create a replicaset rs for Source Shard 2
-      community.mongodb.mongodb_replicaset:
-        replica_set: srcShard2
-        login_host: "{{ private_source_shard_2_ip }}"
-        members:
-          - host: "{{ private_source_shard_2_ip }}:27017"
-            priority: 1
-        validate: no
-      when: inventory_hostname == "keith-pcsm-source-shard-2"
-
-    - name: Create a replicaset rs for Destination Shard 1
-      community.mongodb.mongodb_replicaset:
-        replica_set: dstShard1
-        login_host: "{{ private_destination_shard_1_ip }}"
-        members:
-          - host: "{{ private_destination_shard_1_ip }}:27017"
-            priority: 1
-        validate: no
-      when: inventory_hostname == "keith-pcsm-destination-shard-1"
-
-    - name: Create a replicaset rs for Destination Shard 1
-      community.mongodb.mongodb_replicaset:
-        replica_set: dstShard2
-        login_host: "{{ private_destination_shard_2_ip }}"
-        members:
-          - host: "{{ private_destination_shard_2_ip }}:27017"
-            priority: 1
-        validate: no
-      when: inventory_hostname == "keith-pcsm-destination-shard-2"
-
-    - name: Initiate config server replica set on source
-      community.mongodb.mongodb_shell:
-        login_host: "{{ private_source_ip }}"
-        login_port: 27017
-        eval: >
-          rs.initiate({_id: "configReplSet", configsvr: true, members: [{ _id: 0, host: "{{ private_source_ip }}:27017" }]})
-      when: inventory_hostname == "keith-pcsm-source"
-
-    - name: Initiate config server replica set on destination
-      community.mongodb.mongodb_shell:
-        login_host: "{{ private_destination_ip }}"
-        login_port: 27017
-        eval: >
-          rs.initiate({_id: "configReplSet", configsvr: true, members: [{ _id: 0, host: "{{ private_destination_ip }}:27017" }]})
-      when: inventory_hostname == "keith-pcsm-destination"
-
-    - name: Start mongos router on source
-      become: true
-      ansible.builtin.command: >
-        mongos \
-        --configdb configReplSet/pcsm-source:27017 \
-        --port 27018 \
-        --bind_ip 0.0.0.0 \
-        --logpath /var/log/mongodb/mongos.log \
-        --fork
-      when: inventory_hostname == "keith-pcsm-source"
-
-    - name: Start mongos router on destination
-      become: true
-      ansible.builtin.command: >
-        mongos \
-        --configdb configReplSet/pcsm-destination:27017 \
-        --port 27018 \
-        --bind_ip 0.0.0.0 \
-        --logpath /var/log/mongodb/mongos.log \
-        --fork
-      when: inventory_hostname == "keith-pcsm-destination"
-
-    - name: Add shard 1 srcShard1 to source cluster
-      community.mongodb.mongodb_shell:
-        login_host: "{{ private_source_ip }}"
-        login_port: 27018
-        eval: 'sh.addShard("srcShard1/{{ private_source_shard_1_ip }}:27017")'
-      when: inventory_hostname == "keith-pcsm-source"
-      
-    - name: Add shard 2 srcShard2 to source cluster
-      community.mongodb.mongodb_shell:
-        login_host: "{{ private_source_ip }}"
-        login_port: 27018
-        eval: 'sh.addShard("srcShard2/{{ private_source_shard_2_ip }}:27017")'
-      when: inventory_hostname == "keith-pcsm-source"
-
-    - name: Add shard 1 dstShard1 to destination cluster
-      community.mongodb.mongodb_shell:
-        login_host: "{{ private_destination_ip }}"
-        login_port: 27018
-        eval: 'sh.addShard("dstShard1/{{ private_destination_shard_1_ip }}:27017")'
-      when: inventory_hostname == "keith-pcsm-destination"
-
-    - name: Add shard 2 dstShard2 to destination cluster
-      community.mongodb.mongodb_shell:
-        login_host: "{{ private_destination_ip }}"
-        login_port: 27018
-        eval: 'sh.addShard("dstShard2/{{ private_destination_shard_2_ip }}:27017")'
-      when: inventory_hostname == "keith-pcsm-destination"
 
     - name: Create PCSM system unit file with optional environment variables
       copy:
@@ -313,8 +392,8 @@
           {% endfor %}
           {% endif %}
           ExecStart=/usr/local/bin/pcsm \
-            --source mongodb://{{ private_source_ip }}:27018 \
-            --target mongodb://{{ private_destination_ip }}:27018 \
+            --source mongodb://{{ private_source_ip }}:27017 \
+            --target mongodb://{{ private_destination_ip }}:27017 \
             --log-level debug \
             --log-json
           Restart=on-failure
@@ -325,14 +404,190 @@
         owner: root
         group: root
         mode: '0644'
-      when: inventory_hostname == "keith-pcsm-clustersync"
+      when: inventory_hostname == "jenkins-pcsm-clustersync"
 
     - name: Reload systemd and start pcsm service
       service:
         daemon_reload: yes
         name: pcsm.service
         state: started
-      when: inventory_hostname == "keith-pcsm-clustersync"
+      when: inventory_hostname == "jenkins-pcsm-clustersync"
 
-#    - name: Install and configure PMM Client
-#      include_tasks: ../scripts/install_pmm.yml
+    - name: Download runc binary
+      get_url:
+        url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
+        dest: /usr/local/bin/runc
+        mode: '0755'
+      when: inventory_hostname == "jenkins-pcsm-clustersync"
+
+    - name: Move runc to /usr/bin
+      copy:
+        src: /usr/local/bin/runc
+        dest: /usr/bin/runc
+        remote_src: yes
+        mode: '0755'
+        force: yes
+      when: inventory_hostname == "jenkins-pcsm-clustersync"
+
+    - name: Ensure docker group exists
+      group:
+        name: docker
+        state: present
+      when: inventory_hostname == "jenkins-pcsm-clustersync"
+
+    - name: Add user ssh-user to docker group
+      user:
+        name: "{{ ssh_user }}"
+        groups: docker
+        append: yes
+      when: inventory_hostname == "jenkins-pcsm-clustersync"
+
+    - name: Install PMM Server
+      shell: |
+        curl -fsSL https://www.percona.com/get/pmm | /bin/bash
+      args:
+        executable: /bin/bash
+      when: inventory_hostname == "jenkins-pcsm-clustersync"
+
+    - name: Enable pmm3-client repository
+      command: percona-release enable pmm3-client
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Install deps RHEL
+      yum:
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+          - pmm-client
+      when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
+
+    - name: Install pmm client Debian
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+          - pmm-client
+      when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
+
+    - name: Configure PMM on source psmdb node
+      shell: >
+        pmm-admin config --server-insecure-tls --server-url=https://admin:admin@{{ private_clustersync_ip }}:443 --force
+      register: pmm_config_result
+      until: "pmm_config_result.rc == 0"
+      retries: 3
+      delay: 5
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Check if pmmMonitor role exists
+      shell: |
+        mongo --quiet --eval 'db.getSiblingDB("admin").getRole("pmmMonitor")'
+      register: pmm_role_check
+      failed_when: false
+      changed_when: false
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Create MongoDB pmmMonitor role
+      community.mongodb.mongodb_shell:
+        eval: |
+          db.getSiblingDB("admin").createRole({
+            "role": "pmmMonitor",
+            "privileges": [
+              {
+                "resource": { "db": "", "collection": "" },
+                "actions": [ "dbHash", "find", "listIndexes", "listCollections", "collStats", "dbStats", "indexStats" ]
+              },
+              {
+                "resource": { "db": "", "collection": "system.version" },
+                "actions": [ "find" ]
+              },
+              {
+                "resource": { "db": "", "collection": "system.profile" },
+                "actions": [ "dbStats", "collStats", "indexStats" ]
+              }
+            ],
+            "roles": []
+          })
+      when: inventory_hostname in groups['psmdb'] and pmm_role_check.stdout == "null"
+
+    - name: Check if pmm user exists
+      shell: |
+        mongo --quiet --eval 'db.getSiblingDB("admin").getUser("pmm")'
+      register: pmm_user_check
+      failed_when: false
+      changed_when: false
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Create MongoDB PMM User role on psmdb >= 8
+      community.mongodb.mongodb_shell:
+        eval: |
+          db.getSiblingDB("admin").createUser({
+              "user": "pmm",
+              "pwd": "password123",
+              "roles": [
+                  { "db": "admin", "role": "pmmMonitor" },
+                  { "db": "local", "role": "read" },
+                  { "db": "admin", "role": "clusterMonitor" },
+                  { "db": "admin", "role": "directShardOperations" }
+              ]
+          })
+      when:
+        - inventory_hostname in groups['psmdb']
+        - pmm_user_check.stdout == "null"
+        - psmdb_version | int >= 8
+
+    - name: Create MongoDB PMM User role on psmdb < 8
+      community.mongodb.mongodb_shell:
+        eval: |
+          db.getSiblingDB("admin").createUser({
+              "user": "pmm",
+              "pwd": "password123",
+              "roles": [
+                  { "db": "admin", "role": "pmmMonitor" },
+                  { "db": "local", "role": "read" },
+                  { "db": "admin", "role": "clusterMonitor" }
+              ]
+          })
+      when:
+        - inventory_hostname in groups['psmdb']
+        - pmm_user_check.stdout == "null"
+        - psmdb_version | int < 8
+
+    - name: Check if MongoDB is already registered in PMM
+      shell: pmm-admin list | grep mongodb
+      register: mongodb_service_check
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Configure PMM on psmdb nodes
+      shell: >
+        pmm-admin add mongodb \
+        --username=pmm \
+        --password=password123 \
+      register: pmm_config_result
+      until: "pmm_config_result.rc == 0"
+      retries: 3
+      delay: 5
+      when:
+      - inventory_hostname in groups['psmdb']
+      - mongodb_service_check.stdout == ""
+
+    - name: Restart pmm-agent service
+      service: name=pmm-agent state=started
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Check PMM client connection to PMM server
+      shell: pmm-admin status | grep "Connected        :"
+      register: pmm_connection_check
+      changed_when: false
+      failed_when: false
+
+    - name: Check PMM Client connection to PMM server
+      debug:
+        msg: "PMM client is connected to the server."
+      when:
+      - "'Connected        : true' in pmm_connection_check.stdout"
+      - inventory_hostname in groups['psmdb']
