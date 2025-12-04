@@ -142,14 +142,17 @@ def compare_database_hashes(db1, db2, port, state):
     mismatched_dbs = []
     for db_name in db1_hashes:
         if db_name not in db2_hashes:
+            print(db_name)
             mismatched_dbs.append((db_name, "missing in dst DB"))
             print(f"Database '{db_name}' exists in source_DB but not in destination_DB")
         elif db1_hashes[db_name] != db2_hashes[db_name]:
+            print(db_name)
             mismatched_dbs.append((db_name, "hash mismatch"))
             print(f"Database '{db_name}' hash mismatch: {db1_hashes[db_name]} != {db2_hashes[db_name]}")
 
     for db_name in db2_hashes:
         if db_name not in db1_hashes:
+            print(db_name)
             mismatched_dbs.append((db_name, "missing in src DB"))
             print(f"Database '{db_name}' exists in destination_DB but not in source_DB")
 
