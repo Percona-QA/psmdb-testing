@@ -349,10 +349,10 @@ def get_indexes(db, collection_name, port, state):
     query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
     if state != "sharded":
         response = db.check_output(
-            "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
+            "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --json --eval '" + query + "' --quiet")
     else:
         response = db.check_output(
-            "mongo mongodb://127.0.0.1:27018/test --eval '" + query + "' --quiet")
+            "mongo mongodb://127.0.0.1:27018/test --json --eval '" + query + "' --quiet")
 
     try:
         indexes = json.loads(response)
