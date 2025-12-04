@@ -1,8 +1,8 @@
 import json
 
-def compare_data_rs(db1, db2, port, full_comparison, state):
+def compare_data_rs(db1, db2, port, full_comparison, is_sharded=False):
 
-    all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port, state)
+    all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port, is_sharded)
     mismatch_summary = []
 
     if mismatch_dbs_count:
@@ -11,9 +11,9 @@ def compare_data_rs(db1, db2, port, full_comparison, state):
         mismatch_summary.extend(mismatch_coll_count)
 
     if full_comparison:
-        all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port, state)
-        mismatch_metadata = compare_collection_metadata(db1, db2, port, state)
-        mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port, state)
+        all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port, is_sharded)
+        mismatch_metadata = compare_collection_metadata(db1, db2, port, is_sharded)
+        mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port, is_sharded)
 
         if mismatch_dbs_hash:
             mismatch_summary.extend(mismatch_dbs_hash)
@@ -31,8 +31,8 @@ def compare_data_rs(db1, db2, port, full_comparison, state):
     print(f"Mismatched databases, collections, or indexes found: {mismatch_summary}")
     return False, mismatch_summary
 
-def compare_database_hashes(db1, db2, port, state):
-    if state != "sharded":
+def compare_database_hashes(db1, db2, port, is_sharded):
+    if not is_sharded:
         # Original single-RS / standalone query
         query = (
             'db.getMongo().getDBNames().forEach(function(dbName) { '
@@ -84,8 +84,8 @@ def compare_database_hashes(db1, db2, port, state):
             '});'
         )
 
-    def get_db_hashes_and_collections(db, state):
-        if state != "sharded":
+    def get_db_hashes_and_collections(db, is_sharded):
+        if not is_sharded:
             response = db.check_output(
                 "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
         else:
@@ -108,7 +108,7 @@ def compare_database_hashes(db1, db2, port, state):
             db_name = db_info["db"]
             collections = db_info.get("collections", {})
 
-            if state == "sharded" and not collections:
+            if is_sharded and not collections:
                 continue
 
             db_hashes[db_name] = db_info["md5"]
@@ -119,8 +119,8 @@ def compare_database_hashes(db1, db2, port, state):
 
         return db_hashes, collection_hashes
 
-    db1_hashes, db1_collections = get_db_hashes_and_collections(db1, state)
-    db2_hashes, db2_collections = get_db_hashes_and_collections(db2, state)
+    db1_hashes, db1_collections = get_db_hashes_and_collections(db1, is_sharded)
+    db2_hashes, db2_collections = get_db_hashes_and_collections(db2, is_sharded)
 
     print("Comparing database hashes...")
     mismatched_dbs = []
@@ -157,7 +157,7 @@ def compare_database_hashes(db1, db2, port, state):
 
     return db1_collections.keys() | db2_collections.keys(), mismatched_dbs, mismatched_collections
 
-def compare_entries_number(db1, db2, port, state):
+def compare_entries_number(db1, db2, port, is_sharded):
     query = (
         'db.getMongo().getDBNames().forEach(function(i) { '
         '  if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(i)) { '
@@ -178,9 +178,9 @@ def compare_entries_number(db1, db2, port, state):
         '});'
     )
 
-    def get_collection_counts(db, state):
+    def get_collection_counts(db, is_sharded):
 
-        if state != "sharded":
+        if not is_sharded:
             response = db.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
         else:
             response = db.check_output(
@@ -198,8 +198,8 @@ def compare_entries_number(db1, db2, port, state):
 
         return collection_counts
 
-    db1_counts = get_collection_counts(db1,state)
-    db2_counts = get_collection_counts(db2, state)
+    db1_counts = get_collection_counts(db1,is_sharded)
+    db2_counts = get_collection_counts(db2, is_sharded)
 
     print("Comparing collection record counts...")
     mismatched_dbs = []
@@ -220,12 +220,12 @@ def compare_entries_number(db1, db2, port, state):
 
     return db1_counts.keys() | db2_counts.keys(), mismatched_dbs, mismatched_collections
 
-def compare_collection_metadata(db1, db2, port, state):
+def compare_collection_metadata(db1, db2, port, is_sharded):
     print("Comparing collection metadata...")
     mismatched_metadata = []
 
-    db1_metadata = get_all_collection_metadata(db1, port, state)
-    db2_metadata = get_all_collection_metadata(db2, port, state)
+    db1_metadata = get_all_collection_metadata(db1, port, is_sharded)
+    db2_metadata = get_all_collection_metadata(db2, port, is_sharded)
 
     db1_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db1_metadata}
     db2_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db2_metadata}
@@ -252,7 +252,7 @@ def compare_collection_metadata(db1, db2, port, state):
 
     return mismatched_metadata
 
-def get_all_collection_metadata(db, port, state):
+def get_all_collection_metadata(db, port, is_sharded):
     query = (
         'db.getMongo().getDBNames().forEach(function(dbName) { '
         '    if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(dbName)) { '
@@ -268,7 +268,7 @@ def get_all_collection_metadata(db, port, state):
         '});'
     )
 
-    if state != "sharded":
+    if not is_sharded:
         response = db.check_output(
             "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
     else:
@@ -285,13 +285,13 @@ def get_all_collection_metadata(db, port, state):
         print(f"Raw response: {response}")
         return []
 
-def compare_collection_indexes(db1, db2, all_collections, port, state):
+def compare_collection_indexes(db1, db2, all_collections, port, is_sharded):
     print("Comparing collection indexes...")
     mismatched_indexes = []
 
     for coll_name in all_collections:
-        db1_indexes = get_indexes(db1, coll_name, port, state)
-        db2_indexes = get_indexes(db2, coll_name, port, state)
+        db1_indexes = get_indexes(db1, coll_name, port, is_sharded)
+        db2_indexes = get_indexes(db2, coll_name, port, is_sharded)
 
         db1_index_dict = {index["name"]: index for index in db1_indexes if "name" in index}
         db2_index_dict = {index["name"]: index for index in db2_indexes if "name" in index}
@@ -328,11 +328,11 @@ def compare_collection_indexes(db1, db2, all_collections, port, state):
 
     return mismatched_indexes
 
-def get_indexes(db, collection_name, port, state):
+def get_indexes(db, collection_name, port, is_sharded):
     db_name, coll_name = collection_name.split(".", 1)
 
     query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
-    if state != "sharded":
+    if not is_sharded:
         response = db.check_output(
             "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --json --eval '" + query + "' --quiet")
     else:
