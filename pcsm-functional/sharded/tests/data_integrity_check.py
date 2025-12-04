@@ -95,19 +95,6 @@ def compare_database_hashes(db1, db2, port, state):
         db_hashes = {}
         collection_hashes = {}
 
-        # for line in response.split("\n"):
-        #     try:
-        #         db_info = json.loads(line)
-        #         db_name = db_info["db"]
-        #         db_hashes[db_name] = db_info["md5"]
-        #
-        #         for coll, coll_hash in db_info["collections"].items():
-        #             collection_hashes[f"{db_name}.{coll}"] = coll_hash
-        #     except json.JSONDecodeError:
-        #         print(f"Warning: Skipping invalid JSON line: {line}")
-        #
-        # return db_hashes, collection_hashes
-
         for line in response.split("\n"):
             line = line.strip()
             if not line:
@@ -124,12 +111,10 @@ def compare_database_hashes(db1, db2, port, state):
             if state == "sharded" and not collections:
                 continue
 
-            db_key = db_name
-
-            db_hashes[db_key] = db_info["md5"]
+            db_hashes[db_name] = db_info["md5"]
 
             for coll, coll_hash in db_info.get("collections", {}).items():
-                coll_key = f"{db_key}.{coll}"
+                coll_key = f"{db_name}.{coll}"
                 collection_hashes[coll_key] = coll_hash
 
         return db_hashes, collection_hashes
