@@ -1,4 +1,14 @@
 import json
+import os
+import sys
+
+# Add the replicaset tests directory to sys.path
+CURRENT_DIR = os.path.dirname(__file__)
+REPLICASET_TESTS = os.path.abspath(
+    os.path.join(CURRENT_DIR, "..", "..", "replicaset", "tests")
+)
+if REPLICASET_TESTS not in sys.path:
+    sys.path.insert(0, REPLICASET_TESTS)
 
 def compare_data_rs(db1, db2, port, full_comparison, state):
 

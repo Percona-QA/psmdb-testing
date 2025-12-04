@@ -3,7 +3,7 @@ import time
 import json
 from datetime import datetime
 import testinfra.utils.ansible_runner
-from pcsm_functional.common.data_integrity_check import compare_data_rs
+from data_integrity_check import compare_data_rs
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('keith-pcsm-source')
