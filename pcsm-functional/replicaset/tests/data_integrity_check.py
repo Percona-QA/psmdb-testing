@@ -1,334 +1,182 @@
+import os
+import time
 import json
+from datetime import datetime
+import testinfra.utils.ansible_runner
+from data_integrity_check import compare_data_rs
 
-def compare_data_rs(db1, db2, port, full_comparison, state):
+source = testinfra.utils.ansible_runner.AnsibleRunner(
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('keith-pcsm-source')
 
-    all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port, state)
-    mismatch_summary = []
+destination = testinfra.utils.ansible_runner.AnsibleRunner(
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('keith-pcsm-destination')
 
-    if mismatch_dbs_count:
-        mismatch_summary.extend(mismatch_dbs_count)
-    if mismatch_coll_count:
-        mismatch_summary.extend(mismatch_coll_count)
+pcsm = testinfra.utils.ansible_runner.AnsibleRunner(
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('keith-pcsm-clustersync')
 
-    if full_comparison:
-        all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port, state)
-        mismatch_metadata = compare_collection_metadata(db1, db2, port)
-        mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port)
+collections = int(os.getenv("COLLECTIONS", default = 5))
+datasize = int(os.getenv("DATASIZE", default = 100))
+distribute = os.getenv("RANDOM_DISTRIBUTE_DATA", default="false").lower() == "true"
+doc_template = os.getenv("DOC_TEMPLATE", default = 'random')
+FULL_DATA_COMPARE = os.getenv("FULL_DATA_COMPARE", default="false").lower() == "true"
+TIMEOUT = int(os.getenv("TIMEOUT",default = 3600))
 
-        if mismatch_dbs_hash:
-            mismatch_summary.extend(mismatch_dbs_hash)
-        if mismatch_coll_hash:
-            mismatch_summary.extend(mismatch_coll_hash)
-        if mismatch_metadata:
-            mismatch_summary.extend(mismatch_metadata)
-        if mismatch_indexes:
-            mismatch_summary.extend(mismatch_indexes)
+def load_data(node):
+    env_vars = f"COLLECTIONS={collections} DATASIZE={datasize} DISTRIBUTE={distribute} DOC_TEMPLATE={doc_template}"
+    node.run_test(f"{env_vars} python3 /tmp/load_data.py")
 
-    if not mismatch_summary:
-        print("Data and indexes are consistent between source and destination databases")
-        return True, []
+def obtain_pcsm_address(node):
+    ipaddress = node.check_output(
+        "ip -4 addr show scope global | grep inet | awk '{print $2}' | cut -d/ -f1 | head -n 1")
+    return ipaddress
 
-    print(f"Mismatched databases, collections, or indexes found: {mismatch_summary}")
-    return False, mismatch_summary
-
-def compare_database_hashes(db1, db2, port, state):
-    query = (
-        'db.getMongo().getDBNames().forEach(function(dbName) { '
-        '    if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(dbName)) { '
-        '        var collections = []; '
-        '        db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
-        '            if ((!coll.type || coll.type !== "view") && !(dbName === "test" && coll.name === "system.profile")) { '
-        '                collections.push(coll.name); '
-        '            } '
-        '        }); '
-        '        if (collections.length > 0) { '
-        '            var result = db.getSiblingDB(dbName).runCommand({ dbHash: 1, collections: collections }); '
-        '            print(JSON.stringify({ db: dbName, md5: result.md5, collections: result.collections })); '
-        '        } else { '
-        '            print(JSON.stringify({ db: dbName, md5: null, collections: {} })); '
-        '        } '
-        '    } '
-        '});'
-    )
-
-    def get_db_hashes_and_collections(db, state):
-        if state != "sharded":
-            response = db.check_output(
-                "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
-        else:
-            response = db.check_output(
-                "mongo mongodb://127.0.0.1:27018/test --eval " + query + " --quiet")
-
-        db_hashes = {}
-        collection_hashes = {}
-
-        for line in response.split("\n"):
-            try:
-                db_info = json.loads(line)
-                db_name = db_info["db"]
-                db_hashes[db_name] = db_info["md5"]
-
-                for coll, coll_hash in db_info["collections"].items():
-                    collection_hashes[f"{db_name}.{coll}"] = coll_hash
-            except json.JSONDecodeError:
-                print(f"Warning: Skipping invalid JSON line: {line}")
-
-        return db_hashes, collection_hashes
-
-    db1_hashes, db1_collections = get_db_hashes_and_collections(db1, state)
-    db2_hashes, db2_collections = get_db_hashes_and_collections(db2, state)
-
-    print("Comparing database hashes...")
-    mismatched_dbs = []
-    for db_name in db1_hashes:
-        if db_name not in db2_hashes:
-            mismatched_dbs.append((db_name, "missing in dst DB"))
-            print(f"Database '{db_name}' exists in source_DB but not in destination_DB")
-        elif db1_hashes[db_name] != db2_hashes[db_name]:
-            mismatched_dbs.append((db_name, "hash mismatch"))
-            print(f"Database '{db_name}' hash mismatch: {db1_hashes[db_name]} != {db2_hashes[db_name]}")
-
-    for db_name in db2_hashes:
-        if db_name not in db1_hashes:
-            mismatched_dbs.append((db_name, "missing in src DB"))
-            print(f"Database '{db_name}' exists in destination_DB but not in source_DB")
-
-    print("Comparing collection hashes...")
-    mismatched_collections = []
-    for coll_name in db1_collections:
-        if coll_name not in db2_collections:
-            mismatched_collections.append((coll_name, "missing in dst DB"))
-            print(f"Collection '{coll_name}' exists in source_DB but not in destination_DB")
-        elif db1_collections[coll_name] != db2_collections[coll_name]:
-            mismatched_collections.append((coll_name, "hash mismatch"))
-            print(f"Collection '{coll_name}' hash mismatch: {db1_collections[coll_name]} != {db2_collections[coll_name]}")
-
-    for coll_name in db2_collections:
-        if coll_name not in db1_collections:
-            mismatched_collections.append((coll_name, "missing in src DB"))
-            print(f"Collection '{coll_name}' exists in destination_DB but not in source_DB")
-
-    return db1_collections.keys() | db2_collections.keys(), mismatched_dbs, mismatched_collections
-
-def compare_entries_number(db1, db2, port, state):
-    query = (
-        'db.getMongo().getDBNames().forEach(function(i) { '
-        '  if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(i)) { '
-        '    var collections = db.getSiblingDB(i).runCommand({ listCollections: 1 }).cursor.firstBatch '
-        '      .filter(function(coll) { '
-        '        return (!coll.type || coll.type !== "view") && coll.name !== "system.profile"; '
-        '      }) '
-        '      .map(function(coll) { return coll.name; }); '
-        '    collections.forEach(function(coll) { '
-        '      if (!(i === "test" && coll === "system.profile")) { '
-        '        try { '
-        '          var count = db.getSiblingDB(i).getCollection(coll).countDocuments({}); '
-        '          print(JSON.stringify({ db: i, collection: coll, count: count })); '
-        '        } catch (err) {} '
-        '      } '
-        '    }); '
-        '  } '
-        '});'
-    )
-
-    def get_collection_counts(db):
-
-        if state != "sharded":
-            response = db.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
-        else:
-            response = db.check_output(
-                "mongo mongodb://127.0.0.1:27018/test --eval " + query + " --quiet")
-
-        collection_counts = {}
-
-        for line in response.split("\n"):
-            try:
-                count_info = json.loads(line)
-                collection_name = f"{count_info['db']}.{count_info['collection']}"
-                collection_counts[collection_name] = count_info["count"]
-            except json.JSONDecodeError:
-                print(f"Warning: Skipping invalid JSON line: {line}")
-
-        return collection_counts
-
-    db1_counts = get_collection_counts(db1)
-    db2_counts = get_collection_counts(db2)
-
-    print("Comparing collection record counts...")
-    mismatched_dbs = []
-    mismatched_collections = []
-
-    for coll_name in db1_counts:
-        if coll_name not in db2_counts:
-            mismatched_collections.append((coll_name, "missing in dst DB"))
-            print(f"Collection '{coll_name}' exists in source_DB but not in destination_DB")
-        elif db1_counts[coll_name] != db2_counts[coll_name]:
-            mismatched_collections.append((coll_name, "record count mismatch"))
-            print(f"Collection '{coll_name}' record count mismatch: {db1_counts[coll_name]} != {db2_counts[coll_name]}")
-
-    for coll_name in db2_counts:
-        if coll_name not in db1_counts:
-            mismatched_collections.append((coll_name, "missing in src DB"))
-            print(f"Collection '{coll_name}' exists in destination_DB but not in source_DB")
-
-    return db1_counts.keys() | db2_counts.keys(), mismatched_dbs, mismatched_collections
-
-def compare_collection_metadata(db1, db2, port):
-    print("Comparing collection metadata...")
-    mismatched_metadata = []
-
-    db1_metadata = get_all_collection_metadata(db1, port)
-    db2_metadata = get_all_collection_metadata(db2, port)
-
-    db1_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db1_metadata}
-    db2_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db2_metadata}
-
-    all_collections = set(db1_collections.keys()).union(set(db2_collections.keys()))
-
-    for coll_name in all_collections:
-        if coll_name not in db2_collections:
-            mismatched_metadata.append((coll_name, "missing in dst DB"))
-            print(f"Collection '{coll_name}' exists in source DB but not in destination DB")
-            continue
-
-        if coll_name not in db1_collections:
-            mismatched_metadata.append((coll_name, "missing in src DB"))
-            print(f"Collection '{coll_name}' exists in destination DB but not in source DB")
-            continue
-
-        for field in ["type", "options", "idIndex"]:
-            if db1_collections[coll_name].get(field) != db2_collections[coll_name].get(field):
-                mismatched_metadata.append((coll_name, f"{field} mismatch"))
-                print(f"Collection '{coll_name}' has different {field} in source and destination.")
-                print(f"Source DB: {json.dumps(db1_collections[coll_name].get(field), indent=2)}")
-                print(f"Destination DB: {json.dumps(db2_collections[coll_name].get(field), indent=2)}")
-
-    return mismatched_metadata
-
-def get_all_collection_metadata(db, port, state):
-    query = (
-        'db.getMongo().getDBNames().forEach(function(dbName) { '
-        '    if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(dbName)) { '
-        '        var collections = db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch '
-        '            .filter(function(coll) { '
-        '                return !(dbName === "test" && coll.name === "system.profile"); '
-        '            }) '
-        '            .map(function(coll) { '
-        '                return { db: dbName, name: coll.name, type: coll.type, options: coll.options }; '
-        '            }); '
-        '        print(JSON.stringify(collections)); '
-        '    } '
-        '});'
-    )
-
-    if state != "sharded":
-        response = db.check_output(
-            "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
-    else:
-        response = db.check_output(
-            "mongo mongodb://127.0.0.1:27018/test --eval " + query + " --quiet")
+def confirm_collection_size(node, datasize, dbname="test_db", port="27018"):
+    cmd = (
+        f'mongosh "mongodb://127.0.0.1:{port}/" --quiet --eval \'let total = 0; '
+        f'const dbname = "{dbname}"; const targetdb = db.getSiblingDB(dbname); '
+        f'targetdb.getCollectionNames().forEach(name => {{ '
+        f'let stats = targetdb.getCollection(name).stats(); '
+        f'if (stats && typeof stats.size === "number") {{ total += stats.size; }} }}); '
+        f'print((total / (1024 * 1024)).toFixed(2));\'')
 
     try:
-        metadata_list = []
-        for line in response.splitlines():
-            metadata_list.extend(json.loads(line))
-        return metadata_list
-    except json.JSONDecodeError:
-        print("Error: Unable to parse JSON collection metadata response")
-        print(f"Raw response: {response}")
-        return []
+        result = node.check_output(cmd)
+        size_mb = float(result.strip())
+        lower_bound = datasize * 0.995
+        upper_bound = datasize * 1.005
+        return lower_bound <= size_mb <= upper_bound
+    except Exception:
+        return False
 
-def compare_collection_indexes(db1, db2, all_collections, port):
-    print("Comparing collection indexes...")
-    mismatched_indexes = []
-
-    for coll_name in all_collections:
-        db1_indexes = get_indexes(db1, coll_name, port)
-        db2_indexes = get_indexes(db2, coll_name, port)
-
-        db1_index_dict = {index["name"]: index for index in db1_indexes if "name" in index}
-        db2_index_dict = {index["name"]: index for index in db2_indexes if "name" in index}
-
-        for index_name, index_details in db1_index_dict.items():
-            if index_name not in db2_index_dict:
-                mismatched_indexes.append((coll_name, index_name))
-                print(f"Collection '{coll_name}': Index '{index_name}' exists in source_DB but not in destination_DB")
-
-        for index_name in db2_index_dict.keys():
-            if index_name not in db1_index_dict:
-                mismatched_indexes.append((coll_name, index_name))
-                print(f"Collection '{coll_name}': Index '{index_name}' exists in destination_DB but not in source_DB")
-
-        for index_name in set(db1_index_dict.keys()).intersection(db2_index_dict.keys()):
-            index1 = db1_index_dict[index_name]
-            index2 = db2_index_dict[index_name]
-
-            fields_to_compare = [
-                "key", "unique", "sparse", "hidden", "storageEngine", "collation",
-                "partialFilterExpression", "expireAfterSeconds", "weights",
-                "default_language", "language_override", "textIndexVersion",
-                "2dsphereIndexVersion", "bits", "min", "max", "wildcardProjection"
-            ]
-
-            index1_filtered = {k: index1[k] for k in fields_to_compare if k in index1}
-            index2_filtered = {k: index2[k] for k in fields_to_compare if k in index2}
-
-            if index1_filtered != index2_filtered:
-                mismatched_indexes.append((coll_name, index_name))
-                print(f"Collection '{coll_name}': Index '{index_name}' differs in structure.")
-                print(f"Source_DB: {json.dumps(index1_filtered, indent=2)}")
-                print(f"Destination_DB: {json.dumps(index2_filtered, indent=2)}")
-
-    return mismatched_indexes
-
-def get_indexes(db, collection_name, port, state):
-    db_name, coll_name = collection_name.split(".", 1)
-
-    query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
-    if state != "sharded":
-        response = db.check_output(
-            "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
-    else:
-        response = db.check_output(
-            "mongo mongodb://127.0.0.1:27018/test --eval " + query + " --quiet")
-
+def pcsm_start():
     try:
-        indexes = json.loads(response)
+        output = json.loads(pcsm.check_output("curl -s -X POST http://localhost:2242/start -d '{}'"))
 
-        def normalize_key(index_key):
-            if isinstance(index_key, dict):
-                return {k: normalize_key(v) for k, v in index_key.items()}
-            elif isinstance(index_key, list):
-                return [normalize_key(v) for v in index_key]
-            elif isinstance(index_key, dict) and "$numberInt" in index_key:
-                return int(index_key["$numberInt"])
-            return index_key
+        if output:
+            try:
+                if output.get("ok") is True or output.get("error") == "already running":
+                    print("Sync started successfully")
+                    return True
 
-        return sorted([
-            {
-                "name": index.get("name"),
-                "key": normalize_key(index.get("key")),
-                "unique": index.get("unique", False),
-                "sparse": index.get("sparse", False),
-                "hidden": index.get("hidden", False),
-                "storageEngine": index.get("storageEngine"),
-                "collation": index.get("collation"),
-                "partialFilterExpression": index.get("partialFilterExpression"),
-                "expireAfterSeconds": index.get("expireAfterSeconds"),
-                "weights": index.get("weights"),
-                "default_language": index.get("default_language"),
-                "language_override": index.get("language_override"),
-                "textIndexVersion": index.get("textIndexVersion"),
-                "2dsphereIndexVersion": index.get("2dsphereIndexVersion"),
-                "bits": index.get("bits"),
-                "min": index.get("min"),
-                "max": index.get("max"),
-                "wildcardProjection": index.get("wildcardProjection"),
-            }
-            for index in indexes if "key" in index and "name" in index
-        ], key=lambda x: x["name"])
+                elif output.get("ok") is False and output.get("error") != "already running":
+                    error_msg = output.get("error", "Unknown error")
+                    print(f"Failed to start sync between src and dst cluster: {error_msg}")
+                    return False
 
-    except json.JSONDecodeError:
-        print(f"Error: Unable to parse JSON index response for {collection_name}")
-        print(f"Raw response: {response}")
-        return []
+            except json.JSONDecodeError:
+                print("Received invalid JSON response.")
+
+        print("Failed to start sync between src and dst cluster")
+        return False
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return False
+
+def pcsm_finalize():
+    try:
+        output = json.loads(pcsm.check_output("curl -s -X POST http://localhost:2242/finalize -d '{}'"))
+
+        if output:
+            try:
+                print(output)
+                if output.get("ok") is True:
+                    print("Sync finalized successfully")
+                    return True
+
+                elif output.get("ok") is False:
+                    error_msg = output.get("error", "Unknown error")
+                    print(f"Failed to finalize sync between src and dst cluster: {error_msg}")
+                    return False
+
+            except json.JSONDecodeError:
+                print("Received invalid JSON response.")
+
+        print("Failed to finalize sync between src and dst cluster")
+        return False
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return False
+
+def status(timeout=45):
+    try:
+        output = pcsm.check_output(f"curl -m {timeout} -s -X GET http://localhost:2242/status -d '{{}}'")
+        json_output = json.loads(output)
+        print(output)
+
+        if not json_output.get("ok", False):
+            return {"success": False, "error": "csync status command returned ok: false"}
+
+        try:
+            cleaned_output = json.loads(output.replace("\n", "").replace("\r", "").strip())
+            return {"success": True, "data": cleaned_output}
+        except json.JSONDecodeError:
+            return {"success": False, "error": "Invalid JSON response"}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def wait_for_repl_stage(timeout=3600, interval=1, stable_duration=2):
+    start_time = time.time()
+
+    while time.time() - start_time < timeout:
+        status_response = status()
+
+        if not status_response["success"]:
+            print(f"Error: Impossible to retrieve status, {status_response['error']}")
+            return False
+
+        initial_sync = status_response["data"].get("initialSync")
+        if initial_sync is None:
+            time.sleep(interval)
+            continue
+        if "completed" not in initial_sync:
+            time.sleep(interval)
+            continue
+        if initial_sync["completed"]:
+            stable_start = time.time()
+            while time.time() - stable_start < stable_duration:
+                stable_status = status()
+                if not stable_status["success"]:
+                    print(f"Error: Impossible to retrieve status, {stable_status['error']}")
+                    return False
+
+                state = stable_status["data"].get("state")
+                if state != "running":
+                    return False
+                time.sleep(0.5)
+            elapsed = round(time.time() - start_time, 2)
+            print(f"Initial sync completed in {elapsed} seconds")
+            return True
+        time.sleep(interval)
+
+    print("Error: Timeout reached while waiting for initial sync to complete")
+    return False
+
+def log_step(message):
+    print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}")
+
+def test_prepare_data():
+    log_step("Starting data generation on source node...")
+    load_data(source)
+    log_step("Data generation completed. Validating size...")
+    assert confirm_collection_size(source, datasize)
+    log_step("Source data size confirmed")
+
+def test_data_transfer_PML_T40():
+    log_step("Starting PCSM sync...")
+    assert pcsm_start()
+    log_step("Waiting for replication to complete...")
+    assert wait_for_repl_stage(TIMEOUT)
+    log_step("Finalizing sync...")
+    assert pcsm_finalize()
+    log_step("PCSM sync completed successfully")
+
+def test_datasize_PML_T41():
+    log_step("Validating destination data size...")
+    assert confirm_collection_size(destination, datasize)
+    log_step("Destination data size confirmed")
+
+def test_data_integrity_PML_T42():
+    log_step("Comparing data integrity between source and destination...")
+    assert compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE, "sharded")
+    log_step("Data integrity check completed successfully")
