@@ -95,7 +95,7 @@
         ],
         "roles": []
       })
-  when: inventory_hostname in ['keith-pcsm-source', 'keith-pcsm-destination']
+  when: inventory_hostname in groups['psmdb']
 
 - name: Check if pmm user exists
   shell: |
@@ -119,7 +119,7 @@
           ]
       })
   when:
-    - inventory_hostname in ['keith-pcsm-source', 'keith-pcsm-destination']
+    - inventory_hostname in groups['psmdb']
     - pmm_user_check.stdout == "null"
     - psmdb_version | int >= 8
 
