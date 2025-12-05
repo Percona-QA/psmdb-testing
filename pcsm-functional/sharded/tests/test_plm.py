@@ -1,8 +1,10 @@
 import os
+import sys
 import time
 import json
 from datetime import datetime
 import testinfra.utils.ansible_runner
+
 from data_integrity_check import compare_data_rs
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -178,5 +180,5 @@ def test_datasize_PML_T41():
 
 def test_data_integrity_PML_T42():
     log_step("Comparing data integrity between source and destination...")
-    assert compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE, True)
+    assert compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE, is_sharded=True)
     log_step("Data integrity check completed successfully")
