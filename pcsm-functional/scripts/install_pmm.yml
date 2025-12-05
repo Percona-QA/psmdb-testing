@@ -72,7 +72,7 @@
   register: pmm_role_check
   failed_when: false
   changed_when: false
-  when: inventory_hostname in groups['psmdb']
+  when: inventory_hostname in ['keith-pcsm-source', 'keith-pcsm-destination']
 
 - name: Create MongoDB pmmMonitor role
   community.mongodb.mongodb_shell:
@@ -95,7 +95,7 @@
         ],
         "roles": []
       })
-  when: inventory_hostname in groups['psmdb'] and pmm_role_check.stdout == "null"
+  when: inventory_hostname in ['keith-pcsm-source', 'keith-pcsm-destination']
 
 - name: Check if pmm user exists
   shell: |
@@ -103,7 +103,7 @@
   register: pmm_user_check
   failed_when: false
   changed_when: false
-  when: inventory_hostname in groups['psmdb']
+  when: inventory_hostname in ['keith-pcsm-source', 'keith-pcsm-destination']
 
 - name: Create MongoDB PMM User role on psmdb >= 8
   community.mongodb.mongodb_shell:
@@ -119,7 +119,7 @@
           ]
       })
   when:
-    - inventory_hostname in groups['psmdb']
+    - inventory_hostname in ['keith-pcsm-source', 'keith-pcsm-destination']
     - pmm_user_check.stdout == "null"
     - psmdb_version | int >= 8
 
@@ -136,7 +136,7 @@
           ]
       })
   when:
-    - inventory_hostname in groups['psmdb']
+    - inventory_hostname in ['keith-pcsm-source', 'keith-pcsm-destination']
     - pmm_user_check.stdout == "null"
     - psmdb_version | int < 8
 
@@ -159,6 +159,40 @@
   when:
   - inventory_hostname in groups['psmdb']
   - mongodb_service_check.stdout == ""
+
+- name: Configure PMM on mongos for source cluster
+  shell: >
+    pmm-admin add mongodb
+    --username=pmm
+    --password=password123
+    --host=127.0.0.1
+    --port=27018
+    --cluster=pcsm-source-sharded
+    --service-name=pcsm-source-mongos
+  register: pmm_mongos_source_result
+  until: "pmm_mongos_source_result.rc == 0"
+  retries: 3
+  delay: 5
+  when:
+    - inventory_hostname == 'keith-pcsm-source'
+    - mongodb_service_check.stdout == ""
+
+- name: Configure PMM on mongos for destination cluster
+  shell: >
+    pmm-admin add mongodb
+    --username=pmm
+    --password=password123
+    --host=127.0.0.1
+    --port=27018
+    --cluster=pcsm-destination-sharded
+    --service-name=pcsm-destination-mongos
+  register: pmm_mongos_dest_result
+  until: "pmm_mongos_dest_result.rc == 0"
+  retries: 3
+  delay: 5
+  when:
+    - inventory_hostname == 'keith-pcsm-destination'
+    - mongodb_service_check.stdout == ""
 
 - name: Restart pmm-agent service
   service: name=pmm-agent state=started

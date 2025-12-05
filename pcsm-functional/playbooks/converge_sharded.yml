@@ -295,5 +295,5 @@
         state: started
       when: inventory_hostname == "keith-pcsm-clustersync"
 
-#    - name: Install and configure PMM Client
-#      include_tasks: ../scripts/install_pmm.yml
+    - name: Install and configure PMM Client
+      include_tasks: ../scripts/install_pmm.yml
