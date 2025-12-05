@@ -226,6 +226,8 @@
       shell: docker exec pmm-server supervisorctl status
       register: pmm_supervisor_status
       changed_when: false
+      failed_when: false
+      when: inventory_hostname == "keith-pcsm-clustersync"
 
   when: inventory_hostname == "keith-pcsm-clustersync"
   tags: [pmm_debug]
