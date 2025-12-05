@@ -210,3 +210,43 @@
   when:
   - "'Connected        : true' in pmm_connection_check.stdout"
   - inventory_hostname in groups['psmdb']
+
+- block:
+    - name: Show docker ps on clustersync
+      shell: docker ps -a | grep pmm || true
+      register: pmm_docker_ps
+      changed_when: false
+
+    - name: Show PMM server health logs (last 200 lines)
+      shell: docker logs pmm-server | tail -n 200
+      register: pmm_docker_logs
+      changed_when: false
+
+    - name: Show supervisor status inside PMM container
+      shell: docker exec pmm-server supervisorctl status
+      register: pmm_supervisor_status
+      changed_when: false
+
+  when: inventory_hostname == "keith-pcsm-clustersync"
+  tags: [pmm_debug]
+
+- name: Debug: PMM docker ps
+  debug:
+    var: pmm_docker_ps.stdout
+  when:
+    - inventory_hostname == "keith-pcsm-clustersync"
+    - pmm_docker_ps is defined
+
+- name: Debug: PMM docker logs
+  debug:
+    var: pmm_docker_logs.stdout
+  when:
+    - inventory_hostname == "keith-pcsm-clustersync"
+    - pmm_docker_logs is defined
+
+- name: Debug: PMM supervisor status
+  debug:
+    var: pmm_supervisor_status.stdout
+  when:
+    - inventory_hostname == "keith-pcsm-clustersync"
+    - pmm_supervisor_status is defined
