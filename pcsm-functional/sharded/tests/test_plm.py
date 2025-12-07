@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 import json
 from datetime import datetime
@@ -25,7 +24,7 @@ TIMEOUT = int(os.getenv("TIMEOUT",default = 3600))
 
 def load_data(node):
     env_vars = f"COLLECTIONS={collections} DATASIZE={datasize} DISTRIBUTE={distribute} DOC_TEMPLATE={doc_template}"
-    node.run_test(f"{env_vars} python3 /tmp/load_data.py")
+    node.run_test(f"{env_vars} python3 /tmp/load_data.py --port 27018")
 
 def obtain_pcsm_address(node):
     ipaddress = node.check_output(
