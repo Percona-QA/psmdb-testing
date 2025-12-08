@@ -21,7 +21,7 @@ jobs:
           mode: create
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
-          server_type: cx22
+          server_type: cx53
           location: nbg1
           image: rocky-9
           ssh_key: 104308869
@@ -31,9 +31,25 @@ jobs:
     needs: create-runner
     runs-on: ${{ needs.create-runner.outputs.label }}
     steps:
-      - name: Sleep for 5 min
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Compile unittests
         run: |
-          sleep 300
+          curl -o Dockerfile https://raw.githubusercontent.com/Percona-QA/psmdb-testing/refs/heads/main/regression-tests/build_image/Dockerfile_gcc_from_scratch
+          DOCKER_BUILDKIT=1 docker build . --target unittests -t unittests --build-arg branch=master --build-arg psm_ver=8.2 --build-arg psm_release=1 --build-arg OS=oraclelinux:9
+          docker run -v `pwd`/test_results:/work -w /work --rm -i unittests bash -c 'rm -rf *'
+          docker run -v `pwd`/test_results:/work --rm unittests bash -c "python buildscripts/resmoke.py run --suite unittests --reportFile=/work/resmoke_unittests_s.json > /work/resmoke_unittests_s.log 2>&1" || true
+          docker run -v `pwd`/test_results:/work -w /work --rm unittests bash -c 'python /opt/percona-server-mongodb/resmoke2junit.py'
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: success() || failure()
+        with:
+          report_paths: '**/junit.xml'
+          include_passed: True
+          detailed_summary: True
+          include_time_in_summary: True
 
   delete-runner:
     name: Delete Hetzner Cloud runner
