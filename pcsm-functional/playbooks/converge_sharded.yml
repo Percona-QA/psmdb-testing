@@ -238,7 +238,7 @@
         --configdb configReplSet/pcsm-source:27017 \
         --port 27018 \
         --bind_ip 0.0.0.0 \
-        --logpath /var/log/mongod/mongos.log \
+        --logpath /var/log/mongo/mongos.log \
         --fork
       when: inventory_hostname == "keith-pcsm-source" and ansible_os_family == "RedHat"
 
@@ -249,7 +249,7 @@
         --configdb configReplSet/pcsm-destination:27017 \
         --port 27018 \
         --bind_ip 0.0.0.0 \
-        --logpath /var/log/mongod/mongos.log \
+        --logpath /var/log/mongo/mongos.log \
         --fork
       when: inventory_hostname == "keith-pcsm-destination" and ansible_os_family == "RedHat"
 
