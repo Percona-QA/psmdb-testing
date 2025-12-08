@@ -1,10 +1,3 @@
-- name: Install PMM Server
-  shell: |
-    curl -fsSL https://www.percona.com/get/pmm | /bin/bash
-  args:
-    executable: /bin/bash
-  when: inventory_hostname == "keith-pcsm-clustersync"
-
 - name: Download runc binary
   get_url:
     url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
@@ -34,6 +27,13 @@
     append: yes
   when: inventory_hostname == "keith-pcsm-clustersync"
 
+- name: Install PMM Server
+  shell: |
+    curl -fsSL https://www.percona.com/get/pmm | /bin/bash
+  args:
+    executable: /bin/bash
+  when: inventory_hostname == "keith-pcsm-clustersync"
+
 - name: Enable pmm3-client repository
   command: percona-release enable pmm3-client
   when: inventory_hostname in groups['psmdb']
@@ -47,7 +47,7 @@
       - pmm-client
   when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
 
-- name: Install pmm client Debian
+- name: Install pmm client (Debian)
   apt:
     name: "{{ packages }}"
     state: present
