@@ -218,7 +218,7 @@
         --bind_ip 0.0.0.0 \
         --logpath /var/log/mongodb/mongos.log \
         --fork
-      when: inventory_hostname == "keith-pcsm-source"
+      when: inventory_hostname == "keith-pcsm-source" and ansible_os_family == "Debian"
 
     - name: Start mongos router on destination
       become: true
@@ -229,7 +229,29 @@
         --bind_ip 0.0.0.0 \
         --logpath /var/log/mongodb/mongos.log \
         --fork
-      when: inventory_hostname == "keith-pcsm-destination"
+      when: inventory_hostname == "keith-pcsm-destination" and ansible_os_family == "Debian"
+
+    - name: Start mongos router on source
+      become: true
+      ansible.builtin.command: >
+        mongos \
+        --configdb configReplSet/pcsm-source:27017 \
+        --port 27018 \
+        --bind_ip 0.0.0.0 \
+        --logpath /var/log/mongod/mongos.log \
+        --fork
+      when: inventory_hostname == "keith-pcsm-source" and ansible_os_family == "RedHat"
+
+    - name: Start mongos router on destination
+      become: true
+      ansible.builtin.command: >
+        mongos \
+        --configdb configReplSet/pcsm-destination:27017 \
+        --port 27018 \
+        --bind_ip 0.0.0.0 \
+        --logpath /var/log/mongod/mongos.log \
+        --fork
+      when: inventory_hostname == "keith-pcsm-destination" and ansible_os_family == "RedHat"
 
     - name: Add shard 1 srcShard1 to source cluster
       community.mongodb.mongodb_shell:
