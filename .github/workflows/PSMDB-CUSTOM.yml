@@ -54,6 +54,8 @@ jobs:
         uses: docker/setup-docker-action@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
       - name: Compile unittests for branch ${{ env.PSMDB_BRANCH }} on ${{ env.PSMDB_OS }}
         run: |
           curl -o Dockerfile https://raw.githubusercontent.com/Percona-QA/psmdb-testing/refs/heads/main/regression-tests/build_image/Dockerfile_gcc_from_scratch
@@ -65,7 +67,6 @@ jobs:
           docker run -v `pwd`/test_results:/work -w /work --rm unittests bash -c 'python /opt/percona-server-mongodb/resmoke2junit.py'
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5
-        if: success() || failure()
         with:
           report_paths: '**/junit.xml'
           include_passed: True
