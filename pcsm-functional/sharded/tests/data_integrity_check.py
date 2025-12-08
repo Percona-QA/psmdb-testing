@@ -1,8 +1,8 @@
 import json
 
-def compare_data_rs(db1, db2, port, full_comparison, is_sharded=False):
+def compare_data_rs(db1, db2, port, full_comparison):
 
-    all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port, is_sharded)
+    all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port)
     mismatch_summary = []
 
     if mismatch_dbs_count:
@@ -11,9 +11,9 @@ def compare_data_rs(db1, db2, port, full_comparison, is_sharded=False):
         mismatch_summary.extend(mismatch_coll_count)
 
     if full_comparison:
-        all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port, is_sharded)
-        mismatch_metadata = compare_collection_metadata(db1, db2, port, is_sharded)
-        mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port, is_sharded)
+        all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port)
+        mismatch_metadata = compare_collection_metadata(db1, db2, port)
+        mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port)
 
         if mismatch_dbs_hash:
             mismatch_summary.extend(mismatch_dbs_hash)
@@ -31,66 +31,40 @@ def compare_data_rs(db1, db2, port, full_comparison, is_sharded=False):
     print(f"Mismatched databases, collections, or indexes found: {mismatch_summary}")
     return False, mismatch_summary
 
-def compare_database_hashes(db1, db2, port, is_sharded):
-    if not is_sharded:
-        # Original single-RS / standalone query
-        query = (
-            'db.getMongo().getDBNames().forEach(function(dbName) { '
-            '    if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(dbName)) { '
-            '        var collections = []; '
-            '        db.getSiblingDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
-            '            if ((!coll.type || coll.type !== "view") && !(dbName === "test" && coll.name === "system.profile")) { '
-            '                collections.push(coll.name); '
-            '            } '
-            '        }); '
-            '        if (collections.length > 0) { '
-            '            var result = db.getSiblingDB(dbName).runCommand({ dbHash: 1, collections: collections }); '
-            '            print(JSON.stringify({ db: dbName, md5: result.md5, collections: result.collections })); '
-            '        } else { '
-            '            print(JSON.stringify({ db: dbName, md5: null, collections: {} })); '
-            '        } '
-            '    } '
-            '});'
-        )
-    else:
-        # Sharded query (Option A) – run via mongos, but dbHash per shard
-        query = (
-            'var ignoredDbs = ["admin", "local", "config", "percona_clustersync_mongodb"]; '
-            'var conn = db.getMongo(); '
-            'var configDb = conn.getDB("config"); '
-            'var shards = configDb.shards.find().toArray(); '
-            'conn.getDBNames().forEach(function(dbName) { '
-            '  if (ignoredDbs.includes(dbName)) { return; } '
-            '  var collections = []; '
-            '  conn.getDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
-            '    if ((!coll.type || coll.type !== "view") && !(dbName === "test" && coll.name === "system.profile")) { '
-            '      collections.push(coll.name); '
-            '    } '
-            '  }); '
-            '  shards.forEach(function(shardDoc) { '
-            '    var shardName = shardDoc._id; '
-            '    var shardHost = shardDoc.host; '
-            '    var seed = shardHost.indexOf("/") !== -1 ? shardHost.split("/")[1] : shardHost; '
-            '    var firstMember = seed.split(",")[0]; '
-            '    try { '
-            '      var shardConn = new Mongo(firstMember); '
-            '      var shardDb = shardConn.getDB(dbName); '
-            '      var result = shardDb.runCommand({ dbHash: 1, collections: collections }); '
-            '      print(JSON.stringify({ db: dbName, shard: shardName, md5: result.md5, collections: result.collections })); '
-            '    } catch (err) { '
-            '      print(JSON.stringify({ db: dbName, shard: shardDoc._id, md5: null, collections: {} })); '
-            '    } '
-            '  }); '
-            '});'
-        )
+def compare_database_hashes(db1, db2, port):
+    query = (
+        'var ignoredDbs = ["admin", "local", "config", "percona_clustersync_mongodb"]; '
+        'var conn = db.getMongo(); '
+        'var configDb = conn.getDB("config"); '
+        'var shards = configDb.shards.find().toArray(); '
+        'conn.getDBNames().forEach(function(dbName) { '
+        '  if (ignoredDbs.includes(dbName)) { return; } '
+        '  var collections = []; '
+        '  conn.getDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
+        '    if ((!coll.type || coll.type !== "view") && !(dbName === "test" && coll.name === "system.profile")) { '
+        '      collections.push(coll.name); '
+        '    } '
+        '  }); '
+        '  shards.forEach(function(shardDoc) { '
+        '    var shardName = shardDoc._id; '
+        '    var shardHost = shardDoc.host; '
+        '    var seed = shardHost.indexOf("/") !== -1 ? shardHost.split("/")[1] : shardHost; '
+        '    var firstMember = seed.split(",")[0]; '
+        '    try { '
+        '      var shardConn = new Mongo(firstMember); '
+        '      var shardDb = shardConn.getDB(dbName); '
+        '      var result = shardDb.runCommand({ dbHash: 1, collections: collections }); '
+        '      print(JSON.stringify({ db: dbName, shard: shardName, md5: result.md5, collections: result.collections })); '
+        '    } catch (err) { '
+        '      print(JSON.stringify({ db: dbName, shard: shardDoc._id, md5: null, collections: {} })); '
+        '    } '
+        '  }); '
+        '});'
+    )
 
-    def get_db_hashes_and_collections(db, is_sharded):
-        if not is_sharded:
-            response = db.check_output(
-                "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
-        else:
-            response = db.check_output(
-                "mongo mongodb://127.0.0.1:27018/test --eval '" + query + "' --quiet")
+    def get_db_hashes_and_collections(db):
+        response = db.check_output(
+            f"mongo mongodb://127.0.0.1:{port}/test --eval '{query}' --quiet")
 
         db_hashes = {}
         collection_hashes = {}
@@ -108,7 +82,7 @@ def compare_database_hashes(db1, db2, port, is_sharded):
             db_name = db_info["db"]
             collections = db_info.get("collections", {})
 
-            if is_sharded and not collections:
+            if not collections:
                 continue
 
             db_hashes[db_name] = db_info["md5"]
@@ -119,8 +93,8 @@ def compare_database_hashes(db1, db2, port, is_sharded):
 
         return db_hashes, collection_hashes
 
-    db1_hashes, db1_collections = get_db_hashes_and_collections(db1, is_sharded)
-    db2_hashes, db2_collections = get_db_hashes_and_collections(db2, is_sharded)
+    db1_hashes, db1_collections = get_db_hashes_and_collections(db1)
+    db2_hashes, db2_collections = get_db_hashes_and_collections(db2)
 
     print("Comparing database hashes...")
     mismatched_dbs = []
@@ -157,7 +131,7 @@ def compare_database_hashes(db1, db2, port, is_sharded):
 
     return db1_collections.keys() | db2_collections.keys(), mismatched_dbs, mismatched_collections
 
-def compare_entries_number(db1, db2, port, is_sharded):
+def compare_entries_number(db1, db2, port):
     query = (
         'db.getMongo().getDBNames().forEach(function(i) { '
         '  if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(i)) { '
@@ -178,13 +152,9 @@ def compare_entries_number(db1, db2, port, is_sharded):
         '});'
     )
 
-    def get_collection_counts(db, is_sharded):
-
-        if not is_sharded:
-            response = db.check_output("mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
-        else:
-            response = db.check_output(
-                "mongo mongodb://127.0.0.1:27018/test --eval '" + query + "' --quiet")
+    def get_collection_counts(db):
+        response = db.check_output(
+            f"mongo mongodb://127.0.0.1:{port}/test --eval '{query}' --quiet")
 
         collection_counts = {}
 
@@ -198,8 +168,8 @@ def compare_entries_number(db1, db2, port, is_sharded):
 
         return collection_counts
 
-    db1_counts = get_collection_counts(db1,is_sharded)
-    db2_counts = get_collection_counts(db2, is_sharded)
+    db1_counts = get_collection_counts(db1)
+    db2_counts = get_collection_counts(db2)
 
     print("Comparing collection record counts...")
     mismatched_dbs = []
@@ -220,12 +190,12 @@ def compare_entries_number(db1, db2, port, is_sharded):
 
     return db1_counts.keys() | db2_counts.keys(), mismatched_dbs, mismatched_collections
 
-def compare_collection_metadata(db1, db2, port, is_sharded):
+def compare_collection_metadata(db1, db2, port):
     print("Comparing collection metadata...")
     mismatched_metadata = []
 
-    db1_metadata = get_all_collection_metadata(db1, port, is_sharded)
-    db2_metadata = get_all_collection_metadata(db2, port, is_sharded)
+    db1_metadata = get_all_collection_metadata(db1, port)
+    db2_metadata = get_all_collection_metadata(db2, port)
 
     db1_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db1_metadata}
     db2_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db2_metadata}
@@ -252,7 +222,7 @@ def compare_collection_metadata(db1, db2, port, is_sharded):
 
     return mismatched_metadata
 
-def get_all_collection_metadata(db, port, is_sharded):
+def get_all_collection_metadata(db, port):
     query = (
         'db.getMongo().getDBNames().forEach(function(dbName) { '
         '    if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(dbName)) { '
@@ -268,12 +238,8 @@ def get_all_collection_metadata(db, port, is_sharded):
         '});'
     )
 
-    if not is_sharded:
-        response = db.check_output(
-            "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --eval '" + query + "' --quiet")
-    else:
-        response = db.check_output(
-            "mongo mongodb://127.0.0.1:27018/test --eval '" + query + "' --quiet")
+    response = db.check_output(
+        f"mongo mongodb://127.0.0.1:{port}/test --eval '{query}' --quiet")
 
     try:
         metadata_list = []
@@ -285,13 +251,13 @@ def get_all_collection_metadata(db, port, is_sharded):
         print(f"Raw response: {response}")
         return []
 
-def compare_collection_indexes(db1, db2, all_collections, port, is_sharded):
+def compare_collection_indexes(db1, db2, all_collections, port):
     print("Comparing collection indexes...")
     mismatched_indexes = []
 
     for coll_name in all_collections:
-        db1_indexes = get_indexes(db1, coll_name, port, is_sharded)
-        db2_indexes = get_indexes(db2, coll_name, port, is_sharded)
+        db1_indexes = get_indexes(db1, coll_name, port)
+        db2_indexes = get_indexes(db2, coll_name, port)
 
         db1_index_dict = {index["name"]: index for index in db1_indexes if "name" in index}
         db2_index_dict = {index["name"]: index for index in db2_indexes if "name" in index}
@@ -328,16 +294,12 @@ def compare_collection_indexes(db1, db2, all_collections, port, is_sharded):
 
     return mismatched_indexes
 
-def get_indexes(db, collection_name, port, is_sharded):
+def get_indexes(db, collection_name, port):
     db_name, coll_name = collection_name.split(".", 1)
 
     query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
-    if not is_sharded:
-        response = db.check_output(
-            "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --json --eval '" + query + "' --quiet")
-    else:
-        response = db.check_output(
-            "mongo mongodb://127.0.0.1:27018/test --json --eval '" + query + "' --quiet")
+    response = db.check_output(
+        f"mongo mongodb://127.0.0.1:{port}/test --eval '{query}' --quiet")
 
     try:
         indexes = json.loads(response)
