@@ -163,7 +163,7 @@ def test_prepare_data():
     assert confirm_collection_size(source, datasize)
     log_step("Source data size confirmed")
 
-def test_data_transfer_PML_T40():
+def test_data_transfer_PML_T60():
     log_step("Starting PCSM sync...")
     assert pcsm_start()
     log_step("Waiting for replication to complete...")
@@ -172,12 +172,12 @@ def test_data_transfer_PML_T40():
     assert pcsm_finalize()
     log_step("PCSM sync completed successfully")
 
-def test_datasize_PML_T41():
+def test_datasize_PML_T61():
     log_step("Validating destination data size...")
     assert confirm_collection_size(destination, datasize)
     log_step("Destination data size confirmed")
 
-def test_data_integrity_PML_T42():
+def test_data_integrity_PML_T62():
     log_step("Comparing data integrity between source and destination...")
     assert compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE, is_sharded=True)
     log_step("Data integrity check completed successfully")
