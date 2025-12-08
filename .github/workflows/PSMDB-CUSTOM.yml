@@ -45,10 +45,10 @@ jobs:
     needs: create-runner
     runs-on: ${{ needs.create-runner.outputs.label }}
     env:
-      PSMDB_BRANCH: ${{ github.event.inputs.psmdb_branch || 'master' }}
-      PSMDB_VERSION: ${{ github.event.inputs.psmdb_version || '8.2.0' }}
+      PSMDB_BRANCH: ${{ github.event.inputs.psmdb_branch || 'v8.0' }}
+      PSMDB_VERSION: ${{ github.event.inputs.psmdb_version || '8.0.0' }}
       PSMDB_RELEASE: ${{ github.event.inputs.psmdb_release || '1' }}
-      PSMDB_OS: ${{ github.event.inputs.test || 'oraclelinux:9' }}
+      PSMDB_OS: ${{ github.event.inputs.test || 'ubuntu:24.04' }}
     steps:
       - name: Create and enable swap file
         run: |
