@@ -148,7 +148,7 @@
 
 - name: Copy load_data.py to /tmp
   copy:
-    src: ../scripts/load_data_sharded.py
+    src: ../scripts/load_data.py
     dest: /tmp/load_data.py
     mode: '0755'
 

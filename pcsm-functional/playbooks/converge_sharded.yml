@@ -296,4 +296,4 @@
       when: inventory_hostname == "keith-pcsm-clustersync"
 
     - name: Install and configure PMM Client
-      include_tasks: ../scripts/install_pmm.yml
+      include_tasks: ../scripts/install_pmm_sharded.yml
