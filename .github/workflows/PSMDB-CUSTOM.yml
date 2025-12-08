@@ -2,6 +2,20 @@ name: PSMDB-CUSTOM
 
 on:
   workflow_dispatch:
+    inputs:
+      psmdb_branch:
+        description: "psmdb branch"
+        required: false
+      psmdb_version:
+        description: "psmdb version"
+        required: false
+      psmdb_release:
+        description: "psmdb_release"
+        required: false
+      psmdb_os:
+        description: "base docker image"
+        required: false
+
   pull_request:
     branches:
       - main
@@ -30,15 +44,22 @@ jobs:
     name: Do the job on the runner
     needs: create-runner
     runs-on: ${{ needs.create-runner.outputs.label }}
+    env:
+      PSMDB_BRANCH: ${{ github.event.inputs.psmdb_branch || 'v8.0' }}
+      PSMDB_VERSION: ${{ github.event.inputs.psmdb_version || '8.0.0' }}
+      PSMDB_RELEASE: ${{ github.event.inputs.psmdb_release || '1' }}
+      PSMDB_OS: ${{ github.event.inputs.test || 'oraclelinux:9' }}
     steps:
       - name: Set up Docker
         uses: docker/setup-docker-action@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Compile unittests
+      - name: Compile unittests for branch ${{ env.PSMDB_BRANCH }} on ${{ env.PSMDB_OS }}
         run: |
           curl -o Dockerfile https://raw.githubusercontent.com/Percona-QA/psmdb-testing/refs/heads/main/regression-tests/build_image/Dockerfile_gcc_from_scratch
-          DOCKER_BUILDKIT=1 docker build . --network host --target unittests -t unittests --build-arg branch=master --build-arg psm_ver=8.2.0 --build-arg psm_release=1 --build-arg OS=oraclelinux:9
+          DOCKER_BUILDKIT=1 docker build . --network host --target unittests -t unittests --build-arg branch=${{ env.PSMDB_BRANCH }} --build-arg psm_ver=${{ env.PSMDB_VERSION }} --build-arg psm_release=${{ env.PSMDB_RELEASE }} --build-arg OS=${{ env.PSMDB_OS }}
+      - name: Execute unittests for branch ${{ env.PSMDB_BRANCH }} on ${{ env.PSMDB_OS }}
+        run: |
           docker run -v `pwd`/test_results:/work -w /work --rm -i unittests bash -c 'rm -rf *'
           docker run -v `pwd`/test_results:/work --rm unittests bash -c "python buildscripts/resmoke.py run --suite unittests --reportFile=/work/resmoke_unittests_s.json > /work/resmoke_unittests_s.log 2>&1" || true
           docker run -v `pwd`/test_results:/work -w /work --rm unittests bash -c 'python /opt/percona-server-mongodb/resmoke2junit.py'
@@ -50,6 +71,11 @@ jobs:
           include_passed: True
           detailed_summary: True
           include_time_in_summary: True
+      - name: Upload logs as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unittests_logs
+          path: test_results/
 
   delete-runner:
     name: Delete Hetzner Cloud runner
