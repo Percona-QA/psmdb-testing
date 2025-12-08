@@ -50,6 +50,12 @@ jobs:
       PSMDB_RELEASE: ${{ github.event.inputs.psmdb_release || '1' }}
       PSMDB_OS: ${{ github.event.inputs.test || 'oraclelinux:9' }}
     steps:
+      - name: Create and enable swap file
+        run: |
+          sudo fallocate -l 32G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
       - name: Set up Docker
         uses: docker/setup-docker-action@v4
       - name: Set up Docker Buildx
