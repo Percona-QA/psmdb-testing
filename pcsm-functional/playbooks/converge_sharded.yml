@@ -209,7 +209,7 @@
           rs.initiate({_id: "configReplSet", configsvr: true, members: [{ _id: 0, host: "{{ private_destination_ip }}:27017" }]})
       when: inventory_hostname == "keith-pcsm-destination"
 
-    - name: Start mongos router on source
+    - name: Start mongos router on source (Debian)
       become: true
       ansible.builtin.command: >
         mongos \
@@ -220,7 +220,7 @@
         --fork
       when: inventory_hostname == "keith-pcsm-source" and ansible_os_family == "Debian"
 
-    - name: Start mongos router on destination
+    - name: Start mongos router on destination (Debian)
       become: true
       ansible.builtin.command: >
         mongos \
@@ -231,7 +231,7 @@
         --fork
       when: inventory_hostname == "keith-pcsm-destination" and ansible_os_family == "Debian"
 
-    - name: Start mongos router on source
+    - name: Start mongos router on source (RedHat)
       become: true
       ansible.builtin.command: >
         mongos \
@@ -242,7 +242,7 @@
         --fork
       when: inventory_hostname == "keith-pcsm-source" and ansible_os_family == "RedHat"
 
-    - name: Start mongos router on destination
+    - name: Start mongos router on destination (RedHat)
       become: true
       ansible.builtin.command: >
         mongos \
