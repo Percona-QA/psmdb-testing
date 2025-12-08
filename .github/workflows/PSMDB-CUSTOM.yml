@@ -38,7 +38,7 @@ jobs:
       - name: Compile unittests
         run: |
           curl -o Dockerfile https://raw.githubusercontent.com/Percona-QA/psmdb-testing/refs/heads/main/regression-tests/build_image/Dockerfile_gcc_from_scratch
-          DOCKER_BUILDKIT=1 docker build . --network host --target unittests -t unittests --build-arg branch=master --build-arg psm_ver=8.2 --build-arg psm_release=1 --build-arg OS=oraclelinux:9
+          DOCKER_BUILDKIT=1 docker build . --network host --target unittests -t unittests --build-arg branch=master --build-arg psm_ver=8.2.0 --build-arg psm_release=1 --build-arg OS=oraclelinux:9
           docker run -v `pwd`/test_results:/work -w /work --rm -i unittests bash -c 'rm -rf *'
           docker run -v `pwd`/test_results:/work --rm unittests bash -c "python buildscripts/resmoke.py run --suite unittests --reportFile=/work/resmoke_unittests_s.json > /work/resmoke_unittests_s.log 2>&1" || true
           docker run -v `pwd`/test_results:/work -w /work --rm unittests bash -c 'python /opt/percona-server-mongodb/resmoke2junit.py'
