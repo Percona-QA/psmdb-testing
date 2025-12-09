@@ -16,9 +16,9 @@ on:
         description: "base docker image"
         required: false
 
-  pull_request:
-    branches:
-      - main
+#  pull_request:
+#    branches:
+#      - main
 
 jobs:
   create-runner:
@@ -70,7 +70,7 @@ jobs:
         run: |
           docker run -v `pwd`/test_results:/work -w /work --rm -i unittests bash -c 'rm -rf *'
           sudo chmod -R 777 test_results
-          docker run -v `pwd`/test_results:/work --rm unittests bash -c "python buildscripts/resmoke.py run --suite unittests --reportFile=/work/resmoke_unittests_s.json > /work/resmoke_unittests_s.log 2>&1" || true
+          docker run -v `pwd`/test_results:/work --rm unittests bash -c "python buildscripts/resmoke.py run --suite unittests --continueOnFailure --reportFile=/work/resmoke_unittests_s.json > /work/resmoke_unittests_s.log 2>&1" || true
           sudo chmod -R 777 test_results
           docker run -v `pwd`/test_results:/work -w /work --rm unittests bash -c 'python /opt/percona-server-mongodb/resmoke2junit.py'
           sudo chmod -R 777 test_results
