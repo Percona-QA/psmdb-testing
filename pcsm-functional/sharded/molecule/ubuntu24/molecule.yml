@@ -4,7 +4,7 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: keith-pcsm-source
+  - name: sharded-pcsm-source
     groups:
       - psmdb
     region: us-west-2
@@ -15,7 +15,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-pcsm-destination
+  - name: sharded-pcsm-destination
     groups:
       - psmdb
     region: us-west-2
@@ -26,19 +26,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-pcsm-source-shard-1
-    groups:
-      - psmdb
-      - shard
-    region: us-west-2
-    image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
-    vpc_subnet_id: subnet-0dc7518100473f19d
-    instance_type: ${INSTANCE_TYPE:-i3.large}
-    ssh_user: ubuntu
-    root_device_name: /dev/sda1
-    instance_tags:
-      iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-pcsm-source-shard-2
+  - name: sharded-pcsm-source-shard-1
     groups:
       - psmdb
       - shard
@@ -50,7 +38,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-pcsm-destination-shard-1
+  - name: sharded-pcsm-source-shard-2
     groups:
       - psmdb
       - shard
@@ -62,7 +50,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-pcsm-destination-shard-2
+  - name: sharded-pcsm-destination-shard-1
     groups:
       - psmdb
       - shard
@@ -74,7 +62,19 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-pcsm-clustersync
+  - name: sharded-pcsm-destination-shard-2
+    groups:
+      - psmdb
+      - shard
+    region: us-west-2
+    image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
+    vpc_subnet_id: subnet-0dc7518100473f19d
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ubuntu
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+  - name: sharded-pcsm-clustersync
     region: us-west-2
     image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
     vpc_subnet_id: subnet-0dc7518100473f19d

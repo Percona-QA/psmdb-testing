@@ -6,13 +6,13 @@ import testinfra.utils.ansible_runner
 from data_integrity_check import compare_data_rs
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_host('keith-pcsm-source')
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('replicaset-pcsm-source')
 
 destination = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_host('keith-pcsm-destination')
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('replicaset-pcsm-destination')
 
 pcsm = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_host('keith-pcsm-clustersync')
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('replicaset-pcsm-clustersync')
 
 collections = int(os.getenv("COLLECTIONS", default = 5))
 datasize = int(os.getenv("DATASIZE", default = 100))

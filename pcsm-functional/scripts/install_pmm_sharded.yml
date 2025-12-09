@@ -3,7 +3,7 @@
     url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
     dest: /usr/local/bin/runc
     mode: '0755'
-  when: inventory_hostname == "keith-pcsm-clustersync"
+  when: inventory_hostname == "sharded-pcsm-clustersync"
 
 - name: Move runc to /usr/bin
   copy:
@@ -12,27 +12,27 @@
     remote_src: yes
     mode: '0755'
     force: yes
-  when: inventory_hostname == "keith-pcsm-clustersync"
+  when: inventory_hostname == "sharded-pcsm-clustersync"
 
 - name: Ensure docker group exists
   group:
     name: docker
     state: present
-  when: inventory_hostname == "keith-pcsm-clustersync"
+  when: inventory_hostname == "sharded-pcsm-clustersync"
 
 - name: Add user ssh-user to docker group
   user:
     name: "{{ ssh_user }}"
     groups: docker
     append: yes
-  when: inventory_hostname == "keith-pcsm-clustersync"
+  when: inventory_hostname == "sharded-pcsm-clustersync"
 
 - name: Install PMM Server
   shell: |
     curl -fsSL https://www.percona.com/get/pmm | /bin/bash
   args:
     executable: /bin/bash
-  when: inventory_hostname == "keith-pcsm-clustersync"
+  when: inventory_hostname == "sharded-pcsm-clustersync"
 
 - name: Enable pmm3-client repository
   command: percona-release enable pmm3-client
@@ -72,7 +72,7 @@
   register: pmm_role_check
   failed_when: false
   changed_when: false
-  when: inventory_hostname in ['keith-pcsm-source', 'keith-pcsm-destination']
+  when: inventory_hostname in ['sharded-pcsm-source', 'sharded-pcsm-destination']
 
 - name: Create MongoDB pmmMonitor role
   community.mongodb.mongodb_shell:
@@ -136,7 +136,7 @@
           ]
       })
   when:
-    - inventory_hostname in ['keith-pcsm-source', 'keith-pcsm-destination']
+    - inventory_hostname in ['sharded-pcsm-source', 'sharded-pcsm-destination']
     - pmm_user_check.stdout == "null"
     - psmdb_version | int < 8
 
@@ -174,7 +174,7 @@
   retries: 3
   delay: 5
   when:
-    - inventory_hostname == 'keith-pcsm-source'
+    - inventory_hostname == 'sharded-pcsm-source'
     - mongodb_service_check.stdout == ""
 
 - name: Configure PMM on mongos for destination cluster
@@ -191,7 +191,7 @@
   retries: 3
   delay: 5
   when:
-    - inventory_hostname == 'keith-pcsm-destination'
+    - inventory_hostname == 'sharded-pcsm-destination'
     - mongodb_service_check.stdout == ""
 
 - name: Restart pmm-agent service

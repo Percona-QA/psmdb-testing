@@ -102,42 +102,42 @@
         path: /etc/mongod.conf
         regexp: '^#replication:'
         replace: 'replication:\n  replSetName: "configReplSet"'
-      when: inventory_hostname == "keith-pcsm-source" or inventory_hostname == "keith-pcsm-destination"
+      when: inventory_hostname == "sharded-pcsm-source" or inventory_hostname == "sharded-pcsm-destination"
 
     - name: Add replica set name for source shard 1
       replace:
         path: /etc/mongod.conf
         regexp: '^#replication:'
         replace: 'replication:\n  replSetName: "srcShard1"'
-      when: inventory_hostname == "keith-pcsm-source-shard-1"
+      when: inventory_hostname == "sharded-pcsm-source-shard-1"
 
     - name: Add replica set name for source shard 2
       replace:
         path: /etc/mongod.conf
         regexp: '^#replication:'
         replace: 'replication:\n  replSetName: "srcShard2"'
-      when: inventory_hostname == "keith-pcsm-source-shard-2"
+      when: inventory_hostname == "sharded-pcsm-source-shard-2"
 
     - name: Add replica set name for destination shard 1
       replace:
         path: /etc/mongod.conf
         regexp: '^#replication:'
         replace: 'replication:\n  replSetName: "dstShard1"'
-      when: inventory_hostname == "keith-pcsm-destination-shard-1"
+      when: inventory_hostname == "sharded-pcsm-destination-shard-1"
 
     - name: Add replica set name for destination shard 2
       replace:
         path: /etc/mongod.conf
         regexp: '^#replication:'
         replace: 'replication:\n  replSetName: "dstShard2"'
-      when: inventory_hostname == "keith-pcsm-destination-shard-2"
+      when: inventory_hostname == "sharded-pcsm-destination-shard-2"
 
     - name: Ensure configsvr role is present on config servers
       ansible.builtin.replace:
         path: /etc/mongod.conf
         regexp: '^#sharding:\s*$'
         replace: 'sharding:\n  clusterRole: "configsvr"'
-      when: inventory_hostname == "keith-pcsm-source" or inventory_hostname == "keith-pcsm-destination"
+      when: inventory_hostname == "sharded-pcsm-source" or inventory_hostname == "sharded-pcsm-destination"
 
     - name: Ensure shardsrv role is present on shards
       ansible.builtin.replace:
@@ -161,7 +161,7 @@
           - host: "{{ private_source_shard_1_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "keith-pcsm-source-shard-1"
+      when: inventory_hostname == "sharded-pcsm-source-shard-1"
 
     - name: Create a replicaset rs for Source Shard 2
       community.mongodb.mongodb_replicaset:
@@ -171,7 +171,7 @@
           - host: "{{ private_source_shard_2_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "keith-pcsm-source-shard-2"
+      when: inventory_hostname == "sharded-pcsm-source-shard-2"
 
     - name: Create a replicaset rs for Destination Shard 1
       community.mongodb.mongodb_replicaset:
@@ -181,7 +181,7 @@
           - host: "{{ private_destination_shard_1_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "keith-pcsm-destination-shard-1"
+      when: inventory_hostname == "sharded-pcsm-destination-shard-1"
 
     - name: Create a replicaset rs for Destination Shard 1
       community.mongodb.mongodb_replicaset:
@@ -191,7 +191,7 @@
           - host: "{{ private_destination_shard_2_ip }}:27017"
             priority: 1
         validate: no
-      when: inventory_hostname == "keith-pcsm-destination-shard-2"
+      when: inventory_hostname == "sharded-pcsm-destination-shard-2"
 
     - name: Initiate config server replica set on source
       community.mongodb.mongodb_shell:
@@ -199,7 +199,7 @@
         login_port: 27017
         eval: >
           rs.initiate({_id: "configReplSet", configsvr: true, members: [{ _id: 0, host: "{{ private_source_ip }}:27017" }]})
-      when: inventory_hostname == "keith-pcsm-source"
+      when: inventory_hostname == "sharded-pcsm-source"
 
     - name: Initiate config server replica set on destination
       community.mongodb.mongodb_shell:
@@ -207,7 +207,7 @@
         login_port: 27017
         eval: >
           rs.initiate({_id: "configReplSet", configsvr: true, members: [{ _id: 0, host: "{{ private_destination_ip }}:27017" }]})
-      when: inventory_hostname == "keith-pcsm-destination"
+      when: inventory_hostname == "sharded-pcsm-destination"
 
     - name: Start mongos router on source (Debian)
       become: true
@@ -218,7 +218,7 @@
         --bind_ip 0.0.0.0 \
         --logpath /var/log/mongodb/mongos.log \
         --fork
-      when: inventory_hostname == "keith-pcsm-source" and ansible_os_family == "Debian"
+      when: inventory_hostname == "sharded-pcsm-source" and ansible_os_family == "Debian"
 
     - name: Start mongos router on destination (Debian)
       become: true
@@ -229,7 +229,7 @@
         --bind_ip 0.0.0.0 \
         --logpath /var/log/mongodb/mongos.log \
         --fork
-      when: inventory_hostname == "keith-pcsm-destination" and ansible_os_family == "Debian"
+      when: inventory_hostname == "sharded-pcsm-destination" and ansible_os_family == "Debian"
 
     - name: Start mongos router on source (RedHat)
       become: true
@@ -240,7 +240,7 @@
         --bind_ip 0.0.0.0 \
         --logpath /var/log/mongo/mongos.log \
         --fork
-      when: inventory_hostname == "keith-pcsm-source" and ansible_os_family == "RedHat"
+      when: inventory_hostname == "sharded-pcsm-source" and ansible_os_family == "RedHat"
 
     - name: Start mongos router on destination (RedHat)
       become: true
@@ -251,35 +251,35 @@
         --bind_ip 0.0.0.0 \
         --logpath /var/log/mongo/mongos.log \
         --fork
-      when: inventory_hostname == "keith-pcsm-destination" and ansible_os_family == "RedHat"
+      when: inventory_hostname == "sharded-pcsm-destination" and ansible_os_family == "RedHat"
 
     - name: Add shard 1 srcShard1 to source cluster
       community.mongodb.mongodb_shell:
         login_host: "{{ private_source_ip }}"
         login_port: 27018
         eval: 'sh.addShard("srcShard1/{{ private_source_shard_1_ip }}:27017")'
-      when: inventory_hostname == "keith-pcsm-source"
+      when: inventory_hostname == "sharded-pcsm-source"
       
     - name: Add shard 2 srcShard2 to source cluster
       community.mongodb.mongodb_shell:
         login_host: "{{ private_source_ip }}"
         login_port: 27018
         eval: 'sh.addShard("srcShard2/{{ private_source_shard_2_ip }}:27017")'
-      when: inventory_hostname == "keith-pcsm-source"
+      when: inventory_hostname == "sharded-pcsm-source"
 
     - name: Add shard 1 dstShard1 to destination cluster
       community.mongodb.mongodb_shell:
         login_host: "{{ private_destination_ip }}"
         login_port: 27018
         eval: 'sh.addShard("dstShard1/{{ private_destination_shard_1_ip }}:27017")'
-      when: inventory_hostname == "keith-pcsm-destination"
+      when: inventory_hostname == "sharded-pcsm-destination"
 
     - name: Add shard 2 dstShard2 to destination cluster
       community.mongodb.mongodb_shell:
         login_host: "{{ private_destination_ip }}"
         login_port: 27018
         eval: 'sh.addShard("dstShard2/{{ private_destination_shard_2_ip }}:27017")'
-      when: inventory_hostname == "keith-pcsm-destination"
+      when: inventory_hostname == "sharded-pcsm-destination"
 
     - name: Create PCSM system unit file with optional environment variables
       copy:
@@ -308,14 +308,14 @@
         owner: root
         group: root
         mode: '0644'
-      when: inventory_hostname == "keith-pcsm-clustersync"
+      when: inventory_hostname == "sharded-pcsm-clustersync"
 
     - name: Reload systemd and start pcsm service
       service:
         daemon_reload: yes
         name: pcsm.service
         state: started
-      when: inventory_hostname == "keith-pcsm-clustersync"
+      when: inventory_hostname == "sharded-pcsm-clustersync"
 
     - name: Install and configure PMM Client
       include_tasks: ../scripts/install_pmm_sharded.yml
