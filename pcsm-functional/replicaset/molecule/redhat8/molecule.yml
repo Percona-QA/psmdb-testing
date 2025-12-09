@@ -41,7 +41,7 @@ provisioner:
   playbooks:
     create: ../../../../playbooks/create.yml
     prepare: ../../../playbooks/prepare.yml
-    converge: ../../../playbooks/converge.yml
+    converge: ../../../playbooks/converge_replicaset.yml
     destroy: ../../../../playbooks/destroy.yml
 verifier:
   name: testinfra
