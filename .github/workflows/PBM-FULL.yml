@@ -36,6 +36,14 @@ jobs:
       PBM_BRANCH: ${{ github.event.inputs.pbm_branch || 'dev' }}
       GO_VER: ${{ github.event.inputs.go_ver || 'bookworm' }}
     steps:
+    - name: Cleanup unnecessary software
+      run: |
+        df -h
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        df -h
     - uses: actions/checkout@v4
     - name: Setup environment with PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
       run: |
