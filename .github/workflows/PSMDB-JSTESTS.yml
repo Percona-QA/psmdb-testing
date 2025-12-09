@@ -1,4 +1,4 @@
-name: PSMDB-CUSTOM
+name: PSMDB-JSTESTS
 
 on:
   workflow_dispatch:
@@ -62,17 +62,17 @@ jobs:
         uses: docker/setup-buildx-action@v3
         with:
           driver: docker
-      - name: Compile unittests for branch ${{ env.PSMDB_BRANCH }} on ${{ env.PSMDB_OS }}
+      - name: Compile jstests for branch ${{ env.PSMDB_BRANCH }} on ${{ env.PSMDB_OS }}
         run: |
           curl -o Dockerfile https://raw.githubusercontent.com/Percona-QA/psmdb-testing/refs/heads/main/regression-tests/build_image/Dockerfile_gcc_from_scratch
-          DOCKER_BUILDKIT=1 docker build . --network host --target unittests -t unittests --build-arg branch=${{ env.PSMDB_BRANCH }} --build-arg psm_ver=${{ env.PSMDB_VERSION }} --build-arg psm_release=${{ env.PSMDB_RELEASE }} --build-arg OS=${{ env.PSMDB_OS }}
-      - name: Execute unittests for branch ${{ env.PSMDB_BRANCH }} on ${{ env.PSMDB_OS }}
+          DOCKER_BUILDKIT=1 docker build . --network host --target jstests -t jstests --build-arg branch=${{ env.PSMDB_BRANCH }} --build-arg psm_ver=${{ env.PSMDB_VERSION }} --build-arg psm_release=${{ env.PSMDB_RELEASE }} --build-arg OS=${{ env.PSMDB_OS }}
+      - name: Execute core tests for branch ${{ env.PSMDB_BRANCH }} on ${{ env.PSMDB_OS }}
         run: |
-          docker run -v `pwd`/test_results:/work -w /work --rm -i unittests bash -c 'rm -rf *'
+          docker run -v `pwd`/test_results:/work -w /work --rm -i jstests bash -c 'rm -rf *'
           sudo chmod -R 777 test_results
-          docker run -v `pwd`/test_results:/work --rm unittests bash -c "python buildscripts/resmoke.py run --suite unittests --reportFile=/work/resmoke_unittests_s.json > /work/resmoke_unittests_s.log 2>&1" || true
+          docker run -v `pwd`/test_results:/work --rm jstests bash -c "python buildscripts/resmoke.py run --suite core --reportFile=/work/resmoke_core_s.json > /work/resmoke_core_s.log 2>&1" || true
           sudo chmod -R 777 test_results
-          docker run -v `pwd`/test_results:/work -w /work --rm unittests bash -c 'python /opt/percona-server-mongodb/resmoke2junit.py'
+          docker run -v `pwd`/test_results:/work -w /work --rm jstests bash -c 'python /opt/percona-server-mongodb/resmoke2junit.py'
           sudo chmod -R 777 test_results
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5
@@ -84,7 +84,7 @@ jobs:
       - name: Upload logs as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: unittests_logs
+          name: jstests_logs
           path: test_results/
 
   delete-runner:
