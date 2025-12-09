@@ -4,7 +4,7 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: jenkins-pcsm-source
+  - name: replicaset-pcsm-source
     groups:
       - psmdb
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
@@ -17,7 +17,7 @@ platforms:
     pre_build_image: true
     networks:
       - name: test
-  - name: jenkins-pcsm-destination
+  - name: replicaset-pcsm-destination
     groups:
       - psmdb
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
@@ -30,7 +30,7 @@ platforms:
     pre_build_image: true
     networks:
        - name: test
-  - name: jenkins-pcsm-clustersync
+  - name: replicaset-pcsm-clustersync
     image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
     cgroupns_mode: host
     command: ${MOLECULE_DOCKER_COMMAND:-""}
