@@ -16,6 +16,7 @@ on:
       - main
     paths:
       - 'pbm-functional/pytest/**'
+      - '.github/workflows/PBM-FULL.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -40,6 +41,7 @@ jobs:
       run: |
         PSMDB=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build easyrsa
         PSMDB=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build
+        docker system prune -f
         docker compose up -d
       working-directory: ./pbm-functional/pytest
     - name: Run pytest shard ${{ matrix.shard }} on PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
