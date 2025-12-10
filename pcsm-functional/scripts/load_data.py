@@ -102,6 +102,31 @@ def collection_worker(collection_name, count, template_type, pool_data, db_name,
     except Exception as e:
         log(f"[{collection_name}] Error: {e}")
 
+def enable_and_shard_all_collections(port):
+    db_name = os.getenv("DBNAME", "test_db")
+
+    client = pymongo.MongoClient(f"mongodb://127.0.0.1:{port}")
+    admin = client["admin"]
+    db = client[db_name]
+
+    admin.command("enableSharding", db_name)
+
+    for coll_name in db.list_collection_names():
+        if coll_name.startswith("system."):
+            continue
+
+        ns = f"{db_name}.{coll_name}"
+        log(f"Sharding collection {ns}")
+
+        try:
+            admin.command(
+                "shardCollection",
+                ns,
+                key={"_id": "hashed"},
+            )
+        except Exception as e:
+            log(f"Failed to shard {ns}: {str(e)}")
+
 def load_data(port):
     start_time = time.time()
 
@@ -145,3 +170,4 @@ def load_data(port):
 if __name__ == "__main__":
     args = parse_args()
     load_data(args.port)
+    enable_and_shard_all_collections(args.port)
