@@ -122,7 +122,7 @@ def enable_and_shard_all_collections(port):
             admin.command(
                 "shardCollection",
                 ns,
-                key={"_id": "hashed"},
+                key={"_id": 1},
             )
         except Exception as e:
             log(f"Failed to shard {ns}: {str(e)}")
