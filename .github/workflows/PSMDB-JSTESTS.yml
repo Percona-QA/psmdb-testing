@@ -70,7 +70,7 @@ jobs:
         run: |
           docker run -v `pwd`/test_results:/work -w /work --rm -i jstests bash -c 'rm -rf *'
           sudo chmod -R 777 test_results
-          docker run -v `pwd`/test_results:/work --rm jstests bash -c "python buildscripts/resmoke.py run --suite core --continueOnFailure --excludeWithAnyTags=featureFlagColumnstoreIndexes,featureFlagUpdateOneWithoutShardKey,featureFlagGlobalIndexesShardingCatalog,featureFlagGlobalIndexes,featureFlagTelemetry,featureFlagAuditConfigClusterParameter,serverless,does_not_support_config_fuzzer,featureFlagDeprioritizeLowPriorityOperations,featureFlagSbeFull,featureFlagQueryStats,requires_latch_analyzer--reportFile=/work/resmoke_core_s.json > /work/resmoke_core_s.log 2>&1"
+          docker run -v `pwd`/test_results:/work --rm jstests bash -c "python buildscripts/resmoke.py run --suite core --continueOnFailure --excludeWithAnyTags=featureFlagColumnstoreIndexes,featureFlagUpdateOneWithoutShardKey,featureFlagGlobalIndexesShardingCatalog,featureFlagGlobalIndexes,featureFlagTelemetry,featureFlagAuditConfigClusterParameter,serverless,does_not_support_config_fuzzer,featureFlagDeprioritizeLowPriorityOperations,featureFlagSbeFull,featureFlagQueryStats,requires_latch_analyzer --reportFile=/work/resmoke_core_s.json > /work/resmoke_core_s.log 2>&1"
       - name: Generate junit test report
         if: success() || failure()
         run: |
