@@ -177,6 +177,6 @@ def test_datasize_PML_T41():
 
 def test_data_integrity_PML_T42():
     log_step("Comparing data integrity between source and destination...")
-    result, _ = compare_data_rs(source, destination, "27018", FULL_DATA_COMPARE)
+    result, _ = compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE)
     assert result is True, "Data mismatch after synchronization"
     log_step("Data integrity check completed successfully")
