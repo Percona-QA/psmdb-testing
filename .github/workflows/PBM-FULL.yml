@@ -49,7 +49,6 @@ jobs:
       run: |
         PSMDB=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build easyrsa
         PSMDB=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build
-        docker system prune -f
         docker compose up -d
       working-directory: ./pbm-functional/pytest
     - name: Run pytest shard ${{ matrix.shard }} on PSMDB ${{ matrix.psmdb }} and PBM branch ${{ env.PBM_BRANCH }}
