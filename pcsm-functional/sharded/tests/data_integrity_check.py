@@ -299,7 +299,7 @@ def get_indexes(db, collection_name, port):
 
     query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
     response = db.check_output(
-        f"mongo mongodb://127.0.0.1:{port}/test --eval '{query}' --quiet")
+        f"mongo mongodb://127.0.0.1:{port}/test --json --eval '{query}' --quiet")
 
     try:
         indexes = json.loads(response)
