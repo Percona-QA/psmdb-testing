@@ -48,7 +48,7 @@ jobs:
       PSMDB_BRANCH: ${{ github.event.inputs.psmdb_branch || 'v8.0' }}
       PSMDB_VERSION: ${{ github.event.inputs.psmdb_version || '8.0.0' }}
       PSMDB_RELEASE: ${{ github.event.inputs.psmdb_release || '1' }}
-      PSMDB_OS: ${{ github.event.inputs.test || 'ubuntu:24.04' }}
+      PSMDB_OS: ${{ github.event.inputs.psmdb_os || 'ubuntu:24.04' }}
     steps:
       - name: Create and enable swap file
         run: |
@@ -70,12 +70,16 @@ jobs:
         run: |
           docker run -v `pwd`/test_results:/work -w /work --rm -i unittests bash -c 'rm -rf *'
           sudo chmod -R 777 test_results
-          docker run -v `pwd`/test_results:/work --rm unittests bash -c "python buildscripts/resmoke.py run --suite unittests --continueOnFailure --reportFile=/work/resmoke_unittests_s.json > /work/resmoke_unittests_s.log 2>&1" || true
+          docker run -v `pwd`/test_results:/work --rm unittests bash -c "python buildscripts/resmoke.py run --suite unittests --continueOnFailure --reportFile=/work/resmoke_unittests_s.json > /work/resmoke_unittests_s.log 2>&1"
+      - name: Generate junit test report
+        if: success() || failure()
+        run: |
           sudo chmod -R 777 test_results
           docker run -v `pwd`/test_results:/work -w /work --rm unittests bash -c 'python /opt/percona-server-mongodb/resmoke2junit.py'
           sudo chmod -R 777 test_results
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5
+        if: success() || failure()
         with:
           report_paths: '**/junit.xml'
           include_passed: True
@@ -83,6 +87,7 @@ jobs:
           include_time_in_summary: True
       - name: Upload logs as artifact
         uses: actions/upload-artifact@v4
+        if: success() || failure()
         with:
           name: unittests_logs
           path: test_results/
