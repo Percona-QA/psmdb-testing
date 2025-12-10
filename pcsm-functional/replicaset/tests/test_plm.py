@@ -158,7 +158,7 @@ def test_prepare_data():
     log_step("Starting data generation on source node...")
     load_data(source)
     log_step("Data generation completed. Validating size...")
-    assert confirm_collection_size(source, datasize)
+    assert confirm_collection_size(source, datasize), "Source data size validation failed"
     log_step("Source data size confirmed")
 
 def test_data_transfer_PML_T40():
@@ -167,15 +167,16 @@ def test_data_transfer_PML_T40():
     log_step("Waiting for replication to complete...")
     assert wait_for_repl_stage(TIMEOUT)
     log_step("Finalizing sync...")
-    assert pcsm_finalize()
+    assert pcsm_finalize(), "PCSM sync did not complete successfully"
     log_step("PCSM sync completed successfully")
 
 def test_datasize_PML_T41():
     log_step("Validating destination data size...")
-    assert confirm_collection_size(destination, datasize)
+    assert confirm_collection_size(destination, datasize), "Destination data size validation failed"
     log_step("Destination data size confirmed")
 
 def test_data_integrity_PML_T42():
     log_step("Comparing data integrity between source and destination...")
-    assert compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE)
+    result, _ = compare_data_rs(source, destination, "27018", FULL_DATA_COMPARE)
+    assert result is True, "Data mismatch after synchronization"
     log_step("Data integrity check completed successfully")

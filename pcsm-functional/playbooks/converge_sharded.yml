@@ -183,7 +183,7 @@
         validate: no
       when: inventory_hostname == "sharded-pcsm-destination-shard-1"
 
-    - name: Create a replicaset rs for Destination Shard 1
+    - name: Create a replicaset rs for Destination Shard 2
       community.mongodb.mongodb_replicaset:
         replica_set: dstShard2
         login_host: "{{ private_destination_shard_2_ip }}"

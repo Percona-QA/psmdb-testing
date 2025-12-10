@@ -136,7 +136,7 @@
           ]
       })
   when:
-    - inventory_hostname in ['sharded-pcsm-source', 'sharded-pcsm-destination']
+    - inventory_hostname in groups['psmdb']
     - pmm_user_check.stdout == "null"
     - psmdb_version | int < 8
 

@@ -10,7 +10,7 @@
 
 - name: Change Source shard 1 node hostname
   hostname:
-    name: pcsm-source-shard
+    name: pcsm-source-shard-1
   when: inventory_hostname == "sharded-pcsm-source-shard-1"
 
 - name: Change Source shard 2 node hostname
@@ -20,7 +20,7 @@
 
 - name: Change Destination shard 1 node hostname
   hostname:
-    name: pcsm-destination-shard
+    name: pcsm-destination-shard-1
   when: inventory_hostname == "sharded-pcsm-destination-shard-1"
 
 - name: Change Destination shard 2 node hostname
