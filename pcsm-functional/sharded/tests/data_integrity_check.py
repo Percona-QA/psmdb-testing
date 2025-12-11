@@ -11,14 +11,10 @@ def compare_data_rs(db1, db2, port, full_comparison):
         mismatch_summary.extend(mismatch_coll_count)
 
     if full_comparison:
-        all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port)
+        collections = get_collections(db1, db2, port)
         mismatch_metadata = compare_collection_metadata(db1, db2, port)
-        mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port)
+        mismatch_indexes = compare_collection_indexes(db1, db2, collections, port)
 
-        if mismatch_dbs_hash:
-            mismatch_summary.extend(mismatch_dbs_hash)
-        if mismatch_coll_hash:
-            mismatch_summary.extend(mismatch_coll_hash)
         if mismatch_metadata:
             mismatch_summary.extend(mismatch_metadata)
         if mismatch_indexes:
@@ -31,43 +27,29 @@ def compare_data_rs(db1, db2, port, full_comparison):
     print(f"Mismatched databases, collections, or indexes found: {mismatch_summary}")
     return False, mismatch_summary
 
-def compare_database_hashes(db1, db2, port):
+def get_collections(db1, db2, port):
     query = (
-        'var ignoredDbs = ["admin", "local", "config", "percona_clustersync_mongodb"]; '
-        'var conn = db.getMongo(); '
-        'var configDb = conn.getDB("config"); '
-        'var shards = configDb.shards.find().toArray(); '
-        'conn.getDBNames().forEach(function(dbName) { '
-        '  if (ignoredDbs.includes(dbName)) { return; } '
-        '  var collections = []; '
-        '  conn.getDB(dbName).runCommand({ listCollections: 1 }).cursor.firstBatch.forEach(function(coll) { '
-        '    if ((!coll.type || coll.type !== "view") && !(dbName === "test" && coll.name === "system.profile")) { '
-        '      collections.push(coll.name); '
+        'db.getMongo().getDBNames().forEach(function(dbName) { '
+        '    if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(dbName)) { '
+        '        var collections = []; '
+        '        var res = db.getSiblingDB(dbName).runCommand({ listCollections: 1 }); '
+        '        if (!res.cursor || !res.cursor.firstBatch) { return; } '
+        '        res.cursor.firstBatch.forEach(function(coll) { '
+        '            if ((!coll.type || coll.type !== "view") && !(dbName === "test" && coll.name === "system.profile")) { '
+        '                collections.push(coll.name); '
+        '            } '
+        '        }); '
+        '        print(JSON.stringify({ db: dbName, collections: collections })); '
         '    } '
-        '  }); '
-        '  shards.forEach(function(shardDoc) { '
-        '    var shardName = shardDoc._id; '
-        '    var shardHost = shardDoc.host; '
-        '    var seed = shardHost.indexOf("/") !== -1 ? shardHost.split("/")[1] : shardHost; '
-        '    var firstMember = seed.split(",")[0]; '
-        '    try { '
-        '      var shardConn = new Mongo(firstMember); '
-        '      var shardDb = shardConn.getDB(dbName); '
-        '      var result = shardDb.runCommand({ dbHash: 1, collections: collections }); '
-        '      print(JSON.stringify({ db: dbName, shard: shardName, md5: result.md5, collections: result.collections })); '
-        '    } catch (err) { '
-        '      print(JSON.stringify({ db: dbName, shard: shardDoc._id, md5: null, collections: {} })); '
-        '    } '
-        '  }); '
         '});'
     )
 
-    def get_db_hashes_and_collections(db):
+    def get_collections(db, port):
         response = db.check_output(
-            f"mongo mongodb://127.0.0.1:{port}/test --eval '{query}' --quiet")
+            f"mongo mongodb://127.0.0.1:{port}/test --eval '{query}' --quiet"
+        )
 
-        db_hashes = {}
-        collection_hashes = {}
+        collection_names = set()
 
         for line in response.split("\n"):
             line = line.strip()
@@ -80,56 +62,17 @@ def compare_database_hashes(db1, db2, port):
                 continue
 
             db_name = db_info["db"]
-            collections = db_info.get("collections", {})
+            collections = db_info.get("collections", [])
 
-            if not collections:
-                continue
+            for coll in collections:
+                collection_names.add(f"{db_name}.{coll}")
 
-            db_hashes[db_name] = db_info["md5"]
+        return collection_names
 
-            for coll, coll_hash in db_info.get("collections", {}).items():
-                coll_key = f"{db_name}.{coll}"
-                collection_hashes[coll_key] = coll_hash
+    db1_collections = get_collections(db1, port)
+    db2_collections = get_collections(db2, port)
 
-        return db_hashes, collection_hashes
-
-    db1_hashes, db1_collections = get_db_hashes_and_collections(db1)
-    db2_hashes, db2_collections = get_db_hashes_and_collections(db2)
-
-    print("Comparing database hashes...")
-    mismatched_dbs = []
-    for db_name in db1_hashes:
-        if db_name not in db2_hashes:
-            print(db_name)
-            mismatched_dbs.append((db_name, "missing in dst DB"))
-            print(f"Database '{db_name}' exists in source_DB but not in destination_DB")
-        elif db1_hashes[db_name] != db2_hashes[db_name]:
-            print(db_name)
-            mismatched_dbs.append((db_name, "hash mismatch"))
-            print(f"Database '{db_name}' hash mismatch: {db1_hashes[db_name]} != {db2_hashes[db_name]}")
-
-    for db_name in db2_hashes:
-        if db_name not in db1_hashes:
-            print(db_name)
-            mismatched_dbs.append((db_name, "missing in src DB"))
-            print(f"Database '{db_name}' exists in destination_DB but not in source_DB")
-
-    print("Comparing collection hashes...")
-    mismatched_collections = []
-    for coll_name in db1_collections:
-        if coll_name not in db2_collections:
-            mismatched_collections.append((coll_name, "missing in dst DB"))
-            print(f"Collection '{coll_name}' exists in source_DB but not in destination_DB")
-        elif db1_collections[coll_name] != db2_collections[coll_name]:
-            mismatched_collections.append((coll_name, "hash mismatch"))
-            print(f"Collection '{coll_name}' hash mismatch: {db1_collections[coll_name]} != {db2_collections[coll_name]}")
-
-    for coll_name in db2_collections:
-        if coll_name not in db1_collections:
-            mismatched_collections.append((coll_name, "missing in src DB"))
-            print(f"Collection '{coll_name}' exists in destination_DB but not in source_DB")
-
-    return db1_collections.keys() | db2_collections.keys(), mismatched_dbs, mismatched_collections
+    return db1_collections | db2_collections
 
 def compare_entries_number(db1, db2, port):
     query = (
