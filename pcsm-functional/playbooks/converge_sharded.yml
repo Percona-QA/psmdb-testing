@@ -146,7 +146,15 @@
         replace: 'sharding:\n  clusterRole: "shardsvr"'
       when: inventory_hostname in groups['shard']
 
-    - name: Reload systemd and start pcsm service
+    - name: Ensure minimum oplog retention under storage
+      lineinfile:
+        path: /etc/mongod.conf
+        regexp: '^\s*oplogMinRetentionHours:\s*'
+        insertafter: '^storage:\s*$'
+        line: '  oplogMinRetentionHours: 72'
+      when: inventory_hostname in groups['psmdb']
+
+    - name: Reload systemd and start mongod service
       service:
         daemon_reload: yes
         name: mongod.service
