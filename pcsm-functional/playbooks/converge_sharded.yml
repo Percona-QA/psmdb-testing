@@ -146,7 +146,7 @@
         replace: 'sharding:\n  clusterRole: "shardsvr"'
       when: inventory_hostname in groups['shard']
 
-    - name: Ensure minimum oplog retention under storage
+    - name: Increase Oplog Retention Period
       lineinfile:
         path: /etc/mongod.conf
         regexp: '^\s*oplogMinRetentionHours:\s*'
