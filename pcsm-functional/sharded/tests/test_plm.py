@@ -20,7 +20,7 @@ datasize = int(os.getenv("DATASIZE", default = 100))
 distribute = os.getenv("RANDOM_DISTRIBUTE_DATA", default="false").lower() == "true"
 doc_template = os.getenv("DOC_TEMPLATE", default = 'random')
 FULL_DATA_COMPARE = os.getenv("FULL_DATA_COMPARE", default="false").lower() == "true"
-TIMEOUT = int(os.getenv("TIMEOUT",default = 3600))
+TIMEOUT = int(os.getenv("TIMEOUT", default=3600))
 
 def load_data(node):
     env_vars = f"COLLECTIONS={collections} DATASIZE={datasize} DISTRIBUTE={distribute} DOC_TEMPLATE={doc_template}"
