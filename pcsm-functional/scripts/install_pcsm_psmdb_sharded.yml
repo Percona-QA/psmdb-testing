@@ -240,7 +240,7 @@
     path: /etc/hosts
     block: |
       {{ private_source_ip }}    source
-      {{ private_clustersync_ip }}    destination
+      {{ private_destination_ip }}    destination
     create: false
     unsafe_writes: true
   when: inventory_hostname == "sharded-pcsm-clustersync"

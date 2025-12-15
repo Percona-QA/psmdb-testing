@@ -44,7 +44,7 @@ def get_collections(db1, db2, port):
         '});'
     )
 
-    def get_collections(db, port):
+    def get_collections_names(db, port):
         response = db.check_output(
             f"mongo mongodb://127.0.0.1:{port}/test --eval '{query}' --quiet"
         )
@@ -69,8 +69,8 @@ def get_collections(db1, db2, port):
 
         return collection_names
 
-    db1_collections = get_collections(db1, port)
-    db2_collections = get_collections(db2, port)
+    db1_collections = get_collections_names(db1, port)
+    db2_collections = get_collections_names(db2, port)
 
     return db1_collections | db2_collections
 

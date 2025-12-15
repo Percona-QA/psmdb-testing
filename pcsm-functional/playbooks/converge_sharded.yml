@@ -267,7 +267,7 @@
         login_port: 27018
         eval: 'sh.addShard("srcShard1/{{ private_source_shard_1_ip }}:27017")'
       when: inventory_hostname == "sharded-pcsm-source"
-      
+
     - name: Add shard 2 srcShard2 to source cluster
       community.mongodb.mongodb_shell:
         login_host: "{{ private_source_ip }}"
