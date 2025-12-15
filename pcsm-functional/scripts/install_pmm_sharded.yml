@@ -203,7 +203,6 @@
   register: pmm_connection_check
   changed_when: false
   failed_when: false
-  when: inventory_hostname in groups['psmdb']
 
 - name: Check PMM Client connection to PMM server
   debug:
