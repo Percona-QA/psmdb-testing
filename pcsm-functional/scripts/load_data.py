@@ -109,7 +109,10 @@ def enable_and_shard_all_collections(port):
     admin = client["admin"]
     db = client[db_name]
 
-    admin.command("enableSharding", db_name)
+    try:
+        admin.command("enableSharding", db_name)
+    except Exception as e:
+        log(f"Failed to enable sharding on database {db_name}: {str(e)}")
 
     for coll_name in db.list_collection_names():
         if coll_name.startswith("system."):
