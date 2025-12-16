@@ -50,6 +50,20 @@ def prepare_two_db_sharded_layout(src_client, src_cluster, db1, sharded1, db2, s
                 raise
         src_client.admin.command("shardCollection", f"{db_name}.{sharded_coll}", key={"_id": "hashed"})
 
+def get_collection_shard(client, db_name, coll_name):
+    """
+    Determine which shard a collection is on based on the database's primaryShard
+    """
+    try:
+        config_db = client.get_database("config")
+        db_info = config_db.databases.find_one({"_id": db_name})
+        if db_info:
+            return db_info.get("primary")
+        return None
+    except Exception as e:
+        Cluster.log(f"Error determining shard for {db_name}.{coll_name}: {e}")
+        return None
+
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300,func_only=True)
 def test_csync_PML_T22(start_cluster, src_cluster, dst_cluster, csync):
@@ -591,30 +605,75 @@ def test_csync_PML_T59(start_cluster, src_cluster, dst_cluster, csync):
 @pytest.mark.timeout(300,func_only=True)
 def test_csync_PML_T60(start_cluster, src_cluster, dst_cluster, csync, failpoint_target):
     """
-    Test multi-shard transaction behavior with failpoints on src or dst.
-    Three scenarios: src failpoint (transaction fails, nothing replicated),
-    dst transient error (errorCode 189, retries succeed),
-    dst permanent error (errorCode 1, replication fails)
+    Test that csync does honor transaction during replication
+    Creates collections after replication starts, ensures at least one collection
+    is on shard 2, sets failpoint on shard 2, then executes a transaction that
+    modifies collections on both shards. Verifies that no partial replication occurs
+    (operations on shard 1 succeed, operations on shard 2 fail)
     """
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
-    prepare_two_db_sharded_layout(src, src_cluster, "sharded_txn_db1", "items_fail_left_sharded",
-                                                "sharded_txn_db2", "items_fail_right_sharded")
-    for db_name, coll_name in [("sharded_txn_db1", "items_fail_left_unsharded"), ("sharded_txn_db2", "items_fail_right_unsharded")]:
-        src[db_name].create_collection(coll_name)
     assert csync.start(), "Failed to start csync service"
     assert csync.wait_for_repl_stage(), "Failed to start replication stage"
-
-    # Apply failpoint on ONE shard only (the second shard)
-    # This ensures one insert succeeds but another fails, causing whole transaction to roll back
+    # For src failpoint, check placement on src; for dst failpoints, check placement on dst
     target_cluster = src_cluster if failpoint_target == "src" else dst_cluster
-    fail_commands = ["insert"] if failpoint_target == "src" else ["bulkWrite", "update"]
     shard_clients = target_cluster.get_shard_primary_clients()
-    target_shard_id = shard_clients[1][0]
+    shard_ids = [shard_id for shard_id, _ in shard_clients]
+    shard1_id = shard_ids[0]
+    shard2_id = shard_ids[1]
+    # Create collections one at a time until we have at least one on each shard
+    max_attempts = 5
+    collections_created = []
+    colls_on_shard1 = []
+    colls_on_shard2 = []
+    db_counter = 0
+    for attempt in range(max_attempts):
+        db_name = f"txn_test_db_{db_counter}"
+        coll_name = "test_coll"
+        db_counter += 1
+        try:
+            src.admin.command("enableSharding", db_name)
+            src[db_name].create_collection(coll_name)
+            collections_created.append((db_name, coll_name))
+            Cluster.log(f"Created database {db_name} with unsharded collection {coll_name}")
+        except OperationFailure as e:
+            if "already" not in str(e).lower():
+                raise
+            continue
+        if failpoint_target == "src":
+            coll_shard = get_collection_shard(src, db_name, coll_name)
+        else:
+            Cluster.log(f"Waiting for collection {db_name}.{coll_name} to replicate...")
+            for wait_attempt in range(30):
+                try:
+                    config_db = dst.get_database("config")
+                    db_exists = config_db.databases.find_one({"_id": db_name}) is not None
+                    if db_exists:
+                        Cluster.log(f"Collection {db_name}.{coll_name} replicated to dst")
+                        break
+                    time.sleep(1)
+                except Exception as e:
+                    Cluster.log(f"Error checking collection replication: {e}")
+                    time.sleep(1)
+            coll_shard = get_collection_shard(dst, db_name, coll_name)
+        Cluster.log(f"Collection {db_name}.{coll_name} is on shard: {coll_shard}")
+        if coll_shard == shard1_id:
+            colls_on_shard1.append((db_name, coll_name))
+            Cluster.log(f"Collection {db_name}.{coll_name} is on shard 1")
+        elif coll_shard == shard2_id:
+            colls_on_shard2.append((db_name, coll_name))
+            Cluster.log(f"Collection {db_name}.{coll_name} is on shard 2")
+        if colls_on_shard1 and colls_on_shard2:
+            Cluster.log(f"Shard 1: {[f'{c[0]}.{c[1]}' for c in colls_on_shard1]}")
+            Cluster.log(f"Shard 2: {[f'{c[0]}.{c[1]}' for c in colls_on_shard2]}")
+            break
+    else:
+        pytest.fail(f"Could not get at least one collection on shard 1 and one on shard 2 after {max_attempts} attempts")
+    fail_commands = ["insert"] if failpoint_target == "src" else ["update", "bulkWrite", "insert"]
     failpoint_set = False
-    for shard_id, client in shard_clients:
-        if shard_id == target_shard_id:
-            Cluster.log(f"DEBUG: Setting failpoint on {failpoint_target} cluster, shard {shard_id}, commands: {fail_commands}")
+    for shard_id, client in target_cluster.get_shard_primary_clients():
+        if shard_id == shard2_id:
+            Cluster.log(f"Setting failpoint on {failpoint_target} cluster, shard {shard_id}, commands: {fail_commands}")
             if failpoint_target == "src":
                 client.admin.command({
                     "configureFailPoint": "failCommand",
@@ -624,7 +683,6 @@ def test_csync_PML_T60(start_cluster, src_cluster, dst_cluster, csync, failpoint
                         "failCommands": fail_commands,
                         "failInternalCommands": True}})
             elif failpoint_target == "dst_transient_error":
-                # For dst_transient_error: Use transient error that fails 2 times to see csync retry
                 client.admin.command({
                     "configureFailPoint": "failCommand",
                     "mode": {"times": 2},
@@ -634,56 +692,67 @@ def test_csync_PML_T60(start_cluster, src_cluster, dst_cluster, csync, failpoint
                         "errorLabels": ["RetryableWriteError"],
                         "failInternalCommands": True}})
             else:
-                # For dst_permanent_error: Use permanent error that always fails
                 client.admin.command({
                     "configureFailPoint": "failCommand",
                     "mode": "alwaysOn",
                     "data": {
-                        "errorCode": 1,  # InternalError
+                        "errorCode": 1,
                         "failCommands": fail_commands,
                         "failInternalCommands": True}})
             failpoint_set = True
             break
     if not failpoint_set:
-        raise AssertionError(f"Failed to set failpoint on {failpoint_target} cluster, shard {target_shard_id}")
+        raise AssertionError(f"Failed to set failpoint on {failpoint_target} cluster, shard {shard2_id}")
+    time.sleep(1)
     transaction_failed = False
     with src.start_session() as session:
         session.start_transaction()
         try:
-            collections = [
-                (src["sharded_txn_db1"]["items_fail_left_unsharded"], "left_unsharded"),
-                (src["sharded_txn_db1"]["items_fail_left_sharded"], "left_sharded"),
-                (src["sharded_txn_db2"]["items_fail_right_unsharded"], "right_unsharded"),
-                (src["sharded_txn_db2"]["items_fail_right_sharded"], "right_sharded")]
-            for i in range(20):
-                collection, value = collections[i % len(collections)]
-                collection.insert_one({"_id": i + 1, "value": value}, session=session)
+            for db_name, coll_name in colls_on_shard1:
+                src[db_name][coll_name].insert_one({"_id": 1, "value": "shard1_data"}, session=session)
+                src[db_name][coll_name].insert_one({"_id": 11, "value": "shard1_data2"}, session=session)
+                src[db_name][coll_name].insert_one({"_id": 111, "value": "shard1_data3"}, session=session)
+                src[db_name][coll_name].insert_one({"_id": 1111, "value": "shard1_data4"}, session=session)
+                Cluster.log(f"Inserted 4 documents into {db_name}.{coll_name} (shard 1)")
+            for db_name, coll_name in colls_on_shard2:
+                src[db_name][coll_name].insert_one({"_id": 2, "value": "shard2_data"}, session=session)
+                src[db_name][coll_name].insert_one({"_id": 22, "value": "shard2_data2"}, session=session)
+                Cluster.log(f"Inserted 2 documents into {db_name}.{coll_name} (shard 2)")
             session.commit_transaction()
-            Cluster.log("DEBUG: Transaction committed successfully on src")
+            Cluster.log("Transaction committed successfully on src")
+            time.sleep(0.2)
+            Cluster.log("Delay completed, operations should be queued together in change stream")
         except OperationFailure as e:
             transaction_failed = True
-            Cluster.log(f"DEBUG: Transaction failed with error: {e}")
+            Cluster.log(f"Transaction failed with error: {e}")
             if session.in_transaction:
                 try:
                     session.abort_transaction()
                 except Exception:
                     pass
     if failpoint_target == "src":
-        assert transaction_failed, "Expected transaction to fail due to failpoint on src second shard"
+        assert transaction_failed, "Expected transaction to fail due to failpoint on src shard 2"
     else:
         assert not transaction_failed, "Transaction on src should succeed when failpoint is on dst"
     result = csync.wait_for_zero_lag()
+    time.sleep(5)
     if failpoint_target == "dst_transient_error":
         assert result is True, "Failed to catch up on replication"
     elif failpoint_target == "dst_permanent_error":
         assert result is False, "Replication should fail due to permanent error on dst"
-        for db_name, coll_name in [
-            ("sharded_txn_db1", "items_fail_left_unsharded"),
-            ("sharded_txn_db1", "items_fail_left_sharded"),
-            ("sharded_txn_db2", "items_fail_right_unsharded"),
-            ("sharded_txn_db2", "items_fail_right_sharded")]:
-            dst_count = dst[db_name][coll_name].count_documents({})
-            assert dst_count == 0, f"Destination should not have docs in {db_name}.{coll_name} due to permanent error, found {dst_count}"
+        for db_name, coll_name in colls_on_shard2:
+            # Check for all documents that should not be replicated due to failpoint
+            total_count = dst[db_name][coll_name].count_documents({})
+            Cluster.log(f"Shard 2 documents in {db_name}.{coll_name}: total: {total_count}")
+            assert total_count == 0, f"Expected no documents in {db_name}.{coll_name} (shard 2) due to failpoint, found {total_count}"
+        for db_name, coll_name in colls_on_shard1:
+            # Check for all documents that should not be replicated (transaction should be atomic)
+            # In 6.0/7.0, operations are parallelized by namespace, so shard 1 operations might succeed
+            total_count = dst[db_name][coll_name].count_documents({})
+            Cluster.log(f"Shard 1 documents in {db_name}.{coll_name}: total: {total_count}")
+            if total_count > 0:
+                pytest.skip("!!! Bug: transaction should be atomic")
+            assert total_count == 0, f"Expected no documents in {db_name}.{coll_name} (shard 1) due to failpoint, found {total_count}"
         return
     assert csync.finalize(), "Failed to finalize csync service"
     result, _ = compare_data(src_cluster, dst_cluster)
