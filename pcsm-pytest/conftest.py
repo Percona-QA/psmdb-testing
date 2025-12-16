@@ -116,7 +116,7 @@ def get_cluster_config(setup_type):
     else:
         raise ValueError(f"Unknown setup type: {setup_type}")
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def cluster_configs(request):
     """
     Fixture that provides configuration, it must be parametrized using
@@ -127,18 +127,31 @@ def cluster_configs(request):
             f"Test {request.node.name} uses cluster_configs but it's not parametrized")
     return get_cluster_config(request.param)
 
-@pytest.fixture(scope="module")
-def src_cluster(cluster_configs):
+@pytest.fixture(scope="function")
+def src_cluster(cluster_configs, request):
     config = cluster_configs["src_config"]
+    extra_args_marker = request.node.get_closest_marker("mongod_extra_args")
+    if extra_args_marker and extra_args_marker.args:
+        mongod_extra_args = extra_args_marker.args[0]
+    else:
+        mongod_extra_args = ""
     if "mongos" in config:
-        return Cluster(config, mongod_extra_args="--setParameter periodicNoopIntervalSecs=1")
-    return Cluster(config)
+        mongod_extra_args = f"--setParameter periodicNoopIntervalSecs=1 {mongod_extra_args}".strip()
+    Cluster.log(f"src_cluster mongod_extra_args: '{mongod_extra_args}'")
+    return Cluster(config, mongod_extra_args=mongod_extra_args)
 
-@pytest.fixture(scope="module")
-def dst_cluster(cluster_configs):
-    return Cluster(cluster_configs["dst_config"])
+@pytest.fixture(scope="function")
+def dst_cluster(cluster_configs, request):
+    config = cluster_configs["dst_config"]
+    extra_args_marker = request.node.get_closest_marker("mongod_extra_args")
+    if extra_args_marker and extra_args_marker.args:
+        mongod_extra_args = extra_args_marker.args[0]
+    else:
+        mongod_extra_args = ""
+    Cluster.log(f"dst_cluster mongod_extra_args: '{mongod_extra_args}'")
+    return Cluster(config, mongod_extra_args=mongod_extra_args)
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def csync(src_cluster, dst_cluster):
     return Clustersync('csync', src_cluster.csync_connection, dst_cluster.csync_connection)
 

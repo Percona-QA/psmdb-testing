@@ -1,8 +1,65 @@
 import json
+import time
+from contextlib import contextmanager
 from pymongo import MongoClient
-from pymongo.errors import PyMongoError
+from pymongo.errors import PyMongoError, ServerSelectionTimeoutError, NetworkTimeout, AutoReconnect, ExecutionTimeout
 
 from cluster import Cluster
+
+# Connection error types that should trigger retry
+_CONNECTION_ERRORS = (ServerSelectionTimeoutError, NetworkTimeout, AutoReconnect, ConnectionError)
+
+def _safe_close_client(client):
+    if client:
+        try:
+            client.close()
+        except Exception:
+            pass
+
+@contextmanager
+def _mongo_client_with_retry(uri, max_retries=3, retry_delay=1):
+    """
+    Context manager that provides MongoClient with automatic retry on connection failures
+    """
+    client = None
+    last_error = None
+    current_delay = retry_delay
+    for attempt in range(max_retries):
+        client = None
+        try:
+            client = MongoClient(uri, serverSelectionTimeoutMS=10000, socketTimeoutMS=8000, connectTimeoutMS=10000)
+            client.admin.command("ping")
+            try:
+                yield client
+                _safe_close_client(client)
+                return
+            except _CONNECTION_ERRORS as e:
+                last_error = e
+                _safe_close_client(client)
+                client = None
+                if attempt < max_retries - 1:
+                    Cluster.log(f"Connection error during operation: {e}. Retrying in {current_delay}s...")
+                    time.sleep(current_delay)
+                    current_delay *= 2
+                    continue
+                else:
+                    break
+        except _CONNECTION_ERRORS as e:
+            last_error = e
+            _safe_close_client(client)
+            client = None
+            if attempt < max_retries - 1:
+                Cluster.log(f"Connection attempt {attempt + 1} failed: {e}. Retrying in {current_delay}s...")
+                time.sleep(current_delay)
+                current_delay *= 2
+            else:
+                Cluster.log(f"Failed to connect after {max_retries} attempts: {e}")
+        except Exception:
+            _safe_close_client(client)
+            raise
+    _safe_close_client(client)
+    if last_error:
+        raise last_error
 
 def compare_data(db1, db2):
     """
@@ -63,27 +120,27 @@ def compare_data(db1, db2):
 
 def compare_database_hashes(db1_container, db2_container):
     def get_db_hashes_and_collections(uri):
-        client = MongoClient(uri)
-        db_hashes = {}
-        collection_hashes = {}
+        with _mongo_client_with_retry(uri) as client:
+            db_hashes = {}
+            collection_hashes = {}
 
-        for db_name in client.list_database_names():
-            if db_name in ["admin", "local", "config", "percona_clustersync_mongodb"]:
-                continue
-            db = client[db_name]
-            collections = [name for name in db.list_collection_names()]
-            try:
-                if collections:
-                    result = db.command("dbHash", collections=collections)
-                else:
-                    result = db.command("dbHash")
-                db_hashes[db_name] = result.get("md5")
-                for coll, coll_hash in result.get("collections", {}).items():
-                    collection_hashes[f"{db_name}.{coll}"] = coll_hash
-            except PyMongoError as e:
-                Cluster.log(f"Warning: could not run dbHash on {db_name}: {str(e)}")
-                db_hashes[db_name] = None
-        return db_hashes, collection_hashes
+            for db_name in client.list_database_names():
+                if db_name in ["admin", "local", "config", "percona_clustersync_mongodb"]:
+                    continue
+                db = client[db_name]
+                collections = [name for name in db.list_collection_names()]
+                try:
+                    if collections:
+                        result = db.command("dbHash", collections=collections)
+                    else:
+                        result = db.command("dbHash")
+                    db_hashes[db_name] = result.get("md5")
+                    for coll, coll_hash in result.get("collections", {}).items():
+                        collection_hashes[f"{db_name}.{coll}"] = coll_hash
+                except PyMongoError as e:
+                    Cluster.log(f"Warning: could not run dbHash on {db_name}: {str(e)}")
+                    db_hashes[db_name] = None
+            return db_hashes, collection_hashes
 
     db1_hashes, db1_collections = get_db_hashes_and_collections(db1_container)
     db2_hashes, db2_collections = get_db_hashes_and_collections(db2_container)
@@ -122,21 +179,25 @@ def compare_database_hashes(db1_container, db2_container):
 
 def compare_entries_number(db1_container, db2_container):
     def get_collection_counts(uri):
-        client = MongoClient(uri)
-        collection_counts = {}
-        for db_name in client.list_database_names():
-            if db_name in ["admin", "local", "config", "percona_clustersync_mongodb"]:
-                continue
-            db = client[db_name]
-            for coll_name in db.list_collection_names():
-                if coll_name.startswith("system."):
+        with _mongo_client_with_retry(uri) as client:
+            collection_counts = {}
+            for db_name in client.list_database_names():
+                if db_name in ["admin", "local", "config", "percona_clustersync_mongodb"]:
                     continue
-                try:
-                    collection_counts[f"{db_name}.{coll_name}"] = db[coll_name].count_documents({})
-                except Exception as e:
-                    Cluster.log(f"Warning: Could not count documents in {db_name}.{coll_name}: {e}")
-                    continue
-        return collection_counts
+                db = client[db_name]
+                for coll_name in db.list_collection_names():
+                    if coll_name.startswith("system."):
+                        continue
+                    try:
+                        collection_counts[f"{db_name}.{coll_name}"] = db[coll_name].count_documents({})
+                    except (ServerSelectionTimeoutError, NetworkTimeout, ExecutionTimeout) as e:
+                        # Timeout errors - skip this collection and continue
+                        Cluster.log(f"Warning: Timeout counting documents in {db_name}.{coll_name}: {e}. Skipping...")
+                        continue
+                    except Exception as e:
+                        Cluster.log(f"Warning: Could not count documents in {db_name}.{coll_name}: {e}")
+                        continue
+            return collection_counts
 
     db1_counts = get_collection_counts(db1_container)
     db2_counts = get_collection_counts(db2_container)
@@ -193,26 +254,33 @@ def compare_collection_metadata(db1_container, db2_container):
     return mismatched_metadata
 
 def get_all_collection_metadata(uri):
-    client = MongoClient(uri)
-    metadata_list = []
+    try:
+        with _mongo_client_with_retry(uri) as client:
+            metadata_list = []
 
-    for db_name in client.list_database_names():
-        if db_name in ["admin", "local", "config", "percona_clustersync_mongodb"]:
-            continue
-        db = client[db_name]
-        try:
-            for coll in db.list_collections():
-                metadata_list.append({
-                    "db": db_name,
-                    "name": coll["name"],
-                    "type": coll.get("type"),
-                    "options": coll.get("options"),
-                    "idIndex": coll.get("idIndex")
-                })
-        except PyMongoError as e:
-            Cluster.log(f"Warning: Could not access metadata for DB '{db_name}': {str(e)}")
-            return []
-    return metadata_list
+            for db_name in client.list_database_names():
+                if db_name in ["admin", "local", "config", "percona_clustersync_mongodb"]:
+                    continue
+                db = client[db_name]
+                try:
+                    for coll in db.list_collections():
+                        metadata_list.append({
+                            "db": db_name,
+                            "name": coll["name"],
+                            "type": coll.get("type"),
+                            "options": coll.get("options"),
+                            "idIndex": coll.get("idIndex")
+                        })
+                except (ServerSelectionTimeoutError, NetworkTimeout, ExecutionTimeout, AutoReconnect) as e:
+                    Cluster.log(f"Warning: Timeout accessing metadata for DB '{db_name}': {str(e)}. Skipping DB...")
+                    continue
+                except PyMongoError as e:
+                    Cluster.log(f"Warning: Could not access metadata for DB '{db_name}': {str(e)}")
+                    continue
+            return metadata_list
+    except (ServerSelectionTimeoutError, NetworkTimeout, ExecutionTimeout, AutoReconnect) as e:
+        Cluster.log(f"Warning: Connection error retrieving metadata: {e}. Returning empty list...")
+        return []
 
 def compare_collection_indexes(db1_container, db2_container, all_collections):
     Cluster.log("Comparing collection indexes...")
@@ -260,32 +328,36 @@ def compare_collection_indexes(db1_container, db2_container, all_collections):
 def get_indexes(uri, collection_name):
     db_name, coll_name = collection_name.split(".", 1)
 
-    client = MongoClient(uri)
     try:
-        indexes = list(client[db_name][coll_name].list_indexes())
-        return sorted([
-            {
-                "name": index.get("name"),
-                "key": index.get("key"),
-                "unique": index.get("unique", False),
-                "sparse": index.get("sparse", False),
-                "hidden": index.get("hidden", False),
-                "storageEngine": index.get("storageEngine"),
-                "collation": index.get("collation"),
-                "partialFilterExpression": index.get("partialFilterExpression"),
-                "expireAfterSeconds": index.get("expireAfterSeconds"),
-                "weights": index.get("weights"),
-                "default_language": index.get("default_language"),
-                "language_override": index.get("language_override"),
-                "textIndexVersion": index.get("textIndexVersion"),
-                "2dsphereIndexVersion": index.get("2dsphereIndexVersion"),
-                "bits": index.get("bits"),
-                "min": index.get("min"),
-                "max": index.get("max"),
-                "wildcardProjection": index.get("wildcardProjection"),
-            }
-            for index in indexes if "key" in index and "name" in index
-        ], key=lambda x: x["name"])
+        with _mongo_client_with_retry(uri) as client:
+            indexes = list(client[db_name][coll_name].list_indexes())
+            return sorted([
+                {
+                    "name": index.get("name"),
+                    "key": index.get("key"),
+                    "unique": index.get("unique", False),
+                    "sparse": index.get("sparse", False),
+                    "hidden": index.get("hidden", False),
+                    "storageEngine": index.get("storageEngine"),
+                    "collation": index.get("collation"),
+                    "partialFilterExpression": index.get("partialFilterExpression"),
+                    "expireAfterSeconds": index.get("expireAfterSeconds"),
+                    "weights": index.get("weights"),
+                    "default_language": index.get("default_language"),
+                    "language_override": index.get("language_override"),
+                    "textIndexVersion": index.get("textIndexVersion"),
+                    "2dsphereIndexVersion": index.get("2dsphereIndexVersion"),
+                    "bits": index.get("bits"),
+                    "min": index.get("min"),
+                    "max": index.get("max"),
+                    "wildcardProjection": index.get("wildcardProjection"),
+                }
+                for index in indexes if "key" in index and "name" in index
+            ], key=lambda x: x["name"])
+    except (ServerSelectionTimeoutError, NetworkTimeout, ExecutionTimeout, AutoReconnect) as e:
+        # Timeout or connection errors - return empty list (indexes will be marked as missing)
+        Cluster.log(f"Warning: Could not retrieve indexes for {collection_name}: {e}. Skipping...")
+        return []
     except PyMongoError:
         return []
 
@@ -294,23 +366,23 @@ def compare_collection_sharding(db1_container, db2_container, all_collections):
     mismatched_sharding = []
 
     def get_sharding_info(uri):
-        client = MongoClient(uri)
-        sharding_info = {}
-        try:
-            config_db = client.get_database("config")
-            collection_names = config_db.list_collection_names()
-            if "collections" in collection_names:
-                for coll_doc in config_db["collections"].find({}):
-                    ns = coll_doc.get("_id")
-                    if ns:
-                        sharding_info[ns] = {
-                            "key": coll_doc.get("key"),
-                            "unique": coll_doc.get("unique", False)}
-            else:
-                Cluster.log("Warning: No sharded collections found")
-        except PyMongoError as e:
-            Cluster.log(f"Warning: Could not access sharding info: {str(e)}")
-        return sharding_info
+        with _mongo_client_with_retry(uri) as client:
+            sharding_info = {}
+            try:
+                config_db = client.get_database("config")
+                collection_names = config_db.list_collection_names()
+                if "collections" in collection_names:
+                    for coll_doc in config_db["collections"].find({}):
+                        ns = coll_doc.get("_id")
+                        if ns:
+                            sharding_info[ns] = {
+                                "key": coll_doc.get("key"),
+                                "unique": coll_doc.get("unique", False)}
+                else:
+                    Cluster.log("Warning: No sharded collections found")
+            except PyMongoError as e:
+                Cluster.log(f"Warning: Could not access sharding info: {str(e)}")
+            return sharding_info
 
     db1_sharding = get_sharding_info(db1_container)
     db2_sharding = get_sharding_info(db2_container)
