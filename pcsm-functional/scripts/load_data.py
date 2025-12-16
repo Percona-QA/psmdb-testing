@@ -102,7 +102,7 @@ def collection_worker(collection_name, count, template_type, pool_data, db_name,
     except Exception as e:
         log(f"[{collection_name}] Error: {e}")
 
-def enable_and_shard_all_collections(port):
+def enable_and_shard_all_collections(port, total_collections):
     db_name = os.getenv("DBNAME", "test_db")
 
     client = pymongo.MongoClient(f"mongodb://127.0.0.1:{port}")
@@ -114,19 +114,18 @@ def enable_and_shard_all_collections(port):
     except Exception as e:
         log(f"Failed to enable sharding on database {db_name}: {str(e)}")
 
-    for coll_name in db.list_collection_names():
-        if coll_name.startswith("system."):
-            continue
-
+    for i in range(total_collections):
+        coll_name = f"collection{i}"
         ns = f"{db_name}.{coll_name}"
-        log(f"Sharding collection {ns}")
 
         try:
-            admin.command(
-                "shardCollection",
-                ns,
-                key={"_id": 1},
-            )
+            db.create_collection(coll_name)
+        except Exception as e:
+            if "already exists" not in str(e).lower():
+                raise
+
+        try:
+            admin.command("shardCollection", ns, key={"_id": "hashed"})
         except Exception as e:
             log(f"Failed to shard {ns}: {str(e)}")
 
@@ -172,5 +171,5 @@ def load_data(port):
 
 if __name__ == "__main__":
     args = parse_args()
+    enable_and_shard_all_collections(args.port, int(os.getenv("COLLECTIONS", 5)))
     load_data(args.port)
-    enable_and_shard_all_collections(args.port)
