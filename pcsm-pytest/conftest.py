@@ -7,9 +7,6 @@ from clustersync import Clustersync
 
 pytest_plugins = ["metrics_collector"]
 
-def pytest_configure(config):
-    config.addinivalue_line("markers", "mongod_extra_args(args): specify custom mongod extra arguments for cluster fixtures")
-
 def pytest_addoption(parser):
     parser.addoption("--jenkins", action="store_true", default=False, help="Run tests marked as jenkins")
 

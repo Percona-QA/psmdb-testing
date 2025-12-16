@@ -9,6 +9,13 @@ from cluster import Cluster
 # Connection error types that should trigger retry
 _CONNECTION_ERRORS = (ServerSelectionTimeoutError, NetworkTimeout, AutoReconnect, ConnectionError)
 
+def _safe_close_client(client):
+    if client:
+        try:
+            client.close()
+        except Exception:
+            pass
+
 @contextmanager
 def _mongo_client_with_retry(uri, max_retries=3, retry_delay=1):
     """
@@ -16,67 +23,41 @@ def _mongo_client_with_retry(uri, max_retries=3, retry_delay=1):
     """
     client = None
     last_error = None
+    current_delay = retry_delay
     for attempt in range(max_retries):
+        client = None
         try:
             client = MongoClient(uri, serverSelectionTimeoutMS=10000, socketTimeoutMS=8000, connectTimeoutMS=10000)
             client.admin.command("ping")
             try:
                 yield client
-                if client:
-                    try:
-                        client.close()
-                    except Exception:
-                        pass
+                _safe_close_client(client)
                 return
             except _CONNECTION_ERRORS as e:
-                # Connection error during operation - close client and retry
-                if client:
-                    try:
-                        client.close()
-                    except Exception:
-                        pass
-                    client = None
                 last_error = e
+                _safe_close_client(client)
+                client = None
                 if attempt < max_retries - 1:
-                    Cluster.log(f"Connection error during operation: {e}. Retrying in {retry_delay}s...")
-                    time.sleep(retry_delay)
-                    retry_delay *= 2
+                    Cluster.log(f"Connection error during operation: {e}. Retrying in {current_delay}s...")
+                    time.sleep(current_delay)
+                    current_delay *= 2
                     continue
                 else:
-                    # All retries exhausted - let exception propagate
-                    if client:
-                        try:
-                            client.close()
-                        except Exception:
-                            pass
-                    raise
+                    break
         except _CONNECTION_ERRORS as e:
             last_error = e
-            if client:
-                try:
-                    client.close()
-                except Exception:
-                    pass
-                client = None
+            _safe_close_client(client)
+            client = None
             if attempt < max_retries - 1:
-                Cluster.log(f"Connection attempt {attempt + 1} failed: {e}. Retrying in {retry_delay}s...")
-                time.sleep(retry_delay)
-                retry_delay *= 2
+                Cluster.log(f"Connection attempt {attempt + 1} failed: {e}. Retrying in {current_delay}s...")
+                time.sleep(current_delay)
+                current_delay *= 2
             else:
                 Cluster.log(f"Failed to connect after {max_retries} attempts: {e}")
         except Exception:
-            if client:
-                try:
-                    client.close()
-                except Exception:
-                    pass
+            _safe_close_client(client)
             raise
-    # If we get here, all retries failed
-    if client:
-        try:
-            client.close()
-        except Exception:
-            pass
+    _safe_close_client(client)
     if last_error:
         raise last_error
 

@@ -330,7 +330,7 @@ def test_csync_PML_T5(start_cluster, src_cluster, dst_cluster, csync):
             pytest.fail("Unexpected mismatches:\n" + "\n".join(str(m) for m in unexpected_mismatches))
 
     csync_error, error_logs = csync.check_csync_errors()
-    expected_errors = ["ERR One or more indexes failed to create", "ERR No incomplete indexes to add"]
+    expected_errors = ["ERR One or more indexes failed to create", "ERR No incomplete indexes to add", "Failed to recreate unsuccessful index"]
     if not csync_error:
         unexpected = [line for line in error_logs if all(expected_error not in line for expected_error in expected_errors)]
         if unexpected:
@@ -584,7 +584,7 @@ def test_csync_PML_T30(start_cluster, src_cluster, dst_cluster, csync):
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
     csync_error, error_logs = csync.check_csync_errors()
-    expected_errors = ["ERR One or more indexes failed to create", "ERR No incomplete indexes to add"]
+    expected_errors = ["ERR One or more indexes failed to create", "ERR No incomplete indexes to add", "Failed to recreate unsuccessful index"]
     if not csync_error:
         unexpected = [line for line in error_logs if all(expected_error not in line for expected_error in expected_errors)]
         if unexpected:

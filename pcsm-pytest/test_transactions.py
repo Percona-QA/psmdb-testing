@@ -523,8 +523,10 @@ def test_csync_PML_T59(start_cluster, src_cluster, dst_cluster, csync):
     """
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
-    prepare_two_db_sharded_layout(src, src_cluster, "sharded_txn_db1", "items_left_sharded",
-                                                "sharded_txn_db2", "items_right_sharded")
+    prepare_two_db_sharded_layout(src, src_cluster, "sharded_txn_db1", "items_abort_left_sharded",
+                                                "sharded_txn_db2", "items_abort_right_sharded")
+    prepare_two_db_sharded_layout(src, src_cluster, "sharded_txn_db1", "items_commit_left_sharded",
+                                                "sharded_txn_db2", "items_commit_right_sharded")
     for db_name, coll_name in [("sharded_txn_db1", "items_left_unsharded"), ("sharded_txn_db2", "items_right_unsharded"),
                             ("sharded_txn_db1", "items_abort_left_unsharded"), ("sharded_txn_db2", "items_abort_right_unsharded")]:
         src[db_name].create_collection(coll_name)
@@ -563,9 +565,9 @@ def test_csync_PML_T59(start_cluster, src_cluster, dst_cluster, csync):
             with src.start_session() as session:
                 session.start_transaction()
                 src["sharded_txn_db1"]["items_commit_left_unsharded"].insert_one({"_id": 1, "value": "left_unsharded"}, session=session)
-                src["sharded_txn_db1"]["items_left_sharded"].insert_one({"_id": 2, "value": "left_sharded"}, session=session)
+                src["sharded_txn_db1"]["items_commit_left_sharded"].insert_one({"_id": 2, "value": "left_sharded"}, session=session)
                 src["sharded_txn_db2"]["items_commit_right_unsharded"].insert_one({"_id": 3, "value": "right_unsharded"}, session=session)
-                src["sharded_txn_db2"]["items_right_sharded"].insert_one({"_id": 4, "value": "right_sharded"}, session=session)
+                src["sharded_txn_db2"]["items_commit_right_sharded"].insert_one({"_id": 4, "value": "right_sharded"}, session=session)
                 session.commit_transaction()
             break
         except OperationFailure as e:
@@ -648,10 +650,14 @@ def test_csync_PML_T60(start_cluster, src_cluster, dst_cluster, csync, failpoint
     with src.start_session() as session:
         session.start_transaction()
         try:
-            src["sharded_txn_db1"]["items_fail_left_unsharded"].insert_one({"_id": 1, "value": "left_unsharded"}, session=session)
-            src["sharded_txn_db1"]["items_fail_left_sharded"].insert_one({"_id": 2, "value": "left_sharded"}, session=session)
-            src["sharded_txn_db2"]["items_fail_right_unsharded"].insert_one({"_id": 3, "value": "right_unsharded"}, session=session)
-            src["sharded_txn_db2"]["items_fail_right_sharded"].insert_one({"_id": 4, "value": "right_sharded"}, session=session)
+            collections = [
+                (src["sharded_txn_db1"]["items_fail_left_unsharded"], "left_unsharded"),
+                (src["sharded_txn_db1"]["items_fail_left_sharded"], "left_sharded"),
+                (src["sharded_txn_db2"]["items_fail_right_unsharded"], "right_unsharded"),
+                (src["sharded_txn_db2"]["items_fail_right_sharded"], "right_sharded")]
+            for i in range(20):
+                collection, value = collections[i % len(collections)]
+                collection.insert_one({"_id": i + 1, "value": value}, session=session)
             session.commit_transaction()
             Cluster.log("DEBUG: Transaction committed successfully on src")
         except OperationFailure as e:
