@@ -3,41 +3,51 @@ import time
 import json
 from datetime import datetime
 import testinfra.utils.ansible_runner
+
 from data_integrity_check import compare_data_rs
 
 source = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_host('replicaset-pcsm-source')
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('sharded-pcsm-source')
 
 destination = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_host('replicaset-pcsm-destination')
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('sharded-pcsm-destination')
 
 pcsm = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_host('replicaset-pcsm-clustersync')
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('sharded-pcsm-clustersync')
 
 collections = int(os.getenv("COLLECTIONS", default = 5))
 datasize = int(os.getenv("DATASIZE", default = 100))
 distribute = os.getenv("RANDOM_DISTRIBUTE_DATA", default="false").lower() == "true"
 doc_template = os.getenv("DOC_TEMPLATE", default = 'random')
 FULL_DATA_COMPARE = os.getenv("FULL_DATA_COMPARE", default="false").lower() == "true"
-TIMEOUT = int(os.getenv("TIMEOUT",default = 3600))
+TIMEOUT = int(os.getenv("TIMEOUT", default=3600))
 
 def load_data(node):
     env_vars = f"COLLECTIONS={collections} DATASIZE={datasize} DISTRIBUTE={distribute} DOC_TEMPLATE={doc_template}"
-    node.run_test(f"{env_vars} python3 /tmp/load_data.py")
+    node.run_test(f"{env_vars} python3 /tmp/load_data.py --port 27018")
 
 def obtain_pcsm_address(node):
     ipaddress = node.check_output(
         "ip -4 addr show scope global | grep inet | awk '{print $2}' | cut -d/ -f1 | head -n 1")
     return ipaddress
 
-def confirm_collection_size(node, datasize, dbname="test_db"):
+def confirm_collection_size(node, datasize, dbname="test_db", port="27018"):
     cmd = (
-        f'mongosh "mongodb://127.0.0.1:27017/" --quiet --eval \'let total = 0; '
+        f'mongosh "mongodb://127.0.0.1:{port}/" --quiet --eval \''
+        f'let total = 0; '
         f'const dbname = "{dbname}"; const targetdb = db.getSiblingDB(dbname); '
         f'targetdb.getCollectionNames().forEach(name => {{ '
-        f'let stats = targetdb.getCollection(name).stats(); '
-        f'if (stats && typeof stats.size === "number") {{ total += stats.size; }} }}); '
-        f'print((total / (1024 * 1024)).toFixed(2));\'')
+        f'  let stats = targetdb.getCollection(name).stats(); '
+        f'  if (stats && typeof stats.size === "number") {{ '
+        f'    const orphanCount = stats.numOrphanDocs || 0; '
+        f'    const avg = stats.avgObjSize || 0; '
+        f'    const effectiveSize = stats.size - (orphanCount * avg); '
+        f'    total += effectiveSize; '
+        f'  }} '
+        f'}}); '
+        f'print((total / (1024 * 1024)).toFixed(2));\''
+    )
+
     try:
         result = node.check_output(cmd)
         size_mb = float(result.strip())
@@ -161,7 +171,7 @@ def test_prepare_data():
     assert confirm_collection_size(source, datasize), "Source data size validation failed"
     log_step("Source data size confirmed")
 
-def test_data_transfer_PML_T40():
+def test_data_transfer_PML_T60():
     log_step("Starting PCSM sync...")
     assert pcsm_start()
     log_step("Waiting for replication to complete...")
@@ -170,13 +180,13 @@ def test_data_transfer_PML_T40():
     assert pcsm_finalize(), "PCSM sync did not complete successfully"
     log_step("PCSM sync completed successfully")
 
-def test_datasize_PML_T41():
+def test_datasize_PML_T61():
     log_step("Validating destination data size...")
     assert confirm_collection_size(destination, datasize), "Destination data size validation failed"
     log_step("Destination data size confirmed")
 
-def test_data_integrity_PML_T42():
+def test_data_integrity_PML_T62():
     log_step("Comparing data integrity between source and destination...")
-    result, _ = compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE)
+    result, _ = compare_data_rs(source, destination, "27018", FULL_DATA_COMPARE)
     assert result is True, "Data mismatch after synchronization"
     log_step("Data integrity check completed successfully")

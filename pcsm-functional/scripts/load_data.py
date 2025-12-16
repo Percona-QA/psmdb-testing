@@ -8,8 +8,19 @@ import threading
 from bson import ObjectId, BSON
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import argparse
 
 shutdown_event = threading.Event()
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Load test data into MongoDB")
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=27017,
+        help="MongoDB port to connect to (default: 27017)",
+    )
+    return parser.parse_args()
 
 def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
@@ -73,9 +84,9 @@ def insert_documents(collection, docs):
         return str(e)
     return None
 
-def collection_worker(collection_name, count, template_type, pool_data, db_name):
+def collection_worker(collection_name, count, template_type, pool_data, db_name, port):
     try:
-        client = pymongo.MongoClient("mongodb://127.0.0.1:27017")
+        client = pymongo.MongoClient(f"mongodb://127.0.0.1:{port}")
         db = client[db_name]
         collection = db[collection_name]
         batch_size = 1000
@@ -91,7 +102,34 @@ def collection_worker(collection_name, count, template_type, pool_data, db_name)
     except Exception as e:
         log(f"[{collection_name}] Error: {e}")
 
-def load_data():
+def enable_and_shard_all_collections(port, total_collections):
+    db_name = os.getenv("DBNAME", "test_db")
+
+    client = pymongo.MongoClient(f"mongodb://127.0.0.1:{port}")
+    admin = client["admin"]
+    db = client[db_name]
+
+    try:
+        admin.command("enableSharding", db_name)
+    except Exception as e:
+        log(f"Failed to enable sharding on database {db_name}: {str(e)}")
+
+    for i in range(total_collections):
+        coll_name = f"collection{i}"
+        ns = f"{db_name}.{coll_name}"
+
+        try:
+            db.create_collection(coll_name)
+        except Exception as e:
+            if "already exists" not in str(e).lower():
+                raise
+
+        try:
+            admin.command("shardCollection", ns, key={"_id": "hashed"})
+        except Exception as e:
+            log(f"Failed to shard {ns}: {str(e)}")
+
+def load_data(port):
     start_time = time.time()
 
     total_collections = int(os.getenv("COLLECTIONS", 5))
@@ -121,7 +159,7 @@ def load_data():
         doc_counts = [base + 1 if i < remainder else base for i in range(total_collections)]
 
     with ThreadPoolExecutor(max_workers=max_threads) as executor:
-        futures = [executor.submit(collection_worker, f"collection{i}", count, template_type, pool_data, db_name)
+        futures = [executor.submit(collection_worker, f"collection{i}", count, template_type, pool_data, db_name, port)
             for i, count in enumerate(doc_counts)]
         for future in as_completed(futures):
             try:
@@ -132,4 +170,6 @@ def load_data():
     log(f"Data generation finished in {elapsed:.2f} seconds")
 
 if __name__ == "__main__":
-    load_data()
+    args = parse_args()
+    enable_and_shard_all_collections(args.port, int(os.getenv("COLLECTIONS", 5)))
+    load_data(args.port)
