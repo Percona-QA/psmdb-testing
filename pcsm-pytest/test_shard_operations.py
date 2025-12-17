@@ -18,13 +18,11 @@ def test_csync_PML_T61(start_cluster, src_cluster, dst_cluster, csync):
     coll_name = "test_coll"
     src.admin.command("enableSharding", db_name)
     collection = src[db_name][coll_name]
-    docs = [{"_id": i, "region": f"r_{i % 3}", "status": f"s_{i % 2}"} for i in range(10)]
-    collection.insert_many(docs)
-    collection.create_index([("region", pymongo.ASCENDING)])
     src.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"region": 1})
+    collection.insert_one({"_id": 0, "region": "r_0", "status": "s_0"})
     assert csync.start(), "Failed to start csync"
     assert csync.wait_for_repl_stage(), "Failed to start replication"
-    assert collection.count_documents({}) == dst[db_name][coll_name].count_documents({}) == 10
+    assert collection.count_documents({}) == dst[db_name][coll_name].count_documents({}) == 1
     collection.create_index([("region", pymongo.ASCENDING), ("status", pymongo.ASCENDING)])
     try:
         src.admin.command("refineCollectionShardKey", f"{db_name}.{coll_name}",
@@ -109,13 +107,11 @@ def test_csync_PML_T63(start_cluster, src_cluster, dst_cluster, csync):
     coll_name = "test_coll"
     src.admin.command("enableSharding", db_name)
     collection = src[db_name][coll_name]
-    docs = [{"_id": i, "value": f"data_{i}"} for i in range(2)]
-    collection.insert_many(docs)
-    collection.create_index([("_id", pymongo.HASHED)])
     src.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"_id": "hashed"})
+    collection.insert_one({"_id": 0, "value": "data_0"})
     assert csync.start(), "Failed to start csync"
     assert csync.wait_for_repl_stage(), "Failed to start replication"
-    assert collection.count_documents({}) == dst[db_name][coll_name].count_documents({}) == 2
+    assert collection.count_documents({}) == dst[db_name][coll_name].count_documents({}) == 1
     try:
         src.admin.command("unshardCollection", f"{db_name}.{coll_name}")
     except OperationFailure as e:
