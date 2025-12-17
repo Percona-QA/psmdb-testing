@@ -12,8 +12,8 @@ from data_types.sharded_index_types import create_sharded_index_types
 
 # Set no_shard_key to True, support added in PCSM-220
 DEFAULT_NO_SHARD_KEY = True
-# Set update_shard_key to False due to PCSM-221
-DEFAULT_UPDATE_SHARD_KEY = False
+# Set update_shard_key to True, support added in PCSM-221
+DEFAULT_UPDATE_SHARD_KEY = True
 # Set create_unique_sharded to True, support added in PCSM-194/PCSM-214
 DEFAULT_CREATE_UNIQUE_SHARDED = True
 # Set create_collation_sharded to True, support added in PCSM-200

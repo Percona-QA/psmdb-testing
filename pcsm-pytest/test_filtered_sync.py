@@ -19,22 +19,17 @@ def verify_expected_mismatches(src_cluster, mismatches, skip_entries, skip_prefi
     if not src_cluster.is_sharded:
         mismatch_set = set(mismatches)
         for expected_mismatch in skip_entries:
-            try:
-                assert expected_mismatch in mismatch_set, \
+            assert expected_mismatch in mismatch_set, \
                     f"Expected mismatch {expected_mismatch} not found in actual mismatches: {mismatches}"
-            except AssertionError:
-                pytest.xfail("Known limitation: PCSM-230")
     # Filter out sharded-only collection prefixes for replica sets
     prefixes_to_check = skip_prefixes
     if not src_cluster.is_sharded:
         prefixes_to_check = [prefix for prefix in skip_prefixes if ".sharded_" not in prefix]
     for prefix in prefixes_to_check:
         matching_mismatches = [name for name, _ in mismatches if name.startswith(prefix)]
-        try:
-            assert len(matching_mismatches) > 0, \
+        assert len(matching_mismatches) > 0, \
                 f"Expected at least one mismatch matching prefix '{prefix}', but found none. Actual mismatches: {mismatches}"
-        except AssertionError:
-            pytest.xfail("Known limitation: PCSM-230")
+
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
