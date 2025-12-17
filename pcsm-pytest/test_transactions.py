@@ -751,7 +751,7 @@ def test_csync_PML_T60(start_cluster, src_cluster, dst_cluster, csync, failpoint
             total_count = dst[db_name][coll_name].count_documents({})
             Cluster.log(f"Shard 1 documents in {db_name}.{coll_name}: total: {total_count}")
             if total_count > 0:
-                pytest.skip("!!! Bug: transaction should be atomic")
+                pytest.xfail("!!! Bug: transaction should be atomic")
             assert total_count == 0, f"Expected no documents in {db_name}.{coll_name} (shard 1) due to failpoint, found {total_count}"
         return
     assert csync.finalize(), "Failed to finalize csync service"
