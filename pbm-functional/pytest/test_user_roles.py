@@ -243,9 +243,9 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
             'admin_db_users_bcp': False,
             'admin_db_users_pitr': False,
             'test_db_users_bcp': True,
-            'test_db_users_pitr': False,            # PITR limitation: not in backup
+            'test_db_users_pitr': True,
             'administration_db_users_bcp': True,
-            'administration_db_users_pitr': False,  # PITR limitation: not in backup
+            'administration_db_users_pitr': True,
         },
         'full_bck_part_rst_user2': {
             'admin_db_users_bcp': False,
@@ -253,7 +253,7 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
             'test_db_users_bcp': False,
             'test_db_users_pitr': False,
             'administration_db_users_bcp': True,
-            'administration_db_users_pitr': False,  # PITR limitation: not in backup
+            'administration_db_users_pitr': True,
         },
         'full_bck': {
             'admin_db_users_bcp': True,
