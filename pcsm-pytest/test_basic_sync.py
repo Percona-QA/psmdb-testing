@@ -592,7 +592,7 @@ def test_csync_PML_T30(start_cluster, src_cluster, dst_cluster, csync):
 
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.timeout(300,func_only=True)
-def test_csync_PML_T58(start_cluster, src_cluster, dst_cluster, csync):
+def test_csync_PML_T63(start_cluster, src_cluster, dst_cluster, csync):
     """
     Test to validate data clone with inconsistent index
     """

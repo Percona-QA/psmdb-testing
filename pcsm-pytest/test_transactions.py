@@ -530,7 +530,7 @@ def test_csync_PML_T27(start_cluster, src_cluster, dst_cluster, csync):
 
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.timeout(300,func_only=True)
-def test_csync_PML_T59(start_cluster, src_cluster, dst_cluster, csync):
+def test_csync_PML_T64(start_cluster, src_cluster, dst_cluster, csync):
     """
     Validate multi-shard transaction commit and abort across two shards and replication
     Tests both successful commit and explicit abort scenarios
@@ -603,7 +603,7 @@ def test_csync_PML_T59(start_cluster, src_cluster, dst_cluster, csync):
 @pytest.mark.parametrize("failpoint_target", ["src", "dst_transient_error", "dst_permanent_error"])
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
 @pytest.mark.timeout(300,func_only=True)
-def test_csync_PML_T60(start_cluster, src_cluster, dst_cluster, csync, failpoint_target):
+def test_csync_PML_T65(start_cluster, src_cluster, dst_cluster, csync, failpoint_target):
     """
     Test that csync does honor transaction during replication
     Creates collections after replication starts, ensures at least one collection
