@@ -3,8 +3,7 @@ import pymongo
 import time
 import os
 import docker
-
-from datetime import datetime
+from datetime import datetime, timezone
 from cluster import Cluster
 
 """
@@ -90,98 +89,91 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
     cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
     client_shard = pymongo.MongoClient("mongodb://root:root@rs101,rs102,rs103/?replicaSet=rs1")
-    client.admin.command({"enableSharding": "administration", "primaryShard": "rs1"})
-    client.admin.command({"enableSharding": "test_db1", "primaryShard": "rs1"})
-    client.admin.command({"enableSharding": "test_db2", "primaryShard": "rs2"})
+    for db_name, shard in [("administration", "rs1"), ("test_db1", "rs1"), ("test_db2", "rs2")]:
+        client.admin.command({"enableSharding": db_name, "primaryShard": shard})
     client.admin.command("shardCollection", "test_db1.test_coll11", key={"_id": "hashed"})
     client.admin.command('updateUser', 'pbm_test', pwd='pbmpass_test2')
-    client.admin.command('createRole', 'customAdminRole',
-        privileges=[
-            {'resource': {'db': 'admin', 'collection': ''}, 'actions': ['find', 'insert', 'update', 'remove']},
-            {'resource': {'cluster': True}, 'actions': ['serverStatus', 'listDatabases', 'addShard', 'removeShard']}
-        ],
-        roles=['readWrite', 'userAdminAnyDatabase', 'clusterAdmin']
-    )
-    client.test_db1.command('createRole', 'customTestDBRole',
-        privileges=[
-            {'resource': {'db': 'test_db1', 'collection': ''}, 'actions': ['find', 'insert', 'update', 'remove']}
-        ],
-        roles=['readWrite']
-    )
-    client.administration.command('createRole', 'customAdministrationDBRole',
-        privileges=[
-            {'resource': {'db': 'administration', 'collection': ''}, 'actions': ['find', 'insert', 'update', 'remove']}
-        ],
-        roles=['readWrite']
-    )
-    client_shard.admin.command('createRole', 'customAdminRoleSh',
-        privileges=[
-            {'resource': {'db': 'admin', 'collection': ''}, 'actions': ['find', 'insert', 'update', 'remove']},
-            {'resource': {'db': 'admin', 'collection': 'system.js'}, 'actions': ['find', 'update']},
-            {'resource': {'cluster': True}, 'actions': ['serverStatus', 'listDatabases', 'addShard', 'removeShard']}
-        ],
-        roles=['readWrite', 'userAdminAnyDatabase', 'clusterAdmin']
-    )
-    client_shard.test_db1.command('createRole', 'customTestDBRoleSh',
-        privileges=[
-            {'resource': {'db': 'test_db1', 'collection': ''}, 'actions': ['find', 'insert', 'update', 'remove']}
-        ],
-        roles=['readWrite']
-    )
-    client_shard.administration.command('createRole', 'customAdministrationDBRoleSh',
-        privileges=[
-            {'resource': {'db': 'administration', 'collection': ''}, 'actions': ['find', 'insert', 'update', 'remove']}
-        ],
-        roles=['readWrite']
-    )
-    client.admin.command('createUser', 'admin_random_user1',
-        pwd='test123',
-        roles=[{'role': 'customAdminRole', 'db': 'admin'}]
-    )
-    client_shard.admin.command('createUser', 'admin_random_user2',
-        pwd='test123',
-        roles=[{'role': 'customAdminRoleSh', 'db': 'admin'}]
-    )
-    client.test_db1.command('createUser', 'test_random_user1',
-        pwd='test123',
-        roles=[{'role': 'customTestDBRole', 'db': 'test_db1'}]
-    )
-    client_shard.test_db1.command('createUser', 'test_random_user2',
-        pwd='test123',
-        roles=[{'role': 'customTestDBRoleSh', 'db': 'test_db1'}]
-    )
-    client.administration.command('createUser', 'administration_random_user1',
-        pwd='test123',
-        roles=[{'role': 'customAdministrationDBRole', 'db': 'administration'}]
-    )
-    client_shard.administration.command('createUser', 'administration_random_user2',
-        pwd='test123',
-        roles=[{'role': 'customAdministrationDBRoleSh', 'db': 'administration'}]
-    )
+    role_configs = [
+        {
+            'db': 'admin',
+            'role_name': 'customAdminRole',
+            'role_name_sh': 'customAdminRoleSh',
+            'privileges': [
+                {'resource': {'db': 'admin', 'collection': 'system'}, 'actions': ['find', 'insert', 'update', 'remove']},
+                {'resource': {'cluster': True}, 'actions': ['serverStatus', 'listDatabases', 'addShard', 'removeShard']}
+            ],
+            'roles': ['readWrite', 'userAdminAnyDatabase', 'clusterAdmin'],
+            'user_name': 'admin_random_user1',
+            'user_name_sh': 'admin_random_user2',
+        },
+        {
+            'db': 'test_db1',
+            'role_name': 'customTestDBRole',
+            'role_name_sh': 'customTestDBRoleSh',
+            'privileges': [
+                {'resource': {'db': 'test_db1', 'collection': ''}, 'actions': ['find', 'insert', 'update', 'remove']}
+            ],
+            'roles': ['readWrite'],
+            'user_name': 'test_random_user1',
+            'user_name_sh': 'test_random_user2',
+        },
+        {
+            'db': 'administration',
+            'role_name': 'customAdministrationDBRole',
+            'role_name_sh': 'customAdministrationDBRoleSh',
+            'privileges': [
+                {'resource': {'db': 'administration', 'collection': ''}, 'actions': ['find', 'insert', 'update', 'remove']}
+            ],
+            'roles': ['readWrite'],
+            'user_name': 'administration_random_user1',
+            'user_name_sh': 'administration_random_user2',
+        },
+    ]
+    for config in role_configs:
+        client[config['db']].command('createRole', config['role_name'], privileges=config['privileges'], roles=config['roles'])
+        client_shard[config['db']].command('createRole', config['role_name_sh'], privileges=config['privileges'], roles=config['roles'])
+        client[config['db']].command('createUser', config['user_name'], pwd='test123', roles=[{'role': config['role_name'], 'db': config['db']}])
+        client_shard[config['db']].command('createUser', config['user_name_sh'], pwd='test123', roles=[{'role': config['role_name_sh'], 'db': config['db']}])
     for i in range(10):
         client["test_db1"]["test_coll11"].insert_one({"key": i, "data": i})
         client["test_db2"]["test_coll21"].insert_one({"key": i, "data": i})
     backup_full = cluster.make_backup("logical")
     backup_partial = cluster.make_backup("logical --ns=administration.*,test_db1.*,test_db2.*")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
-    client.admin.command('createUser', 'admin_random_user3', pwd='test123', roles=[{'role':'readWrite','db':'admin'}, 'userAdminAnyDatabase', 'clusterAdmin'])
-    client_shard.admin.command('createUser', 'admin_random_user4', pwd='test123', roles=[{'role':'readWrite','db':'admin'}, 'userAdminAnyDatabase', 'clusterAdmin'])
-    client.test_db1.command('createUser', 'test_random_user3', pwd='test123', roles=[{'role':'readWrite','db':'test_db1'}, {'role':'clusterManager','db':'admin'}])
-    client_shard.test_db1.command('createUser', 'test_random_user4', pwd='test123', roles=[{'role':'readWrite','db':'test_db1'}, {'role':'clusterManager','db':'admin'}])
-    client.administration.command('createUser', 'administration_random_user3', pwd='test123', roles=[{'role':'readWrite','db':'administration'}, {'role':'clusterManager','db':'admin'}])
-    client_shard.administration.command('createUser', 'administration_random_user4', pwd='test123', roles=[{'role':'readWrite','db':'administration'}, {'role':'clusterManager','db':'admin'}])
+    builtin_user_configs = [
+        {
+            'db': 'admin',
+            'user_name': 'admin_random_user3',
+            'user_name_sh': 'admin_random_user4',
+            'roles': [{'role': 'readWrite', 'db': 'admin'}, 'userAdminAnyDatabase', 'clusterAdmin'],
+        },
+        {
+            'db': 'test_db1',
+            'user_name': 'test_random_user3',
+            'user_name_sh': 'test_random_user4',
+            'roles': [{'role': 'readWrite', 'db': 'test_db1'}, {'role': 'clusterManager', 'db': 'admin'}],
+        },
+        {
+            'db': 'administration',
+            'user_name': 'administration_random_user3',
+            'user_name_sh': 'administration_random_user4',
+            'roles': [{'role': 'readWrite', 'db': 'administration'}, {'role': 'clusterManager', 'db': 'admin'}],
+        },
+    ]
+    for config in builtin_user_configs:
+        client[config['db']].command('createUser', config['user_name'], pwd='test123', roles=config['roles'])
+        client_shard[config['db']].command('createUser', config['user_name_sh'], pwd='test123', roles=config['roles'])
     for i in range(10):
         client["test_db1"]["test_coll11"].insert_one({"key": i+10, "data": i+10})
         client["test_db2"]["test_coll21"].insert_one({"key": i+10, "data": i+10})
     time.sleep(5)
-    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    pitr = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     cluster.disable_pitr(pitr)
     pitr = " --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     client.drop_database("test_db1")
     client.drop_database("test_db2")
     client.drop_database("administration")
-
     users_to_drop = {
         client: {
             "admin": ["admin_random_user1", "admin_random_user3"],
@@ -194,13 +186,11 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
             "administration": ["administration_random_user2", "administration_random_user4"],
         }
     }
-
     for db_client, dbs in users_to_drop.items():
         for db_name, users in dbs.items():
             db = getattr(db_client, db_name)
             for user in users:
                 db.command("dropUser", user)
-
     # restoring users and roles from selective backup is not supported
     restore_commands = {
         'part_bck': " --base-snapshot=" + backup_partial + pitr,
@@ -210,7 +200,6 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
         'full_bck': " --base-snapshot=" + backup_full + pitr,
         'full_pitr': " --base-snapshot=" + backup_full + pitr
     }
-
     # re-create cluster with new PBM user for connection to check that restore and connection to DB are OK
     # despite the same user with different password is present in backup
     if restore_type == 'full_bck':
@@ -221,36 +210,84 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
         newcluster.make_restore(restore_commands.get(restore_type), check_pbm_status=True)
     else:
         cluster.make_restore(restore_commands.get(restore_type), check_pbm_status=True)
-
     if restore_type != 'full_bck_part_rst_user2':
         assert client["test_db1"]["test_coll11"].count_documents({}) == 20
         assert client["test_db1"].command("collstats", "test_coll11").get("sharded", False)
         assert client["test_db2"]["test_coll21"].count_documents({}) == 20
         assert client["test_db2"].command("collstats", "test_coll21").get("sharded", True) is False
-
     failures = []
     def run_check(*args, **kwargs):
         try:
             check_user(*args, **kwargs)
         except AssertionError as e:
             failures.append(str(e))
-    run_check(client, "admin", "admin_random_user1", {'customAdminRole'}, restore_type in ['full_bck','full_pitr'], restore_type)
-    run_check(client_shard, "admin", "admin_random_user2", {'customAdminRoleSh'}, restore_type in ['full_bck','full_pitr'], restore_type)
-    run_check(client, "admin", "admin_random_user3", {'readWrite', 'userAdminAnyDatabase', 'clusterAdmin'}, restore_type in ['full_bck','full_pitr'], restore_type)
-    run_check(client_shard, "admin", "admin_random_user4", {'readWrite', 'userAdminAnyDatabase', 'clusterAdmin'}, restore_type in ['full_bck','full_pitr'], restore_type)
-
-    run_check(client, "test_db1", "test_random_user1", {'customTestDBRole'}, restore_type not in ['part_bck','full_bck_part_rst_wo_user','full_bck_part_rst_user2'], restore_type)
-    run_check(client_shard, "test_db1", "test_random_user2", {'customTestDBRoleSh'}, restore_type not in ['part_bck','full_bck_part_rst_wo_user','full_bck_part_rst_user2'], restore_type)
-    # current limitation: option with-users-and-roles doesn't work with PITR
-    run_check(client, "test_db1", "test_random_user3", {'readWrite', 'clusterManager'}, restore_type not in ['part_bck','full_bck_part_rst_wo_user', 'full_bck_part_rst_user1','full_bck_part_rst_user2'], restore_type)
-    run_check(client_shard, "test_db1", "test_random_user4", {'readWrite', 'clusterManager'}, restore_type not in ['part_bck','full_bck_part_rst_wo_user', 'full_bck_part_rst_user1','full_bck_part_rst_user2'], restore_type)
-
-    run_check(client, "administration", "administration_random_user1", {'customAdministrationDBRole'}, restore_type not in ['part_bck','full_bck_part_rst_wo_user'], restore_type)
-    run_check(client_shard, "administration", "administration_random_user2", {'customAdministrationDBRoleSh'}, restore_type not in ['part_bck','full_bck_part_rst_wo_user'], restore_type)
-    # current limitation: option with-users-and-roles doesn't work with PITR
-    run_check(client, "administration", "administration_random_user3", {'readWrite', 'clusterManager'}, restore_type not in ['part_bck','full_bck_part_rst_wo_user', 'full_bck_part_rst_user1','full_bck_part_rst_user2'], restore_type)
-    run_check(client_shard, "administration", "administration_random_user4", {'readWrite', 'clusterManager'}, restore_type not in ['part_bck','full_bck_part_rst_wo_user', 'full_bck_part_rst_user1','full_bck_part_rst_user2'], restore_type)
-
+    # Lookup table: which users should exist for each restore type
+    user_expectations = {
+        'part_bck': {
+            'admin_db_users_bcp': False,
+            'admin_db_users_pitr': False,
+            'test_db_users_bcp': False,
+            'test_db_users_pitr': False,
+            'administration_db_users_bcp': False,
+            'administration_db_users_pitr': False,
+        },
+        'full_bck_part_rst_wo_user': {
+            'admin_db_users_bcp': False,
+            'admin_db_users_pitr': False,
+            'test_db_users_bcp': False,
+            'test_db_users_pitr': False,
+            'administration_db_users_bcp': False,
+            'administration_db_users_pitr': False,
+        },
+        'full_bck_part_rst_user1': {
+            'admin_db_users_bcp': False,
+            'admin_db_users_pitr': False,
+            'test_db_users_bcp': True,
+            'test_db_users_pitr': True,
+            'administration_db_users_bcp': True,
+            'administration_db_users_pitr': True,
+        },
+        'full_bck_part_rst_user2': {
+            'admin_db_users_bcp': False,
+            'admin_db_users_pitr': False,
+            'test_db_users_bcp': False,
+            'test_db_users_pitr': False,
+            'administration_db_users_bcp': True,
+            'administration_db_users_pitr': True,
+        },
+        'full_bck': {
+            'admin_db_users_bcp': True,
+            'admin_db_users_pitr': True,
+            'test_db_users_bcp': True,
+            'test_db_users_pitr': True,
+            'administration_db_users_bcp': True,
+            'administration_db_users_pitr': True,
+        },
+        'full_pitr': {
+            'admin_db_users_bcp': True,
+            'admin_db_users_pitr': True,
+            'test_db_users_bcp': True,
+            'test_db_users_pitr': True,
+            'administration_db_users_bcp': True,
+            'administration_db_users_pitr': True,
+        },
+    }
+    expectations = user_expectations[restore_type]
+    # Admin database users
+    run_check(client, "admin", "admin_random_user1", {'customAdminRole'}, expectations['admin_db_users_bcp'], restore_type)
+    run_check(client_shard, "admin", "admin_random_user2", {'customAdminRoleSh'}, expectations['admin_db_users_bcp'], restore_type)
+    run_check(client, "admin", "admin_random_user3", {'readWrite', 'userAdminAnyDatabase', 'clusterAdmin'}, expectations['admin_db_users_pitr'], restore_type)
+    run_check(client_shard, "admin", "admin_random_user4", {'readWrite', 'userAdminAnyDatabase', 'clusterAdmin'}, expectations['admin_db_users_pitr'], restore_type)
+    # Test DB users
+    run_check(client, "test_db1", "test_random_user1", {'customTestDBRole'}, expectations['test_db_users_bcp'], restore_type)
+    run_check(client_shard, "test_db1", "test_random_user2", {'customTestDBRoleSh'}, expectations['test_db_users_bcp'], restore_type)
+    run_check(client, "test_db1", "test_random_user3", {'readWrite', 'clusterManager'}, expectations['test_db_users_pitr'], restore_type)
+    run_check(client_shard, "test_db1", "test_random_user4", {'readWrite', 'clusterManager'}, expectations['test_db_users_pitr'], restore_type)
+    # Administration DB users
+    run_check(client, "administration", "administration_random_user1", {'customAdministrationDBRole'}, expectations['administration_db_users_bcp'], restore_type)
+    run_check(client_shard, "administration", "administration_random_user2", {'customAdministrationDBRoleSh'}, expectations['administration_db_users_bcp'], restore_type)
+    run_check(client, "administration", "administration_random_user3", {'readWrite', 'clusterManager'}, expectations['administration_db_users_pitr'], restore_type)
+    run_check(client_shard, "administration", "administration_random_user4", {'readWrite', 'clusterManager'}, expectations['administration_db_users_pitr'], restore_type)
     if failures:
         raise AssertionError("User mismatch: \n" + " \n".join(failures))
     else:
