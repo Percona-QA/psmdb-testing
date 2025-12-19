@@ -90,8 +90,8 @@ provisioner:
     create: ../../../../playbooks/create.yml
     prepare: ../../../playbooks/prepare.yml
     converge: ../../../playbooks/converge_sharded.yml
-#    cleanup: ../../../playbooks/cleanup.yml
-#    destroy: ../../../../playbooks/destroy.yml
+    cleanup: ../../../playbooks/cleanup.yml
+    destroy: ../../../../playbooks/destroy.yml
 verifier:
   name: testinfra
   directory: ../../tests/
@@ -107,5 +107,5 @@ scenario:
     - converge
     - verify
     - destroy
-#  destroy_sequence:
-#    - destroy
+  destroy_sequence:
+    - destroy
