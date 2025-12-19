@@ -8,7 +8,7 @@ from data_integrity_check import compare_data
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.jenkins
 @pytest.mark.timeout(300, func_only=True)
-def test_csync_PML_T61(start_cluster, src_cluster, dst_cluster, csync):
+def test_csync_PML_T66(start_cluster, src_cluster, dst_cluster, csync):
     """
     Test to check PCSM reaction to refineCollectionShardKey operation
     """
@@ -53,7 +53,7 @@ def test_csync_PML_T61(start_cluster, src_cluster, dst_cluster, csync):
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.jenkins
 @pytest.mark.timeout(600, func_only=True)
-def test_csync_PML_T62(start_cluster, src_cluster, dst_cluster, csync):
+def test_csync_PML_T67(start_cluster, src_cluster, dst_cluster, csync):
     """
     Test to check PCSM reaction to reshardCollection operation
     """
@@ -97,7 +97,7 @@ def test_csync_PML_T62(start_cluster, src_cluster, dst_cluster, csync):
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.jenkins
 @pytest.mark.timeout(600, func_only=True)
-def test_csync_PML_T63(start_cluster, src_cluster, dst_cluster, csync):
+def test_csync_PML_T68(start_cluster, src_cluster, dst_cluster, csync):
     """
     Test to check PCSM reaction to unshardCollection operation
     """
@@ -140,7 +140,7 @@ def test_csync_PML_T63(start_cluster, src_cluster, dst_cluster, csync):
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.jenkins
 @pytest.mark.timeout(600, func_only=True)
-def test_csync_PML_T64(start_cluster, src_cluster, dst_cluster, csync):
+def test_csync_PML_T69(start_cluster, src_cluster, dst_cluster, csync):
     """
     Simple test to verify movePrimary and moveChunk commands
     """
