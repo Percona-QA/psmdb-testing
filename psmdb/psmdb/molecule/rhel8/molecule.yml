@@ -8,7 +8,7 @@ platforms:
     region: us-west-2
     image: "${MOLECULE_RHEL8_AMI:-ami-0bed2b29c076e8607}"
     vpc_subnet_id: subnet-03136d8c244f56036
-    instance_type: t3.small
+    instance_type: t3.medium
     ssh_user: ec2-user
     root_device_name: /dev/sda1
     instance_tags:
