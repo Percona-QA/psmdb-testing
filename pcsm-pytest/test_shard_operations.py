@@ -48,7 +48,7 @@ def test_csync_PML_T66(start_cluster, src_cluster, dst_cluster, csync):
             time.sleep(1)
         assert not status['data']['ok']
         assert status['data']['state'] != 'running'
-        assert status['data']['error'] == "change replication: unsupported operation"
+        assert status['data']['error'] == "change replication: refineCollectionShardKey operation is not supported"
 
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.jenkins
@@ -92,7 +92,7 @@ def test_csync_PML_T67(start_cluster, src_cluster, dst_cluster, csync):
             time.sleep(1)
         assert not status['data']['ok']
         assert status['data']['state'] != 'running'
-        assert status['data']['error'] == "change replication: unsupported operation"
+        assert status['data']['error'] == "change replication: reshardCollection operation is not supported"
 
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.jenkins
@@ -135,7 +135,7 @@ def test_csync_PML_T68(start_cluster, src_cluster, dst_cluster, csync):
             time.sleep(1)
         assert not status['data']['ok']
         assert status['data']['state'] != 'running'
-        assert status['data']['error'] == "change replication: unsupported operation"
+        assert status['data']['error'] == "change replication: reshardCollection operation is not supported"
 
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.jenkins
