@@ -607,15 +607,17 @@ def test_csync_PML_T63(start_cluster, src_cluster, dst_cluster, csync):
         pass
     time.sleep(15)
     assert csync.start(), "Failed to start csync service"
-    result = csync.wait_for_repl_stage()
-    if not result:
-        assert "bulk write exception" in csync.logs()
-        pytest.xfail("Known issue: PCSM-226")
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
     assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
     assert csync.finalize() is True, "Failed to finalize csync service"
-    result, _ = compare_data(src_cluster, dst_cluster)
+    expected_mismatches = [("init_test_db.invalid_text_collection1", "a.b_1_words_text")]
+    result, summary = compare_data(src_cluster, dst_cluster)
     if not result:
-        pytest.xfail("Known issue: PCSM-223")
+        missing_mismatches = [index for index in expected_mismatches if index not in summary]
+        unexpected_mismatches = [mismatch for mismatch in summary if mismatch not in expected_mismatches]
+        assert not missing_mismatches, f"Expected mismatches missing: {missing_mismatches}"
+        if unexpected_mismatches:
+            pytest.fail("Unexpected mismatches:\n" + "\n".join(f"{m}" for m in unexpected_mismatches))
     csync_error, error_logs = csync.check_csync_errors()
     assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
 
