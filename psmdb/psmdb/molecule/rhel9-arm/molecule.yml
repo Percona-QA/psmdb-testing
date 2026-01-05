@@ -23,6 +23,8 @@ provisioner:
     prepare: ../../../../playbooks/prepare.yml
     cleanup: ../../playbooks/cleanup.yml
     converge: ../../playbooks/playbook.yml
+  env:
+    ANSIBLE_SSH_TRANSFER_METHOD: piped
 verifier:
   name: testinfra
   directory: ../../../tests/
