@@ -1,5 +1,6 @@
 import os
 import pytest
+import re
 import requests
 from packaging import version
 import testinfra.utils.ansible_runner
@@ -21,6 +22,21 @@ def get_mongosh_ver():
     return r.text.rstrip()
 
 MONGOSH_VER = get_mongosh_ver()
+
+def get_package_version(host):
+    """Get full package version from system package manager"""
+    if host.system_info.distribution.lower() in ["redhat", "centos", "rhel", "rocky", "almalinux", "ol", "amzn"]:
+        pkg_result = host.run("rpm -q --queryformat '%{VERSION}-%{RELEASE}\\n' percona-server-mongodb-server")
+        pattern = r'([\d\.]+-\d+)'
+    else:
+        pkg_result = host.run("dpkg -s percona-server-mongodb-server | grep '^Version:'")
+        pattern = r'Version:\s*([\d\.]+-\d+)'
+    if pkg_result.rc == 0:
+        pkg_version = re.search(pattern, pkg_result.stdout)
+        if pkg_version:
+            return pkg_version.group(1)
+    pytest.fail(f"Failed to determine installed package version from package manager: "
+        f"rc={pkg_result.rc}, stdout={pkg_result.stdout!r}")
 
 def test_mongod_service(host):
     mongod = host.service("mongod")
@@ -46,7 +62,35 @@ def test_telemetry_service(host):
 @pytest.mark.parametrize("binary", BINARIES)
 def test_binary_version(host, binary):
     result = host.run(f"{binary} --version")
-    assert PSMDB_VER in result.stdout, result.stdout
+    output = result.stdout
+    version_pattern = re.escape(PSMDB_VER) + r'-\d{1,2}'
+    assert re.search(version_pattern, output), \
+        f"Expected version pattern {PSMDB_VER}-XX not found in output: {output}"
+    expected_version = get_package_version(host)
+    # mongod, mongos, and mongobridge have extra version field outside build info
+    for line in output.split('\n'):
+        if 'version v' in line and ('mongos version' in line or 'db version' in line or 'mongobridge version' in line):
+            match = re.search(r'(?:mongos|db|mongobridge) version v(\d+(?:\.\d+)*-\d{1,2})(?:\s|$)', line)
+            if match:
+                version_found = match.group(1)
+                assert version_found == expected_version, \
+                    f"Version {version_found} doesn't match {expected_version} (found in: {line})"
+            else:
+                assert False, f"Version line contains extra symbols or invalid version format in: {line}"
+    if '"version":' in output:
+        match = re.search(r'"version":\s*"(\d+(?:\.\d+)*-\d{1,2})"', output)
+        if match:
+            build_info_version = match.group(1)
+            assert build_info_version == expected_version, \
+                f"Build Info version {build_info_version} doesn't match {expected_version}"
+        else:
+            version_line = [line for line in output.split('\n') if '"version":' in line]
+            assert False, f"Build Info version contains extra symbols or invalid version format in: {version_line[0] if version_line else 'not found'}"
+    tool_version_match = re.search(r'^(?:.*?\s+)?version:\s+(\d+(?:\.\d+)*-\d{1,2})(?![.\w])', output, re.MULTILINE | re.IGNORECASE)
+    if tool_version_match:
+        tool_version = tool_version_match.group(1)
+        assert tool_version == expected_version, \
+            f"Tool version {tool_version} doesn't match {expected_version}"
 
 def test_cli_version(host):
     result = host.check_output("mongo --version")
