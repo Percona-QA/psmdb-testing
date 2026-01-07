@@ -17,35 +17,54 @@
     - set_fact:
         instance_type: "{{ lookup('env', 'INSTANCE_TYPE') }}"
 
-    - name: Create File System
-      filesystem:
-        fstype: xfs
-        dev: "/dev/nvme0n1"
-      when: instance_type == "i3.large" or instance_type == "i3.xlarge"
+    - name: Determine root disk device
+      ansible.builtin.command: findmnt -n -o SOURCE /
+      register: root_src
+      changed_when: false
+      when: instance_type is match('^i3')
 
-    - name: Create File System
-      filesystem:
+    - name: Strip partition
+      ansible.builtin.set_fact:
+        root_disk: "{{ root_src.stdout | regex_replace('p[0-9]+$', '') }}"
+      when: instance_type is match('^i3')
+
+    - name: List all storage devices
+      ansible.builtin.command: lsblk -dn -o NAME
+      register: lsblk_out
+      changed_when: false
+      when: instance_type is match('^i3')
+
+    - name: Pick the non-root nvme
+      ansible.builtin.set_fact:
+        data_disk: "/dev/{{ item }}"
+      loop: "{{ lsblk_out.stdout_lines }}"
+      when:
+        - instance_type is match('^i3')
+        - item is match('^nvme')
+        - ('/dev/' ~ item) != root_disk
+
+    - name: Fail if no data disk found
+      ansible.builtin.fail:
+        msg: "Could not find a non-root NVMe disk to use as data disk. root_disk={{ root_disk }}, lsblk={{ lsblk_out.stdout_lines }}"
+      when:
+        - instance_type is match('^i3')
+        - data_disk is not defined
+
+    - name: Create File System for i3en instances
+      ansible.builtin.filesystem:
         fstype: xfs
-        dev: "/dev/nvme1n1"
-      when: instance_type == "i3en.large" or instance_type == "i3en.xlarge" or instance_type == "i3en.3xlarge"
+        dev: "{{ data_disk }}"
+      when:
+       - data_disk is defined
 
     - name: Create and mount disks
-      mount:
-        path: "/mnt/data"
-        src: "/dev/nvme0n1"
+      ansible.builtin.mount:
+        path: /mnt/data
+        src: "{{ data_disk }}"
         fstype: xfs
         opts: defaults,noatime,nodiscard
         state: mounted
-      when: instance_type == "i3.large" or instance_type == "i3.xlarge"
-
-    - name: Create and mount disks
-      mount:
-        path: "/mnt/data"
-        src: "/dev/nvme1n1"
-        fstype: xfs
-        opts: defaults,noatime,nodiscard
-        state: mounted
-      when: instance_type == "i3en.large" or instance_type == "i3en.xlarge" or instance_type == "i3en.3xlarge"
+      when: data_disk is defined
 
     - set_fact:
         ssh_pubkey: "{{ lookup('env', 'SSH_PUBKEY') | default('none', true) }}"
