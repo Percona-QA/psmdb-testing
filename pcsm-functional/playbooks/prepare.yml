@@ -23,8 +23,7 @@
         dev: "/dev/nvme0n1"
       when:
        - instance_type == "i3.large" or instance_type == "i3.xlarge"
-       - not ansible_facts['distribution'] == 'Ubuntu'
-       - not ansible_facts['distribution_version'] == '24.04'
+       - not (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_version'] == '24.04')
 
     - name: Create File System
       filesystem:
@@ -32,8 +31,7 @@
         dev: "/dev/nvme1n1"
       when:
         - instance_type == "i3en.large" or instance_type == "i3en.xlarge" or instance_type == "i3en.3xlarge"
-        - not ansible_facts['distribution'] == 'Ubuntu'
-        - not ansible_facts['distribution_version'] == '24.04'
+        - not (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_version'] == '24.04')
 
     - name: Create and mount disks
       mount:
@@ -44,8 +42,7 @@
         state: mounted
       when:
         - instance_type == "i3.large" or instance_type == "i3.xlarge"
-        - not ansible_facts['distribution'] == 'Ubuntu'
-        - not ansible_facts['distribution_version'] == '24.04'
+        - not (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_version'] == '24.04')
 
     - name: Create and mount disks
       mount:
