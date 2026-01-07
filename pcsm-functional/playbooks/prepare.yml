@@ -33,7 +33,7 @@
         - instance_type == "i3en.large" or instance_type == "i3en.xlarge" or instance_type == "i3en.3xlarge"
         - not (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_version'] == '24.04')
 
-    - name: Create and mount disks
+    - name: Create and mount disks (Non Ubuntu24)
       mount:
         path: "/mnt/data"
         src: "/dev/nvme0n1"
@@ -44,7 +44,7 @@
         - instance_type == "i3.large" or instance_type == "i3.xlarge"
         - not (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_version'] == '24.04')
 
-    - name: Create and mount disks
+    - name: Create and mount disks (Non Ubuntu24)
       mount:
         path: "/mnt/data"
         src: "/dev/nvme1n1"
@@ -65,7 +65,10 @@
     - name: Strip partition
       set_fact:
         root_disk: "{{ root_src.stdout | regex_replace('p[0-9]+$', '') }}"
-      when: instance_type is match('^i3')
+      when:
+        - instance_type is match('^i3')
+        - ansible_facts['distribution'] == 'Ubuntu'
+        - ansible_facts['distribution_version'] == '24.04'
 
     - name: List all storage devices
       command: lsblk -dn -o NAME
