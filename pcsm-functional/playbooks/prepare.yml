@@ -50,7 +50,7 @@
         - instance_type is match('^i3')
         - data_disk is not defined
 
-    - name: Create File System for i3en instances
+    - name: Create File System
       ansible.builtin.filesystem:
         fstype: xfs
         dev: "{{ data_disk }}"
