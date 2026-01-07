@@ -139,7 +139,7 @@ provisioner:
     prepare: ../../playbooks/prepare.yml
     converge: ../../playbooks/converge.yml
     cleanup: ../../playbooks/cleanup.yml
-    destroy: ../../../../playbooks/destroy.yml
+#    destroy: ../../../../playbooks/destroy.yml
 verifier:
   name: testinfra
   directory: ../../tests/
@@ -156,9 +156,9 @@ scenario:
 #    - prepare
     - converge
     - verify
-    - cleanup
-    - destroy
-  destroy_sequence:
-    - destroy
-  cleanup_sequence:
-    - cleanup
+#    - cleanup
+#    - destroy
+#  destroy_sequence:
+#    - destroy
+#  cleanup_sequence:
+#    - cleanup
