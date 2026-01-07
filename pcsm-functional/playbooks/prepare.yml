@@ -51,7 +51,9 @@
         fstype: xfs
         opts: defaults,noatime,nodiscard
         state: mounted
-      when: instance_type == "i3en.large" or instance_type == "i3en.xlarge" or instance_type == "i3en.3xlarge"
+      when:
+        - instance_type == "i3en.large" or instance_type == "i3en.xlarge" or instance_type == "i3en.3xlarge"
+        - not (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_version'] == '24.04')
 
     - name: Determine root disk device
       command: findmnt -n -o SOURCE /
