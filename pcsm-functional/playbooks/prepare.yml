@@ -45,7 +45,7 @@
 
     - name: Fail if no data disk found
       ansible.builtin.fail:
-        msg: "Could not find a non-root NVMe disk to use as data disk. root_disk={{ root_disk }}, lsblk={{ lsblk_out.stdout_lines }}"
+        msg: "Could not find a non-root NVMe disk to use as data disk"
       when:
         - instance_type is match('^i3')
         - data_disk is not defined
