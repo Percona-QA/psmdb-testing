@@ -1,164 +1,164 @@
-  ---
-  dependency:
-    name: galaxy
-  driver:
-    name: ec2
-  platforms:
-    - name: keith-primary-rs0
-      groups:
-        - mongo
-        - primary
-        - rs0
-        - rs0-primary
-        - mc
-      region: us-west-2
-      image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
-      vpc_subnet_id: subnet-03136d8c244f56036
-      instance_type: ${INSTANCE_TYPE:-i3.large}
-      ssh_user: ec2-user
-      root_device_name: /dev/sda1
-      instance_tags:
-        iit-billing-tag: jenkins-psmdb-worker
-    - name: keith-secondary1-rs0
-      groups:
-        - mongo
-        - secondary
-        - rs0
-        - rs0-secondary
-      region: us-west-2
-      image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
-      vpc_subnet_id: subnet-03136d8c244f56036
-      instance_type: ${INSTANCE_TYPE:-i3.large}
-      ssh_user: ec2-user
-      root_device_name: /dev/sda1
-      instance_tags:
-        iit-billing-tag: jenkins-psmdb-worker
-    - name: keith-secondary2-rs0
-      groups:
-        - mongo
-        - secondary
-        - rs0
-        - rs0-secondary
-      region: us-west-2
-      image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
-      vpc_subnet_id: subnet-03136d8c244f56036
-      instance_type: ${INSTANCE_TYPE:-i3.large}
-      ssh_user: ec2-user
-      root_device_name: /dev/sda1
-      instance_tags:
-        iit-billing-tag: jenkins-psmdb-worker
-    - name: keith-primary-rs1
-      groups:
-        - mongo
-        - primary
-        - rs1
-        - rs1-primary
-      region: us-west-2
-      image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
-      vpc_subnet_id: subnet-03136d8c244f56036
-      instance_type: ${INSTANCE_TYPE:-i3.large}
-      ssh_user: ec2-user
-      root_device_name: /dev/sda1
-      instance_tags:
-        iit-billing-tag: jenkins-psmdb-worker
-    - name: keith-secondary1-rs1
-      groups:
-        - mongo
-        - secondary
-        - rs1
-        - rs1-secondary
-      region: us-west-2
-      image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
-      vpc_subnet_id: subnet-03136d8c244f56036
-      instance_type: ${INSTANCE_TYPE:-i3.large}
-      ssh_user: ec2-user
-      root_device_name: /dev/sda1
-      instance_tags:
-        iit-billing-tag: jenkins-psmdb-worker
-    - name: keith-secondary2-rs1
-      groups:
-        - mongo
-        - secondary
-        - rs1
-        - rs1-secondary
-      region: us-west-2
-      image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
-      vpc_subnet_id: subnet-03136d8c244f56036
-      instance_type: ${INSTANCE_TYPE:-i3.large}
-      ssh_user: ec2-user
-      root_device_name: /dev/sda1
-      instance_tags:
-        iit-billing-tag: jenkins-psmdb-worker
-    - name: keith-primary-cfg
-      groups:
-        - mongo
-        - primary
-        - cfg
-        - cfg-primary
-      region: us-west-2
-      image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
-      vpc_subnet_id: subnet-03136d8c244f56036
-      instance_type: ${INSTANCE_TYPE:-i3.large}
-      ssh_user: ec2-user
-      root_device_name: /dev/sda1
-      instance_tags:
-        iit-billing-tag: jenkins-psmdb-worker
-    - name: keith-secondary1-cfg
-      groups:
-        - mongo
-        - secondary
-        - cfg
-        - cfg-secondary
-      region: us-west-2
-      image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
-      vpc_subnet_id: subnet-03136d8c244f56036
-      instance_type: ${INSTANCE_TYPE:-i3.large}
-      ssh_user: ec2-user
-      root_device_name: /dev/sda1
-      instance_tags:
-        iit-billing-tag: jenkins-psmdb-worker
-    - name: keith-secondary2-cfg
-      groups:
-        - mongo
-        - secondary
-        - cfg
-        - cfg-secondary
-      region: us-west-2
-      image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
-      vpc_subnet_id: subnet-03136d8c244f56036
-      instance_type: ${INSTANCE_TYPE:-i3.large}
-      ssh_user: ec2-user
-      root_device_name: /dev/sda1
-      instance_tags:
-        iit-billing-tag: jenkins-psmdb-worker
-  provisioner:
-    name: ansible
-    log: true
-    playbooks:
-      create: ../../../../playbooks/create.yml
-      prepare: ../../playbooks/prepare.yml
-      converge: ../../playbooks/converge.yml
-      cleanup: ../../playbooks/cleanup.yml
-  #    destroy: ../../../../playbooks/destroy.yml
-  verifier:
-    name: testinfra
-    directory: ../../tests/
-    options:
-      verbose: true
-      capture: sys
-      o: junit_logging=system-out
-  #    s: true
-      junitxml: report.xml
-  scenario:
-    name: aws
-    test_sequence:
-      - create
-  #    - prepare
-      - converge
-      - verify
-  #    - cleanup
-  #    - destroy
-  #  destroy_sequence:
-  #    - destroy
-  #  cleanup_sequence:
-  #    - cleanup
+---
+dependency:
+  name: galaxy
+driver:
+  name: ec2
+platforms:
+  - name: keith-primary-rs0
+    groups:
+      - mongo
+      - primary
+      - rs0
+      - rs0-primary
+      - mc
+    region: us-west-2
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    vpc_subnet_id: subnet-03136d8c244f56036
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ec2-user
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+  - name: keith-secondary1-rs0
+    groups:
+      - mongo
+      - secondary
+      - rs0
+      - rs0-secondary
+    region: us-west-2
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    vpc_subnet_id: subnet-03136d8c244f56036
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ec2-user
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+  - name: keith-secondary2-rs0
+    groups:
+      - mongo
+      - secondary
+      - rs0
+      - rs0-secondary
+    region: us-west-2
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    vpc_subnet_id: subnet-03136d8c244f56036
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ec2-user
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+  - name: keith-primary-rs1
+    groups:
+      - mongo
+      - primary
+      - rs1
+      - rs1-primary
+    region: us-west-2
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    vpc_subnet_id: subnet-03136d8c244f56036
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ec2-user
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+  - name: keith-secondary1-rs1
+    groups:
+      - mongo
+      - secondary
+      - rs1
+      - rs1-secondary
+    region: us-west-2
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    vpc_subnet_id: subnet-03136d8c244f56036
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ec2-user
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+  - name: keith-secondary2-rs1
+    groups:
+      - mongo
+      - secondary
+      - rs1
+      - rs1-secondary
+    region: us-west-2
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    vpc_subnet_id: subnet-03136d8c244f56036
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ec2-user
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+  - name: keith-primary-cfg
+    groups:
+      - mongo
+      - primary
+      - cfg
+      - cfg-primary
+    region: us-west-2
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    vpc_subnet_id: subnet-03136d8c244f56036
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ec2-user
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+  - name: keith-secondary1-cfg
+    groups:
+      - mongo
+      - secondary
+      - cfg
+      - cfg-secondary
+    region: us-west-2
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    vpc_subnet_id: subnet-03136d8c244f56036
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ec2-user
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+  - name: keith-secondary2-cfg
+    groups:
+      - mongo
+      - secondary
+      - cfg
+      - cfg-secondary
+    region: us-west-2
+    image: "${MOLECULE_RHEL8_AMI:-ami-087c2c50437d0b80d}"
+    vpc_subnet_id: subnet-03136d8c244f56036
+    instance_type: ${INSTANCE_TYPE:-i3.large}
+    ssh_user: ec2-user
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+provisioner:
+  name: ansible
+  log: true
+  playbooks:
+    create: ../../../../playbooks/create.yml
+    prepare: ../../playbooks/prepare.yml
+    converge: ../../playbooks/converge.yml
+    cleanup: ../../playbooks/cleanup.yml
+#    destroy: ../../../../playbooks/destroy.yml
+verifier:
+  name: testinfra
+  directory: ../../tests/
+  options:
+    verbose: true
+    capture: sys
+    o: junit_logging=system-out
+#    s: true
+    junitxml: report.xml
+scenario:
+  name: aws
+  test_sequence:
+    - create
+#    - prepare
+    - converge
+    - verify
+#    - cleanup
+#    - destroy
+#  destroy_sequence:
+#    - destroy
+#  cleanup_sequence:
+#    - cleanup
