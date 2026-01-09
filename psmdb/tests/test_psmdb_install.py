@@ -25,18 +25,21 @@ MONGOSH_VER = get_mongosh_ver()
 
 def get_package_version(host):
     """Get full package version from system package manager"""
-    if host.system_info.distribution.lower() in ["redhat", "centos", "rhel", "rocky", "almalinux", "ol", "amzn"]:
-        pkg_result = host.run("rpm -q --queryformat '%{VERSION}-%{RELEASE}\\n' percona-server-mongodb-server")
-        pattern = r'([\d\.]+-\d+)'
-    else:
-        pkg_result = host.run("dpkg -s percona-server-mongodb-server | grep '^Version:'")
-        pattern = r'Version:\s*([\d\.]+-\d+)'
-    if pkg_result.rc == 0:
+    package_names = ["percona-server-mongodb-server", "percona-server-mongodb-server-pro"]
+    for pkg_name in package_names:
+        if host.system_info.distribution.lower() in ["redhat", "centos", "rhel", "rocky", "almalinux", "ol", "amzn"]:
+            pkg_result = host.run(f"rpm -q --queryformat '%{{VERSION}}-%{{RELEASE}}\\n' {pkg_name}")
+            pattern = r'([\d\.]+-\d+)'
+        else:
+            pkg_result = host.run(f"dpkg -s {pkg_name} | grep '^Version:'")
+            pattern = r'Version:\s*([\d\.]+-\d+)'
+        if pkg_result.rc != 0:
+            continue
         pkg_version = re.search(pattern, pkg_result.stdout)
         if pkg_version:
             return pkg_version.group(1)
-    pytest.fail(f"Failed to determine installed package version from package manager: "
-        f"rc={pkg_result.rc}, stdout={pkg_result.stdout!r}")
+    pytest.fail(f"Failed to determine installed package version from package manager. "
+        f"Neither {package_names[0]} nor {package_names[1]} is installed.")
 
 def test_mongod_service(host):
     mongod = host.service("mongod")
