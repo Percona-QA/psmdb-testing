@@ -66,13 +66,15 @@ services:
     entrypoint: >
       /bin/sh -c " sleep 5; /usr/bin/mc alias set myminio http://minio:9000 minio1234 minio1234; /usr/bin/mc mb myminio/bcp; exit 0; "
 
-  pykmip:
-    image: pykmip/local
+  cosmian:
+    image: cosmian/local
     build:
-      dockerfile: ./Dockerfile-pykmip
+      dockerfile: ./Dockerfile-cosmian
       context: .
-    container_name: pykmip
-    hostname: pykmip
+    container_name: cosmian
+    hostname: cosmian
+    ports:
+      - "9998:9998"
     networks:
       - test
     depends_on:
