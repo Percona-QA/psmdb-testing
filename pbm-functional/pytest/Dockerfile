@@ -36,7 +36,7 @@ RUN yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noar
     yum install -y /tmp/iproute-tc.rpm /tmp/iproute.rpm && rm -f /tmp/iproute-tc.rpm /tmp/iproute.rpm
 COPY --from=builder /pbm-new/ /pbm-new/
 COPY --from=builder /pbm-old/ /pbm-old/
-COPY --from=easyrsa /etc/pykmip/mongod.pem /etc/pykmip/mongod.pem
+COPY --from=easyrsa /etc/cosmian/mongod.pem /etc/pykmip/mongod.pem
 COPY --from=easyrsa /etc/x509/ca.crt /etc/pykmip/ca.crt
 COPY --from=easyrsa /etc/x509/ /etc/x509/
 COPY --from=easyrsa /etc/nginx-minio/ca.crt /etc/nginx-minio/ca.crt
