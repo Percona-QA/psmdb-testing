@@ -4,7 +4,7 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: keith-primary-rs0
+  - name: primary-rs0
     groups:
       - mongo
       - primary
@@ -19,7 +19,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-secondary1-rs0
+  - name: secondary1-rs0
     groups:
       - mongo
       - secondary
@@ -33,7 +33,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-secondary2-rs0
+  - name: secondary2-rs0
     groups:
       - mongo
       - secondary
@@ -47,7 +47,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-primary-rs1
+  - name: primary-rs1
     groups:
       - mongo
       - primary
@@ -61,7 +61,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-secondary1-rs1
+  - name: secondary1-rs1
     groups:
       - mongo
       - secondary
@@ -75,7 +75,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-secondary2-rs1
+  - name: secondary2-rs1
     groups:
       - mongo
       - secondary
@@ -89,7 +89,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-primary-cfg
+  - name: primary-cfg
     groups:
       - mongo
       - primary
@@ -103,7 +103,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-secondary1-cfg
+  - name: secondary1-cfg
     groups:
       - mongo
       - secondary
@@ -117,7 +117,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: keith-secondary2-cfg
+  - name: secondary2-cfg
     groups:
       - mongo
       - secondary
