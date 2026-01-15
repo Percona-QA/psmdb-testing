@@ -8,10 +8,8 @@ from packaging import version
 
 from cluster import Cluster
 
-
-documents_pre_backup = [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
-documents_post_snapshot = [{"a": 5}, {"b": 6}, {"c": 7}, {"d": 8}]
-
+documents_pre_backup = [{"a": 1}]
+documents_during_backup = [{"b": 2}, {"c": 3}]
 
 @pytest.fixture(scope="package")
 def mongod_version():
@@ -20,7 +18,6 @@ def mongod_version():
         remove=True,
         command="bash -c 'mongod --version | head -n1 | sed \"s/db version v//\"'",
     ).decode("utf-8", errors="replace").strip()
-
 
 @pytest.fixture(scope="package")
 def config(mongod_version):
@@ -35,11 +32,9 @@ def config(mongod_version):
         ],
     }
 
-
 @pytest.fixture(scope="package")
 def cluster(config):
     return Cluster(config)
-
 
 @pytest.fixture(scope="function")
 def start_cluster(cluster, request):
@@ -62,7 +57,6 @@ def start_cluster(cluster, request):
         if request.config.getoption("--verbose"):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
-
 
 @pytest.mark.timeout(900, func_only=True)
 def test_logical_backup_restore_config_shard(start_cluster, cluster):
@@ -92,11 +86,11 @@ def test_logical_backup_restore_config_shard(start_cluster, cluster):
 
         if target_log_pattern in result.stdout:
             log_found = True
-            client["test"]["data"].insert_many(documents_post_snapshot)
+            client["test"]["data"].insert_many(documents_during_backup)
     backup_thread.join()
 
     assert log_found, f"Targeted log {target_log_pattern} not found"
     backup_name = backup_result["backup_full"]
     cluster.make_restore(backup_name, restart_cluster=True, check_pbm_status=True)
     document_count = client["test"]["data"].count_documents({})
-    assert document_count == 8, f"Expected 8 documents (4 original + 4 during backup), got {document_count}"
+    assert document_count == 3, f"Expected 3 documents (1 original + 2 during backup), got {document_count}"
