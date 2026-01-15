@@ -19,7 +19,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: secondary1-rs0
+  - name: secondary1-rs0                        
     groups:
       - mongo
       - secondary
@@ -153,7 +153,7 @@ scenario:
   name: aws
   test_sequence:
     - create
-    - prepare
+#    - prepare
     - converge
     - verify
     - cleanup
