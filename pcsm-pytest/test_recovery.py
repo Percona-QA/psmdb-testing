@@ -87,7 +87,7 @@ def test_csync_PML_T29(start_cluster, src_cluster, dst_cluster, csync):
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
     csync_error, error_logs = csync.check_csync_errors()
-    expected_errors = ["Change Replication is not runnning", "detected concurrent process"]
+    expected_errors = ["Change Replication is not running", "detected concurrent process"]
     if not csync_error:
         unexpected = [line for line in error_logs if not any(expected in line for expected in expected_errors)]
         if unexpected:
