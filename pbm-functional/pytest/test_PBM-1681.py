@@ -51,7 +51,7 @@ def start_cluster(cluster, request):
         client.admin.command("enableSharding", "test")
         client.admin.command("shardCollection", "test.data", key={"x": 1})
         client.admin.command("split", "test.data", middle={"x": 0})
-        client.admin.command("moveChunk", "test.data", find={"x": -1}, to="config")
+        client.admin.command("moveChunk", "test.data", find={"x": 1}, to="config")
         yield True
     finally:
         if request.config.getoption("--verbose"):
