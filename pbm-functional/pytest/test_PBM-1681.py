@@ -8,7 +8,7 @@ from packaging import version
 
 from cluster import Cluster
 
-documents_post_snapshot = [{"x": 10001, "b": 5}, {"x": 10002, "c": 6}]
+documents_post_snapshot = [{"x": 100001, "b": 5}, {"x": 100002, "c": 6}]
 
 @pytest.fixture(scope="package")
 def mongod_version():
@@ -74,7 +74,7 @@ def test_logical_PBM_T306(start_cluster, cluster):
     cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
 
-    client["test"]["data"].insert_many([{"x": (i + 1), "pad": "x" * 200} for i in range(10000)])
+    client["test"]["data"].insert_many([{"x": (i + 1), "pad": "x" * 200} for i in range(100000)])
 
     backup_result = {"backup_full": None}
 
@@ -106,4 +106,4 @@ def test_logical_PBM_T306(start_cluster, cluster):
     cluster.make_restore(backup_name, restore_opts=["--ns=test.data"], restart_cluster=False, check_pbm_status=True)
 
     document_count = client["test"]["data"].count_documents({})
-    assert document_count == 10002, f"Expected {10000 + len(documents_post_snapshot)} documents, got {document_count} instead"
+    assert document_count == 100002, f"Expected {100000 + len(documents_post_snapshot)} documents, got {document_count} instead"
