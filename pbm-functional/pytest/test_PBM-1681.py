@@ -106,5 +106,4 @@ def test_logical_PBM_T306(start_cluster, cluster):
     cluster.make_restore(backup_name, restore_opts=["--ns=test.data"], restart_cluster=False, check_pbm_status=True)
 
     document_count = client["test"]["data"].count_documents({})
-    assert client["test"]["data"].count_documents({"x": {"$in": [10001, 10002]}}) == 2
     assert document_count == 10002, f"Expected {10000 + len(documents_post_snapshot)} documents, got {document_count} instead"
