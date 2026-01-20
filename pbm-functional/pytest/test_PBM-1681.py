@@ -86,9 +86,6 @@ def test_logical_backup_restore_config_shard(start_cluster, cluster):
         result = cluster.exec_pbm_cli("logs --tail=50")
         if target_log_pattern in result.stdout:
             client["test"]["data"].insert_many(documents_post_snapshot)
-            Cluster.log("DOCUMENTS INSERTED")
-            document_count = client["test"]["data"].count_documents({})
-            Cluster.log(f"TOTAL COUNT = {document_count}")
             log_found = True
 
     backup_thread.join()
