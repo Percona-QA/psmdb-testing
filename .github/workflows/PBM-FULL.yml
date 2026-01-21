@@ -15,7 +15,7 @@ on:
     branches:
       - main
     paths:
-      - 'pbm-functional/pytest/**'
+      - 'pbm-functional/pytest/test_PBM-1681.py'
       - '.github/workflows/PBM-FULL.yml'
 
 concurrency:
