@@ -74,7 +74,7 @@ def test_logical_PBM_T306(start_cluster, cluster):
     cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
 
-    client["test"]["data"].insert_many([{"x": (i + 1), "pad": "x" * 200} for i in range(100000)])
+    client["test"]["data"].insert_many([{"x": (i + 1), "pad": "x" * 2000} for i in range(100000)])
 
     backup_result = {"backup_full": None}
 
@@ -94,14 +94,14 @@ def test_logical_PBM_T306(start_cluster, cluster):
             Cluster.log("Timeout waiting for log pattern")
             break
 
-        result = cluster.exec_pbm_cli("logs --tail=50")
+        result = cluster.exec_pbm_cli("logs --tail=2000")
         if target_log_pattern in result.stdout:
             client["test"]["data"].insert_many(documents_post_snapshot)
             log_found = True
 
     backup_thread.join()
     assert log_found, f"Targeted log {target_log_pattern} not found"
-
+    print(cluster.exec_pbm_cli("logs --tail=200"))
     backup_name = backup_result["backup_full"]
     cluster.make_restore(backup_name, restore_opts=["--ns=test.data"], restart_cluster=False, check_pbm_status=True)
 
