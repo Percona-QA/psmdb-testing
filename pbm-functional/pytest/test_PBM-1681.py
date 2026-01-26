@@ -59,13 +59,13 @@ def start_cluster(cluster, request):
         cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(900, func_only=True)
-def test_logical_PBM_T306(start_cluster, cluster):
+def test_logical_PBM_T307(start_cluster, cluster):
     """
     Test Case PBM-1681: Selective snapshot restore will not restore changes recorded by oplog capture on config shard
 
     Test checks that when documents are added during the oplog slicing phase, they are included in the backup.
     Steps:
-        1: Add 10k documents to the test.data collection. This is needed to slow down the backup and allow the adding of extra documents before the backup completes.
+        1: Add 100k documents to the test.data collection. This is needed to slow down the backup and allow the adding of extra documents before the backup completes.
         2: Logical backup occurs
         3: Searching for log 'dump collection "test.data" done'. When it is found 2 more documents are added.
         4: A restore is performed with the new backup.
