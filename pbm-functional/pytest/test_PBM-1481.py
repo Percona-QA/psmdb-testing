@@ -42,7 +42,8 @@ def test_logical_backup_and_PITR_timestamp_PBM_T290(start_cluster,cluster):
     list_backups = cluster.exec_pbm_cli("list ").stdout
     pbm_status = cluster.exec_pbm_cli("status").stdout
 
-    assert re.search(r"restore_to_time:\s\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?!Z)", list_backups)
-    assert re.search(r"restore_to_time:\s\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?!Z)", pbm_status)
+    # Check for RESTORE TIME column (timestamp without Z suffix after SEL and BASE columns)
+    assert re.search(r"(yes|no)\s+(yes|no)\s+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?!Z)", list_backups)
+    assert re.search(r"(yes|no)\s+(yes|no)\s+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?!Z)", pbm_status)
 
     Cluster.log("Finished successfully\n")
