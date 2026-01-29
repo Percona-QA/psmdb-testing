@@ -2,7 +2,6 @@ import os
 import re
 import time
 import threading
-from time import sleep
 
 import docker
 import pymongo
