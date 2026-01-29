@@ -67,9 +67,9 @@ def test_logical_PBM_T307(start_cluster, cluster):
 
     Test checks that when documents are added during the oplog slicing phase, they are included in the backup.
     Steps:
-        1: Add 100k documents to the test.data collection. This is needed to slow down the backup and allow the adding of extra documents before the backup completes.
+        1: Add 100k documents to the test.data collection and 1k into the test.data2 collection.
         2: Logical backup occurs
-        3: Searching for log 'dump collection "test.data" done'. When it is found 2 more documents are added.
+        3: Searching for log 'dump collection "test.data2" done'. When it is found 2 more documents are added.
         4: A restore is performed with the new backup.
         5: A check is performed to verify that the two new added documents are present in the restored collection as well as the original 10k.
     """
