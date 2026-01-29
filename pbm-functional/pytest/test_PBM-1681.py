@@ -1,6 +1,9 @@
 import os
+import re
 import time
 import threading
+from time import sleep
+
 import docker
 import pymongo
 import pytest
@@ -8,7 +11,7 @@ from packaging import version
 
 from cluster import Cluster
 
-documents_post_snapshot = [{"x": 100001, "b": 5}, {"x": 100002, "c": 6}]
+documents_post_snapshot = [{"x": 500001, "b": 5}, {"x": 500002, "c": 6}]
 
 @pytest.fixture(scope="package")
 def mongod_version():
@@ -74,7 +77,7 @@ def test_logical_PBM_T307(start_cluster, cluster):
     cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
 
-    client["test"]["data"].insert_many([{"x": (i + 1), "pad": "x" * 2000} for i in range(100000)])
+    client["test"]["data"].insert_many([{"x": (i + 1), "pad": "x" * 2000} for i in range(500000)])
 
     backup_result = {"backup_full": None}
 
@@ -88,22 +91,25 @@ def test_logical_PBM_T307(start_cluster, cluster):
     max_wait_time = 300
     start_time = time.time()
     log_found = False
+    log = re.compile(r'\[rscfg/rscfg01:27017\][^\n]*dump collection "test\.data" done')
 
     while backup_thread.is_alive() and not log_found:
+        result = cluster.exec_pbm_cli("logs --tail=2000")
+        out = result.stdout
+
+        if log.search(out):
+            print("DOCUMENTS ADDED")
+            client["test"]["data"].insert_many(documents_post_snapshot)
+            log_found = True
+
         if time.time() - start_time > max_wait_time:
             Cluster.log("Timeout waiting for log pattern")
             break
 
-        result = cluster.exec_pbm_cli("logs --tail=2000")
-        if target_log_pattern in result.stdout:
-            client["test"]["data"].insert_many(documents_post_snapshot)
-            log_found = True
-
     backup_thread.join()
     assert log_found, f"Targeted log {target_log_pattern} not found"
-    print(cluster.exec_pbm_cli("logs --tail=200"))
     backup_name = backup_result["backup_full"]
     cluster.make_restore(backup_name, restore_opts=["--ns=test.data"], restart_cluster=False, check_pbm_status=True)
 
     document_count = client["test"]["data"].count_documents({})
-    assert document_count == 100002, f"Expected {100000 + len(documents_post_snapshot)} documents, got {document_count} instead"
+    assert document_count == 500002, f"Expected {500000 + len(documents_post_snapshot)} documents, got {document_count} instead"
