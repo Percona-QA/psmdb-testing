@@ -19,14 +19,15 @@ RUN ./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:localhost,DNS:rsc
     cp pki/ca.crt /etc/x509/ && \
     cat pki/issued/psmdb.crt pki/private/psmdb.key > /etc/x509/psmdb.pem && \
     cat pki/issued/pbm.crt pki/private/pbm.key > /etc/x509/pbm.pem
-#For pykmip server
-RUN ./easyrsa --batch --days=90 build-server-full pykmip nopass && \
+#For cosmian kms server
+RUN ./easyrsa --batch --days=90 build-server-full cosmian nopass && \
     ./easyrsa --batch --days=90 build-client-full mongod nopass && \
-    mkdir -p /etc/pykmip && \
-    cp pki/ca.crt /etc/pykmip/ && \
-    cat pki/issued/mongod.crt pki/private/mongod.key > /etc/pykmip/mongod.pem && \
-    cp pki/issued/pykmip.crt /etc/pykmip/ && \
-    cp pki/private/pykmip.key /etc/pykmip/
+    mkdir -p /etc/cosmian && \
+    cp pki/ca.crt /etc/cosmian/ && \
+    cat pki/issued/mongod.crt pki/private/mongod.key > /etc/cosmian/mongod.pem && \
+    cp pki/issued/cosmian.crt /etc/cosmian/ && \
+    cp pki/private/cosmian.key /etc/cosmian/ && \
+    openssl pkcs12 -export -in /etc/cosmian/cosmian.crt -inkey /etc/cosmian/cosmian.key -out /etc/cosmian/cosmian.p12 -passin pass:password -passout pass:password
 #For nginx proxy to minio 
 RUN ./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:nginx-minio --batch build-server-full nginx-minio nopass && \
     mkdir -p /etc/nginx-minio && \
