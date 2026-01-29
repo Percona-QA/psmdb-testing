@@ -10,7 +10,7 @@ from packaging import version
 
 from cluster import Cluster
 
-documents_post_snapshot = [{"x": 500001, "b": 5}, {"x": 500002, "c": 6}]
+documents_post_snapshot = [{"x": 1001, "b": 5}, {"x": 1002, "c": 6}]
 
 @pytest.fixture(scope="package")
 def mongod_version():
@@ -51,9 +51,9 @@ def start_cluster(cluster, request):
         cluster.exec_pbm_cli("config --set compression=none")
         Cluster.log(client.admin.command({"transitionFromDedicatedConfigServer": 1}))
         client.admin.command("enableSharding", "test")
-        client.admin.command("shardCollection", "test.data", key={"x": 1})
-        client.admin.command("split", "test.data", middle={"x": 0})
-        client.admin.command("moveChunk", "test.data", find={"x": 1}, to="config")
+        client.admin.command("shardCollection", "test.data2", key={"x": 1})
+        client.admin.command("split", "test.data2", middle={"x": 0})
+        client.admin.command("moveChunk", "test.data2", find={"x": 1}, to="config")
         yield True
     finally:
         if request.config.getoption("--verbose"):
@@ -76,7 +76,8 @@ def test_logical_PBM_T307(start_cluster, cluster):
     cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
 
-    client["test"]["data"].insert_many([{"x": (i + 1), "pad": "x" * 2000} for i in range(500000)])
+    client["test"]["data"].insert_many([{"x": (i + 1), "pad": "x" * 2000} for i in range(100000)])
+    client["test"]["data2"].insert_many([{"x": (i + 1), "pad": "x" * 2000} for i in range(1000)])
 
     backup_result = {"backup_full": None}
 
@@ -86,11 +87,11 @@ def test_logical_PBM_T307(start_cluster, cluster):
     backup_thread = threading.Thread(target=run_backup)
     backup_thread.start()
 
-    target_log_pattern = 'dump collection "test.data" done'
+    target_log_pattern = 'dump collection "test.data2" done'
     max_wait_time = 300
     start_time = time.time()
     log_found = False
-    log = re.compile(r'\[rscfg/rscfg01:27017\][^\n]*dump collection "test\.data" done')
+    log = re.compile(r'\[rscfg/rscfg01:27017\][^\n]*dump collection "test\.data2" done')
 
     while backup_thread.is_alive() and not log_found:
         result = cluster.exec_pbm_cli("logs --tail=2000")
@@ -98,7 +99,7 @@ def test_logical_PBM_T307(start_cluster, cluster):
 
         if log.search(out):
             print("DOCUMENTS ADDED")
-            client["test"]["data"].insert_many(documents_post_snapshot)
+            client["test"]["data2"].insert_many(documents_post_snapshot)
             log_found = True
 
         if time.time() - start_time > max_wait_time:
@@ -108,7 +109,7 @@ def test_logical_PBM_T307(start_cluster, cluster):
     backup_thread.join()
     assert log_found, f"Targeted log {target_log_pattern} not found"
     backup_name = backup_result["backup_full"]
-    cluster.make_restore(backup_name, restore_opts=["--ns=test.data"], restart_cluster=False, check_pbm_status=True)
+    cluster.make_restore(backup_name, restore_opts=["--ns=test.data2"], restart_cluster=False, check_pbm_status=True)
 
-    document_count = client["test"]["data"].count_documents({})
-    assert document_count == 500002, f"Expected {500000 + len(documents_post_snapshot)} documents, got {document_count} instead"
+    document_count = client["test"]["data2"].count_documents({})
+    assert document_count == 1002, f"Expected {1000 + len(documents_post_snapshot)} documents, got {document_count} instead"
