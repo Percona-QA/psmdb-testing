@@ -20,7 +20,7 @@ jobs:
     container:
       image: python:3.13.11-bookworm
       env:
-        PATH: /usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin
+        PATH: /usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/github/home/.local/bin
     runs-on: percona-runners
     steps:
       - name: Clone repo
