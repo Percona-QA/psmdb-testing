@@ -34,8 +34,12 @@ ENV PATH="/opt/gcc/bin:${PATH}"
 RUN set -ex; \
     if [ "$toolchain_version" = "v3" ]; then \
         wget https://www.python.org/ftp/python/3.8.19/Python-3.8.19.tgz -O /opt/python.tgz ; \    
-    else \
+    fi; \
+    if [ "$toolchain_version" = "v4" ]; then \
         wget https://www.python.org/ftp/python/3.10.14/Python-3.10.14.tgz -O /opt/python.tgz; \
+    fi; \
+    if [ "$toolchain_version" = "v5" ]; then \
+        wget https://www.python.org/ftp/python/3.13.11/Python-3.13.11.tgz -O /opt/python.tgz; \
     fi; \
     mkdir -p /opt/src/python && tar -xzf /opt/python.tgz -C /opt/src/python --strip-components=1 ; \
     cd /opt/src/python; \
