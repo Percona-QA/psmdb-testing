@@ -18,7 +18,7 @@ jobs:
   unittests:
     name: Compile and execute unittests
     container: ubuntu:24.04
-    runs-on: percona-arc-ubuntu-2404
+    runs-on: percona-runners
     steps:
       - name: Clone repo
         uses: actions/checkout@v6
