@@ -17,7 +17,7 @@ on:
 jobs:
   unittests:
     name: Compile and execute unittests
-    container: ubuntu:24.04
+    container: python:3.13.11-bookworm
     runs-on: percona-runners
     steps:
       - name: Clone repo
@@ -25,11 +25,6 @@ jobs:
         with:
           repository: percona/percona-server-mongodb
           ref: ${{ github.event.inputs.psmdb_branch || 'master' }}
-      - name: Set up python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.13.11"
-          cache: "poetry"
       - name: Setup bazel
         run: python buildscripts/install_bazel.py
       - name: Set PATH
