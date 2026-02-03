@@ -29,6 +29,7 @@ jobs:
           repository: percona/percona-server-mongodb
           ref: ${{ github.event.inputs.psmdb_branch || 'master' }}
           path: percona-server-mongodb
+          fetch-tags: true
       - name: Debug permissions
         run: |
           whoami
