@@ -16,7 +16,7 @@ def config():
 
 @pytest.fixture(scope="package")
 def cluster(config):
-    return Cluster(config, mongod_extra_args="--enableEncryption --kmipServerName pykmip --kmipPort 5696 --kmipServerCAFile /etc/pykmip/ca.crt --kmipClientCertificateFile /etc/pykmip/mongod.pem")
+    return Cluster(config, mongod_extra_args="--enableEncryption --kmipServerName cosmian --kmipPort 5696 --kmipServerCAFile /etc/pykmip/ca.crt --kmipClientCertificateFile /etc/pykmip/mongod.pem")
 
 @pytest.fixture(scope="function")
 def start_cluster(cluster,request):
@@ -52,4 +52,3 @@ def test_incremental_PBM_T201(start_cluster,cluster):
     cluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     Cluster.log("Finished successfully")
-
