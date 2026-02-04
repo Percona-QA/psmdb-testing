@@ -31,6 +31,8 @@ jobs:
           fetch-depth: 0
       - name: Fix permissions
         run: chown root:root .
+      - name: Debug cpuinfo
+        run: cat /proc/cpuinfo
       - name: Setup bazel and build unittests
         run: |
           apt-get update
