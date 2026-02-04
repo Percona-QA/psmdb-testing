@@ -1,7 +1,6 @@
 import json
 
 import pytest
-import pymongo
 
 from data_generator import create_all_types_db, stop_all_crud_operations
 
@@ -271,7 +270,7 @@ def test_pcsm_log_level_env_var(start_cluster, src_cluster, dst_cluster, csync, 
     elif log_level == "INFO":
         for log_level in ["INF", "WRN", "ERR"]:
             assert log_level in csync.logs(), f"{log_level} not found in logs"
-        assert "DBG" not in csync.logs(), f"Unexpected Debug found in logs"
+        assert "DBG" not in csync.logs(), "Unexpected Debug found in logs"
         assert "fatal" in csync.cmd_stderr, f"Actual log: {csync.cmd_stderr}"
 
     elif log_level == "WARN":
@@ -323,9 +322,7 @@ def test_pcsm_log_json_env_var(start_cluster, src_cluster, dst_cluster, csync, r
     for line in csync.logs(tail=2000).splitlines():
         try:
             json.loads(line)
-        except json.JSONDecodeError as e:
-            print(csync.logs(tail=2000))
-            print("TEST: " + line)
+        except json.JSONDecodeError:
             raise AssertionError(
                 f"Log line '{line}' is not valid JSON"
             )
