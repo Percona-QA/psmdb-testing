@@ -30,7 +30,7 @@ jobs:
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl file libgmp-dev libmpfr-dev libmpc-dev gcc g++ bzip2 libbz2-dev zlib1g-dev libreadline-dev libffi-dev make tzdata cmake libssl-dev libldap2-dev libkrb5-dev libcurl4-openssl-dev libsasl2-dev liblz4-dev libbz2-dev libsnappy-dev zlib1g-dev libzlcore-dev liblzma-dev e2fslibs-dev iproute2 libc6-dbg
       - name: Compile and install AWS SDK
-      - run: |
+        run: |
           cd /tmp
           git clone --branch 1.9.379 --single-branch https://github.com/aws/aws-sdk-cpp.git
           cd aws-sdk-cpp
