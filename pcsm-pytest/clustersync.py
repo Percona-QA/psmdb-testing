@@ -75,8 +75,6 @@ class Clustersync:
             if not self._wait_for_http_server():
                 Cluster.log("Failed to connect to HTTP server - server may not be ready")
                 return False
-            # if raw_args is not None and not isinstance(raw_args, (list, tuple)):
-            #     raise TypeError("raw_args must be a list of strings")
             if mode == "cli":
                 Cluster.log("Using CLI Mode")
                 cmd = "pcsm start " + " ".join(raw_args) if raw_args else "pcsm start"
@@ -86,10 +84,11 @@ class Clustersync:
                 self.cmd_stderr = stderr.decode("utf-8", errors="replace") if stderr else ""
             else:
                 Cluster.log("Using API Mode")
-                test = ""
-                for item in raw_args:
-                    test += item + " "
-                cmd = f"curl -s -X POST http://localhost:2242/start -H 'Content-Type: application/json' -d '{test}'"
+                if raw_args is None:
+                    payload = {}
+                else:
+                    payload = raw_args
+                cmd = f"curl -s -X POST http://localhost:2242/start -H 'Content-Type: application/json' -d '{json.dumps(payload)}'"
                 exec_result = self.container.exec_run(cmd)
                 self.cmd_stdout = exec_result.output.decode("utf-8", errors="replace")
 
