@@ -22,7 +22,7 @@ def check_command_output(expected_output, actual_output, is_stdout):
                             (['{"cloneNumParallelCollections":5}'], True, '"ok":true', "NumParallelCollections: 5", "http"),
                             # (['{"cloneNumParallelCollections":-1}'], False, 'Bad Request', "", "http"),
 ])
-def test_clone_collections_num(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
+def test_clone_collections_num_PML_T70(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
     Test PCSM --clone-num-parallel-collections argument and cloneNumParallelCollections environment variable
     """
@@ -59,7 +59,7 @@ def test_clone_collections_num(start_cluster, src_cluster, dst_cluster, csync, r
                             (['{"cloneNumReadWorkers":5}'], True, '"ok":true', "NumReadWorkers: 5", "http"),
                             # (['{"cloneNumReadWorkers":-1}'], False, 'Bad Request', "", "http"),
 ])
-def test_clone_num_read_workers(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
+def test_clone_num_read_workers_PML_T71(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
     Test PCSM --clone-num-read-workers argument and cloneNumReadWorkers environment variable
     """
@@ -96,7 +96,7 @@ def test_clone_num_read_workers(start_cluster, src_cluster, dst_cluster, csync, 
                             (['{"cloneNumInsertWorkers":5}'], True, '"ok":true', "NumInsertWorkers: 5", "http"),
                             # (['{"cloneNumInsertWorkers":-1}'], False, 'Bad Request', "", "http"),
 ])
-def test_clone_num_insert_workers(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
+def test_clone_num_insert_workers_PML_T72(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
     Test PCSM --clone-num-insert-workers argument and cloneNumInsertWorkers environment variable
     """
@@ -126,7 +126,7 @@ def test_clone_num_insert_workers(start_cluster, src_cluster, dst_cluster, csync
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
 @pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, mode", [
-                            (["--clone-read-batch-size=479994880"], True, '"ok": true', "cli"),
+                            (["--clone-segment-size=479994880"], True, '"ok": true', "cli"),
                             # Exactly 457.76MiB (true size)
                             (["--clone-segment-size=479994880B"], True, '"ok": true', "cli"),
                             # # One byte over 457.76MiB (true size)
@@ -146,9 +146,9 @@ def test_clone_num_insert_workers(start_cluster, src_cluster, dst_cluster, csync
                             (['{"cloneSegmentSize":"64GiB"}'], True, '"ok":true', "http"),
                             (['{"cloneSegmentSize":"479994879B"}'], False, 'invalid clone segment size: cloneSegmentSize must be at least 458 MiB, got 458 MiB', "http"),
 ])
-def test_clone_segment_size(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, mode):
+def test_clone_segment_size_PML_T73(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, mode):
     """
-    Test PCSM --clone-read-batch-size argument and cloneSegmentSize environment variable
+    Test PCSM --clone-segment-size argument and cloneSegmentSize environment variable
     """
     try:
         _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
@@ -193,7 +193,7 @@ def test_clone_segment_size(start_cluster, src_cluster, dst_cluster, csync, raw_
                             (['{"cloneReadBatchSize":"2GiB"}'], True, '"ok":true', "", "http"),
                             (['{"cloneReadBatchSize":"16777215B"}'], False, 'Expected Bad Request got {"ok":false,"error":"invalid clone read batch size: cloneReadBatchSize must be at least 16 MiB, got 16 MiB"}', "", "http"),
 ])
-def test_clone_read_batch_size(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
+def test_clone_read_batch_size_PML_T74(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
     Test PCSM --clone-read-batch-size argument and cloneReadBatchSize environment variable
     """
@@ -229,7 +229,7 @@ def test_clone_read_batch_size(start_cluster, src_cluster, dst_cluster, csync, r
 @pytest.mark.parametrize("raw_args, should_pass, mode", [
                             (["--log-json"], True, "cli"),
 ])
-def test_pcsm_log_level_env_var(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, mode, csync_env):
+def test_pcsm_log_level_env_var_PML_T75(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, mode, csync_env):
     """
     Test the PCSM_LOG_LEVEL environment variable
     """
@@ -293,7 +293,7 @@ def test_pcsm_log_level_env_var(start_cluster, src_cluster, dst_cluster, csync, 
 @pytest.mark.parametrize("raw_args, should_pass, mode", [
                             ([], True, "cli"),
 ])
-def test_pcsm_log_json_env_var(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, mode, csync_env):
+def test_pcsm_log_json_env_var_PML_T76(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, mode, csync_env):
     """
     Test the PCSM_LOG_JSON environment variable
     """
