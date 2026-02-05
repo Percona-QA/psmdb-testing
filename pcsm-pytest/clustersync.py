@@ -27,7 +27,7 @@ class Clustersync:
         container = client.containers.get(self.name)
         return container
 
-    def create(self, log_level="info", env_vars=None, extra_args=""):
+    def create(self, log_level="debug", env_vars=None, extra_args=""):
         try:
             existing_container = self.container
             Cluster.log(f"Removing existing csync container '{self.name}'...")
