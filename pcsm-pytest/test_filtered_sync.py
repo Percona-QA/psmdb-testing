@@ -6,7 +6,7 @@ from data_generator import create_all_types_db, stop_all_crud_operations
 from data_integrity_check import compare_data
 
 def check_expected_logs(csync, expected_logs):
-    logs = csync.logs(tail=2000)
+    logs = csync.logs(tail=3000)
     for pattern in expected_logs:
         if not re.search(pattern, logs):
             raise AssertionError(f"Expected log pattern not found: {pattern}")
@@ -34,34 +34,40 @@ def verify_expected_mismatches(src_cluster, mismatches, skip_entries, skip_prefi
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
 @pytest.mark.parametrize(
-    "include_namespaces, exclude_namespaces, skip_entries, skip_prefixes",
+    "raw_args, skip_entries, skip_prefixes",
     [
         # Test basic include functionality: include two databases
-        (["init_test_db.*", "repl_test_db.*"], [], [], ['clone_test_db']),
+        ({"includeNamespaces": ["init_test_db.*", "repl_test_db.*"]},
+            [],
+            ["clone_test_db"]),
         # Test basic exclude functionality: exclude two databases
-        ([], ["clone_test_db.*", "repl_test_db.*"], [], ['clone_test_db', 'repl_test_db']),
-        # Test conflict resolution: include and exclude same namespace (exclude should take priority)
-        (["init_test_db.*"], ["init_test_db.*"], [], ['init_test_db', 'clone_test_db', 'repl_test_db']),
+        ({"excludeNamespaces": ["clone_test_db.*", "repl_test_db.*"]},
+            [],
+            ["clone_test_db", "repl_test_db"]),
+        ({"includeNamespaces": ["init_test_db.*"], "excludeNamespaces": ["init_test_db.*"],},
+            [],
+            ["init_test_db", "clone_test_db", "repl_test_db"],),
         # Test exclude multiple regular and sharded collections without include filter
-        ([], ["init_test_db.geo_indexes", "init_test_db.sharded_range_key_collection", "clone_test_db.sharded_compound_key_collection"],
-                            [('init_test_db', 'hash mismatch')],
-                            ['init_test_db.geo_indexes', 'init_test_db.sharded_range_key_collection', 'clone_test_db.sharded_compound_key_collection']),
+        ({"excludeNamespaces": ["init_test_db.geo_indexes", "init_test_db.sharded_range_key_collection", "clone_test_db.sharded_compound_key_collection"]},
+            [('init_test_db', 'hash mismatch')],
+            ['init_test_db.geo_indexes', 'init_test_db.sharded_range_key_collection', 'clone_test_db.sharded_compound_key_collection'],),
         # Test include single specific collections: 1 regular + 1 sharded
-        (["test_include_db.regular_test_collection", "test_include_db.sharded_test_collection"], [],
-                            [], ['init_test_db', 'clone_test_db', 'repl_test_db']),
+        ({"includeNamespaces": ["test_include_db.regular_test_collection", "test_include_db.sharded_test_collection"]},
+            [],
+            ['init_test_db', 'clone_test_db', 'repl_test_db'],),
         # Test exclude from multiple included namespaces
-        (["init_test_db.*", "repl_test_db.*"], ["init_test_db.geo_indexes", "repl_test_db.sharded_range_key_collection"],
-                            [('init_test_db', 'hash mismatch')],
-                            ['clone_test_db', 'init_test_db.geo_indexes', 'repl_test_db.sharded_range_key_collection']),
+        ({"includeNamespaces": ["init_test_db.*", "repl_test_db.*"], "excludeNamespaces": ["init_test_db.geo_indexes", "repl_test_db.sharded_range_key_collection"]},
+            [('init_test_db', 'hash mismatch')],
+            ['clone_test_db', 'init_test_db.geo_indexes', 'repl_test_db.sharded_range_key_collection']),
     ])
-def test_csync_PML_T35(start_cluster, src_cluster, dst_cluster, csync, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes):
+def test_csync_PML_T35(start_cluster, src_cluster, dst_cluster, csync, raw_args, skip_entries, skip_prefixes):
     """
     Test to check PCSM functionality with include/exclude namespaces
     """
     try:
         _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
-        assert csync.start(include_namespaces=include_namespaces, exclude_namespaces=exclude_namespaces), "Failed to start csync service"
-        if "test_include_db" in str(include_namespaces):
+        assert csync.start(raw_args=raw_args), "Failed to start csync service"
+        if "test_include_db" in str(raw_args.get("includeNamespaces", [])):
             src = pymongo.MongoClient(src_cluster.connection)
             test_db = src["test_include_db"]
             test_db["regular_test_collection"].insert_many([{"_id": i, "name": f"item_{i}", "value": i * 10} for i in range(10)])
@@ -109,9 +115,13 @@ def test_csync_PML_T36(start_cluster, src_cluster, dst_cluster, csync):
     """
     try:
         _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
-        assert csync.start(include_namespaces=["init_test_db.*", "repl_test_db.*"],
-                             exclude_namespaces=["init_test_db.compound_indexes"]), "Failed to start csync service"
-        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
+        assert csync.start(raw_args={
+                "includeNamespaces": ["init_test_db.*", "repl_test_db.*"],
+                "excludeNamespaces": ["init_test_db.compound_indexes"]
+            }
+        ), "Failed to start csync service"
+        _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True,
+         is_sharded=src_cluster.is_sharded)
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         result = csync.wait_for_checkpoint()
         assert result is True, "Clustersync failed to save checkpoint"
@@ -153,29 +163,45 @@ def test_csync_PML_T36(start_cluster, src_cluster, dst_cluster, csync):
             pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
 
 
-@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
+@pytest.mark.parametrize("cluster_configs", ["sharded", "replicaset"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
 @pytest.mark.parametrize(
-    "include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, expected_logs",
+    "raw_args, skip_entries, skip_prefixes, expected_logs",
     [
         # Wildcard
         # No quotes
         # Trailing commas
-        ("init_test_db.*,repl_test_db.*,", "repl_test_db.wildcard_indexes", [('repl_test_db', 'hash mismatch')], ['clone_test_db', 'repl_test_db.wildcard_indexes'], ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
-        ("", "init_test_db.*,repl_test_db.*,", [], ['init_test_db', 'repl_test_db'], ['Namespace "init_test_db\\..*" excluded', 'Namespace "repl_test_db\\..*" excluded']),
+        (["--include-namespaces=init_test_db.*,repl_test_db.*", "--exclude-namespaces=repl_test_db.wildcard_indexes"],
+         [('repl_test_db', 'hash mismatch')],
+         ['clone_test_db', 'repl_test_db.wildcard_indexes'],
+         ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
+
+        (["--exclude-namespaces=init_test_db.*,repl_test_db.*,"],
+         [],
+         ['init_test_db', 'repl_test_db'],
+         ['Namespace "init_test_db\\..*" excluded', 'Namespace "repl_test_db\\..*" excluded']),
 
         # Include and Exclude with single quotes
         # Exclude takes priority
-        ("'init_test_db.*,repl_test_db.*'", "'repl_test_db.wildcard_indexes'", [('repl_test_db', 'hash mismatch')], ['clone_test_db', 'repl_test_db.wildcard_indexes'], ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
+        (["--include-namespaces='init_test_db.*,repl_test_db.*'", "--exclude-namespaces='repl_test_db.wildcard_indexes'"],
+         [('repl_test_db', 'hash mismatch')],
+         ['clone_test_db', 'repl_test_db.wildcard_indexes'],
+         ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
 
         # Include and Exclude with double quotes
-        ('"init_test_db.*,repl_test_db.*"', '"repl_test_db.wildcard_indexes"', [('repl_test_db', 'hash mismatch')], ['clone_test_db', 'repl_test_db.wildcard_indexes'], ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
+        (["--include-namespaces=\"init_test_db.*,repl_test_db.*\"", "--exclude-namespaces=\"repl_test_db.wildcard_indexes\""],
+         [('repl_test_db', 'hash mismatch')],
+         ['clone_test_db', 'repl_test_db.wildcard_indexes'],
+         ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
 
-        # No arguments - nothing will be synced cause if no values are provided, nothing should be included or excluded
-        (" ", " ", [], ['init_test_db', 'clone_test_db', 'repl_test_db'], ['Namespace "init_test_db\\..*" excluded', 'Namespace "clone_test_db\\..*" excluded', 'Namespace "repl_test_db\\..*" excluded'])
+        # No arguments - Everything will be synced cause if no values are provided, everything should be included
+        (["--include-namespaces=", "--exclude-namespaces="],
+         [],
+         [],
+         [r'Namespace "init_test_db\.[^"]+" included', r'Namespace "clone_test_db\.[^"]+" included', r'Namespace "repl_test_db\.[^"]+" included']),
 
     ])
-def test_csync_PML_T57(start_cluster, src_cluster, dst_cluster, csync, include_namespaces, exclude_namespaces, skip_entries, skip_prefixes, expected_logs):
+def test_csync_PML_T57(start_cluster, src_cluster, dst_cluster, csync, skip_entries, skip_prefixes, expected_logs, raw_args):
     """
     Test to check PCSM CLI functionality with include/exclude namespaces
     """
@@ -183,7 +209,7 @@ def test_csync_PML_T57(start_cluster, src_cluster, dst_cluster, csync, include_n
         _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
-        assert csync.start(include_namespaces=include_namespaces, exclude_namespaces=exclude_namespaces, mode="cli"), "Failed to start csync service"
+        assert csync.start(raw_args=raw_args, mode="cli"), "Failed to start csync service"
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
     except Exception:
         raise
@@ -211,7 +237,6 @@ def test_csync_PML_T57(start_cluster, src_cluster, dst_cluster, csync, include_n
         )]
     result = len(filtered_mismatches) == 0
     assert result is True, f"Data mismatch after synchronization: {filtered_mismatches}"
-    print(csync.logs())
     assert check_expected_logs(csync, expected_logs)
     csync_error, error_logs = csync.check_csync_errors()
     expected_error = "detected concurrent process"
