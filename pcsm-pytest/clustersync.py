@@ -18,6 +18,8 @@ class Clustersync:
         self.dst = dst
         self.src_internal = kwargs.get('src_internal')
         self.csync_image = kwargs.get('csync_image', "csync/local")
+        self.cmd_stdout = ""
+        self.cmd_stderr = ""
 
     @property
     def container(self):
@@ -35,8 +37,10 @@ class Clustersync:
 
         Cluster.log(f"Starting csync to sync from '{self.src}' → '{self.dst}'...")
         client = docker.from_env()
-
-        cmd = f"pcsm --source {self.src} --target {self.dst} --log-level={log_level} --no-color {extra_args}".strip()
+        env_vars = env_vars or {}
+        cmd = f"pcsm --source {self.src} --target {self.dst} --log-level={log_level} --log-no-color {extra_args}".strip()
+        if "PCSM_LOG_LEVEL" in env_vars:
+            cmd = f"pcsm --source {self.src} --target {self.dst} --log-no-color {extra_args}".strip()
         client.containers.run(
             image=self.csync_image,
             name=self.name,
@@ -66,36 +70,33 @@ class Clustersync:
         Cluster.log(f"HTTP server not ready after {timeout} seconds")
         return False
 
-    def start(self, include_namespaces=None, exclude_namespaces=None, mode="http"):
+    def start(self, mode="http", raw_args=None):
         try:
             if not self._wait_for_http_server():
                 Cluster.log("Failed to connect to HTTP server - server may not be ready")
                 return False
             if mode == "cli":
                 Cluster.log("Using CLI Mode")
-                args = []
-                if include_namespaces:
-                    args.append(f"--include-namespaces {include_namespaces}")
-                if exclude_namespaces:
-                    args.append(f"--exclude-namespaces {exclude_namespaces}")
-                cmd = "pcsm start " + " ".join(args) if args else "pcsm start"
-                exec_result = self.container.exec_run(cmd)
+                cmd = "pcsm start " + " ".join(raw_args) if raw_args else "pcsm start"
+                exec_result = self.container.exec_run(cmd, demux=True)
+                stdout, stderr = exec_result.output
+                self.cmd_stdout = stdout.decode("utf-8", errors="replace") if stdout else ""
+                self.cmd_stderr = stderr.decode("utf-8", errors="replace") if stderr else ""
             else:
                 Cluster.log("Using API Mode")
-                payload = {}
-                if include_namespaces:
-                    payload["includeNamespaces"] = include_namespaces
-                if exclude_namespaces:
-                    payload["excludeNamespaces"] = exclude_namespaces
-                json_data = json.dumps(payload)
-                exec_result = self.container.exec_run(f"curl -s -X POST http://localhost:2242/start -d '{json_data}'")
+                if raw_args is None:
+                    payload = {}
+                else:
+                    payload = raw_args
+                cmd = f"curl -s -X POST http://localhost:2242/start -H 'Content-Type: application/json' -d '{json.dumps(payload)}'"
+                exec_result = self.container.exec_run(cmd)
+                self.cmd_stdout = exec_result.output.decode("utf-8", errors="replace")
 
-            response = exec_result.output.decode("utf-8").strip()
             status_code = exec_result.exit_code
 
-            if status_code == 0 and response:
+            if status_code == 0 and self.cmd_stdout:
                 try:
-                    json_response = json.loads(response)
+                    json_response = json.loads(self.cmd_stdout)
 
                     if json_response.get("ok") is True:
                         Cluster.log("Synchronization between src and dst started successfully")
