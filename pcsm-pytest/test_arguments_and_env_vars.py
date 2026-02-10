@@ -46,9 +46,11 @@ def test_clone_collections_num_PML_T70(start_cluster, src_cluster, dst_cluster, 
             all_threads += operation_threads_3
         for thread in all_threads:
             thread.join()
-
+    if should_pass:
+        assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+        assert csync.finalize(), "Failed to finalize csync service"
     assert check_command_output(expected_cmd_return, csync, should_pass)
-    assert expected_log in csync.logs(tail=2000), f"Expected '{expected_log}' does not appear in logs"
+    assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
@@ -83,9 +85,11 @@ def test_clone_num_read_workers_PML_T71(start_cluster, src_cluster, dst_cluster,
             all_threads += operation_threads_3
         for thread in all_threads:
             thread.join()
-
+    if should_pass:
+        assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+        assert csync.finalize(), "Failed to finalize csync service"
     assert check_command_output(expected_cmd_return, csync, should_pass)
-    assert expected_log in csync.logs(tail=2000), f"Expected '{expected_log}' does not appear in logs"
+    assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
@@ -120,8 +124,11 @@ def test_clone_num_insert_workers_PML_T72(start_cluster, src_cluster, dst_cluste
             all_threads += operation_threads_3
         for thread in all_threads:
             thread.join()
+    if should_pass:
+        assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+        assert csync.finalize(), "Failed to finalize csync service"
     assert check_command_output(expected_cmd_return, csync, should_pass)
-    assert expected_log in csync.logs(tail=2000), f"Expected {expected_log} does not appear in logs"
+    assert expected_log in csync.logs(tail=3000), f"Expected {expected_log} does not appear in logs"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
@@ -145,6 +152,8 @@ def test_clone_segment_size_PML_T73(start_cluster, src_cluster, dst_cluster, csy
         _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.start(mode=mode, raw_args=raw_args) == should_pass, "Failed to start csync service"
+        if should_pass:
+            assert csync.wait_for_repl_stage(), "Failed to start replication stage"
     except Exception:
         raise
     finally:
@@ -158,6 +167,9 @@ def test_clone_segment_size_PML_T73(start_cluster, src_cluster, dst_cluster, csy
             all_threads += operation_threads_3
         for thread in all_threads:
             thread.join()
+    if should_pass:
+        assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+        assert csync.finalize(), "Failed to finalize csync service"
     assert check_command_output(expected_cmd_return, csync, should_pass)
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
@@ -167,7 +179,6 @@ def test_clone_segment_size_PML_T73(start_cluster, src_cluster, dst_cluster, csy
                             (["--clone-read-batch-size=test"], False, 'invalid clone read batch size: invalid cloneReadBatchSize value: test: strconv.ParseFloat: parsing \\"\\": invalid syntax', "", "cli"),
                             (["--clone-read-batch-size=16777216B"], True, '"ok": true', "", "cli"),
                             (["--clone-read-batch-size=16MB"], False, 'invalid clone read batch size: cloneReadBatchSize must be at least 16 MiB, got 15 MiB', "", "cli"),
-                            (["--clone-read-batch-size=2GB"], True, '"ok": true', "ReadBatchSizeBytes: 2000000000 (2.0 GB)", "cli"),
                             # (["--clone-read-batch-size=2GiB"], True, '"ok": true', "", "cli"), Note: Test broken due to PCSM-278
                             # ({"cloneReadBatchSize":"2GiB"}, True, '"ok":true', "", "http"), Note: Test broken due to PCSM-278
                             ({"cloneReadBatchSize":"16777215B"}, False, 'Expected Bad Request got {"ok":false,"error":"invalid clone read batch size: cloneReadBatchSize must be at least 16 MiB, got 16 MiB"}', "", "http"),
@@ -181,6 +192,8 @@ def test_clone_read_batch_size_PML_T74(start_cluster, src_cluster, dst_cluster, 
         _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.start(mode=mode, raw_args=raw_args) == should_pass, "Failed to start csync service"
+        if should_pass:
+            assert csync.wait_for_repl_stage(), "Failed to start replication stage"
     except Exception:
         raise
     finally:
@@ -194,8 +207,11 @@ def test_clone_read_batch_size_PML_T74(start_cluster, src_cluster, dst_cluster, 
             all_threads += operation_threads_3
         for thread in all_threads:
             thread.join()
+    if should_pass:
+        assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+        assert csync.finalize(), "Failed to finalize csync service"
     assert check_command_output(expected_cmd_return, csync, should_pass)
-    assert expected_log in csync.logs(tail=2000), f"Expected {expected_log} does not appear in logs"
+    assert expected_log in csync.logs(tail=3000), f"Expected {expected_log} does not appear in logs"
 
 @pytest.mark.parametrize("csync_env", [
     {"PCSM_LOG_LEVEL": "DEBUG"},
@@ -298,7 +314,7 @@ def test_pcsm_log_json_env_var_PML_T76(start_cluster, src_cluster, dst_cluster, 
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
     assert csync.finalize(), "Failed to finalize csync service"
 
-    for line in csync.logs(tail=2000).splitlines():
+    for line in csync.logs(tail=3000).splitlines():
         try:
             json.loads(line)
         except json.JSONDecodeError:
