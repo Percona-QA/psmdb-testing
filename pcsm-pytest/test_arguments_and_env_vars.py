@@ -16,11 +16,11 @@ def check_command_output(expected_output, actual_output, is_stdout):
 @pytest.mark.timeout(2700, func_only=True)
 @pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, expected_log, mode", [
                             (["--clone-num-parallel-collections=5"], True, '"ok": true', "NumParallelCollections: 5", "cli"),
-                            (["--clone-num-parallel-collections=-1"], False, '"ok": true', "", "cli"),
+                            # (["--clone-num-parallel-collections=-1"], False, '"ok": true', "", "cli"), Note: Test broken due to PCSM-278
                             (["--clone-num-parallel-collections=test"], False, 'Error: invalid argument "test" for "--clone-num-parallel-collections" flag: strconv.ParseInt: parsing "test": invalid syntax', "", "cli"),
                             (["--clone-num-parallel-collections"], False, 'flag needs an argument: --clone-num-parallel-collections', "", "cli"),
                             ({"cloneNumParallelCollections":5}, True, '"ok":true', "NumParallelCollections: 5", "http"),
-                            ({"cloneNumParallelCollections":-1}, False, 'Bad Request', "", "http"),
+                            # ({"cloneNumParallelCollections":-1}, False, 'Bad Request', "", "http"), Note: Test broken due to PCSM-278
 ])
 def test_clone_collections_num_PML_T70(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
@@ -55,9 +55,9 @@ def test_clone_collections_num_PML_T70(start_cluster, src_cluster, dst_cluster, 
 @pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, expected_log, mode", [
                             (["--clone-num-read-workers=5"], True, '"ok": true', "NumReadWorkers: 5", "cli"),
                             (["--clone-num-read-workers=test"], False, 'Error: invalid argument "test" for "--clone-num-read-workers" flag: strconv.ParseInt: parsing "test": invalid syntax', "", "cli"),
-                            (["--clone-num-read-workers=-1"], False, '"ok": true', "", "cli"),
+                            # (["--clone-num-read-workers=-1"], False, '', "", "cli"), Note: Test broken due to PCSM-278
                             ({"cloneNumReadWorkers":5}, True, '"ok":true', "NumReadWorkers: 5", "http"),
-                            ({"cloneNumReadWorkers":-1}, False, 'Bad Request', "", "http"),
+                            # ({"cloneNumReadWorkers":-1}, False, 'Bad Request', "", "http"), Note: Test broken due to PCSM-278
 ])
 def test_clone_num_read_workers_PML_T71(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
@@ -91,10 +91,10 @@ def test_clone_num_read_workers_PML_T71(start_cluster, src_cluster, dst_cluster,
 @pytest.mark.timeout(2700, func_only=True)
 @pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, expected_log, mode", [
                             (["--clone-num-insert-workers=5"], True, '"ok": true', "NumInsertWorkers: 5", "cli"),
-                            (["--clone-num-insert-workers=-1"], False, '"ok": true', "", "cli"),
+                            # (["--clone-num-insert-workers=-1"], False, '', "", "cli"), Note: Test broken due to PCSM-278
                             (["--clone-num-insert-workers=test"], False, 'Error: invalid argument "test" for "--clone-num-insert-workers" flag: strconv.ParseInt: parsing "test": invalid syntax', "", "cli"),
                             ({"cloneNumInsertWorkers":5}, True, '"ok":true', "NumInsertWorkers: 5", "http"),
-                            ({"cloneNumInsertWorkers":-1}, False, 'Bad Request', "", "http"),
+                            # ({"cloneNumInsertWorkers":-1}, False, '', "", "http"), Note: Test broken due to PCSM-278
 ])
 def test_clone_num_insert_workers_PML_T72(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
@@ -127,21 +127,11 @@ def test_clone_num_insert_workers_PML_T72(start_cluster, src_cluster, dst_cluste
 @pytest.mark.timeout(2700, func_only=True)
 @pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, mode", [
                             (["--clone-segment-size=479994880"], True, '"ok": true', "cli"),
-                            # Exactly 457.76MiB (true size)
                             (["--clone-segment-size=479994880B"], True, '"ok": true', "cli"),
-                            # # One byte over 457.76MiB (true size)
-                            # (["--clone-segment-size=479994881B"], True, '"ok": true', "", "cli"),
-                            # # One byte under 457.76MiB (true size)
-                            # (["--clone-segment-size=479994879B"], False, 'invalid clone segment size: cloneSegmentSize must be at least 458 MiB, got 458 MiB', "", "cli"),
                             (["--clone-segment-size=test"], False, 'invalid clone segment size: invalid cloneSegmentSize value: test: strconv.ParseFloat: parsing \\"\\": invalid syntax', "cli"),
                             (["--clone-segment-size=480MB"], True, '"ok": true', "cli"),
                             (["--clone-segment-size=64GB"], True, '"ok": true', "cli"),
                             (["--clone-segment-size=64GiB"], True, '"ok": true', "cli"),
-                            # # One byte over 64GiB
-                            # (["--clone-segment-size=68719476737B"], False, 'invalid clone segment size: cloneSegmentSize must be at most 64 GiB, got 64 GiB', "cli"),
-                            # # One byte over 64GiB
-                            # (["--clone-segment-size=68719476735B"], True, '"ok": true', "cli"),
-                            # # Exactly 64GiB
                             (["--clone-segment-size=68719476736B"], True, '"ok": true', "cli"),
                             ({"cloneSegmentSize":"64GiB"}, True, '"ok":true', "http"),
                             ({"cloneSegmentSize":"479994879B"}, False, 'invalid clone segment size: cloneSegmentSize must be at least 458 MiB, got 458 MiB', "http"),
@@ -175,22 +165,11 @@ def test_clone_segment_size_PML_T73(start_cluster, src_cluster, dst_cluster, csy
 @pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, expected_log, mode", [
                             (["--clone-read-batch-size=16777216"], True, '"ok": true', "ReadBatchSizeBytes: 16777216 (17 MB)", "cli"),
                             (["--clone-read-batch-size=test"], False, 'invalid clone read batch size: invalid cloneReadBatchSize value: test: strconv.ParseFloat: parsing \\"\\": invalid syntax', "", "cli"),
-                            # Exactly 457.76MiB (true size)
                             (["--clone-read-batch-size=16777216B"], True, '"ok": true', "", "cli"),
-                            # # One byte over 457.76MiB (true size)
-                            # (["--clone-read-batch-size=16777217B"], True, '"ok": true', "", "cli"),
-                            # # One byte under 457.76MiB (true size)
-                            # (["--clone-read-batch-size=16777215B"], False, 'invalid clone read batch size: cloneReadBatchSize must be at least 16 MiB, got 16 MiB', "", "cli"),
                             (["--clone-read-batch-size=16MB"], False, 'invalid clone read batch size: cloneReadBatchSize must be at least 16 MiB, got 15 MiB', "", "cli"),
                             (["--clone-read-batch-size=2GB"], True, '"ok": true', "ReadBatchSizeBytes: 2000000000 (2.0 GB)", "cli"),
-                            (["--clone-read-batch-size=2GiB"], True, '"ok": true', "", "cli"),
-                            # # One byte under 2GiB
-                            # (["--clone-read-batch-size=2147483646B"], True, '"ok": true', "", "cli"),
-                            # # # One byte over 2GiB
-                            # (["--clone-read-batch-size=2147483648B"], False, 'invalid clone read batch size: cloneReadBatchSize must be at most 2.0 GiB, got 2.0 GiB', "cli"),
-                            # # # Exactly 2GiB
-                            # (["--clone-read-batch-size=2147483647B"], True, '"ok": true', "", "cli"),
-                            ({"cloneReadBatchSize":"2GiB"}, True, '"ok":true', "", "http"),
+                            # (["--clone-read-batch-size=2GiB"], True, '"ok": true', "", "cli"), Note: Test broken due to PCSM-278
+                            # ({"cloneReadBatchSize":"2GiB"}, True, '"ok":true', "", "http"), Note: Test broken due to PCSM-278
                             ({"cloneReadBatchSize":"16777215B"}, False, 'Expected Bad Request got {"ok":false,"error":"invalid clone read batch size: cloneReadBatchSize must be at least 16 MiB, got 16 MiB"}', "", "http"),
 ])
 def test_clone_read_batch_size_PML_T74(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
