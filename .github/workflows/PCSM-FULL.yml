@@ -33,7 +33,7 @@ jobs:
         psmdb: ["6.0", "7.0", "8.0"]
         shard: [0, 1, 2, 3, 4]
     env:
-      PCSM_BRANCH: ${{ github.event.inputs.pcsm_branch || 'main' }}
+      PCSM_BRANCH: ${{ github.event.inputs.pcsm_branch || 'pcsm-253-public-bulk-write' }}
       GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
     steps:
     - uses: actions/checkout@v4
