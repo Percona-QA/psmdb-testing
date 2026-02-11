@@ -214,20 +214,20 @@ def check_command_output(expected_output, actual_output, is_stdout):
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
 @pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, expected_log, mode", [
-                            # (["--use-collection-bulk-write=True"], True, '"ok": true', "Use collection-level bulk write", "cli"),
-                            # (["--use-collection-bulk-write=False"], True, '"ok": true', "", "cli"),
-                            # (["--use-collection-bulk-write true"], True, '"ok": true', "Use collection-level bulk write", "cli"),
-                            # (["--use-collection-bulk-write false"], True, '"ok": true', "", "cli"),
-                            # (["--use-collection-bulk-write"], True, '"ok": true', "Use collection-level bulk write", "cli"),
-                            # (["--use-collection-bulk-write", "--use-collection-bulk-write=false"], True, '"ok": true', "", "cli"),
-                            # (["--use-collection-bulk-write=false", "--use-collection-bulk-write"], True, '"ok": true', "Use collection-level bulk write", "cli"),
-                            # (["--use-collection-bulk-write= "], False, 'Error: invalid argument "" for "--use-collection-bulk-write" flag: strconv.ParseBool: parsing "": invalid syntax', "", "cli"),
-                            # (["--use-collection-bulk-write==true"], False, 'Error: invalid argument "=true" for "--use-collection-bulk-write" flag: strconv.ParseBool: parsing "=true": invalid syntax', "", "cli"),
-                            # (["--use-collection-bulk-write=t"], True, '"ok": true', "Use collection-level bulk write", "cli"),
-                            # (["--use-collection-bulk-write=f"], True, '"ok": true', "", "cli"),
-                            # (["--use-collection-bulk-write=test"], False, 'Error: invalid argument "test" for "--use-collection-bulk-write" flag: strconv.ParseBool: parsing "test": invalid syntax', "", "cli"),
+                            (["--use-collection-bulk-write=True"], True, '"ok": true', "Use collection-level bulk write", "cli"),
+                            (["--use-collection-bulk-write=False"], True, '"ok": true', "", "cli"),
+                            (["--use-collection-bulk-write true"], True, '"ok": true', "Use collection-level bulk write", "cli"),
+                            (["--use-collection-bulk-write false"], True, '"ok": true', "", "cli"),
+                            (["--use-collection-bulk-write"], True, '"ok": true', "Use collection-level bulk write", "cli"),
+                            (["--use-collection-bulk-write", "--use-collection-bulk-write=false"], True, '"ok": true', "", "cli"),
+                            (["--use-collection-bulk-write=false", "--use-collection-bulk-write"], True, '"ok": true', "Use collection-level bulk write", "cli"),
+                            (["--use-collection-bulk-write= "], False, 'Error: invalid argument "" for "--use-collection-bulk-write" flag: strconv.ParseBool: parsing "": invalid syntax', "", "cli"),
+                            (["--use-collection-bulk-write==true"], False, 'Error: invalid argument "=true" for "--use-collection-bulk-write" flag: strconv.ParseBool: parsing "=true": invalid syntax', "", "cli"),
+                            (["--use-collection-bulk-write=t"], True, '"ok": true', "Use collection-level bulk write", "cli"),
+                            (["--use-collection-bulk-write=f"], True, '"ok": true', "", "cli"),
+                            (["--use-collection-bulk-write=test"], False, 'Error: invalid argument "test" for "--use-collection-bulk-write" flag: strconv.ParseBool: parsing "test": invalid syntax', "", "cli"),
                             ({"useCollectionBulkWrite": True}, True, '"ok": true', "Use collection-level bulk write", "http"),
-                            # ({"useCollectionBulkWrite": 123}, False, 'Error: invalid argument "123" for "--use-collection-bulk-write" flag: strconv.ParseBool: parsing "123": invalid syntax', "", "http"),
+                            ({"useCollectionBulkWrite": 123}, False, 'Error: invalid argument "123" for "--use-collection-bulk-write" flag: strconv.ParseBool: parsing "123": invalid syntax', "", "http"),
 ])
 def test_use_collection_bulk_write_PML_T70(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
