@@ -228,6 +228,7 @@ def test_clone_read_batch_size_PML_T74(start_cluster, src_cluster, dst_cluster, 
                             (["--use-collection-bulk-write=f"], True, '"ok": true', "", "cli"),
                             (["--use-collection-bulk-write=test"], False, 'Error: invalid argument "test" for "--use-collection-bulk-write" flag: strconv.ParseBool: parsing "test": invalid syntax', "", "cli"),
                             ({"useCollectionBulkWrite": True}, True, '"ok": true', "Use collection-level bulk write", "http"),
+                            ({"useCollectionBulkWrite": "t"}, True, '"ok": true', "Use collection-level bulk write", "http"),
                             ({"useCollectionBulkWrite": 123}, False, 'Error: invalid argument "123" for "--use-collection-bulk-write" flag: strconv.ParseBool: parsing "123": invalid syntax', "", "http"),
 ])
 def test_use_collection_bulk_write_PML_T70(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
