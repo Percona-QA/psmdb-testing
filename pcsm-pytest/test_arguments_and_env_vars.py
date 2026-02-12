@@ -168,19 +168,19 @@ def test_clone_num_insert_workers_PML_T72(start_cluster, src_cluster, dst_cluste
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
 @pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, expected_log, mode", [
-                            # (["--clone-segment-size=true"], False,
-                            #  'Error: invalid clone segment size: invalid cloneSegmentSize value: true: strconv.ParseFloat: parsing "": invalid syntax', "", "cli"),
-                            # (["--clone-segment-size=479994880"], True, '"ok": true', "SegmentSizeBytes: 479994880 (480 MB)", "cli"),
-                            # # Exactly 457.76MiB (true size)
-                            # (["--clone-segment-size=479994880B"], True, '"ok": true', "SegmentSizeBytes: 479994880 (480 MB)", "cli"),
-                            # (["--clone-segment-size=test"], False, 'invalid clone segment size: invalid cloneSegmentSize value: test: strconv.ParseFloat: parsing \\"\\": invalid syntax', "", "cli"),
-                            # (["--clone-segment-size=480MB"], True, '"ok": true', "SegmentSizeBytes: 480000000 (480 MB)", "cli"),
-                            # (["--clone-segment-size=0480MB"], True, '"ok": true', "SegmentSizeBytes: 480000000 (480 MB)", "cli"),
-                            # (["--clone-segment-size=64GB"], True, '"ok": true', "SegmentSizeBytes: 64000000000 (64 GB)", "cli"),
-                            # (["--clone-segment-size=64GiB"], True, '"ok": true', "SegmentSizeBytes: 68719476736 (69 GB)", "cli"),
-                            # (["--clone-segment-size=68719476736B"], True, '"ok": true', "SegmentSizeBytes: 68719476736 (69 GB)", "cli"),
-                            # ({"cloneSegmentSize":"64GiB"}, True, '"ok":true', "DBG SegmentSizeBytes: 68719476736 (69 GB)", "http"),
-                            # ({"cloneSegmentSize":"479994879B"}, False, 'invalid clone segment size: cloneSegmentSize must be at least 458 MiB, got 458 MiB', "", "http"),
+                            (["--clone-segment-size=true"], False,
+                             'Error: invalid clone segment size: invalid cloneSegmentSize value: true: strconv.ParseFloat: parsing "": invalid syntax', "", "cli"),
+                            (["--clone-segment-size=479994880"], True, '"ok": true', "SegmentSizeBytes: 479994880 (480 MB)", "cli"),
+                            # Exactly 457.76MiB (true size)
+                            (["--clone-segment-size=479994880B"], True, '"ok": true', "SegmentSizeBytes: 479994880 (480 MB)", "cli"),
+                            (["--clone-segment-size=test"], False, 'invalid clone segment size: invalid cloneSegmentSize value: test: strconv.ParseFloat: parsing \\"\\": invalid syntax', "", "cli"),
+                            (["--clone-segment-size=480MB"], True, '"ok": true', "SegmentSizeBytes: 480000000 (480 MB)", "cli"),
+                            (["--clone-segment-size=0480MB"], True, '"ok": true', "SegmentSizeBytes: 480000000 (480 MB)", "cli"),
+                            (["--clone-segment-size=64GB"], True, '"ok": true', "SegmentSizeBytes: 64000000000 (64 GB)", "cli"),
+                            (["--clone-segment-size=64GiB"], True, '"ok": true', "SegmentSizeBytes: 68719476736 (69 GB)", "cli"),
+                            (["--clone-segment-size=68719476736B"], True, '"ok": true', "SegmentSizeBytes: 68719476736 (69 GB)", "cli"),
+                            ({"cloneSegmentSize":"64GiB"}, True, '"ok":true', "DBG SegmentSizeBytes: 68719476736 (69 GB)", "http"),
+                            ({"cloneSegmentSize":"479994879B"}, False, 'invalid clone segment size: cloneSegmentSize must be at least 458 MiB, got 458 MiB', "", "http"),
 ])
 def test_clone_segment_size_PML_T73(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
