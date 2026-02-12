@@ -305,30 +305,27 @@ def test_pcsm_log_level_env_var_PML_T75(start_cluster, src_cluster, dst_cluster,
     # Needed to produce ERR in logs
     csync.start(mode=mode, raw_args=raw_args)
 
+    logs = csync.logs()
     if log_level == "DEBUG":
         for log_type in ["DBG", "INF", "WRN", "ERR"]:
-            assert log_type in csync.logs(), f"{log_type} not found in logs"
+            assert log_type in logs, f"{log_type} not found in logs"
         assert "fatal" in csync.cmd_stderr, f"Actual log: {csync.cmd_stderr}"
-
     elif log_level == "INFO":
         for log_type in ["INF", "WRN", "ERR"]:
-            assert log_type in csync.logs(), f"{log_type} not found in logs"
-        assert "DBG" not in csync.logs(), "Unexpected Debug found in logs"
+            assert log_type in logs, f"{log_type} not found in logs"
+        assert "DBG" not in logs, "Unexpected Debug found in logs"
         assert "fatal" in csync.cmd_stderr, f"Actual log: {csync.cmd_stderr}"
-
     elif log_level == "WARN":
         for log_type in ["WRN", "ERR"]:
-            assert log_type in csync.logs(), f"{log_type} not found in logs"
+            assert log_type in logs, f"{log_type} not found in logs"
         for unexpected_log_type in ["DBG", "INF"]:
-            assert unexpected_log_type not in csync.logs(), f"Unexpected '{unexpected_log_type}' found in logs"
+            assert unexpected_log_type not in logs, f"Unexpected '{unexpected_log_type}' found in logs"
         assert "fatal" in csync.cmd_stderr, f"Actual log: '{csync.cmd_stderr}'"
-
     elif log_level == "ERROR":
         for log_type in ["ERR"]:
-            assert log_type in csync.logs(), f"{log_type} not found in logs"
+            assert log_type in logs, f"{log_type} not found in logs"
         for unexpected_log_type in ["DBG", "INF", "WRN"]:
-            assert unexpected_log_type not in csync.logs(), f"Unexpected '{unexpected_log_type}' found in logs"
-        assert "fatal" in csync.cmd_stderr, f"Actual log: '{csync.cmd_stderr}'"
+            assert unexpected_log_type not in logs, f"Unexpected '{unexpected_log_type}' found in logs"
 
 @pytest.mark.csync_env({"PCSM_LOG_JSON": "True"})
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
