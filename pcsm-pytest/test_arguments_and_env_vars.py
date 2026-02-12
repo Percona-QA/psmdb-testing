@@ -59,7 +59,8 @@ def test_clone_collections_num_PML_T70(start_cluster, src_cluster, dst_cluster, 
         assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
         assert csync.finalize(), "Failed to finalize csync service"
     assert check_command_output(expected_cmd_return, csync)
-    assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+    if expected_log:
+        assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
@@ -111,7 +112,8 @@ def test_clone_num_read_workers_PML_T71(start_cluster, src_cluster, dst_cluster,
         assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
         assert csync.finalize(), "Failed to finalize csync service"
     assert check_command_output(expected_cmd_return, csync)
-    assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+    if expected_log:
+        assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
@@ -163,7 +165,8 @@ def test_clone_num_insert_workers_PML_T72(start_cluster, src_cluster, dst_cluste
         assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
         assert csync.finalize(), "Failed to finalize csync service"
     assert check_command_output(expected_cmd_return, csync)
-    assert expected_log in csync.logs(tail=3000), f"Expected {expected_log} does not appear in logs"
+    if expected_log:
+        assert expected_log in csync.logs(tail=3000), f"Expected {expected_log} does not appear in logs"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
@@ -210,7 +213,8 @@ def test_clone_segment_size_PML_T73(start_cluster, src_cluster, dst_cluster, csy
         assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
         assert csync.finalize(), "Failed to finalize csync service"
     assert check_command_output(expected_cmd_return, csync)
-    assert expected_log in csync.logs(tail=3000), f"Expected {expected_log} does not appear in logs"
+    if expected_log:
+        assert expected_log in csync.logs(tail=3000), f"Expected {expected_log} does not appear in logs"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
@@ -255,7 +259,8 @@ def test_clone_read_batch_size_PML_T74(start_cluster, src_cluster, dst_cluster, 
         assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
         assert csync.finalize(), "Failed to finalize csync service"
     assert check_command_output(expected_cmd_return, csync)
-    assert expected_log in csync.logs(tail=3000), f"Expected {expected_log} does not appear in logs"
+    if expected_log:
+        assert expected_log in csync.logs(tail=3000), f"Expected {expected_log} does not appear in logs"
 
 @pytest.mark.parametrize("csync_env", [
     {"PCSM_LOG_LEVEL": "DEBUG"},
@@ -301,28 +306,28 @@ def test_pcsm_log_level_env_var_PML_T75(start_cluster, src_cluster, dst_cluster,
     csync.start(mode=mode, raw_args=raw_args)
 
     if log_level == "DEBUG":
-        for log_level in ["DBG", "INF", "WRN", "ERR"]:
-            assert log_level in csync.logs(), f"{log_level} not found in logs"
+        for log_type in ["DBG", "INF", "WRN", "ERR"]:
+            assert log_type in csync.logs(), f"{log_type} not found in logs"
         assert "fatal" in csync.cmd_stderr, f"Actual log: {csync.cmd_stderr}"
 
     elif log_level == "INFO":
-        for log_level in ["INF", "WRN", "ERR"]:
-            assert log_level in csync.logs(), f"{log_level} not found in logs"
+        for log_type in ["INF", "WRN", "ERR"]:
+            assert log_type in csync.logs(), f"{log_type} not found in logs"
         assert "DBG" not in csync.logs(), "Unexpected Debug found in logs"
         assert "fatal" in csync.cmd_stderr, f"Actual log: {csync.cmd_stderr}"
 
     elif log_level == "WARN":
-        for log_level in ["WRN", "ERR"]:
-            assert log_level in csync.logs(), f"{log_level} not found in logs"
-        for unexpected_log_level in ["DBG", "INF"]:
-            assert unexpected_log_level not in csync.logs(), f"Unexpected '{unexpected_log_level}' found in logs"
+        for log_type in ["WRN", "ERR"]:
+            assert log_type in csync.logs(), f"{log_type} not found in logs"
+        for unexpected_log_type in ["DBG", "INF"]:
+            assert unexpected_log_type not in csync.logs(), f"Unexpected '{unexpected_log_type}' found in logs"
         assert "fatal" in csync.cmd_stderr, f"Actual log: '{csync.cmd_stderr}'"
 
     elif log_level == "ERROR":
-        for log_level in ["ERR"]:
-            assert log_level in csync.logs(), f"{log_level} not found in logs"
-        for unexpected_log_level in ["DBG", "INF", "WRN"]:
-            assert unexpected_log_level not in csync.logs(), f"Unexpected '{unexpected_log_level}' found in logs"
+        for log_type in ["ERR"]:
+            assert log_type in csync.logs(), f"{log_type} not found in logs"
+        for unexpected_log_type in ["DBG", "INF", "WRN"]:
+            assert unexpected_log_type not in csync.logs(), f"Unexpected '{unexpected_log_type}' found in logs"
         assert "fatal" in csync.cmd_stderr, f"Actual log: '{csync.cmd_stderr}'"
 
 @pytest.mark.csync_env({"PCSM_LOG_JSON": "True"})
