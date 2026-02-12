@@ -302,7 +302,7 @@ def test_use_collection_bulk_write_PML_T70(start_cluster, src_cluster, dst_clust
     if should_pass:
         assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
         assert csync.finalize(), "Failed to finalize csync service"
-    assert check_command_output(expected_cmd_return, csync, should_pass)
+    assert check_command_output(expected_cmd_return, csync)
     assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
 
 @pytest.mark.parametrize("csync_env", [
