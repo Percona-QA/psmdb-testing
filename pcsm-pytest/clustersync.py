@@ -89,8 +89,10 @@ class Clustersync:
                 else:
                     payload = raw_args
                 cmd = f"curl -s -X POST http://localhost:2242/start -H 'Content-Type: application/json' -d '{json.dumps(payload)}'"
-                exec_result = self.container.exec_run(cmd)
-                self.cmd_stdout = exec_result.output.decode("utf-8", errors="replace")
+                exec_result = self.container.exec_run(cmd, demux=True)
+                stdout, stderr = exec_result.output
+                self.cmd_stdout = stdout.decode("utf-8", errors="replace") if stdout else ""
+                self.cmd_stderr = stderr.decode("utf-8", errors="replace") if stderr else ""
 
             status_code = exec_result.exit_code
 
