@@ -147,7 +147,7 @@ def test_clone_num_insert_workers_PML_T72(start_cluster, src_cluster, dst_cluste
         _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.start(mode=mode, raw_args=raw_args) == should_pass, "Failed to start csync service"
         if should_pass:
-                assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+            assert csync.wait_for_repl_stage(), "Failed to start replication stage"
     except Exception:
         raise
     finally:
