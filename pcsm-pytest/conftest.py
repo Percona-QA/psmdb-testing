@@ -177,7 +177,7 @@ def start_cluster(src_cluster, dst_cluster, csync, request, csync_env):
     log_marker = request.node.get_closest_marker("csync_log_level")
     log_level = log_marker.args[0] if log_marker and log_marker.args else "debug"
     env_marker = request.node.get_closest_marker("csync_env")
-    env_vars = env_marker.args[0] if env_marker and env_marker.args else {}
+    env_vars = dict(env_marker.args[0]) if env_marker and env_marker.args else {}
     cleanup_all_test_containers()
     def create_cluster(cluster_name, cluster):
         try:

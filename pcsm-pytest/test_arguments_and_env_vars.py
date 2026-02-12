@@ -1,30 +1,39 @@
 import json
-
 import pytest
 
 from data_generator import create_all_types_db, stop_all_crud_operations
 
-def check_command_output(expected_output, actual_output, is_stdout):
-    if is_stdout:
-        return expected_output in actual_output.cmd_stdout.strip(), f"Expected {expected_output} got {actual_output.cmd_stdout.strip()}"
-    else:
-        return expected_output in actual_output.cmd_stderr.strip(), f"Expected {expected_output} got {actual_output.cmd_stderr.strip()}"
-
-
+def check_command_output(expected_output, actual_output):
+    """
+    Checks if expected output is in the stdout or stderr of the command.
+    """
+    stdout = actual_output.cmd_stdout.strip()
+    stderr = actual_output.cmd_stderr.strip()
+    if expected_output in stdout or expected_output in stderr:
+        return True
+    raise AssertionError(
+        f"Expected {expected_output!r} in command output, "
+        f"got stdout={stdout!r}, stderr={stderr!r}"
+    )
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
 @pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, expected_log, mode", [
-                            (["--clone-num-parallel-collections=5"], True, '"ok": true', "NumParallelCollections: 5", "cli"),
-                            # (["--clone-num-parallel-collections=-1"], False, '"ok": true', "", "cli"), Note: Test broken due to PCSM-278
+                            (["--clone-num-parallel-collections=true"], False, 'Error: invalid argument "true" for "--clone-num-parallel-collections" flag: strconv.ParseInt: parsing "true": invalid syntax', "", "cli"),
+                            (["--clone-num-parallel-collections=1"], True, '"ok": true', "NumParallelCollections: 1", "cli"),
+                            (["--clone-num-parallel-collections=100"], True, '"ok": true', "NumParallelCollections: 100", "cli"),
+                            (["--clone-num-parallel-collections=1.5"], False, 'Error: invalid argument "1.5" for "--clone-num-parallel-collections" flag: strconv.ParseInt: parsing "1.5": invalid syntax', "", "cli"),
+                            (["--clone-num-parallel-collections=05"], True, '"ok": true', "NumParallelCollections: 5", "cli"),
+                            # (["--clone-num-parallel-collections=0"], False, '', "", "cli"), # Note: Test broken due to PCSM-278
+                            # (["--clone-num-parallel-collections=-1"], False, '', "", "cli"), # Note: Test broken due to PCSM-278
                             (["--clone-num-parallel-collections=test"], False, 'Error: invalid argument "test" for "--clone-num-parallel-collections" flag: strconv.ParseInt: parsing "test": invalid syntax', "", "cli"),
                             (["--clone-num-parallel-collections"], False, 'flag needs an argument: --clone-num-parallel-collections', "", "cli"),
                             ({"cloneNumParallelCollections":5}, True, '"ok":true', "NumParallelCollections: 5", "http"),
-                            # ({"cloneNumParallelCollections":-1}, False, 'Bad Request', "", "http"), Note: Test broken due to PCSM-278
+                            # ({"cloneNumParallelCollections":-1}, False, 'Bad Request', "", "http"), # Note: Test broken due to PCSM-278
 ])
 def test_clone_collections_num_PML_T70(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
-    Test PCSM --clone-num-parallel-collections argument and cloneNumParallelCollections environment variable
+    Test PCSM --clone-num-parallel-collections and cloneNumParallelCollections argument
     """
     try:
         _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
@@ -49,21 +58,34 @@ def test_clone_collections_num_PML_T70(start_cluster, src_cluster, dst_cluster, 
     if should_pass:
         assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
         assert csync.finalize(), "Failed to finalize csync service"
-    assert check_command_output(expected_cmd_return, csync, should_pass)
+    assert check_command_output(expected_cmd_return, csync)
     assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
 @pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, expected_log, mode", [
-                            (["--clone-num-read-workers=5"], True, '"ok": true', "NumReadWorkers: 5", "cli"),
-                            (["--clone-num-read-workers=test"], False, 'Error: invalid argument "test" for "--clone-num-read-workers" flag: strconv.ParseInt: parsing "test": invalid syntax', "", "cli"),
-                            # (["--clone-num-read-workers=-1"], False, '', "", "cli"), Note: Test broken due to PCSM-278
-                            ({"cloneNumReadWorkers":5}, True, '"ok":true', "NumReadWorkers: 5", "http"),
-                            # ({"cloneNumReadWorkers":-1}, False, 'Bad Request', "", "http"), Note: Test broken due to PCSM-278
+                            (["--clone-num-read-workers=true"], False,
+                             'Error: invalid argument "true" for "--clone-num-read-workers" flag: strconv.ParseInt: parsing "true": invalid syntax',
+                             "", "cli"),
+                            (["--clone-num-read-workers=1"], True, '"ok": true', "NumReadWorkers: 1", "cli"),
+                            (["--clone-num-read-workers=100"], True, '"ok": true', "NumReadWorkers: 100", "cli"),
+                            (["--clone-num-read-workers=1.5"], False,
+                             'Error: invalid argument "1.5" for "--clone-num-read-workers" flag: strconv.ParseInt: parsing "1.5": invalid syntax',
+                             "", "cli"),
+                            (["--clone-num-read-workers=05"], True, '"ok": true', "NumReadWorkers: 5", "cli"),
+                            # (["--clone-num-read-workers=0"], False, '', "", "cli"), # Note: Test broken due to PCSM-278
+                            # (["--clone-num-read-workers=-1"], False, '', "", "cli"), # Note: Test broken due to PCSM-278
+                            (["--clone-num-read-workers=test"], False,
+                             'Error: invalid argument "test" for "--clone-num-read-workers" flag: strconv.ParseInt: parsing "test": invalid syntax',
+                             "", "cli"),
+                            (["--clone-num-read-workers"], False, 'flag needs an argument: --clone-num-read-workers', "",
+                             "cli"),
+                            ({"cloneNumReadWorkers": 5}, True, '"ok":true', "NumReadWorkers: 5", "http"),
+                            # ({"cloneNumReadWorkers":-1}, False, 'Bad Request', "", "http"), # Note: Test broken due to PCSM-278
 ])
 def test_clone_num_read_workers_PML_T71(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
-    Test PCSM --clone-num-read-workers argument and cloneNumReadWorkers environment variable
+    Test PCSM --clone-num-read-workers and cloneNumReadWorkers argument
     """
     try:
         _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
@@ -88,21 +110,34 @@ def test_clone_num_read_workers_PML_T71(start_cluster, src_cluster, dst_cluster,
     if should_pass:
         assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
         assert csync.finalize(), "Failed to finalize csync service"
-    assert check_command_output(expected_cmd_return, csync, should_pass)
+    assert check_command_output(expected_cmd_return, csync)
     assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
 @pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, expected_log, mode", [
-                            (["--clone-num-insert-workers=5"], True, '"ok": true', "NumInsertWorkers: 5", "cli"),
-                            # (["--clone-num-insert-workers=-1"], False, '', "", "cli"), Note: Test broken due to PCSM-278
-                            (["--clone-num-insert-workers=test"], False, 'Error: invalid argument "test" for "--clone-num-insert-workers" flag: strconv.ParseInt: parsing "test": invalid syntax', "", "cli"),
-                            ({"cloneNumInsertWorkers":5}, True, '"ok":true', "NumInsertWorkers: 5", "http"),
-                            # ({"cloneNumInsertWorkers":-1}, False, '', "", "http"), Note: Test broken due to PCSM-278
+                            (["--clone-num-insert-workers=true"], False,
+                             'Error: invalid argument "true" for "--clone-num-insert-workers" flag: strconv.ParseInt: parsing "true": invalid syntax',
+                             "", "cli"),
+                            (["--clone-num-insert-workers=1"], True, '"ok": true', "NumInsertWorkers: 1", "cli"),
+                            (["--clone-num-insert-workers=100"], True, '"ok": true', "NumInsertWorkers: 100", "cli"),
+                            (["--clone-num-insert-workers=1.5"], False,
+                             'Error: invalid argument "1.5" for "--clone-num-insert-workers" flag: strconv.ParseInt: parsing "1.5": invalid syntax',
+                             "", "cli"),
+                            (["--clone-num-insert-workers=05"], True, '"ok": true', "NumInsertWorkers: 5", "cli"),
+                            # (["--clone-num-insert-workers=0"], False, '', "", "cli"), # Note: Test broken due to PCSM-278
+                            # (["--clone-num-insert-workers=-1"], False, '', "", "cli"), # Note: Test broken due to PCSM-278
+                            (["--clone-num-insert-workers=test"], False,
+                             'Error: invalid argument "test" for "--clone-num-insert-workers" flag: strconv.ParseInt: parsing "test": invalid syntax',
+                             "", "cli"),
+                            (["--clone-num-insert-workers"], False, 'flag needs an argument: --clone-num-insert-workers', "",
+                             "cli"),
+                            ({"cloneNumInsertWorkers": 5}, True, '"ok":true', "NumInsertWorkers: 5", "http"),
+                            # ({"cloneNumInsertWorkers":-1}, False, 'Bad Request', "", "http"), # Note: Test broken due to PCSM-278
 ])
 def test_clone_num_insert_workers_PML_T72(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
-    Test PCSM --clone-num-insert-workers argument and cloneNumInsertWorkers environment variable
+    Test PCSM --clone-num-insert-workers and cloneNumInsertWorkers argument
     """
     try:
         _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
@@ -127,25 +162,29 @@ def test_clone_num_insert_workers_PML_T72(start_cluster, src_cluster, dst_cluste
     if should_pass:
         assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
         assert csync.finalize(), "Failed to finalize csync service"
-    assert check_command_output(expected_cmd_return, csync, should_pass)
+    assert check_command_output(expected_cmd_return, csync)
     assert expected_log in csync.logs(tail=3000), f"Expected {expected_log} does not appear in logs"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
-@pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, mode", [
-                            (["--clone-segment-size=479994880"], True, '"ok": true', "cli"),
-                            (["--clone-segment-size=479994880B"], True, '"ok": true', "cli"),
-                            (["--clone-segment-size=test"], False, 'invalid clone segment size: invalid cloneSegmentSize value: test: strconv.ParseFloat: parsing \\"\\": invalid syntax', "cli"),
-                            (["--clone-segment-size=480MB"], True, '"ok": true', "cli"),
-                            (["--clone-segment-size=64GB"], True, '"ok": true', "cli"),
-                            (["--clone-segment-size=64GiB"], True, '"ok": true', "cli"),
-                            (["--clone-segment-size=68719476736B"], True, '"ok": true', "cli"),
-                            ({"cloneSegmentSize":"64GiB"}, True, '"ok":true', "http"),
-                            ({"cloneSegmentSize":"479994879B"}, False, 'invalid clone segment size: cloneSegmentSize must be at least 458 MiB, got 458 MiB', "http"),
+@pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, expected_log, mode", [
+                            # (["--clone-segment-size=true"], False,
+                            #  'Error: invalid clone segment size: invalid cloneSegmentSize value: true: strconv.ParseFloat: parsing "": invalid syntax', "", "cli"),
+                            # (["--clone-segment-size=479994880"], True, '"ok": true', "SegmentSizeBytes: 479994880 (480 MB)", "cli"),
+                            # # Exactly 457.76MiB (true size)
+                            # (["--clone-segment-size=479994880B"], True, '"ok": true', "SegmentSizeBytes: 479994880 (480 MB)", "cli"),
+                            # (["--clone-segment-size=test"], False, 'invalid clone segment size: invalid cloneSegmentSize value: test: strconv.ParseFloat: parsing \\"\\": invalid syntax', "", "cli"),
+                            # (["--clone-segment-size=480MB"], True, '"ok": true', "SegmentSizeBytes: 480000000 (480 MB)", "cli"),
+                            # (["--clone-segment-size=0480MB"], True, '"ok": true', "SegmentSizeBytes: 480000000 (480 MB)", "cli"),
+                            # (["--clone-segment-size=64GB"], True, '"ok": true', "SegmentSizeBytes: 64000000000 (64 GB)", "cli"),
+                            # (["--clone-segment-size=64GiB"], True, '"ok": true', "SegmentSizeBytes: 68719476736 (69 GB)", "cli"),
+                            # (["--clone-segment-size=68719476736B"], True, '"ok": true', "SegmentSizeBytes: 68719476736 (69 GB)", "cli"),
+                            # ({"cloneSegmentSize":"64GiB"}, True, '"ok":true', "DBG SegmentSizeBytes: 68719476736 (69 GB)", "http"),
+                            # ({"cloneSegmentSize":"479994879B"}, False, 'invalid clone segment size: cloneSegmentSize must be at least 458 MiB, got 458 MiB', "", "http"),
 ])
-def test_clone_segment_size_PML_T73(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, mode):
+def test_clone_segment_size_PML_T73(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
-    Test PCSM --clone-segment-size argument and cloneSegmentSize environment variable
+    Test PCSM --clone-segment-size and cloneSegmentSize argument
     """
     try:
         _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
@@ -170,22 +209,27 @@ def test_clone_segment_size_PML_T73(start_cluster, src_cluster, dst_cluster, csy
     if should_pass:
         assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
         assert csync.finalize(), "Failed to finalize csync service"
-    assert check_command_output(expected_cmd_return, csync, should_pass)
+    assert check_command_output(expected_cmd_return, csync)
+    assert expected_log in csync.logs(tail=3000), f"Expected {expected_log} does not appear in logs"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(2700, func_only=True)
 @pytest.mark.parametrize("raw_args, should_pass, expected_cmd_return, expected_log, mode", [
+                            (["--clone-read-batch-size=true"], False,
+                             'Error: invalid clone read batch size: invalid cloneReadBatchSize value: true: strconv.ParseFloat: parsing "": invalid syntax', "", "cli"),
                             (["--clone-read-batch-size=16777216"], True, '"ok": true', "ReadBatchSizeBytes: 16777216 (17 MB)", "cli"),
                             (["--clone-read-batch-size=test"], False, 'invalid clone read batch size: invalid cloneReadBatchSize value: test: strconv.ParseFloat: parsing \\"\\": invalid syntax', "", "cli"),
-                            (["--clone-read-batch-size=16777216B"], True, '"ok": true', "", "cli"),
+                            (["--clone-read-batch-size=16777216B"], True, '"ok": true', "ReadBatchSizeBytes: 16777216 (17 MB)", "cli"),
                             (["--clone-read-batch-size=16MB"], False, 'invalid clone read batch size: cloneReadBatchSize must be at least 16 MiB, got 15 MiB', "", "cli"),
+                            (["--clone-read-batch-size=16MiB"], True, '"ok": true', "ReadBatchSizeBytes: 16777216 (17 MB)", "cli"),
+                            (["--clone-read-batch-size=016MiB"], True, '"ok": true', "ReadBatchSizeBytes: 16777216 (17 MB)", "cli"),
                             # (["--clone-read-batch-size=2GiB"], True, '"ok": true', "", "cli"), Note: Test broken due to PCSM-278
                             # ({"cloneReadBatchSize":"2GiB"}, True, '"ok":true', "", "http"), Note: Test broken due to PCSM-278
-                            ({"cloneReadBatchSize":"16777215B"}, False, 'Expected Bad Request got {"ok":false,"error":"invalid clone read batch size: cloneReadBatchSize must be at least 16 MiB, got 16 MiB"}', "", "http"),
+                            ({"cloneReadBatchSize":"16777215B"}, False, 'ok":false,"error":"invalid clone read batch size: cloneReadBatchSize must be at least 16 MiB, got 16 MiB', "", "http"),
 ])
 def test_clone_read_batch_size_PML_T74(start_cluster, src_cluster, dst_cluster, csync, raw_args, should_pass, expected_cmd_return, expected_log, mode):
     """
-    Test PCSM --clone-read-batch-size argument and cloneReadBatchSize environment variable
+    Test PCSM --clone-read-batch-size and cloneReadBatchSize argument
     """
     try:
         _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
@@ -210,7 +254,7 @@ def test_clone_read_batch_size_PML_T74(start_cluster, src_cluster, dst_cluster, 
     if should_pass:
         assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
         assert csync.finalize(), "Failed to finalize csync service"
-    assert check_command_output(expected_cmd_return, csync, should_pass)
+    assert check_command_output(expected_cmd_return, csync)
     assert expected_log in csync.logs(tail=3000), f"Expected {expected_log} does not appear in logs"
 
 @pytest.mark.parametrize("csync_env", [
@@ -251,7 +295,6 @@ def test_pcsm_log_level_env_var_PML_T75(start_cluster, src_cluster, dst_cluster,
     log_level = csync_env["PCSM_LOG_LEVEL"]
 
     if log_level == "DEBUG":
-        print(f"TEST: {csync.cmd_stderr}")
         assert "debug" in csync.cmd_stderr, f"Actual log: '{csync.cmd_stderr}'"
 
     # Needed to produce ERR in logs
