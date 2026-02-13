@@ -6,7 +6,7 @@ import pymongo
 from cluster import Cluster
 from clustersync import Clustersync
 from conftest import get_cluster_config
-from data_generator import create_all_types_db, stop_all_crud_operations
+from data_generator import create_all_types_db
 
 @pytest.fixture(scope="function")
 def src_cluster():
@@ -62,7 +62,7 @@ def cleanup_test_databases(connection):
     for db_name in ["percona_clustersync_mongodb", "test_db"]:
         try:
             client.drop_database(db_name)
-        except:
+        except Exception:
             pass
 
 def create_test_collection(connection):
