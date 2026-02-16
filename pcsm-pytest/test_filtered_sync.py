@@ -201,7 +201,7 @@ def test_csync_PML_T36(start_cluster, src_cluster, dst_cluster, csync):
          [r'Namespace "init_test_db\.[^"]+" included', r'Namespace "clone_test_db\.[^"]+" included', r'Namespace "repl_test_db\.[^"]+" included']),
 
     ])
-def test_csync_PML_T57(start_cluster, src_cluster, dst_cluster, csync, skip_entries, skip_prefixes, expected_logs, raw_args):
+def test_csync_PML_T57(start_cluster, src_cluster, dst_cluster, csync, raw_args, skip_entries, skip_prefixes, expected_logs):
     """
     Test to check PCSM CLI functionality with include/exclude namespaces
     """
