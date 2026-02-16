@@ -1,6 +1,6 @@
 FROM easyrsa/local AS easyrsa
 
-FROM ghcr.io/cosmian/kms:5.12.1
+FROM ghcr.io/cosmian/kms
 COPY conf/kms.toml /etc
 COPY --from=easyrsa /etc/cosmian/ /etc/cosmian/
 ENV COSMIAN_KMS_CONF=/etc/kms.toml
