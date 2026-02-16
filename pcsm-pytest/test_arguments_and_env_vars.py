@@ -363,9 +363,6 @@ def test_pcsm_log_json_env_var_PML_T76(csync, src_cluster, dst_cluster, csync_en
 
 @pytest.mark.csync_env({"PCSM_USE_COLLECTION_BULK_WRITE": "True"})
 @pytest.mark.timeout(300, func_only=True)
-@pytest.mark.parametrize("raw_args, should_pass, expected_log, mode", [
-                            ([], True, "Use collection-level bulk write", "cli"),
-])
 def test_pcsm_use_collection_bulk_write_env_var_PML_T78(start_cluster, src_cluster, dst_cluster, csync, raw_args, expected_log, should_pass, mode, csync_env):
     """
     Test the PCSM_USE_COLLECTION_BULK_WRITE environment variable
