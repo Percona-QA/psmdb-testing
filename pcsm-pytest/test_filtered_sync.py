@@ -194,7 +194,7 @@ def test_csync_PML_T36(start_cluster, src_cluster, dst_cluster, csync):
          ['clone_test_db', 'repl_test_db.wildcard_indexes'],
          ["Namespace \"repl_test_db.wildcard_indexes.*\" excluded"]),
 
-        # No arguments - Everything will be synced cause if no values are provided, everything should be included
+        # No arguments - Everything will be synced because if no values are provided, everything should be included
         (["--include-namespaces=", "--exclude-namespaces="],
          [],
          [],
