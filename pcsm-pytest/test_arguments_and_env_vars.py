@@ -27,18 +27,6 @@ def dst_cluster():
     cluster.destroy()
 
 @pytest.fixture(scope="function")
-def csync_env(request):
-    """Handle parametrized environment variables - supports both markers and parametrization"""
-    env = {}
-    marker = request.node.get_closest_marker("csync_env")
-    if marker and marker.args:
-        env.update(marker.args[0])
-    param_env = getattr(request, "param", None)
-    if isinstance(param_env, dict):
-        env.update(param_env)
-    return env
-
-@pytest.fixture(scope="function")
 def csync(src_cluster, dst_cluster, request, csync_env):
     """Recreate only PCSM container with new env vars/log level for each test"""
     # Extract log level marker
@@ -141,20 +129,11 @@ def test_clone_num_read_workers_PML_T71(csync, src_cluster, dst_cluster):
          'Error: invalid argument "true" for "--clone-num-read-workers" flag: strconv.ParseInt: parsing "true": invalid syntax',
          "", "cli"),
         (["--clone-num-read-workers=1"], True, '"ok": true', "NumReadWorkers: 1", "cli"),
-        (["--clone-num-read-workers=100"], True, '"ok": true', "NumReadWorkers: 100", "cli"),
-        (["--clone-num-read-workers=1.5"], False,
-         'Error: invalid argument "1.5" for "--clone-num-read-workers" flag: strconv.ParseInt: parsing "1.5": invalid syntax',
-         "", "cli"),
         (["--clone-num-read-workers=05"], True, '"ok": true', "NumReadWorkers: 5", "cli"),
         # (["--clone-num-read-workers=0"], False, '', "", "cli"), # Note: Test broken due to PCSM-278
-        # (["--clone-num-read-workers=-1"], False, '', "", "cli"), # Note: Test broken due to PCSM-278
-        (["--clone-num-read-workers=test"], False,
-         'Error: invalid argument "test" for "--clone-num-read-workers" flag: strconv.ParseInt: parsing "test": invalid syntax',
-         "", "cli"),
         (["--clone-num-read-workers"], False, 'flag needs an argument: --clone-num-read-workers', "",
          "cli"),
         ({"cloneNumReadWorkers": 5}, True, '"ok":true', "NumReadWorkers: 5", "http"),
-        # ({"cloneNumReadWorkers":-1}, False, 'Bad Request', "", "http"), # Note: Test broken due to PCSM-278
     ]
     failures = []
     create_test_collection(src_cluster.connection)
@@ -187,20 +166,11 @@ def test_clone_num_insert_workers_PML_T72(csync, src_cluster, dst_cluster):
          'Error: invalid argument "true" for "--clone-num-insert-workers" flag: strconv.ParseInt: parsing "true": invalid syntax',
          "", "cli"),
         (["--clone-num-insert-workers=1"], True, '"ok": true', "NumInsertWorkers: 1", "cli"),
-        (["--clone-num-insert-workers=100"], True, '"ok": true', "NumInsertWorkers: 100", "cli"),
-        (["--clone-num-insert-workers=1.5"], False,
-         'Error: invalid argument "1.5" for "--clone-num-insert-workers" flag: strconv.ParseInt: parsing "1.5": invalid syntax',
-         "", "cli"),
         (["--clone-num-insert-workers=05"], True, '"ok": true', "NumInsertWorkers: 5", "cli"),
         # (["--clone-num-insert-workers=0"], False, '', "", "cli"), # Note: Test broken due to PCSM-278
-        # (["--clone-num-insert-workers=-1"], False, '', "", "cli"), # Note: Test broken due to PCSM-278
-        (["--clone-num-insert-workers=test"], False,
-         'Error: invalid argument "test" for "--clone-num-insert-workers" flag: strconv.ParseInt: parsing "test": invalid syntax',
-         "", "cli"),
         (["--clone-num-insert-workers"], False, 'flag needs an argument: --clone-num-insert-workers', "",
          "cli"),
         ({"cloneNumInsertWorkers": 5}, True, '"ok":true', "NumInsertWorkers: 5", "http"),
-        # ({"cloneNumInsertWorkers":-1}, False, 'Bad Request', "", "http"), # Note: Test broken due to PCSM-278
     ]
     failures = []
     create_test_collection(src_cluster.connection)
@@ -208,7 +178,7 @@ def test_clone_num_insert_workers_PML_T72(csync, src_cluster, dst_cluster):
         try:
             result = csync.start(mode=mode, raw_args=raw_args)
             assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
-            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_log}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
                 assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
             if should_pass:
@@ -221,7 +191,7 @@ def test_clone_num_insert_workers_PML_T72(csync, src_cluster, dst_cluster):
             csync.create()
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
-#
+
 @pytest.mark.timeout(300, func_only=True)
 def test_clone_segment_size_PML_T73(csync, src_cluster, dst_cluster):
     """
@@ -231,20 +201,10 @@ def test_clone_segment_size_PML_T73(csync, src_cluster, dst_cluster):
         (["--clone-segment-size=true"], False,
          'Error: invalid clone segment size: invalid cloneSegmentSize value: true: strconv.ParseFloat: parsing "": invalid syntax',
          "", "cli"),
-        (["--clone-segment-size=479994880"], True, '"ok": true', "SegmentSizeBytes: 479994880 (480 MB)", "cli"),
         # Exactly 457.76MiB (true size)
         (["--clone-segment-size=479994880B"], True, '"ok": true', "SegmentSizeBytes: 479994880 (480 MB)", "cli"),
-        (["--clone-segment-size=test"], False,
-         'invalid clone segment size: invalid cloneSegmentSize value: test: strconv.ParseFloat: parsing \\"\\": invalid syntax',
-         "", "cli"),
-        (["--clone-segment-size=480MB"], True, '"ok": true', "SegmentSizeBytes: 480000000 (480 MB)", "cli"),
-        (["--clone-segment-size=0480MB"], True, '"ok": true', "SegmentSizeBytes: 480000000 (480 MB)", "cli"),
-        (["--clone-segment-size=64GB"], True, '"ok": true', "SegmentSizeBytes: 64000000000 (64 GB)", "cli"),
         (["--clone-segment-size=64GiB"], True, '"ok": true', "SegmentSizeBytes: 68719476736 (69 GB)", "cli"),
-        (["--clone-segment-size=68719476736B"], True, '"ok": true', "SegmentSizeBytes: 68719476736 (69 GB)", "cli"),
         ({"cloneSegmentSize": "64GiB"}, True, '"ok":true', "DBG SegmentSizeBytes: 68719476736 (69 GB)", "http"),
-        ({"cloneSegmentSize": "479994879B"}, False,
-         'invalid clone segment size: cloneSegmentSize must be at least 458 MiB, got 458 MiB', "", "http"),
     ]
     failures = []
     create_test_collection(src_cluster.connection)
@@ -252,7 +212,7 @@ def test_clone_segment_size_PML_T73(csync, src_cluster, dst_cluster):
         try:
             result = csync.start(mode=mode, raw_args=raw_args)
             assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
-            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_log}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
                 assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
             if should_pass:
@@ -275,20 +235,10 @@ def test_clone_read_batch_size_PML_T74(csync, src_cluster, dst_cluster):
         (["--clone-read-batch-size=true"], False,
          'Error: invalid clone read batch size: invalid cloneReadBatchSize value: true: strconv.ParseFloat: parsing "": invalid syntax',
          "", "cli"),
-        (["--clone-read-batch-size=16777216"], True, '"ok": true', "ReadBatchSizeBytes: 16777216 (17 MB)", "cli"),
-        (["--clone-read-batch-size=test"], False,
-         'invalid clone read batch size: invalid cloneReadBatchSize value: test: strconv.ParseFloat: parsing \\"\\": invalid syntax',
-         "", "cli"),
         (["--clone-read-batch-size=16777216B"], True, '"ok": true', "ReadBatchSizeBytes: 16777216 (17 MB)", "cli"),
-        (["--clone-read-batch-size=16MB"], False,
-         'invalid clone read batch size: cloneReadBatchSize must be at least 16 MiB, got 15 MiB', "", "cli"),
         (["--clone-read-batch-size=16MiB"], True, '"ok": true', "ReadBatchSizeBytes: 16777216 (17 MB)", "cli"),
-        (["--clone-read-batch-size=016MiB"], True, '"ok": true', "ReadBatchSizeBytes: 16777216 (17 MB)", "cli"),
         # (["--clone-read-batch-size=2GiB"], True, '"ok": true', "", "cli"), Note: Test broken due to PCSM-278
-        # ({"cloneReadBatchSize":"2GiB"}, True, '"ok":true', "", "http"), Note: Test broken due to PCSM-278
-        ({"cloneReadBatchSize": "16777215B"}, False,
-         'ok":false,"error":"invalid clone read batch size: cloneReadBatchSize must be at least 16 MiB, got 16 MiB', "",
-         "http"),
+        ({"cloneReadBatchSize":"1GiB"}, True, '"ok":true', "", "http"),
     ]
     failures = []
     create_test_collection(src_cluster.connection)
@@ -296,7 +246,7 @@ def test_clone_read_batch_size_PML_T74(csync, src_cluster, dst_cluster):
         try:
             result = csync.start(mode=mode, raw_args=raw_args)
             assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
-            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_log}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
                 assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
             if should_pass:

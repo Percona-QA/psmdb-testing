@@ -71,6 +71,8 @@ class Clustersync:
         return False
 
     def start(self, mode="http", raw_args=None):
+        self.cmd_stdout = ""
+        self.cmd_stderr = ""
         try:
             if not self._wait_for_http_server():
                 Cluster.log("Failed to connect to HTTP server - server may not be ready")
