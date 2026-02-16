@@ -10,7 +10,7 @@ from data_generator import create_all_types_db
 
 @pytest.fixture(scope="function")
 def src_cluster():
-    """Create src cluster once per module"""
+    """Create src cluster once per function"""
     config = get_cluster_config("replicaset")
     cluster = Cluster(config['src_config'])
     cluster.create()
@@ -19,7 +19,7 @@ def src_cluster():
 
 @pytest.fixture(scope="function")
 def dst_cluster():
-    """Create dst cluster once per module"""
+    """Create dst cluster once per function"""
     config = get_cluster_config("replicaset")
     cluster = Cluster(config['dst_config'])
     cluster.create()
@@ -85,7 +85,7 @@ def check_command_output(expected_output, actual_output):
         f"got stdout={stdout!r}, stderr={stderr!r}"
     )
 
-@pytest.mark.timeout(2700, func_only=True)
+@pytest.mark.timeout(300, func_only=True)
 def test_clone_collections_num_PML_T70(csync, src_cluster, dst_cluster):
     """
     Test PCSM --clone-num-parallel-collections and cloneNumParallelCollections argument
@@ -131,10 +131,10 @@ def test_clone_collections_num_PML_T70(csync, src_cluster, dst_cluster):
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
 
-@pytest.mark.timeout(2700, func_only=True)
+@pytest.mark.timeout(300, func_only=True)
 def test_clone_num_read_workers_PML_T71(csync, src_cluster, dst_cluster):
     """
-    Test PCSM --clone-num-parallel-collections and cloneNumParallelCollections argument
+    Test PCSM --clone-num-read-workers and cloneNumReadWorkers argument
     """
     test_cases = [
         (["--clone-num-read-workers=true"], False,
@@ -177,10 +177,10 @@ def test_clone_num_read_workers_PML_T71(csync, src_cluster, dst_cluster):
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
 
-@pytest.mark.timeout(2700, func_only=True)
+@pytest.mark.timeout(300, func_only=True)
 def test_clone_num_insert_workers_PML_T72(csync, src_cluster, dst_cluster):
     """
-    Test PCSM --clone-num-parallel-collections and cloneNumParallelCollections argument
+    Test PCSM --clone-num-insert-workers and cloneNumInsertWorkers argument
     """
     test_cases = [
         (["--clone-num-insert-workers=true"], False,
@@ -222,10 +222,10 @@ def test_clone_num_insert_workers_PML_T72(csync, src_cluster, dst_cluster):
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
 #
-@pytest.mark.timeout(2700, func_only=True)
+@pytest.mark.timeout(300, func_only=True)
 def test_clone_segment_size_PML_T73(csync, src_cluster, dst_cluster):
     """
-    Test PCSM --clone-num-parallel-collections and cloneNumParallelCollections argument
+    Test PCSM --clone-segment-size and cloneSegmentSize argument
     """
     test_cases = [
         (["--clone-segment-size=true"], False,
@@ -266,10 +266,10 @@ def test_clone_segment_size_PML_T73(csync, src_cluster, dst_cluster):
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
 
-@pytest.mark.timeout(2700, func_only=True)
+@pytest.mark.timeout(300, func_only=True)
 def test_clone_read_batch_size_PML_T74(csync, src_cluster, dst_cluster):
     """
-    Test PCSM --clone-num-parallel-collections and cloneNumParallelCollections argument
+    Test PCSM --clone-read-batch-size and cloneReadBatchSize argument
     """
     test_cases = [
         (["--clone-read-batch-size=true"], False,
@@ -320,10 +320,10 @@ def test_clone_read_batch_size_PML_T74(csync, src_cluster, dst_cluster):
 @pytest.mark.parametrize("mode", [
     "cli",
 ])
-@pytest.mark.timeout(2700, func_only=True)
+@pytest.mark.timeout(300, func_only=True)
 def test_pcsm_log_level_env_var_PML_T75(csync, src_cluster, dst_cluster, csync_env, mode):
     """
-    Test the PCSM_LOG_JSON environment variable
+    Test the PCSM_LOG_LEVEL environment variable
     """
     try:
         _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db")
@@ -361,7 +361,7 @@ def test_pcsm_log_level_env_var_PML_T75(csync, src_cluster, dst_cluster, csync_e
         csync.create()
 
 @pytest.mark.csync_env({"PCSM_LOG_JSON": "True"})
-@pytest.mark.timeout(2700, func_only=True)
+@pytest.mark.timeout(300, func_only=True)
 def test_pcsm_log_json_env_var_PML_T76(csync, src_cluster, dst_cluster, csync_env):
     """
     Test the PCSM_LOG_JSON environment variable
@@ -372,7 +372,7 @@ def test_pcsm_log_json_env_var_PML_T76(csync, src_cluster, dst_cluster, csync_en
     assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
     for line in csync.logs().splitlines():
         try:
-            assert json.loads(line)
+            json.loads(line)
         except json.JSONDecodeError:
             raise AssertionError(
                 f"Log line '{line}' is not valid JSON"
