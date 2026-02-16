@@ -250,40 +250,6 @@ def test_clone_read_batch_size_PML_T74(csync, src_cluster, dst_cluster):
         (["--clone-read-batch-size=16777216B"], True, '"ok": true', "ReadBatchSizeBytes: 16777216 (17 MB)", "cli"),
         (["--clone-read-batch-size=16MiB"], True, '"ok": true', "ReadBatchSizeBytes: 16777216 (17 MB)", "cli"),
         # (["--clone-read-batch-size=2GiB"], True, '"ok": true', "", "cli"), Note: Test broken due to PCSM-278
-        ({"cloneReadBatchSize":"1GiB"}, True, '"ok":true', "", "http")
-    ]
-    failures = []
-    create_test_collection(src_cluster.connection)
-    for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
-        try:
-            result = csync.start(mode=mode, raw_args=raw_args)
-            assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
-            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_log}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
-            if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
-            if should_pass:
-                assert csync.wait_for_repl_stage(), "Failed to start replication stage"
-                assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
-        except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
-        finally:
-            cleanup_test_databases(dst_cluster.connection)
-            csync.create()
-    if failures:
-        pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
-
-@pytest.mark.timeout(300, func_only=True)
-def test_clone_read_batch_size_PML_T74(csync, src_cluster, dst_cluster):
-    """
-    Test PCSM --clone-read-batch-size and cloneReadBatchSize argument
-    """
-    test_cases = [
-        (["--clone-read-batch-size=true"], False,
-         'Error: invalid clone read batch size: invalid cloneReadBatchSize value: true: strconv.ParseFloat: parsing "": invalid syntax',
-         "", "cli"),
-        (["--clone-read-batch-size=16777216B"], True, '"ok": true', "ReadBatchSizeBytes: 16777216 (17 MB)", "cli"),
-        (["--clone-read-batch-size=16MiB"], True, '"ok": true', "ReadBatchSizeBytes: 16777216 (17 MB)", "cli"),
-        # (["--clone-read-batch-size=2GiB"], True, '"ok": true', "", "cli"), Note: Test broken due to PCSM-278
         ({"cloneReadBatchSize":"1GiB"}, True, '"ok":true', "", "http"),
     ]
     failures = []
