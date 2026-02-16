@@ -80,6 +80,7 @@
       - git
       - make
       - openssl-devel
+      - sqlite-devel
       - zlib-devel
       - curl
       - python3-pip
@@ -107,6 +108,7 @@
       - make
       - openssl
       - openssl-devel
+      - sqlite-devel
       - zlib-devel
       - python3-pip
       - python3-devel
