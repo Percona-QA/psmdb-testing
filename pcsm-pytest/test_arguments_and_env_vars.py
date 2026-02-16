@@ -27,18 +27,6 @@ def dst_cluster():
     cluster.destroy()
 
 @pytest.fixture(scope="function")
-def csync_env(request):
-    """Handle parametrized environment variables - supports both markers and parametrization"""
-    env = {}
-    marker = request.node.get_closest_marker("csync_env")
-    if marker and marker.args:
-        env.update(marker.args[0])
-    param_env = getattr(request, "param", None)
-    if isinstance(param_env, dict):
-        env.update(param_env)
-    return env
-
-@pytest.fixture(scope="function")
 def csync(src_cluster, dst_cluster, request, csync_env):
     """Recreate only PCSM container with new env vars/log level for each test"""
     # Extract log level marker
@@ -190,7 +178,7 @@ def test_clone_num_insert_workers_PML_T72(csync, src_cluster, dst_cluster):
         try:
             result = csync.start(mode=mode, raw_args=raw_args)
             assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
-            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_log}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
                 assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
             if should_pass:
@@ -203,7 +191,7 @@ def test_clone_num_insert_workers_PML_T72(csync, src_cluster, dst_cluster):
             csync.create()
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
-#
+
 @pytest.mark.timeout(300, func_only=True)
 def test_clone_segment_size_PML_T73(csync, src_cluster, dst_cluster):
     """
@@ -224,7 +212,7 @@ def test_clone_segment_size_PML_T73(csync, src_cluster, dst_cluster):
         try:
             result = csync.start(mode=mode, raw_args=raw_args)
             assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
-            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_log}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
                 assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
             if should_pass:
@@ -258,7 +246,7 @@ def test_clone_read_batch_size_PML_T74(csync, src_cluster, dst_cluster):
         try:
             result = csync.start(mode=mode, raw_args=raw_args)
             assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
-            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_log}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
                 assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
             if should_pass:
