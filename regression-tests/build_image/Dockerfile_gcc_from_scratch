@@ -34,8 +34,12 @@ ENV PATH="/opt/gcc/bin:${PATH}"
 RUN set -ex; \
     if [ "$toolchain_version" = "v3" ]; then \
         wget https://www.python.org/ftp/python/3.8.19/Python-3.8.19.tgz -O /opt/python.tgz ; \    
-    else \
+    fi; \
+    if [ "$toolchain_version" = "v4" ]; then \
         wget https://www.python.org/ftp/python/3.10.14/Python-3.10.14.tgz -O /opt/python.tgz; \
+    fi; \
+    if [ "$toolchain_version" = "v5" ]; then \
+        wget https://www.python.org/ftp/python/3.13.11/Python-3.13.11.tgz -O /opt/python.tgz; \
     fi; \
     mkdir -p /opt/src/python && tar -xzf /opt/python.tgz -C /opt/src/python --strip-components=1 ; \
     cd /opt/src/python; \
@@ -57,35 +61,24 @@ RUN set -ex; \
     else \
         apt-get update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl git cmake binutils lld tzdata libssl-dev libcurl4-openssl-dev; \
     fi
-ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
-ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
-ARG AWS_VERSION=1.9.379
-RUN cd /opt && git clone --branch $AWS_VERSION --single-branch https://github.com/aws/aws-sdk-cpp.git && \
-    mkdir -p /opt/aws && \
-    cd aws-sdk-cpp && git submodule update --init --recursive && \
-    mkdir build && cd build && \
-    cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="/opt/aws" -DAUTORUN_UNIT_TESTS=OFF && \
-    make -j "$(nproc)" && make install && \
-    cd /opt && rm -rf aws-sdk-cpp
-ARG E2FS_VERSION=v1.47.2
-RUN cd /opt && git clone --branch $E2FS_VERSION --single-branch https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git && \
-    mkdir -p /opt/e2fs && cd e2fsprogs && \
-    mkdir build && cd build && \
-    ../configure --prefix=/opt/e2fs && \
-    make -j "$(nproc)" && make install-libs && \
-    cd /opt && rm -rf e2fsprogs
 
 ARG OS=debian:12
 FROM $OS AS toolchain
 COPY --from=toolchain_builder /opt /opt
 ENV PATH="/opt/python/bin:/opt/gcc/bin:/opt/bazel:${PATH}"
 RUN set -ex; \
-    cp -r /opt/aws/* /usr/ && cp -r /opt/e2fs/* /usr/ && \
-    rm -rf /opt/aws && rm -rf /opt/e2fs && \
     if [ -f "/usr/bin/yum" ] ; then \
-        yum -y update && yum install -y --allowerasing diffutils wget git curl cmake lld binutils glibc-devel tzdata; \
+        if [ "$build_platform" = "scons" ]; then \
+            yum -y update && yum install -y --allowerasing diffutils wget git curl cmake lld binutils glibc-devel tzdata openssl-devel libcurl-devel; \
+        else \
+            yum -y update && yum install -y --allowerasing diffutils wget git curl cmake lld binutils file glibc-devel gmp-devel mpfr-devel libmpc-devel gcc gcc-c++ bzip2 bzip2-devel openssl-devel libcurl-devel zlib-devel libffi-devel xz-devel make tzdata; \
+        fi; \
     else \
-        apt-get update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl git cmake binutils lld tzdata; \
+        if [ "$build_platform" = "scons" ]; then \
+            apt-get update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl git cmake binutils lld tzdata libssl-dev libcurl4-openssl-dev; \
+        else \
+            apt-get update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl git cmake binutils lld file libgmp-dev libmpfr-dev libmpc-dev gcc g++ bzip2 libbz2-dev zlib1g-dev libreadline-dev libffi-dev make tzdata libssl-dev libcurl4-openssl-dev ;\
+        fi; \
     fi; \
     pip3 install --upgrade pip && pip3 install virtualenv && python3 -m venv /opt/venv
 ENV VIRTUAL_ENV=/opt/venv
@@ -95,6 +88,24 @@ ENV POETRY_INSTALLER_MAX_WORKERS=10
 ENV PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
 ENV GLIBC_TUNABLES=glibc.pthread.rseq=0
 ENV PYTHON_BIN_PATH=/opt/venv/bin/python
+ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
+ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
+ARG AWS_VERSION=1.9.379
+RUN cd /opt && git clone --branch $AWS_VERSION --single-branch https://github.com/aws/aws-sdk-cpp.git && \
+    mkdir -p /opt/aws && \
+    cd aws-sdk-cpp && git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="/usr" -DAUTORUN_UNIT_TESTS=OFF && \
+    make -j "$(nproc)" && make install && \
+    cd /opt && rm -rf aws-sdk-cpp
+ARG E2FS_VERSION=v1.47.2
+RUN cd /opt && git clone --branch $E2FS_VERSION --single-branch https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git && \
+    mkdir -p /opt/e2fs && cd e2fsprogs && \
+    mkdir build && cd build && \
+    ../configure --prefix=/usr && \
+    make -j "$(nproc)" && make install-libs && \
+    cd /opt && rm -rf e2fsprogs
+
 
 FROM toolchain AS base_image
 ARG branch=v8.0
@@ -178,8 +189,10 @@ RUN set -ex; \
     fi
 
 FROM base_image AS jstests
-COPY --from=psmdb_builder /opt/percona-server-mongodb/build/install/bin/* /usr/bin/
-RUN find jstests -type f | xargs chmod 400 && \
+COPY --from=psmdb_builder /opt/percona-server-mongodb/build/install/bin/ /usr/bin/
+RUN cp -r /usr/bin/x509 /opt/percona-server-mongodb || true && \
+    find x509 -type f | xargs chmod 400 || true && \
+    find jstests -type f | xargs chmod 400 && \
     cp /usr/bin/dbtest . || true && \
     support-files/ldap-sasl/deploy_ldap_and_sasl.sh || true && \
     echo "START=yes" >> /etc/default/saslauthd || true
@@ -192,7 +205,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN useradd -u 1001 -r -g 0 -m -s /sbin/nologin -c "Default Application User" mongodb || true
 
 FROM base_image AS integrationtests
-COPY --from=psmdb_builder /opt/percona-server-mongodb/build/install/bin/* /usr/bin/
+COPY --from=psmdb_builder /opt/percona-server-mongodb/build/install/bin/ /usr/bin/
 ARG build_platform=bazel
 ENV PATH="/root/.local/bin:${PATH}"
 RUN set -ex; \

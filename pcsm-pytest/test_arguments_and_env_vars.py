@@ -261,7 +261,7 @@ def test_clone_read_batch_size_PML_T74(csync, src_cluster, dst_cluster):
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
 
 @pytest.mark.timeout(300, func_only=True)
-def test_use_collection_bulk_write_PML_T70(csync, src_cluster, dst_cluster):
+def test_use_collection_bulk_write_PML_T77(csync, src_cluster, dst_cluster):
     """
     Test PCSM --use-collection-bulk-write argument and useCollectionBulkWrite environment variable
     """
@@ -366,7 +366,7 @@ def test_pcsm_log_json_env_var_PML_T76(csync, src_cluster, dst_cluster, csync_en
 @pytest.mark.parametrize("raw_args, should_pass, expected_log, mode", [
                             ([], True, "Use collection-level bulk write", "cli"),
 ])
-def test_pcsm_use_collection_bulk_write_env_var_PML_T76(start_cluster, src_cluster, dst_cluster, csync, raw_args, expected_log, should_pass, mode, csync_env):
+def test_pcsm_use_collection_bulk_write_env_var_PML_T78(start_cluster, src_cluster, dst_cluster, csync, raw_args, expected_log, should_pass, mode, csync_env):
     """
     Test the PCSM_USE_COLLECTION_BULK_WRITE environment variable
     """
