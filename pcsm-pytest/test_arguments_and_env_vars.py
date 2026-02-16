@@ -72,6 +72,19 @@ def create_test_collection(connection):
     collection = db["test_collection"]
     collection.insert_one({"test": "data"})
 
+def check_command_output(expected_output, actual_output):
+    """
+    Checks if expected output is in the stdout or stderr of the command.
+    """
+    stdout = actual_output.cmd_stdout.strip()
+    stderr = actual_output.cmd_stderr.strip()
+    if expected_output in stdout or expected_output in stderr:
+        return True
+    raise AssertionError(
+        f"Expected {expected_output!r} in command output, "
+        f"got stdout={stdout!r}, stderr={stderr!r}"
+    )
+
 @pytest.mark.timeout(300, func_only=True)
 def test_clone_collections_num_PML_T70(csync, src_cluster, dst_cluster):
     """
