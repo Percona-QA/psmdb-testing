@@ -225,6 +225,9 @@
         ansible.builtin.command: pro enable fips-updates --assume-yes
         register: pro_result
         changed_when: "'FIPS Updates enabled' in pro_result.stdout"
+        failed_when:
+          - pro_result.rc != 0
+          - "'FIPS Updates is already enabled' not in pro_result.stdout"
     when:
       - ansible_facts['distribution'] == 'Ubuntu'
       - ansible_facts['distribution_release'] in ['jammy', 'noble']
