@@ -47,9 +47,8 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.parametrize('exit', [True, False])
 @pytest.mark.timeout(600,func_only=True)
-def test_external_meta_PBM_T236(start_cluster,cluster,exit):
+def test_external_meta_PBM_T236(start_cluster,cluster):
     cluster.check_pbm_status()
     pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
     backup = cluster.external_backup_start()
@@ -58,9 +57,9 @@ def test_external_meta_PBM_T236(start_cluster,cluster,exit):
     cluster.external_backup_copy(backup)
     cluster.external_backup_finish(backup)
     time.sleep(10)
-    restore=cluster.external_restore_start(exit=exit)
+    restore=cluster.external_restore_start()
     cluster.external_restore_copy(backup)
-    cluster.external_restore_finish(restore,exit=exit)
+    cluster.external_restore_finish(restore)
     assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")

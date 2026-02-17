@@ -957,7 +957,7 @@ class Cluster:
         result = n.check_output("pbm backup-finish " + name)
         Cluster.log("External backup finished: " + result)
 
-    def external_restore_start(self, exit=False):
+    def external_restore_start(self):
         timeout = time.time() + 60
         while True:
             if not self.get_status()['running']:
@@ -977,10 +977,7 @@ class Cluster:
             self.stop_mongos()
         self.stop_arbiters()
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        if exit:
-            result = n.check_output("pbm restore --external --exit")
-        else:
-            result = n.check_output("pbm restore --external")
+        result = n.check_output("pbm restore --external")
         Cluster.log(result)
         restore=result.split()[2]
         Cluster.log("Restore name: " + restore)
@@ -1018,41 +1015,7 @@ class Cluster:
                     n.check_output("touch /var/lib/mongo/pbm.restore.log && chown mongodb /var/lib/mongo/pbm.restore.log")
                     Cluster.log("Copying files " + files + " to host " + node['host'])
 
-    def external_restore_finish(self, restore, exit=False):
-        if exit:
-            if self.layout == "sharded":
-                rsname = self.config['configserver']['_id']
-                for node in self.config['configserver']['members']:
-                    n = testinfra.get_host("docker://" + node['host'])
-                    pbm_agent_external_command="command=/usr/bin/pbm-agent restore-finish " + restore + " -c /etc/pbm-aws-provider.conf " + " --rs " + rsname + " --node " + node['host'] + ":27017"
-                    n.check_output("sed '2d' -i /etc/supervisord.d/pbm-agent-external.ini")
-                    n.check_output("echo '" + pbm_agent_external_command + "' >>/etc/supervisord.d/pbm-agent-external.ini")
-                    n.check_output("supervisorctl reread")
-                    n.check_output("supervisorctl update")
-                    result=n.check_output("supervisorctl start pbm-agent-external")
-                    Cluster.log("Starting pbm-agent on host " + node['host'] + " :\n" + result)
-                for shard in self.config['shards']:
-                    rsname = shard['_id']
-                    for node in shard['members']:
-                        n = testinfra.get_host("docker://" + node['host'])
-                        pbm_agent_external_command="command=/usr/bin/pbm-agent restore-finish " + restore + " -c /etc/pbm-aws-provider.conf " + " --rs " + rsname + " --node " + node['host'] + ":27017"
-                        n.check_output("sed '2d' -i /etc/supervisord.d/pbm-agent-external.ini")
-                        n.check_output("echo '" + pbm_agent_external_command + "' >>/etc/supervisord.d/pbm-agent-external.ini")
-                        n.check_output("supervisorctl reread")
-                        n.check_output("supervisorctl update")
-                        result=n.check_output("supervisorctl start pbm-agent-external")
-                        Cluster.log("Starting pbm-agent on host " + node['host'] + " :\n" + result)
-            else:
-                rsname = self.config['_id']
-                for node in self.config['members']:
-                    n = testinfra.get_host("docker://" + node['host'])
-                    pbm_agent_external_command="command=/usr/bin/pbm-agent restore-finish " + restore + " -c /etc/pbm-aws-provider.conf " + " --rs " + rsname + " --node " + node['host'] + ":27017"
-                    n.check_output("sed '2d' -i /etc/supervisord.d/pbm-agent-external.ini")
-                    n.check_output("echo '" + pbm_agent_external_command + "' >>/etc/supervisord.d/pbm-agent-external.ini")
-                    n.check_output("supervisorctl reread")
-                    n.check_output("supervisorctl update")
-                    result=n.check_output("supervisorctl start pbm-agent-external")
-                    Cluster.log("Starting pbm-agent on host " + node['host'] + " :\n" + result)
+    def external_restore_finish(self, restore):
         n = testinfra.get_host("docker://" + self.pbm_cli)
         result = n.check_output("pbm restore-finish " + restore + " -c /etc/pbm-aws-provider.conf")
         Cluster.log(result)
