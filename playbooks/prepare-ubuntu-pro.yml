@@ -7,6 +7,11 @@
   tasks:
     - name: Subscribe for fips-updates
       command: pro enable fips-updates --assume-yes
+      register: pro_result
+      changed_when: "'FIPS Updates enabled' in pro_result.stdout"
+      failed_when:
+        - pro_result.rc != 0
+        - "'FIPS Updates is already enabled' not in pro_result.stdout"
 
     - name: install needed packages for running tests with apt
       apt:

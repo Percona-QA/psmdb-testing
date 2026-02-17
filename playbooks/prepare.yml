@@ -5,25 +5,73 @@
   become_method: sudo
   gather_facts: true
   tasks:
-    - name: Create swap space
-      command: dd if=/dev/zero of=/swapfile bs=1M count=4096
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+    - name: Execute storage expansion tasks for RHEL8
+      block:
+        - name: Dynamically find physical volume backing rootvg
+          command: pvs --noheadings -o pv_name -S vg_name=rootvg
+          register: pv_check
+          changed_when: false
 
-    - name: set permissions on swap file
-      file:
-        path: /swapfile
-        mode: '0600'
-        owner: root
-        group: root
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+        - name: Set dynamic disk and partition variables
+          set_fact:
+            root_pv: "{{ pv_check.stdout | trim }}"
+            root_disk: "{{ (pv_check.stdout | trim) | regex_replace('p?[0-9]+$', '') }}"
+            root_part_num: "{{ (pv_check.stdout | trim) | regex_search('[0-9]+$') }}"
 
-    - name: format the file for swap
-      command: mkswap /swapfile
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+        - name: Print the dynamically discovered disk variables
+          debug:
+            msg:
+              - "Discovered Physical Volume: {{ root_pv }}"
+              - "Target Base Disk: {{ root_disk }}"
+              - "Target Partition Number: {{ root_part_num }}"
 
-    - name: enable swap
-      command: swapon /swapfile
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+        - name: Grow underlying physical partition dynamically
+          command: "growpart {{ root_disk }} {{ root_part_num }}"
+          register: growpart_out
+          failed_when:
+            - growpart_out.rc != 0
+            - "'NOCHANGE' not in growpart_out.stdout"
+          changed_when: "'CHANGED' in growpart_out.stdout"
+
+        - name: Resize PV and extend LVs when partition was grown
+          block:
+            - name: Resize the physical volume to recognize new space
+              command: "pvresize {{ root_pv }}"
+
+            - name: Extend tmplv to exactly 10GB and resize filesystem
+              lvol:
+                vg: rootvg
+                lv: tmplv
+                size: 10G
+                resizefs: true
+
+            - name: Extend varlv to exactly 10GB and resize filesystem
+              lvol:
+                vg: rootvg
+                lv: varlv
+                size: 10G
+                resizefs: true
+
+            - name: Extend logical volume to 100% of free space and resize filesystem
+              lvol:
+                vg: rootvg
+                lv: rootlv
+                size: +100%FREE
+                resizefs: true
+          when: growpart_out.changed
+      when:
+      - ansible_os_family == "RedHat"
+      - ansible_distribution_major_version == "8"
+      - ansible_facts.lvm.vgs.rootvg is defined
+
+    - name: Check disk space on root partition
+      command: df -h
+      register: df_output
+      changed_when: false
+
+    - name: Show disk space on root partition
+      debug:
+        var: df_output.stdout_lines
 
     - name: install GPG key for epel 8
       rpm_key:
