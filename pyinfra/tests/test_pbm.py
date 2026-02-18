@@ -1,0 +1,295 @@
+"""
+PBM tests for the pyinfra runner. Hosts come from INSTANCE_CONFIG (same as pyinfra deploy).
+Run after deploy with: INSTANCE_CONFIG=.runner/instance_config.yml VERSION=... pytest pyinfra/tests/test_pbm.py -v
+"""
+import os
+import pytest
+import yaml
+from urllib.parse import urlencode
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
+import testinfra
+
+
+def _testinfra_hosts_from_instance_config():
+    """Build testinfra host spec list (connection URIs) from INSTANCE_CONFIG.
+    The pytest plugin expects a list of strings, not Host objects."""
+    config_path = os.environ.get("INSTANCE_CONFIG")
+    if not config_path or not os.path.isfile(config_path):
+        return []
+    with open(config_path) as f:
+        instances = yaml.safe_load(f) or []
+    hosts = []
+    for inst in instances:
+        addr = inst.get("address")
+        if not addr:
+            continue
+        user = inst.get("user", "root")
+        port = int(inst.get("port", 22))
+        key = (inst.get("identity_file") or "").strip()
+        uri = "paramiko://{}@{}:{}".format(user, addr, port)
+        if key:
+            uri = "{}?{}".format(uri, urlencode({"ssh_identity_file": key}))
+        hosts.append(uri)
+    return hosts
+
+
+testinfra_hosts = _testinfra_hosts_from_instance_config()
+
+storage_configs = ['/etc/pbm-agent-storage.conf', '/etc/pbm-agent-storage-gcp.conf',
+                   '/etc/pbm-agent-storage-local.conf']
+
+VERSION = os.getenv("VERSION").split("-")[0]
+PBM_VERSION = float(".".join(os.getenv("VERSION").split(".")[0:2]))
+
+
+def parse_yaml_string(ys):
+    """Parse yaml string to dictionary
+
+    :param ys:
+    :return:
+    """
+    fd = StringIO(ys)
+    dct = yaml.safe_load(fd)
+    return dct
+
+
+@pytest.fixture()
+def start_stop_pbm(host):
+    """Start and stop pbm-agent service
+
+    :param host:
+    :return:
+    """
+    operating_system = host.system_info.distribution
+    if operating_system.lower() == "centos" and '6' in host.system_info.release:
+        with host.sudo("root"):
+            cmd = "sudo service pbm-agent stop"
+            result = host.run(cmd)
+            assert result.rc == 0, result.stdout
+            cmd = "sudo service pbm-agent start"
+            result = host.run(cmd)
+            assert result.rc == 0, result.stdout
+            cmd = "sudo service pbm-agent status"
+            return host.run(cmd)
+    else:
+        with host.sudo("root"):
+            cmd = "sudo systemctl stop pbm-agent"
+            result = host.run(cmd)
+            assert result.rc == 0, result.stdout
+            cmd = "sudo systemctl start pbm-agent"
+            result = host.run(cmd)
+            assert result.rc == 0, result.stdout
+            cmd = "sudo systemctl status pbm-agent"
+            return host.run(cmd)
+
+
+@pytest.fixture()
+def restart_pbm_agent(host):
+    """Restart pbm-agent service
+    """
+    operating_system = host.system_info.distribution
+    if operating_system.lower() == "centos" and '6' in host.system_info.release:
+        cmd = "sudo service pbm-agent restart"
+        result = host.run(cmd)
+        assert result.rc == 0, result.stdout
+        cmd = "sudo service pbm-agent status"
+        return host.run(cmd)
+    with host.sudo("root"):
+        cmd = "sudo systemctl restart pbm-agent"
+        result = host.run(cmd)
+        assert result.rc == 0, result.stdout
+        cmd = "sudo systemctl status pbm-agent"
+        return host.run(cmd)
+
+
+@pytest.fixture()
+def set_store(host):
+    """Set store for pbm
+
+    :param host:
+    :return:
+    """
+    command = "pbm config --file=/etc/pbm-agent-storage.conf --mongodb-uri=mongodb://localhost:27017/"
+    result = host.run(command)
+    return result
+
+
+@pytest.fixture()
+def show_store(host, set_store):
+    """Show pbm store
+
+    :param host:
+    :param set_store:
+    :return:
+    """
+    command = "pbm config --list --mongodb-uri=mongodb://localhost:27017/?replicaSet=rs1"
+    result = host.run(command)
+    assert result.rc == 0, result.stdout
+    if PBM_VERSION < 1.6:
+        return parse_yaml_string(result.stdout.split("\n", 2)[2].strip())
+    return parse_yaml_string(result.stdout)
+
+
+def test_package(host):
+    """Check pbm package
+    """
+    with host.sudo("root"):
+        package = host.package("percona-backup-mongodb")
+        assert package.is_installed
+        assert VERSION in package.version, package.version
+
+
+def test_service(host):
+    """Check pbm-agent service
+    """
+    with host.sudo("root"):
+        service = host.service("pbm-agent")
+        assert service.is_enabled
+        assert service.is_running
+
+def test_pbm_binary(host):
+    """Check pbm binary
+    """
+    file = host.file("/usr/bin/pbm")
+    assert file.user == "root"
+    assert file.group == "root"
+    try:
+        assert file.mode == 0o755
+    except AssertionError:
+        pytest.xfail("Possible xfail")
+
+
+def test_pbm_agent_binary(host):
+    """Check pbm agent binary
+    """
+    file = host.file("/usr/bin/pbm-agent")
+    assert file.user == "root"
+    assert file.group == "root"
+    try:
+        assert file.mode == 0o755
+    except AssertionError:
+        pytest.xfail("Possible xfail")
+
+
+def test_pbm_agent_entrypoint(host):
+    """Check pbm agent binary
+    """
+    file = host.file("/usr/bin/pbm-agent-entrypoint")
+    assert file.user == "root"
+    assert file.group == "root"
+    try:
+        assert file.mode == 0o755
+    except AssertionError:
+        pytest.xfail("Possible xfail")
+
+def test_pbm_storage_default_config(host):
+    """Check pbm agent binary
+    """
+    file = host.file("/etc/pbm-storage.conf")
+    if PBM_VERSION < 1.7:
+        assert file.user == "pbm"
+        assert file.group == "pbm"
+    else:
+        assert file.user == "mongod"
+        assert file.group == "mongod"
+
+    try:
+        assert file.mode == 0o644
+    except AssertionError:
+        pytest.xfail("Possible xfail")
+
+
+# TODO add correct start/stop test
+def test_start_stop_service(start_stop_pbm, host):
+    """Start and stop pbm agent
+
+    :param start_stop_pbm:
+    """
+    assert start_stop_pbm.rc == 0, start_stop_pbm.stdout
+    operating_system = host.system_info.distribution
+    if operating_system.lower() == "centos":
+        if '6' in host.system_info.release:
+            assert "running" in start_stop_pbm.stdout, start_stop_pbm.stdout
+    else:
+        assert "active" in start_stop_pbm.stdout, start_stop_pbm.stdout
+
+
+def test_restart_service(restart_pbm_agent, host):
+    """Restart pbm agent
+
+    :param restart_pbm_agent:
+    """
+    assert restart_pbm_agent.rc == 0, restart_pbm_agent.stdout
+    operating_system = host.system_info.distribution
+    if operating_system.lower() == "centos":
+        if '6' in host.system_info.release:
+            assert "running" in restart_pbm_agent.stdout, restart_pbm_agent.stdout
+    else:
+        assert "active" in restart_pbm_agent.stdout, restart_pbm_agent.stdout
+
+
+def test_pbm_process(host):
+    with host.sudo("root"):
+        process = host.process.get(comm="pbm-agent")
+        if PBM_VERSION < 1.7:
+            assert process.user == "pbm"
+        else:
+            assert process.user == "mongod"
+
+def test_pbm_version(host):
+    """Check that pbm version is not empty strings
+
+    :param host:
+    :return:
+    """
+    result = host.run("pbm version")
+    assert result.rc == 0, result.stdout
+    lines = result.stdout.split("\n")
+    parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
+    assert parsed_config['Version'] == VERSION, parsed_config
+    assert parsed_config['Platform'], parsed_config
+    assert parsed_config['GitCommit'], parsed_config
+    assert parsed_config['GitBranch'], parsed_config
+    assert parsed_config['BuildTime'], parsed_config
+    assert parsed_config['GoVersion'], parsed_config
+
+
+def test_pbm_help(host):
+    """Check that pbm have help message
+
+    :param host:
+    :return:
+    """
+    result = host.run("pbm help")
+    assert result.rc == 0, result.stdout
+
+
+def test_set_store(set_store):
+    """Set and show storage test
+
+    :param set_store:
+    :return:
+    """
+    assert set_store.rc == 0, set_store.stdout
+    if PBM_VERSION < 1.6:
+        store_out = parse_yaml_string("\n".join(set_store.stdout.split("\n")[2:-2]))
+    else:
+        store_out = parse_yaml_string(set_store.stdout)
+    assert store_out['storage']['type'] == 's3'
+    assert store_out['storage']['s3']['region'] == 'us-east-1'
+    assert store_out['storage']['s3']['bucket'] == 'operator-testing'
+
+
+def test_show_store(show_store):
+    """Check that all store configuration paramateres presented
+
+    :param show_store:
+    :return:
+    """
+    assert show_store['storage']['s3']
+    assert show_store['storage']['s3']['region'] == 'us-east-1'
+    assert show_store['storage']['s3']['bucket'] == 'operator-testing'

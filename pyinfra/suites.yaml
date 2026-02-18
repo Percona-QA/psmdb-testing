@@ -1,0 +1,28 @@
+# Test suites: prepare / deploy / verify / cleanup are customizable per suite.
+# Paths are relative to pyinfra/. Set to null or "none" to skip a stage.
+#
+# deploy: one path (string) or list of deploy scripts run in order.
+# cleanup: one path (string) or list of cleanup scripts run in order.
+# verify: one command as list of args, or list of commands (list of lists). Each command is
+#   [ "pytest", "path/to/test.py", "-v" ] or any executable + args. First item "pytest" => python -m pytest.
+#
+# Example multiple deploys:  deploy: [ deploys/prepare.py, deploys/pbm_install.py ]
+# Example multiple tests:   verify: [ [ pytest, tests/test_pbm.py, -v ], [ pytest, other/tests.py, -v ] ]
+
+suites:
+  pbm:
+    prepare: deploys/prepare.py
+    deploy: deploys/pbm_install.py
+    verify:
+      - pytest
+      - tests/test_pbm.py
+      - "-v"
+    cleanup: deploys/cleanup.py
+
+  # Example for another product (add deploy/verify scripts as needed):
+  # pcsm:
+  #   prepare: deploys/prepare.py
+  #   deploy: [ deploys/prepare.py, deploys/pcsm_install.py ]
+  #   verify:
+  #     - [ pytest, pcsm/tests/test_pcsm.py, "-v" ]
+  #   cleanup: deploys/pcsm_cleanup.py

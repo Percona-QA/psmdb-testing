@@ -9,3 +9,4 @@ docker-image-tests/pxc/.DS_Store
 pbm-functional/pytest/example_cluster.py
 .idea/*
 *.pem
+**/.runner

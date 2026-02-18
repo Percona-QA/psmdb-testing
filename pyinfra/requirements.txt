@@ -1,0 +1,9 @@
+# PBM install runner: boto3 + pyinfra (replaces Molecule + Ansible)
+boto3>=1.26.0
+PyYAML>=6.0
+pyinfra>=2.0
+paramiko>=2.11.0
+python-vagrant>=1.0.0
+# Tests (pbm/tests)
+pytest>=7.0
+testinfra
