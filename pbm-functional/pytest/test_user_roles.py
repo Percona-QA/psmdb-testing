@@ -233,8 +233,8 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
             'administration_db_users_pitr': False,
         },
         'part_bck_with_ur': {
-            'admin_db_users_bcp': True,
-            'admin_db_users_pitr': True,
+            'admin_db_users_bcp': False,
+            'admin_db_users_pitr': False,
             'test_db_users_bcp': True,
             'test_db_users_pitr': True,
             'administration_db_users_bcp': True,
