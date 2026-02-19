@@ -1,5 +1,5 @@
 """
-EC2 lifecycle: launch instance(s) via boto3, write instance config; terminate from config.
+EC2 lifecycle: launch and terminate instance(s) via boto3. Config is in-memory only (no instance config file).
 Requires: AWS credentials (env or ~/.aws/credentials).
 Key pair name in AWS: default molecule-pkg-tests; override with EC2_KEY_NAME, MOLECULE_EC2_KEY_NAME, or ec2_key_name in platform config.
 Private key path for SSH: SSH_KEY_PATH, MOLECULE_AWS_PRIVATE_KEY, or ~/.ssh/id_rsa.
@@ -15,7 +15,6 @@ from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
-import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -149,17 +148,13 @@ def create_instances(
     platform_name: str,
     platform_config: dict[str, Any],
     key_path: str,
-    out_config_path: str | Path,
     *,
     count: int = 1,
 ) -> list[dict]:
     """
-    Launch EC2 instance(s), wait until running, write instance_config.yml.
+    Launch EC2 instance(s), wait until running. Returns in-memory config list (no file I/O).
     key_path: local path to the private key for SSH (key pair must exist in AWS).
     """
-    out_config_path = Path(out_config_path)
-    out_config_path.parent.mkdir(parents=True, exist_ok=True)
-
     region = platform_config.get("region", "us-west-2")
     image_id = platform_config.get("image")
     logger.info("Creating EC2 instance(s): platform=%s region=%s count=%s", platform_name, region, count)
@@ -287,47 +282,28 @@ def create_instances(
                 }
             )
 
-    with open(out_config_path, "w") as f:
-        yaml.dump(instance_configs, f, default_flow_style=False, sort_keys=False)
-    logger.info("Wrote instance config: %s (%d instance(s))", out_config_path, len(instance_configs))
+    logger.info("Instance config (%d instance(s))", len(instance_configs))
     return instance_configs
 
 
-def destroy_instances(config_path: str | Path, *, wait_timeout: int = DEFAULT_WAIT_TIMEOUT) -> None:
+def destroy_instances_from_config(
+    instance_config: list[dict],
+    *,
+    wait_timeout: int = DEFAULT_WAIT_TIMEOUT,
+) -> None:
     """
-    Fully destroy EC2 instance(s) (align with playbooks/destroy.yml):
-    1. Read instance config from file (skip if missing/empty).
-    2. Terminate instance(s) (ec2_instance state=absent equivalent).
-    3. Wait for instance(s) deletion to complete (instance_terminated).
-    4. Dump empty instance config to file.
-    Raises on wait timeout (default 300s). Override via wait_timeout or EC2_WAIT_TIMEOUT env.
+    Destroy EC2 instance(s) from in-memory config list (no file I/O).
+    instance_config: list of dicts with instance_id and region (from create_instances).
     """
-    config_path = Path(config_path)
-    logger.info("Destroy: populate instance config from %s", config_path)
-    if not config_path.exists():
-        logger.info("Destroy: config file missing, skip_instances=true")
-        return
-    try:
-        with open(config_path) as f:
-            instance_conf = yaml.safe_load(f) or []
-    except Exception as e:
-        logger.warning("Destroy: failed to read config (%s), skip_instances=true", e)
-        return
-    if not instance_conf:
+    if not instance_config:
         logger.info("Destroy: config empty, skip_instances=true")
         return
-
-    instance_ids = [item["instance_id"] for item in instance_conf if item.get("instance_id")]
+    instance_ids = [item["instance_id"] for item in instance_config if item.get("instance_id")]
     if not instance_ids:
-        with open(config_path, "w") as f:
-            yaml.dump([], f)
-        logger.info("Destroy: no instance_ids in config, cleared %s", config_path)
+        logger.info("Destroy: no instance_ids in config")
         return
-
-    region = (instance_conf[0].get("region") or "us-west-2") if instance_conf else "us-west-2"
+    region = (instance_config[0].get("region") or "us-west-2") if instance_config else "us-west-2"
     logger.info("Destroy: region=%s instance_ids=%s", region, instance_ids)
-
-    # Destroy molecule instance(s) (ec2_instance state=absent)
     timeout = int(os.environ.get("EC2_WAIT_TIMEOUT", wait_timeout))
     ec2 = boto3.client("ec2", region_name=region)
     ec2.terminate_instances(
@@ -335,15 +311,7 @@ def destroy_instances(config_path: str | Path, *, wait_timeout: int = DEFAULT_WA
         SkipOsShutdown=True,
         Force=True,
     )
-    logger.info("Destroy: requested termination of instance(s) %s (SkipOsShutdown=True, Force=True)", ", ".join(instance_ids))
-
-    # Wait for instance(s) deletion to complete
-    logger.info("Destroy: waiting for instance(s) deletion to complete (timeout=%ds)...", timeout)
+    logger.info("Destroy: requested termination of instance(s) %s", ", ".join(instance_ids))
     waiter = ec2.get_waiter("instance_terminated")
     waiter.wait(InstanceIds=instance_ids, WaiterConfig=_waiter_config(timeout))
     logger.info("Destroy: instance(s) deletion complete")
-
-    # Dump instance config (empty, like playbook)
-    with open(config_path, "w") as f:
-        yaml.dump([], f)
-    logger.info("Destroy: dumped empty instance config to %s", config_path)

@@ -68,4 +68,4 @@ def prepare():
         )
 
 
-prepare()
+# Do not call prepare() at module level. Used via add_deploy(state, prepare.prepare) from deployment.py.

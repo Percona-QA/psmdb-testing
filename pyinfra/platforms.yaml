@@ -1,6 +1,5 @@
 # Platform definitions for pyinfra runner (replaces molecule scenario YAMLs).
-# provider: ec2 | vagrant | docker
-# prepare: true = run prepare deploy before pbm_install (RHEL/AL/Debian that need EPEL/repos)
+# provider: ec2 | vagrant
 # Vagrant: box = Vagrant box name (e.g. ubuntu/jammy64), optional box_url, memory (MB), hostname
 #
 # EC2 (aligned with playbooks/create.yml): image, instance_type, vpc_subnet_id, ssh_user,
@@ -21,70 +20,54 @@ platforms:
     provider: ec2
     image: ami-0ee8244746ec5d6d4  # MOLECULE_UJAMMY_AMI
     ssh_user: ubuntu
-    prepare: true
 
   ubuntu-noble:
     provider: ec2
     image: ami-0b2f3c4d5e6f7a8b9  # placeholder; override with MOLECULE_UNOBLE_AMI
     ssh_user: ubuntu
-    prepare: true
 
   debian-12:
     provider: ec2
     image: ami-0b6edd8449255b799  # MOLECULE_DEBIAN12_AMI
     ssh_user: admin
     root_device_name: /dev/xvda
-    prepare: true
 
   centos-7:
     provider: ec2
     image: ami-01ed306a12b7d1c96
     ssh_user: centos
-    prepare: true
 
   rhel9:
     provider: ec2
     image: ami-0357fd8270bb3203e  # MOLECULE_RHEL9_AMI
     ssh_user: ec2-user
-    prepare: true
 
   rocky8:
     provider: ec2
     image: ami-04310224db1f2a278  # MOLECULE_ROCKY8_AMI
     ssh_user: rocky
-    prepare: true
 
   al2023:
     provider: ec2
     image: ami-0a897ba00eaed7398  # MOLECULE_AL2023_AMI
     ssh_user: ec2-user
     root_device_name: /dev/xvda
-    prepare: true
-
-  docker:
-    provider: docker
-    image: geerlingguy/docker-centos7-ansible:latest
-    ssh_user: root
-    prepare: false
 
   # Vagrant (local testing) – no AWS key required
   ubuntu-jammy-vagrant:
     provider: vagrant
     box: ubuntu/jammy64
     ssh_user: vagrant
-    prepare: true
     memory: 2048
 
   centos-7-vagrant:
     provider: vagrant
     box: centos/7
     ssh_user: vagrant
-    prepare: true
     memory: 2048
 
   debian-12-vagrant:
     provider: vagrant
     box: debian/bookworm64
     ssh_user: vagrant
-    prepare: true
     memory: 2048

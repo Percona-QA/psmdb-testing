@@ -1,49 +1,64 @@
 """
-PBM tests for the pyinfra runner. Hosts come from INSTANCE_CONFIG (same as pyinfra deploy).
-Run after deploy with: INSTANCE_CONFIG=.runner/instance_config.yml VERSION=... pytest pyinfra/tests/test_pbm.py -v
+PBM tests for the pyinfra runner. Host is provided by the prepare_instance fixture (create → deploy → testinfra).
+Override platform: PLATFORM=ubuntu-jammy VERSION=2.4.0 pytest test_pbm.py -v
 """
 import os
 import pytest
 import yaml
-from urllib.parse import urlencode
+import testinfra
+from instance import Instance
+from deployment import Deployment
 try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
 
-import testinfra
-
-
-def _testinfra_hosts_from_instance_config():
-    """Build testinfra host spec list (connection URIs) from INSTANCE_CONFIG.
-    The pytest plugin expects a list of strings, not Host objects."""
-    config_path = os.environ.get("INSTANCE_CONFIG")
-    if not config_path or not os.path.isfile(config_path):
-        return []
-    with open(config_path) as f:
-        instances = yaml.safe_load(f) or []
-    hosts = []
-    for inst in instances:
-        addr = inst.get("address")
-        if not addr:
-            continue
-        user = inst.get("user", "root")
-        port = int(inst.get("port", 22))
-        key = (inst.get("identity_file") or "").strip()
-        uri = "paramiko://{}@{}:{}".format(user, addr, port)
-        if key:
-            uri = "{}?{}".format(uri, urlencode({"ssh_identity_file": key}))
-        hosts.append(uri)
-    return hosts
-
-
-testinfra_hosts = _testinfra_hosts_from_instance_config()
-
 storage_configs = ['/etc/pbm-agent-storage.conf', '/etc/pbm-agent-storage-gcp.conf',
                    '/etc/pbm-agent-storage-local.conf']
 
-VERSION = os.getenv("VERSION").split("-")[0]
-PBM_VERSION = float(".".join(os.getenv("VERSION").split(".")[0:2]))
+# VERSION default for module load; fixture sets env before create
+VERSION = (os.getenv("VERSION") or "2.4.0").split("-")[0]
+PBM_VERSION = float(".".join((os.getenv("VERSION") or "2.4.0").split(".")[0:2]))
+
+
+@pytest.fixture(scope="package")
+def config():
+    """Platform name from platforms.yaml (override with PLATFORM env)."""
+    return os.environ.get("PLATFORM", "rhel9")
+
+
+@pytest.fixture(scope="package")
+def prepare_instance(config, request):
+    """
+    Create instance, run prepare + setup_pbm via pyinfra API, yield paramiko connection for testinfra.
+    Teardown: destroy instance unless --keep-instance was passed.
+    """
+    os.environ.setdefault("VERSION", "2.4.0")
+    import logging
+    log = logging.getLogger(__name__)
+    log.info("creating instance")
+    instance = Instance.create(config)
+    log.info("instance created: %s", instance.inventory)
+    deployment = Deployment(instance.inventory)
+    deployment.prepare()
+    log.info("host prepared")
+    deployment.setup_pbm()
+    log.info("start tests")
+    keep = request.config.getoption("keep_instance", default=False)
+    try:
+        yield instance.connection
+    finally:
+        if keep:
+            log.info("Keeping instance (--keep-instance); not destroying.")
+        else:
+            log.info("Teardown: destroying instance.")
+            instance.destroy()
+
+
+@pytest.fixture
+def host(prepare_instance):
+    """Testinfra host from prepare_instance connection (paramiko)."""
+    return testinfra.get_host(prepare_instance)
 
 
 def parse_yaml_string(ys):

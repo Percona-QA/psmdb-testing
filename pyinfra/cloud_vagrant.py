@@ -1,6 +1,6 @@
 """
-Vagrant lifecycle: create VM (vagrant up), write instance config from python-vagrant API; destroy (vagrant destroy).
-For local testing without EC2. Uses the python-vagrant module (no vagrant CLI in subprocess).
+Vagrant lifecycle: create VM (vagrant up) and destroy (vagrant destroy) via python-vagrant. Config is in-memory only.
+For local testing without EC2.
 """
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 
 import vagrant
-import yaml
 
 VAGRANTFILE_TEMPLATE = """# Generated for pyinfra local testing
 Vagrant.configure("2") do |config|
@@ -55,18 +54,18 @@ def create_instances(
     platform_name: str,
     platform_config: dict[str, Any],
     key_path: str,
-    out_config_path: str | Path,
     *,
+    vagrant_dir: str | Path,
     count: int = 1,
 ) -> list[dict]:
     """
-    Bring up a Vagrant VM via python-vagrant, then write instance config from v.ssh_config() (HostName, Port, User, IdentityFile).
+    Bring up a Vagrant VM via python-vagrant, return instance config from v.ssh_config() (in-memory, no file).
     key_path is ignored (Vagrant uses its own key); kept for API compatibility with EC2.
+    vagrant_dir: directory for Vagrantfile and .vagrant (must exist or will be created).
     """
     if count != 1:
         raise ValueError("Vagrant provider supports only count=1")
-    out_config_path = Path(out_config_path)
-    vagrant_dir = out_config_path.parent
+    vagrant_dir = Path(vagrant_dir)
     vagrant_dir.mkdir(parents=True, exist_ok=True)
 
     box = platform_config.get("box") or "ubuntu/jammy64"
@@ -117,26 +116,16 @@ def create_instances(
         "region": "local",
         "vagrant_dir": str(vagrant_dir.resolve()),
     }
-    instance_configs = [instance]
-    with open(out_config_path, "w") as f:
-        yaml.dump(instance_configs, f, default_flow_style=False, sort_keys=False)
-    return instance_configs
+    return [instance]
 
 
-def destroy_instances(config_path: str | Path) -> None:
-    """Destroy Vagrant VM(s) listed in instance config using python-vagrant."""
-    config_path = Path(config_path)
-    if not config_path.exists():
+def destroy_instances_from_config(instance_config: list[dict]) -> None:
+    """Destroy Vagrant VM(s) from in-memory config list (no file I/O). Uses vagrant_dir from each item."""
+    if not instance_config:
         return
-    with open(config_path) as f:
-        instance_conf = yaml.safe_load(f) or []
-    if not instance_conf:
-        return
-    for item in instance_conf:
+    for item in instance_config:
         vagrant_dir = item.get("vagrant_dir")
         if not vagrant_dir or not Path(vagrant_dir).exists():
             continue
         v = vagrant.Vagrant(vagrant_dir)
         v.destroy()
-    with open(config_path, "w") as f:
-        yaml.dump([], f)

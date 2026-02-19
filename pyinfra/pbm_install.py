@@ -268,4 +268,4 @@ def pbm_install():
     )
 
 
-pbm_install()
+# Do not call pbm_install() at module level. Used via add_deploy(state, pbm_install.pbm_install) from deployment.py.

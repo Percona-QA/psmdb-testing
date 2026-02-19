@@ -10,7 +10,6 @@ import yaml
 
 _CONFIG_DIR = Path(__file__).resolve().parent
 PLATFORMS_FILE = _CONFIG_DIR / "platforms.yaml"
-SUITES_FILE = _CONFIG_DIR / "suites.yaml"
 
 
 def _expand_env(value: str) -> str:
@@ -58,19 +57,3 @@ def get_platform(name: str, path: Path | None = None) -> dict | None:
     """Get a single platform config by name."""
     platforms = load_platforms(path)
     return platforms.get(name)
-
-
-def load_suites(path: Path | None = None) -> dict:
-    """Load suites.yaml and return {suite_name: config}."""
-    path = path or SUITES_FILE
-    if not path.exists():
-        return {}
-    with open(path) as f:
-        data = yaml.safe_load(f) or {}
-    return data.get("suites", {})
-
-
-def get_suite(name: str, path: Path | None = None) -> dict | None:
-    """Get a single suite config by name."""
-    suites = load_suites(path)
-    return suites.get(name)

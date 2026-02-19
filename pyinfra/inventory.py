@@ -1,64 +1,60 @@
 """
-Write pyinfra inventory from instance config (single source of truth for SSH connection).
+Build pyinfra inventory from connection data (in-memory).
 """
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
+from typing import Any
 
-import yaml
+# In-memory builder uses pyinfra API
+try:
+    from pyinfra.api import Inventory as PyinfraInventory
+except ImportError:
+    PyinfraInventory = None  # type: ignore[misc, assignment]
 
 
-def instance_config_to_pyinfra_inventory(
-    instance_config_path: str | Path,
-    out_inventory_path: str | Path,
-) -> None:
+def _connection_data_to_ssh_data(inst: dict, known_hosts_path: str) -> dict[str, Any]:
+    """Build SSH connection data dict for one host (same options as file-based inventory)."""
+    data: dict[str, Any] = {
+        "ssh_user": inst.get("user", "root"),
+        "ssh_port": int(inst.get("port", 22)),
+        "ssh_known_hosts_file": known_hosts_path,
+        "ssh_strict_host_key_checking": "accept-new",
+        "ssh_connect_retries": 3,
+        "ssh_connect_retry_min_delay": 2,
+        "ssh_connect_retry_max_delay": 5,
+        "ssh_paramiko_connect_kwargs": {
+            "timeout": 60,
+            "banner_timeout": 60,
+        },
+    }
+    key = inst.get("identity_file")
+    if key:
+        data["ssh_key"] = key
+    return data
+
+
+def inventory_from_connection_list(connection_list: list[dict]) -> tuple[Any, Path | None]:
     """
-    Read instance config (list of {address, user, port, identity_file, ...})
-    and write a pyinfra inventory .py file: all = [(host, {ssh_user, ssh_port, ssh_key}), ...].
-    Sets accept-new and connect/banner timeouts to avoid "kex_exchange_identification: Connection closed" on slow or first connect.
+    Build a pyinfra Inventory from an in-memory connection list (no config file read).
+    connection_list: list of dicts with address, user, port, identity_file (e.g. from cloud_ec2/cloud_vagrant create_instances).
+    Returns (Inventory, temp_dir): temp_dir is a Path to a temp directory containing known_hosts (caller should
+    remove it when done, e.g. in Instance.destroy).
     """
-    config_path = Path(instance_config_path)
-    out_path = Path(out_inventory_path)
-    with open(config_path) as f:
-        instances = yaml.safe_load(f) or []
-    if not instances:
-        raise ValueError("Instance config is empty")
-    runner_dir = out_path.parent
-    runner_dir.mkdir(parents=True, exist_ok=True)
-    known_hosts_path = runner_dir / "known_hosts"
+    if not connection_list:
+        raise ValueError("Connection list is empty")
+    if PyinfraInventory is None:
+        raise RuntimeError("pyinfra is not installed")
+    temp_dir = Path(tempfile.mkdtemp(prefix="pyinfra_inventory_"))
+    known_hosts_path = temp_dir / "known_hosts"
     known_hosts_path.touch()
-    entries = []
-    for inst in instances:
-        addr = inst.get("address")
-        if not addr:
-            continue
-        data = {
-            "ssh_user": inst.get("user", "root"),
-            "ssh_port": int(inst.get("port", 22)),
-            "ssh_known_hosts_file": str(known_hosts_path),
-            "ssh_strict_host_key_checking": "accept-new",
-            "ssh_connect_retries": 3,
-            "ssh_connect_retry_min_delay": 2,
-            "ssh_connect_retry_max_delay": 5,
-            "ssh_paramiko_connect_kwargs": {
-                "timeout": 60,
-                "banner_timeout": 60,
-            },
-        }
-        key = inst.get("identity_file")
-        if key:
-            data["ssh_key"] = key
-        entries.append((addr, data))
-    lines = [
-        "# Generated from instance config (pyinfra inventory)",
-        "all = [",
-    ]
-    for host, data in entries:
-        data_str = ", ".join(f"{repr(k)}: {repr(v)}" for k, v in data.items())
-        lines.append(f"    ({repr(host)}, {{{data_str}}}),")
-    lines.append("]")
-    with open(out_path, "w") as f:
-        f.write("\n".join(lines) + "\n")
-    # So pyinfra uses 60s connect timeout when run with this inventory (avoids timeout=10 override)
-    runner_config = runner_dir / "config.py"
-    runner_config.write_text("# Pyinfra config for this inventory\nCONNECT_TIMEOUT = 60\n")
+    known_hosts_str = str(known_hosts_path)
+    # Pyinfra Inventory(names_data) expects tuple of (names, data). We use first host's data for all (single-host typical).
+    names = [inst["address"] for inst in connection_list if inst.get("address")]
+    if not names:
+        raise ValueError("No valid address in connection list")
+    data = _connection_data_to_ssh_data(connection_list[0], known_hosts_str)
+    names_data = (names, data)
+    inv = PyinfraInventory(names_data)
+    return inv, temp_dir
