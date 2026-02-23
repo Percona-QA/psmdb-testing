@@ -83,7 +83,7 @@ def check_user(client, db_name, username, expected_roles, should_exist, restore_
     except Exception as e:
         raise AssertionError(f"{e}")
 
-@pytest.mark.parametrize('restore_type',['part_bck','full_bck_part_rst_wo_user','full_bck_part_rst_user1','full_bck_part_rst_user2','full_bck','full_pitr'])
+@pytest.mark.parametrize('restore_type',['part_bck','part_bck_with_ur','part_bck_full_rst','full_bck_part_rst_wo_user','full_bck_part_rst_user1','full_bck_part_rst_user2','full_bck','full_pitr'])
 @pytest.mark.timeout(350, func_only=True)
 def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
     cluster.check_pbm_status()
@@ -139,6 +139,7 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
         client["test_db2"]["test_coll21"].insert_one({"key": i, "data": i})
     backup_full = cluster.make_backup("logical")
     backup_partial = cluster.make_backup("logical --ns=administration.*,test_db1.*,test_db2.*")
+    backup_partial_with_ur = cluster.make_backup("logical --ns=administration.*,test_db1.*,test_db2.* --with-users-and-roles")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
     builtin_user_configs = [
         {
@@ -191,9 +192,10 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
             db = getattr(db_client, db_name)
             for user in users:
                 db.command("dropUser", user)
-    # restoring users and roles from selective backup is not supported
     restore_commands = {
         'part_bck': " --base-snapshot=" + backup_partial + pitr,
+        'part_bck_with_ur': " --base-snapshot=" + backup_partial_with_ur + pitr + " --ns=test_db1.*,test_db2.* --with-users-and-roles",
+        'part_bck_full_rst': " --base-snapshot=" + backup_partial_with_ur + pitr,
         'full_bck_part_rst_wo_user': " --base-snapshot=" + backup_full + pitr + " --ns=administration.*,test_db1.*,test_db2.*",
         'full_bck_part_rst_user1': " --base-snapshot=" + backup_full + pitr + " --ns=administration.*,test_db1.*,test_db2.* --with-users-and-roles",
         'full_bck_part_rst_user2': " --base-snapshot=" + backup_full + pitr + " --ns=administration.* --with-users-and-roles",
@@ -230,6 +232,24 @@ def test_logical_PBM_T216(start_cluster, cluster, newcluster, restore_type):
             'test_db_users_pitr': False,
             'administration_db_users_bcp': False,
             'administration_db_users_pitr': False,
+        },
+        # partial restore from selective backup with u&r
+        'part_bck_with_ur': {
+            'admin_db_users_bcp': False,
+            'admin_db_users_pitr': False,
+            'test_db_users_bcp': True,
+            'test_db_users_pitr': True,
+            'administration_db_users_bcp': False,
+            'administration_db_users_pitr': False,
+        },
+        # full restore from selective backup: u&r should be restored if backup has them
+        'part_bck_full_rst': {
+            'admin_db_users_bcp': False,
+            'admin_db_users_pitr': False,
+            'test_db_users_bcp': True,
+            'test_db_users_pitr': True,
+            'administration_db_users_bcp': True,
+            'administration_db_users_pitr': True,
         },
         'full_bck_part_rst_wo_user': {
             'admin_db_users_bcp': False,
