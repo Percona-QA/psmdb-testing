@@ -43,15 +43,13 @@ def test_backup_profile_validation_PBM_T303(start_cluster, cluster):
         try:
             current_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
             cluster.exec_pbm_cli(f"delete-backup --profile=test_profile older-than {current_time}")
-            print("SLEEPING")
-            sleep(2400)
             if should_pass:
                 assert cluster.make_backup(profile=command), f"Expected command to succeed but it failed: {cluster.cmd_stderr}"
                 assert command_return in cluster.cmd_stdout
             else:
                 assert cluster.make_backup(profile=command, allow_fail=True) == should_pass, f"Expected command to fail but it succeeded: {cluster.cmd_stdout}"
                 assert command_return in cluster.cmd_stderr
-        except AssertionError as e:
+        except AssertionError:
             failures.append(f"Case {idx + 1}, executed '{command}', expected '{command_return}', stdout='{cluster.cmd_stdout.strip()}', stderr='{cluster.cmd_stderr.strip()}' ")
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} tests:\n" + "\n".join(failures))
@@ -80,7 +78,7 @@ def test_delete_backup_profile_validation_PBM_T303(start_cluster, cluster):
             else:
                 assert cluster.delete_backup(profile=command, **{'older-than': current_time}, allow_fail=True) == should_pass, f"Expected command to fail but it succeeded: {cluster.cmd_stdout}"
                 assert expected_command_return in cluster.cmd_stderr
-        except AssertionError as e:
+        except AssertionError:
             failures.append(f"Test {idx + 1}, executed '{command}', expected '{expected_command_return}', stdout='{cluster.cmd_stdout.strip()}', stderr='{cluster.cmd_stderr.strip()}' ")
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} tests\n" + "\n".join(failures))
@@ -116,7 +114,7 @@ def test_cleanup_profile_validation_PBM_T303(start_cluster, cluster):
             else:
                 assert result.rc != 0, f"Expected command to fail but it succeeded: {result.stdout}"
                 assert expected_command_return in result.stderr
-        except AssertionError as e:
+        except AssertionError:
             failures.append(f"Test {idx + 1}, executed '{command}', expected '{expected_command_return}', stdout='{result.stdout.strip()}', stderr='{result.stderr.strip()}' ")
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} tests\n" + "\n".join(failures))
@@ -148,7 +146,7 @@ def test_list_profile_validation_PBM_T303(start_cluster, cluster):
             else:
                 assert result.rc != 0, f"Expected command to fail but it succeeded: {result.stdout}"
                 assert expected_command_return in result.stderr
-        except AssertionError as e:
+        except AssertionError:
             failures.append(f"Test {idx + 1}, executed '{command}', expected '{expected_command_return}', stdout='{result.stdout.strip()}', stderr='{result.stderr.strip()}' ")
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} tests\n" + "\n".join(failures))
@@ -180,7 +178,7 @@ def test_status_profile_validation_PBM_T303(start_cluster, cluster):
             else:
                 assert result.rc != 0, f"Expected command to fail but it succeeded: {result.stdout}"
                 assert expected_command_return in result.stderr
-        except AssertionError as e:
+        except AssertionError:
             failures.append(f"Test {idx + 1}, executed '{command}', expected '{expected_command_return}', stdout='{result.stdout.strip()}', stderr='{result.stderr.strip()}' ")
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} tests\n" + "\n".join(failures))
