@@ -1,6 +1,5 @@
 import datetime
 import pytest
-from time import sleep
 from cluster import Cluster
 
 @pytest.fixture(scope="package")
