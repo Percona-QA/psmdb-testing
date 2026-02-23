@@ -260,6 +260,39 @@ def test_clone_read_batch_size_PML_T74(csync, src_cluster, dst_cluster):
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
 
+@pytest.mark.timeout(300, func_only=True)
+def test_use_collection_bulk_write_PML_T77(csync, src_cluster, dst_cluster):
+    """
+    Test PCSM --use-collection-bulk-write argument and useCollectionBulkWrite environment variable
+    """
+    test_cases = [
+        (["--use-collection-bulk-write=True"], True, '"ok": true', "Use collection-level bulk write", "cli"),
+        (["--use-collection-bulk-write=False"], True, '"ok": true', "", "cli"),
+        (["--use-collection-bulk-write"], True, '"ok": true', "Use collection-level bulk write", "cli"),
+        (["--use-collection-bulk-write==true"], False,
+         'Error: invalid argument "=true" for "--use-collection-bulk-write" flag: strconv.ParseBool: parsing "=true": invalid syntax',
+         "", "cli"),
+        ({"useCollectionBulkWrite": True}, True, '"ok":true', "Use collection-level bulk write", "http"),
+    ]
+    failures = []
+    create_test_collection(src_cluster.connection)
+    for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
+        try:
+            result = csync.start(mode=mode, raw_args=raw_args)
+            assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
+            if should_pass:
+                assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+                assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
+            assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            if expected_log and should_pass:
+                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+        except AssertionError as e:
+            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+        finally:
+            cleanup_test_databases(dst_cluster.connection)
+            csync.create()
+    if failures:
+        pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
 
 @pytest.mark.parametrize("csync_env", [
     {"PCSM_LOG_LEVEL": "DEBUG"},
@@ -327,3 +360,18 @@ def test_pcsm_log_json_env_var_PML_T76(csync, src_cluster, dst_cluster, csync_en
             raise AssertionError(
                 f"Log line '{line}' is not valid JSON"
             )
+
+@pytest.mark.csync_env({"PCSM_USE_COLLECTION_BULK_WRITE": "True"})
+@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.parametrize("expected_log", [
+    "Use collection-level bulk write",
+])
+def test_pcsm_use_collection_bulk_write_env_var_PML_T78(start_cluster, src_cluster, dst_cluster, csync, expected_log, csync_env):
+    """
+    Test the PCSM_USE_COLLECTION_BULK_WRITE environment variable
+    """
+    create_test_collection(src_cluster.connection)
+    assert csync.start()
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+    assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
+    assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
