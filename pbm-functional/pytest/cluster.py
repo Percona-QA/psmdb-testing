@@ -914,17 +914,14 @@ class Cluster:
     def delete_backup(self, name=None, allow_fail=False, **kwargs):
         n = testinfra.get_host("docker://" + self.pbm_cli)
         cmd = 'pbm delete-backup -y'
-        print("GOT HERE 1")
         if name:
             cmd += f' {name}'
         for flag, value in kwargs.items():
             cmd += f' --{flag}={value}'
         result = n.run(cmd)
-        print("GOT HERE 2")
         self.cmd_stdout = result.stdout
         self.cmd_stderr = result.stderr
         if re.search(r"\[done\](?!.*\berror\b)", result.stdout):
-            print("GOT HERE 3")
             timeout = time.time() + 15
             while True:
                 if not self.get_status()['running']:
@@ -935,11 +932,8 @@ class Cluster:
             Cluster.log(result.stdout)
             return True
         else:
-            print("GOT HERE 4")
             if allow_fail:
-                print("GOT HERE 5")
                 return False
-            print("GOT HERE 6")
             assert False, result.stdout
 
     def external_backup_start(self):
