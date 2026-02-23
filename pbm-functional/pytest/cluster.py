@@ -28,6 +28,8 @@ class Cluster:
         self.mongod_extra_args = kwargs.get('mongod_extra_args', " --setParameter=logicalSessionRefreshMillis=10000 --setParameter=shutdownTimeoutMillisForSignaledShutdown=300")
         self.mongod_datadir = kwargs.get('mongod_datadir', "/var/lib/mongo")
         self.pbm_mongodb_uri = kwargs.get('pbm_mongodb_uri', "mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin")
+        self.cmd_stdout = ""
+        self.cmd_stderr = ""
 
     @property
     def config(self):
@@ -410,27 +412,34 @@ class Cluster:
         Cluster.log("Resync storage:\n" + result)
 
     # creates backup based on type (no checking input - it's hack for situation like 'incremental --base')
-    def make_backup(self, type):
+    def make_backup(self, type=None, allow_fail=False, **kwargs):
         n = testinfra.get_host("docker://" + self.pbm_cli)
         timeout = time.time() + 120
         while True:
             running = self.get_status()['running']
             Cluster.log("Current operation: " + str(running))
             if not running:
+                cmd = 'pbm backup --out=json'
+                for flag, value in kwargs.items():
+                    cmd += f' --{flag}={value}'
                 if type:
-                    start = n.run(
-                        'pbm backup --out=json --type=' + type)
-                else:
-                    start = n.run('pbm backup --out=json')
+                    cmd += f' --type={type}'
+                start = n.run(cmd)
                 if start.rc == 0:
                     name = json.loads(start.stdout)['name']
                     Cluster.log("Backup started")
+                    self.cmd_stdout = start.stdout
+                    self.cmd_stderr = start.stderr
                     break
                 elif "resync" in start.stdout.lower() or "resync" in start.stderr.lower():
-                    Cluster.log("Resync in progress, retrying: " + start.stdout)
+                    Cluster.log(f"Resync in progress, retrying: {start.stdout}")
                 else:
                     logs = n.check_output("pbm logs -sD -t0")
-                    assert False, "Backup failed" + start.stdout + start.stderr + '\n' + logs
+                    self.cmd_stdout = start.stdout
+                    self.cmd_stderr = start.stderr
+                    if allow_fail:
+                        return False
+                    assert False, f"Backup failed: STDOUT={start.stdout} STDERR=start.stderr\n{logs}"
             if time.time() > timeout:
                 assert False, "Timeout for backup start exceeded"
             time.sleep(1)
@@ -445,11 +454,9 @@ class Cluster:
                             Cluster.log("Backup found: " + str(snapshot))
                             time.sleep(1) #wait for releasing locks
                             return name
-                            break
                         elif snapshot['status'] == 'error':
                             logs = n.check_output("pbm logs -sD -t0")
                             assert False, snapshot['error'] + '\n' + logs
-                            break
             if time.time() > timeout:
                 assert False, "Backup timeout exceeded"
             time.sleep(1)
@@ -904,10 +911,20 @@ class Cluster:
     def log(*args, **kwargs):
         print("[%s]" % (datetime.now()).strftime('%Y-%m-%dT%H:%M:%S'),*args, **kwargs)
 
-    def delete_backup(self, name):
+    def delete_backup(self, name=None, allow_fail=False, **kwargs):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output('pbm delete-backup -y ' + name)
-        if re.search(r"\[done\](?!.*\berror\b)", result):
+        cmd = 'pbm delete-backup -y'
+        print("GOT HERE 1")
+        if name:
+            cmd += f' {name}'
+        for flag, value in kwargs.items():
+            cmd += f' --{flag}={value}'
+        result = n.run(cmd)
+        print("GOT HERE 2")
+        self.cmd_stdout = result.stdout
+        self.cmd_stderr = result.stderr
+        if re.search(r"\[done\](?!.*\berror\b)", result.stdout):
+            print("GOT HERE 3")
             timeout = time.time() + 15
             while True:
                 if not self.get_status()['running']:
@@ -915,9 +932,15 @@ class Cluster:
                 if time.time() > timeout:
                     assert False, 'Backup deletion timeout exceeded'
                 time.sleep(0.5)
-            Cluster.log(result)
+            Cluster.log(result.stdout)
+            return True
         else:
-            assert False, result
+            print("GOT HERE 4")
+            if allow_fail:
+                print("GOT HERE 5")
+                return False
+            print("GOT HERE 6")
+            assert False, result.stdout
 
     def external_backup_start(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
