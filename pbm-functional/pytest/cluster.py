@@ -439,7 +439,7 @@ class Cluster:
                     self.cmd_stderr = start.stderr
                     if allow_fail:
                         return False
-                    assert False, f"Backup failed: STDOUT={start.stdout} STDERR=start.stderr\n{logs}"
+                    assert False, f"Backup failed: STDOUT={start.stdout} STDERR={start.stderr}\n{logs}"
             if time.time() > timeout:
                 assert False, "Timeout for backup start exceeded"
             time.sleep(1)
