@@ -73,8 +73,6 @@ def test_delete_backup_profile_validation_PBM_T309(start_cluster, cluster):
         try:
             cluster.make_backup(profile="test_profile")
             current_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
-            print("SLEEPING")
-            sleep(2400)
             if should_pass:
                 assert cluster.delete_backup(profile=command, **{'older-than': current_time}), f"Expected command to succeed but it failed: {cluster.cmd_stderr}"
                 assert expected_command_return not in cluster.cmd_stdout
