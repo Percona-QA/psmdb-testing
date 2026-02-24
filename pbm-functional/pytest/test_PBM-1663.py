@@ -1,5 +1,4 @@
 import datetime
-from time import sleep
 
 import pytest
 from cluster import Cluster
