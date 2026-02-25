@@ -77,7 +77,7 @@ def test_pitr_PBM_T313(start_cluster, cluster):
             Cluster.log("rs1 line: " + line)
         if "nomination list for rs2:" in line:
             rs2_line = line
-            Cluster.log("line: " + line)
+            Cluster.log("rs2 line: " + line)
     def _nomination_list(line, rs):
         m = re.search(r"nomination list for %s:\s*(\[.*\])" % rs, line)
         return m.group(1).strip() if m else None
