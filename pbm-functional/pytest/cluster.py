@@ -381,9 +381,20 @@ class Cluster:
             Cluster.setup_authorization(self.config['mongos'],self.pbm_mongodb_uri)
             connection = self.connection
             client = pymongo.MongoClient(connection)
+            set_default_rw_done = False
             for shard in shards:
-                result = client.admin.command("addShard", shard)
-                Cluster.log("Adding shard \"" + shard + "\":\n" + str(result))
+                try:
+                    result = client.admin.command("addShard", shard)
+                    Cluster.log("Adding shard \"" + shard + "\":\n" + str(result))
+                except pymongo.errors.OperationFailure as e:
+                    errmsg = str(e.details.get("errmsg", ""))
+                    if e.code == 96 and "setDefaultRWConcern" in errmsg and not set_default_rw_done:
+                        client.admin.command({"setDefaultRWConcern": 1, "defaultWriteConcern": {"w": "majority"}})
+                        set_default_rw_done = True
+                        result = client.admin.command("addShard", shard)
+                        Cluster.log("Adding shard \"" + shard + "\" (after setDefaultRWConcern):\n" + str(result))
+                    else:
+                        raise
         self.restart_pbm_agents()
         duration = time.time() - start
         Cluster.log("The cluster was prepared in {} seconds".format(duration))
