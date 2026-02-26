@@ -30,6 +30,7 @@ class Cluster:
         self.pbm_mongodb_uri = kwargs.get('pbm_mongodb_uri', "mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin")
         self.cmd_stdout = ""
         self.cmd_stderr = ""
+        self.extra_environment = kwargs.get('extra_environment') or {}
 
     @property
     def config(self):
@@ -270,18 +271,20 @@ class Cluster:
                 if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                     pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
                 mongod_args = host.pop("mongod_extra_args", self.mongod_extra_args)
+                env_list = ["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
+                            "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
+                            "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                            "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
+                            "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + mongod_args,
+                            "GOCOVERDIR=/gocoverdir/reports"]
+                env_list += [k + "=" + str(v) for k, v in self.extra_environment.items()]
                 docker.from_env().containers.run(
                     image='replica_member/local',
                     name=host['host'],
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
-                                 "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
-                                 "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
-                                 "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
-                                 "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + mongod_args,
-                                 "GOCOVERDIR=/gocoverdir/reports"],
+                    environment=env_list,
                     volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"],
                     cap_add=["NET_ADMIN", "NET_RAW"]
                 )
@@ -307,19 +310,21 @@ class Cluster:
                     if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                         pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
                     mongod_args = host.pop("mongod_extra_args", self.mongod_extra_args)
+                    env_list = ["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
+                                "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
+                                "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                                "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
+                                "KRB5_TRACE=/dev/stderr",
+                                "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + mongod_args,
+                                "GOCOVERDIR=/gocoverdir/reports"]
+                    env_list += [k + "=" + str(v) for k, v in self.extra_environment.items()]
                     docker.from_env().containers.run(
                         image='replica_member/local',
                         name=host['host'],
                         hostname=host['host'],
                         detach=True,
                         network='test',
-                        environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
-                                     "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, 
-                                     "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
-                                     "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
-                                     "KRB5_TRACE=/dev/stderr",
-                                     "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + mongod_args,
-                                     "GOCOVERDIR=/gocoverdir/reports"],
+                        environment=env_list,
                         volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
                     )
                     if 'arbiterOnly' in host:
@@ -342,20 +347,22 @@ class Cluster:
                 if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                     pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
                 mongod_args = host.pop("mongod_extra_args", self.mongod_extra_args)
+                env_list = ["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
+                            "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
+                            "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                            "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
+                            "KRB5_TRACE=/dev/stderr",
+                            "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
+                            self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + mongod_args,
+                            "GOCOVERDIR=/gocoverdir/reports"]
+                env_list += [k + "=" + str(v) for k, v in self.extra_environment.items()]
                 docker.from_env().containers.run(
                     image='replica_member/local',
                     name=host['host'],
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
-                                 "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
-                                 "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
-                                 "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
-                                 "KRB5_TRACE=/dev/stderr",
-                                 "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
-                                 self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + mongod_args,
-                                 "GOCOVERDIR=/gocoverdir/reports"],
+                    environment=env_list,
                     volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
                 )
                 if "arbiterOnly" in host:

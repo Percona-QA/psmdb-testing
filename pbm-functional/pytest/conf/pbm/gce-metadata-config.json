@@ -1,0 +1,21 @@
+{
+  "computeMetadata": {
+    "v1": {
+      "instance": {
+        "serviceAccounts": {
+          "default": {
+            "aliases": ["default"],
+            "email": "pbm-test@test.iam.gserviceaccount.com",
+            "scopes": [
+              "https://www.googleapis.com/auth/cloud-platform"
+            ]
+          }
+        }
+      },
+      "project": {
+        "numericProjectId": 123456789,
+        "projectId": "test-project"
+      }
+    }
+  }
+}
