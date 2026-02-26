@@ -66,6 +66,24 @@ services:
     entrypoint: >
       /bin/sh -c " sleep 5; /usr/bin/mc alias set myminio http://minio:9000 minio1234 minio1234; /usr/bin/mc mb myminio/bcp; exit 0; "
 
+  fake-metadata:
+    image: salrashid123/gcemetadataserver:latest
+    container_name: fake-metadata
+    hostname: fake-metadata
+    networks:
+      - test
+    ports:
+      - "8080:8080"
+    environment:
+      - GOOGLE_PROJECT_ID=test-project
+      - GOOGLE_NUMERIC_PROJECT_ID=123456789
+      - GOOGLE_SERVICE_ACCOUNT=pbm-test@test.iam.gserviceaccount.com
+      - GOOGLE_ACCESS_TOKEN=dummy-token-for-emulator
+      - GOOGLE_ID_TOKEN=dummy-id-token-for-emulator
+    volumes:
+      - ./conf/pbm/gce-metadata-config.json:/config.json:ro
+    command: ["-port", ":8080", "-configFile", "/config.json", "--interface", "0.0.0.0"]
+
   cosmian:
     image: cosmian/local
     build:
