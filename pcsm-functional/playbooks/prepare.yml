@@ -142,7 +142,7 @@
       user:
         name: "{{ ssh_user }}"
         shell: /bin/bash
-        groups: ubuntu
+        groups: ubuntu,systemd-journal,adm
         append: yes
       when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'Debian'
 
