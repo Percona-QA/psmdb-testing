@@ -413,6 +413,16 @@
         state: started
       when: inventory_hostname == "replicaset-pcsm-clustersync"
 
+    - name: Allow ssh_user to send signals to pcsm without password
+      copy:
+        dest: /etc/sudoers.d/pcsm-kill
+        content: "{{ ssh_user }} ALL=(ALL) NOPASSWD: /bin/kill\n"
+        mode: '0440'
+        owner: root
+        group: root
+        validate: /usr/sbin/visudo -cf %s
+      when: inventory_hostname == "replicaset-pcsm-clustersync" and ssh_user != "none"
+
     - name: Download runc binary
       get_url:
         url: https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
