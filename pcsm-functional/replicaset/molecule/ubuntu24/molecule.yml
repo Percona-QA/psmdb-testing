@@ -43,7 +43,7 @@ provisioner:
     prepare: ../../../playbooks/prepare.yml
     converge: ../../../playbooks/converge_replicaset.yml
     cleanup: ../../../playbooks/cleanup.yml
-    destroy: ../../../../playbooks/destroy.yml
+#    destroy: ../../../../playbooks/destroy.yml
 verifier:
   name: testinfra
   directory: ../../tests/
@@ -58,6 +58,6 @@ scenario:
     - prepare
     - converge
     - verify
-    - destroy
-  destroy_sequence:
-    - destroy
+#    - destroy
+#  destroy_sequence:
+#    - destroy
