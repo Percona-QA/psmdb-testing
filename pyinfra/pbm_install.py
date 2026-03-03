@@ -6,62 +6,38 @@ import os
 
 from pyinfra import host
 from pyinfra.api import deploy
-from pyinfra.operations import apt, files, server, yum
+from pyinfra.operations import apt, files, server, yum, dnf
 from pyinfra.facts.server import Arch, LinuxDistribution
-
 
 def _env(key: str, default: str = "") -> str:
     return os.environ.get(key, default)
 
-
 @deploy("Install PBM and PSMDB")
 def pbm_install():
     dist = host.get_fact(LinuxDistribution)
+    print(dist.get("release_meta"))
     name = dist.get("name", "")
-    major = int(dist.get("major") or 0)
-    arch = host.get_fact(Arch) or ""
 
     psmdb_to_test = _env("psmdb_to_test", "psmdb-80")
     install_repo = _env("install_repo", "main")
-    prel_version = _env("PREL_VERSION", "latest")
+    version = _env("VERSION", "2.12.0-1")
     is_debian = name in ("Ubuntu", "Debian")
     is_redhat = name in ("CentOS", "RedHat", "Rocky", "AlmaLinux", "Amazon", "Amazon Linux")
-    is_arm = arch in ("aarch64", "arm64")
 
     if is_debian:
-        if prel_version != "latest":
-            apt.deb(
-                name="Install percona-release 1.0-27 (Debian)",
-                src="https://repo.percona.com/apt/percona-release_1.0-27.generic_all.deb",
-                present=True,
-                _sudo=True,
-            )
-        else:
-            apt.deb(
-                name="Install percona-release latest (Debian)",
-                src="https://repo.percona.com/apt/percona-release_latest.generic_all.deb",
-                present=True,
-                _sudo=True,
-            )
+        apt.deb(
+            name="Install percona-release latest (Debian)",
+            src="https://repo.percona.com/apt/percona-release_latest.generic_all.deb",
+            present=True,
+            _sudo=True,
+        )
     elif is_redhat:
-        if prel_version != "latest":
-            server.shell(
-                name="Install percona-release 1.0-27 (RHEL)",
-                commands=["rpm -ivh --nodigest --nofiledigest https://repo.percona.com/yum/percona-release-1.0-27.noarch.rpm"],
-                _sudo=True,
-            )
-            if is_arm:
-                server.shell(
-                    name="Add ARM support to percona-release",
-                    commands=['sed -i "s|x86_64|x86_64 aarch64|" /usr/bin/percona-release'],
-                    _sudo=True,
-                )
-        else:
-            server.shell(
-                name="Install percona-release latest (RHEL)",
-                commands=["yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm"],
-                _sudo=True,
-            )
+        yum.rpm(
+            name="Install percona-release latest (RHEL)",
+            src="https://repo.percona.com/yum/percona-release-latest.noarch.rpm",
+            present=True,
+            _sudo=True,
+        )
         server.shell(name="Clean yum cache", commands=["yum clean all"], _sudo=True)
 
     server.shell(
@@ -80,7 +56,6 @@ def pbm_install():
             _sudo=True,
         )
 
-    psmdb_mongosh = psmdb_to_test.split("-")[1] if "-" in psmdb_to_test else "60"
     psmdb_packages = [
         "percona-server-mongodb",
         "percona-server-mongodb-server",
@@ -99,22 +74,13 @@ def pbm_install():
             _env=env_telemetry,
             _sudo=True,
         )
-        if int(psmdb_mongosh) >= 60:
-            apt.packages(
-                name="Install mongosh (Debian)",
-                packages=["percona-mongodb-mongosh"],
-                update=True,
-                present=True,
-                _sudo=True,
-            )
-        else:
-            apt.packages(
-                name="Install mongo shell (Debian)",
-                packages=["percona-server-mongodb-shell"],
-                update=True,
-                present=True,
-                _sudo=True,
-            )
+        apt.packages(
+            name="Install mongosh (Debian)",
+            packages=["percona-mongodb-mongosh"],
+            update=True,
+            present=True,
+            _sudo=True,
+        )
     elif is_redhat:
         yum.packages(
             name="Install PSMDB packages (RHEL)",
@@ -123,25 +89,10 @@ def pbm_install():
             _env=env_telemetry,
             _sudo=True,
         )
-        if int(psmdb_mongosh) >= 60:
-            yum.packages(
-                name="Install mongosh (RHEL)",
-                packages=["percona-mongodb-mongosh"],
-                present=True,
-                _sudo=True,
-            )
-        else:
-            yum.packages(
-                name="Install mongo shell (RHEL)",
-                packages=["percona-server-mongodb-shell"],
-                present=True,
-                _sudo=True,
-            )
-
-    if int(psmdb_mongosh) >= 60:
-        server.shell(
-            name="Link mongo to mongosh",
-            commands=["ln -sf /usr/bin/mongosh /usr/bin/mongo"],
+        yum.packages(
+            name="Install mongosh (RHEL)",
+            packages=["percona-mongodb-mongosh"],
+            present=True,
             _sudo=True,
         )
 
@@ -158,8 +109,8 @@ def pbm_install():
     server.shell(
         name="Wait for mongod and initiate replica set",
         commands=[
-            "for i in $(seq 1 20); do mongo --eval='printjson(db.serverStatus().ok)' 2>/dev/null | grep -q 1 && break; sleep 1; done",
-            "mongo --eval 'rs.initiate()'",
+            "for i in $(seq 1 20); do mongosh --eval='printjson(db.serverStatus().ok)' 2>/dev/null | grep -q 1 && break; sleep 1; done",
+            "mongosh --eval 'rs.initiate()'",
         ],
         _sudo=True,
     )
@@ -167,7 +118,7 @@ def pbm_install():
     if is_debian:
         apt.packages(
             name="Install PBM (Debian)",
-            packages=["percona-backup-mongodb"],
+            packages=[f"percona-backup-mongodb={version}.{dist.get('release_meta').get('CODENAME')}"],
             update=True,
             present=True,
             _sudo=True,
@@ -175,7 +126,7 @@ def pbm_install():
     elif is_redhat:
         yum.packages(
             name="Install PBM (RHEL)",
-            packages=["percona-backup-mongodb"],
+            packages=[f"percona-backup-mongodb-{version.split('-')[0]}"],
             present=True,
             _sudo=True,
         )

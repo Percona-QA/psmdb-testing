@@ -1,6 +1,6 @@
 """
 PBM tests for the pyinfra runner. Host is provided by the prepare_instance fixture (create → deploy → testinfra).
-Override platform: PLATFORM=ubuntu-jammy VERSION=2.4.0 pytest test_pbm.py -v
+Override platform: PLATFORM=ubuntu-jammy VERSION=2.12.0 pytest test_pbm.py -v
 """
 import os
 import pytest
@@ -17,14 +17,14 @@ storage_configs = ['/etc/pbm-agent-storage.conf', '/etc/pbm-agent-storage-gcp.co
                    '/etc/pbm-agent-storage-local.conf']
 
 # VERSION default for module load; fixture sets env before create
-VERSION = (os.getenv("VERSION") or "2.4.0").split("-")[0]
-PBM_VERSION = float(".".join((os.getenv("VERSION") or "2.4.0").split(".")[0:2]))
+VERSION = (os.getenv("VERSION") or "2.12.0").split("-")[0]
+PBM_VERSION = float(".".join((os.getenv("VERSION") or "2.12.0").split(".")[0:2]))
 
 
 @pytest.fixture(scope="package")
 def config():
     """Platform name from platforms.yaml (override with PLATFORM env)."""
-    return os.environ.get("PLATFORM", "rhel9")
+    return os.environ.get("PLATFORM", "al2023-vagrant")
 
 
 @pytest.fixture(scope="package")
@@ -33,19 +33,19 @@ def prepare_instance(config, request):
     Create instance, run prepare + setup_pbm via pyinfra API, yield paramiko connection for testinfra.
     Teardown: destroy instance unless --keep-instance was passed.
     """
-    os.environ.setdefault("VERSION", "2.4.0")
-    import logging
-    log = logging.getLogger(__name__)
-    log.info("creating instance")
-    instance = Instance.create(config)
-    log.info("instance created: %s", instance.inventory)
-    deployment = Deployment(instance.inventory)
-    deployment.prepare()
-    log.info("host prepared")
-    deployment.setup_pbm()
-    log.info("start tests")
     keep = request.config.getoption("keep_instance", default=False)
     try:
+        os.environ.setdefault("VERSION", "2.12.0-1")
+        import logging
+        log = logging.getLogger(__name__)
+        log.info("Creating instance")
+        instance = Instance.create(config)
+        log.info("Instance created: %s", instance.inventory)
+        deployment = Deployment(instance.inventory)
+        deployment.prepare()
+        log.info("Host prepared")
+        deployment.setup_pbm()
+        log.info("Start tests")
         yield instance.connection
     finally:
         if keep:
@@ -53,7 +53,6 @@ def prepare_instance(config, request):
         else:
             log.info("Teardown: destroying instance.")
             instance.destroy()
-
 
 @pytest.fixture
 def host(prepare_instance):
@@ -79,40 +78,21 @@ def start_stop_pbm(host):
     :param host:
     :return:
     """
-    operating_system = host.system_info.distribution
-    if operating_system.lower() == "centos" and '6' in host.system_info.release:
-        with host.sudo("root"):
-            cmd = "sudo service pbm-agent stop"
-            result = host.run(cmd)
-            assert result.rc == 0, result.stdout
-            cmd = "sudo service pbm-agent start"
-            result = host.run(cmd)
-            assert result.rc == 0, result.stdout
-            cmd = "sudo service pbm-agent status"
-            return host.run(cmd)
-    else:
-        with host.sudo("root"):
-            cmd = "sudo systemctl stop pbm-agent"
-            result = host.run(cmd)
-            assert result.rc == 0, result.stdout
-            cmd = "sudo systemctl start pbm-agent"
-            result = host.run(cmd)
-            assert result.rc == 0, result.stdout
-            cmd = "sudo systemctl status pbm-agent"
-            return host.run(cmd)
+    with host.sudo("root"):
+        cmd = "sudo systemctl stop pbm-agent"
+        result = host.run(cmd)
+        assert result.rc == 0, result.stdout
+        cmd = "sudo systemctl start pbm-agent"
+        result = host.run(cmd)
+        assert result.rc == 0, result.stdout
+        cmd = "sudo systemctl status pbm-agent"
+        return host.run(cmd)
 
 
 @pytest.fixture()
 def restart_pbm_agent(host):
     """Restart pbm-agent service
     """
-    operating_system = host.system_info.distribution
-    if operating_system.lower() == "centos" and '6' in host.system_info.release:
-        cmd = "sudo service pbm-agent restart"
-        result = host.run(cmd)
-        assert result.rc == 0, result.stdout
-        cmd = "sudo service pbm-agent status"
-        return host.run(cmd)
     with host.sudo("root"):
         cmd = "sudo systemctl restart pbm-agent"
         result = host.run(cmd)
@@ -128,7 +108,7 @@ def set_store(host):
     :param host:
     :return:
     """
-    command = "pbm config --file=/etc/pbm-agent-storage.conf --mongodb-uri=mongodb://localhost:27017/"
+    command = "pbm config --file=/etc/pbm-agent-storage.conf --mongodb-uri=mongodb://localhost:27017/?replicaSet=rs1"
     result = host.run(command)
     return result
 
@@ -144,8 +124,6 @@ def show_store(host, set_store):
     command = "pbm config --list --mongodb-uri=mongodb://localhost:27017/?replicaSet=rs1"
     result = host.run(command)
     assert result.rc == 0, result.stdout
-    if PBM_VERSION < 1.6:
-        return parse_yaml_string(result.stdout.split("\n", 2)[2].strip())
     return parse_yaml_string(result.stdout)
 
 
@@ -205,13 +183,8 @@ def test_pbm_storage_default_config(host):
     """Check pbm agent binary
     """
     file = host.file("/etc/pbm-storage.conf")
-    if PBM_VERSION < 1.7:
-        assert file.user == "pbm"
-        assert file.group == "pbm"
-    else:
-        assert file.user == "mongod"
-        assert file.group == "mongod"
-
+    assert file.user == "mongod"
+    assert file.group == "mongod"
     try:
         assert file.mode == 0o644
     except AssertionError:
@@ -225,12 +198,7 @@ def test_start_stop_service(start_stop_pbm, host):
     :param start_stop_pbm:
     """
     assert start_stop_pbm.rc == 0, start_stop_pbm.stdout
-    operating_system = host.system_info.distribution
-    if operating_system.lower() == "centos":
-        if '6' in host.system_info.release:
-            assert "running" in start_stop_pbm.stdout, start_stop_pbm.stdout
-    else:
-        assert "active" in start_stop_pbm.stdout, start_stop_pbm.stdout
+    assert "active" in start_stop_pbm.stdout, start_stop_pbm.stdout
 
 
 def test_restart_service(restart_pbm_agent, host):
@@ -239,21 +207,13 @@ def test_restart_service(restart_pbm_agent, host):
     :param restart_pbm_agent:
     """
     assert restart_pbm_agent.rc == 0, restart_pbm_agent.stdout
-    operating_system = host.system_info.distribution
-    if operating_system.lower() == "centos":
-        if '6' in host.system_info.release:
-            assert "running" in restart_pbm_agent.stdout, restart_pbm_agent.stdout
-    else:
-        assert "active" in restart_pbm_agent.stdout, restart_pbm_agent.stdout
+    assert "active" in restart_pbm_agent.stdout, restart_pbm_agent.stdout
 
 
 def test_pbm_process(host):
     with host.sudo("root"):
         process = host.process.get(comm="pbm-agent")
-        if PBM_VERSION < 1.7:
-            assert process.user == "pbm"
-        else:
-            assert process.user == "mongod"
+        assert process.user == "mongod"
 
 def test_pbm_version(host):
     """Check that pbm version is not empty strings
@@ -290,10 +250,7 @@ def test_set_store(set_store):
     :return:
     """
     assert set_store.rc == 0, set_store.stdout
-    if PBM_VERSION < 1.6:
-        store_out = parse_yaml_string("\n".join(set_store.stdout.split("\n")[2:-2]))
-    else:
-        store_out = parse_yaml_string(set_store.stdout)
+    store_out = parse_yaml_string(set_store.stdout)
     assert store_out['storage']['type'] == 's3'
     assert store_out['storage']['s3']['region'] == 'us-east-1'
     assert store_out['storage']['s3']['bucket'] == 'operator-testing'

@@ -60,9 +60,9 @@ platforms:
     ssh_user: vagrant
     memory: 2048
 
-  centos-7-vagrant:
+  al2023-vagrant:
     provider: vagrant
-    box: centos/7
+    box: bento/amazonlinux-2023
     ssh_user: vagrant
     memory: 2048
 
