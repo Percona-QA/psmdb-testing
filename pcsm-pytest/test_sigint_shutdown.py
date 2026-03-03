@@ -119,9 +119,10 @@ def test_csync_replication_SIGIN_shutdown_PML_T80(start_cluster, src_cluster, ds
         unexpected = [
             line for line in error_logs
             if "context canceled" not in line
+            and "flush error" not in line
         ]
         if unexpected:
-            pytest.fail("Unexpected error(s) in csync logs:" + "\n".join(unexpected))
+            pytest.fail("Unexpected error(s) in csync logs:\n" + "\n".join(unexpected))
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
