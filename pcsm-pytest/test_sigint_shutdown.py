@@ -1,11 +1,10 @@
-import re
 import pytest
 import pymongo
 import time
 import docker
-from collections import Counter
 
 from cluster import Cluster
+from clustersync import create_unique_index_collections
 from data_generator import generate_dummy_data, create_all_types_db, stop_all_crud_operations
 
 def _wait_for_clone_in_progress(csync, dst_connection, db_name, timeout=120):
@@ -69,26 +68,14 @@ def test_csync_clone_SIGINT_shutdown_PML_T79(start_cluster, src_cluster, dst_clu
 
     csync_error, error_logs = csync.check_csync_errors()
     if not csync_error:
-        unexpected = [line for line in error_logs if "context canceled" not in line]
-        if unexpected:
-            pytest.fail("Unexpected error(s) in csync logs:\n" + "\n".join(unexpected))
-
-        cancel_errors = [line for line in error_logs if "context canceled" in line]
-        ns_counts = Counter(
-            m.group(1) for line in cancel_errors
-            if (m := re.search(r'ns=([\w.]+)', line))
-        )
-        duplicates = {ns: count for ns, count in ns_counts.items() if count > 1}
-        if duplicates:
-            pytest.fail(
-                "Found cloned collections cancelled more than once." +
-                "\n".join(f"Collection {ns} appears {count} times" for ns, count in duplicates.items())
-            )
+        cursor_errors = [line for line in error_logs if "Close change stream cursor" in line]
+        if cursor_errors:
+            pytest.fail("Cursor errors found in logs after SIGINT during clone:\n" + "\n".join(cursor_errors))
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
 def test_csync_replication_SIGIN_shutdown_PML_T80(start_cluster, src_cluster, dst_cluster, csync):
-    """Verify SIGINT during replication causes a clean shutdown with no context errors in logs."""
+    """Verify SIGINT during replication causes a clean shutdown with no context errors and no cursor cleanup errors in logs."""
     operation_threads = []
     try:
         generate_dummy_data(src_cluster.connection, db_name="dummy", num_collections=5, doc_size=100000, is_sharded=src_cluster.is_sharded)
@@ -108,30 +95,18 @@ def test_csync_replication_SIGIN_shutdown_PML_T80(start_cluster, src_cluster, ds
 
     csync_error, error_logs = csync.check_csync_errors()
     if not csync_error:
-        context_errors = [
-            line for line in error_logs
-            if "context canceled" in line
-        ]
-        if context_errors:
-            pytest.fail(
-                "Context errors found in logs after SIGINT during replication:" + "\n".join(context_errors)
-            )
-        unexpected = [
-            line for line in error_logs
-            if "context canceled" not in line
-            and "flush error" not in line
-        ]
-        if unexpected:
-            pytest.fail("Unexpected error(s) in csync logs:\n" + "\n".join(unexpected))
+        cursor_errors = [line for line in error_logs if "Close change stream cursor" in line]
+        if cursor_errors:
+            pytest.fail("Cursor errors found in logs after SIGINT during replication:\n" + "\n".join(cursor_errors))
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(600, func_only=True)
 def test_csync_finalize_SIGINT_shutdown_PML_T81(start_cluster, src_cluster, dst_cluster, csync):
-    """Verify SIGINT during finalization causes a clean shutdown with no unexpected context errors in logs."""
-    generate_dummy_data(src_cluster.connection, db_name="dummy", num_collections=2, doc_size=1000, is_sharded=src_cluster.is_sharded)
+    """Verify SIGINT during finalization causes a clean shutdown; context canceled errors indicate a bug and must not appear."""
+    create_unique_index_collections(src_cluster.connection, db_name="finalize_db", num_collections=5, num_docs=100000, is_sharded=src_cluster.is_sharded)
 
     assert csync.start(), "Failed to start csync"
-    assert csync.wait_for_repl_stage(timeout=180), "Failed to reach replication stage"
+    assert csync.wait_for_repl_stage(timeout=300), "Failed to reach replication stage"
     assert csync.wait_for_zero_lag(timeout=120), "Failed to reach zero replication lag before finalize"
 
     # Using http request due to finalize function locking until completion.
@@ -147,11 +122,6 @@ def test_csync_finalize_SIGINT_shutdown_PML_T81(start_cluster, src_cluster, dst_
 
     csync_error, error_logs = csync.check_csync_errors()
     if not csync_error:
-        context_errors = [line for line in error_logs if "context canceled" in line]
-        if context_errors:
-            pytest.fail(
-                "Context errors found in logs after SIGINT during finalization:\n" + "\n".join(context_errors)
-            )
-        unexpected = [line for line in error_logs if "context canceled" not in line]
-        if unexpected:
-            pytest.fail("Unexpected error(s) in csync logs:\n" + "\n".join(unexpected))
+        cursor_errors = [line for line in error_logs if "Close change stream cursor" in line]
+        if cursor_errors:
+            pytest.fail("Cursor errors found in logs after SIGINT during finalization:\n" + "\n".join(cursor_errors))

@@ -442,6 +442,7 @@ class Clustersync:
         return False
 
     def wait_for_checkpoint(self, timeout=120):
+
         try:
             dst_client = pymongo.MongoClient(self.dst)
         except Exception as e:
@@ -464,3 +465,36 @@ class Clustersync:
                 return False
         Cluster.log(f"Error: Timeout exceeded {timeout} seconds while waiting for checkpoints collection to appear")
         return False
+
+
+def create_unique_index_collections(connection, db_name, num_collections=5, num_docs=100000, is_sharded=False):
+    """
+    Create collections with unique indexes to stress the finalize path.
+    Finalize converts prepareUnique indexes to unique by running collMod against each collection.
+    The collMod must scan the full collection to validate uniqueness, so larger collections
+    take longer and increase the chance of SIGINT arriving mid-finalization.
+    """
+    client = pymongo.MongoClient(connection)
+    client.drop_database(db_name)
+
+    if is_sharded:
+        client.admin.command("enableSharding", db_name)
+
+    batch_size = 10000
+    for i in range(num_collections):
+        coll = client[db_name][f"coll_{i}"]
+
+        for batch_start in range(0, num_docs, batch_size):
+            docs = [{"unique_field": batch_start + j, "data": "x" * 200}
+                    for j in range(min(batch_size, num_docs - batch_start))]
+            coll.insert_many(docs, ordered=False, bypass_document_validation=True)
+
+        # Create unique index before sharding so it can serve as the shard key.
+        # MongoDB requires unique indexes to include the shard key, so we shard
+        # on unique_field (range) to satisfy that constraint.
+        coll.create_index([("unique_field", pymongo.ASCENDING)], unique=True, name="unique_idx")
+
+        if is_sharded:
+            client.admin.command("shardCollection", f"{db_name}.coll_{i}", key={"unique_field": 1})
+
+    Cluster.log(f"Created {num_collections} collections with unique indexes ({num_docs} docs each) in '{db_name}'")
