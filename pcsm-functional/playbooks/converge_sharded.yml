@@ -27,8 +27,16 @@
         # Go Version
         golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.2', true) }}"
 
+    - set_fact:
+        # MongoDB provider: Percona_MongoDB or MongoDB_Community
+        mongodb_provider: "{{ lookup('env', 'MONGODB_PROVIDER') | default('Percona_MongoDB', true) }}"
+
     - name: Install PSMDB and PCSM Source and Destination
       include_tasks: ../scripts/install_pcsm_psmdb_sharded.yml
+
+    - name: Install MongoDB Community
+      include_tasks: ../scripts/install_mongodb_community.yml
+      when: mongodb_provider == "MongoDB_Community" and inventory_hostname in groups['psmdb'] and ansible_os_family == "RedHat"
 
     - set_fact:
         ssh_pubkey: "{{ lookup('env', 'SSH_PUBKEY') | default('none', true) }}"

@@ -1,0 +1,23 @@
+---
+- name: Create MongoDB 8.2 yum repository file
+  copy:
+    dest: /etc/yum.repos.d/mongodb-org-8.2.repo
+    content: |
+      [mongodb-org-8.2]
+      name=MongoDB Repository
+      baseurl=https://repo.mongodb.org/yum/redhat/8/mongodb-org/8.2/x86_64/
+      gpgcheck=1
+      enabled=1
+      gpgkey=https://pgp.mongodb.com/server-8.0.asc
+
+- name: Install mongodb-org packages
+  yum:
+    name:
+      - mongodb-org-{{ PSMDB }}
+      - mongodb-org-database-{{ PSMDB }}
+      - mongodb-org-server-{{ PSMDB }}
+      - mongodb-mongosh
+      - mongodb-org-mongos-{{ PSMDB }}
+      - mongodb-org-tools-{{ PSMDB }}
+    state: present
+
