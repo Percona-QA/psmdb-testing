@@ -470,9 +470,6 @@ class Clustersync:
 def create_unique_index_collections(connection, db_name, num_collections=5, num_docs=100000, is_sharded=False):
     """
     Create collections with unique indexes to stress the finalize path.
-    Finalize converts prepareUnique indexes to unique by running collMod against each collection.
-    The collMod must scan the full collection to validate uniqueness, so larger collections
-    take longer and increase the chance of SIGINT arriving mid-finalization.
     """
     client = pymongo.MongoClient(connection)
     client.drop_database(db_name)
@@ -490,8 +487,6 @@ def create_unique_index_collections(connection, db_name, num_collections=5, num_
             coll.insert_many(docs, ordered=False, bypass_document_validation=True)
 
         # Create unique index before sharding so it can serve as the shard key.
-        # MongoDB requires unique indexes to include the shard key, so we shard
-        # on unique_field (range) to satisfy that constraint.
         coll.create_index([("unique_field", pymongo.ASCENDING)], unique=True, name="unique_idx")
 
         if is_sharded:
