@@ -469,7 +469,7 @@ class Clustersync:
 
 def create_unique_index_collections(connection, db_name, num_collections=5, num_docs=100000, is_sharded=False):
     """
-    Create collections with unique indexes to stress the finalize path.
+    Create collections with unique indexes
     """
     client = pymongo.MongoClient(connection)
     client.drop_database(db_name)
