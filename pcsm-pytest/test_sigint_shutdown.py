@@ -4,8 +4,7 @@ import time
 import docker
 
 from cluster import Cluster
-from clustersync import create_unique_index_collections
-from data_generator import generate_dummy_data, create_all_types_db, stop_all_crud_operations
+from data_generator import generate_dummy_data, create_all_types_db, stop_all_crud_operations, create_unique_index_collections
 
 def _wait_for_clone_in_progress(csync, dst_connection, db_name, timeout=120):
     """
