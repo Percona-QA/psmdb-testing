@@ -290,9 +290,9 @@ resmoke_validation_tests
 retryable_writes_downgrade
 retryable_writes_downgrade_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
 retryable_writes_jscore_passthrough
-retryable_writes_jscore_passthrough_primary_driven_index_builds
+ retryable_writes_jscore_passthrough_primary_driven_index_builds
 retryable_writes_jscore_stepdown_passthrough
-retryable_writes_jscore_stepdown_passthrough_primary_driven_index_builds
+ retryable_writes_jscore_stepdown_passthrough_primary_driven_index_builds
  sdam_json_test
 search
 search_auth
