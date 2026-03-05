@@ -4,7 +4,7 @@ import time
 import docker
 
 from cluster import Cluster
-from data_generator import generate_dummy_data, create_all_types_db, stop_all_crud_operations, create_unique_index_collections
+from data_generator import generate_dummy_data, create_all_types_db, stop_all_crud_operations
 
 def _wait_for_clone_in_progress(csync, dst_connection, db_name, timeout=120):
     """
@@ -102,7 +102,7 @@ def test_csync_replication_SIGIN_shutdown_PML_T80(start_cluster, src_cluster, ds
 @pytest.mark.timeout(600, func_only=True)
 def test_csync_finalize_SIGINT_shutdown_PML_T81(start_cluster, src_cluster, dst_cluster, csync):
     """Verify SIGINT during finalization causes a clean shutdown; context canceled errors indicate a bug and must not appear."""
-    create_unique_index_collections(src_cluster.connection, db_name="finalize_db", num_collections=5, num_docs=100000, is_sharded=src_cluster.is_sharded)
+    generate_dummy_data(src_cluster.connection, db_name="finalize_db", num_collections=5, doc_size=100000, is_sharded=src_cluster.is_sharded, is_unique_index=True)
 
     assert csync.start(), "Failed to start csync"
     assert csync.wait_for_repl_stage(timeout=300), "Failed to reach replication stage"

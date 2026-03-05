@@ -90,36 +90,9 @@ def stop_all_crud_operations():
     for db_name, stop_event in stop_operations_map.items():
         stop_event.set()
 
-def create_unique_index_collections(connection, db_name, num_collections=5, num_docs=100000, is_sharded=False):
-    """
-    Create collections with unique indexes
-    """
-    client = pymongo.MongoClient(connection)
-    client.drop_database(db_name)
-
-    if is_sharded:
-        client.admin.command("enableSharding", db_name)
-
-    batch_size = 10000
-    for i in range(num_collections):
-        coll = client[db_name][f"coll_{i}"]
-
-        for batch_start in range(0, num_docs, batch_size):
-            docs = [{"unique_field": batch_start + j, "data": "x" * 200}
-                    for j in range(min(batch_size, num_docs - batch_start))]
-            coll.insert_many(docs, ordered=False, bypass_document_validation=True)
-
-        # Create unique index before sharding so it can serve as the shard key.
-        coll.create_index([("unique_field", pymongo.ASCENDING)], unique=True, name="unique_idx")
-
-        if is_sharded:
-            client.admin.command("shardCollection", f"{db_name}.coll_{i}", key={"unique_field": 1})
-
-    Cluster.log(f"Created {num_collections} collections with unique indexes ({num_docs} docs each) in '{db_name}'")
-
 def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, doc_size=150000,
                         batch_size=10000, stop_event=None, sleep_between_batches=0, drop_before_creation=True,
-                        is_sharded=False):
+                        is_sharded=False, is_unique_index=False):
     """
     With default parameters generates ~500MB of data within 10 seconds
     If stop_event is provided, it can be used to stop generation early.
@@ -146,19 +119,33 @@ def generate_dummy_data(connection_string, db_name="dummy", num_collections=5, d
         "array": [1] * 40,
     }
 
-    for coll_name in collections:
-        if stop_event and stop_event.is_set():
-            break
-        collection = db[coll_name]
+    if is_unique_index:
+        for i in range(num_collections):
+            coll = client[db_name][f"coll_{i}"]
 
-        if is_sharded:
-            client.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"_id": "hashed"})
+            for batch_start in range(0, doc_size, batch_size):
+                docs = [{"unique_field": batch_start + j, "data": "x" * 200}
+                        for j in range(min(batch_size, doc_size - batch_start))]
+                coll.insert_many(docs, ordered=False, bypass_document_validation=True)
 
-        for _ in range(doc_size // batch_size):
+            coll.create_index([("unique_field", pymongo.ASCENDING)], unique=True, name="unique_idx")
+
+            if is_sharded:
+                client.admin.command("shardCollection", f"{db_name}.coll_{i}", key={"unique_field": 1})
+    else:
+        for coll_name in collections:
             if stop_event and stop_event.is_set():
                 break
-            docs = [{**template_doc, "_id": ObjectId()} for _ in range(batch_size)]
-            collection.insert_many(docs, ordered=False, bypass_document_validation=True)
-            if sleep_between_batches > 0:
-                time.sleep(sleep_between_batches)
+            collection = db[coll_name]
+
+            if is_sharded:
+                client.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"_id": "hashed"})
+
+            for _ in range(doc_size // batch_size):
+                if stop_event and stop_event.is_set():
+                    break
+                docs = [{**template_doc, "_id": ObjectId()} for _ in range(batch_size)]
+                collection.insert_many(docs, ordered=False, bypass_document_validation=True)
+                if sleep_between_batches > 0:
+                    time.sleep(sleep_between_batches)
     Cluster.log("Dummy data generation is completed")
