@@ -13,15 +13,14 @@
 - name: Install Percona Release package on Debian
   apt:
     deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
-  when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
+  when: ansible_os_family == "Debian"
 
 - name: Install latest percona-release RHEL
   command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
-  when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
+  when: ansible_os_family == "RedHat"
 
 - name: setup psmdb repo with percona-release
   command: percona-release enable psmdb-{{ psmdb_version }}0 release
-  when: inventory_hostname in groups['psmdb']
 
 - name: Install psmdb deb packages
   apt:
@@ -34,7 +33,7 @@
     - percona-server-mongodb-server
     - percona-server-mongodb-mongos
     - percona-server-mongodb-tools
-  when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
+  when: ansible_os_family == "Debian"
 
 - name: Install latest psmdb rpm packages on redhat
   yum:
@@ -47,7 +46,7 @@
     - percona-server-mongodb-server
     - percona-server-mongodb-mongos
     - percona-server-mongodb-tools
-  when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
+  when: ansible_os_family == "RedHat"
 
 - name: Install mongosh deb package
   apt:
@@ -56,7 +55,7 @@
   vars:
     packages:
     - percona-mongodb-mongosh
-  when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
+  when: ansible_os_family == "Debian"
 
 - name: Install mongosh rpm package
   yum:
@@ -65,4 +64,4 @@
   vars:
     packages:
     - percona-mongodb-mongosh
-  when: ansible_os_family == "RedHat" and inventory_hostname in groups['psmdb']
+  when: ansible_os_family == "RedHat"
