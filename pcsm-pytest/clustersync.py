@@ -442,6 +442,7 @@ class Clustersync:
         return False
 
     def wait_for_checkpoint(self, timeout=120):
+
         try:
             dst_client = pymongo.MongoClient(self.dst)
         except Exception as e:
@@ -464,3 +465,5 @@ class Clustersync:
                 return False
         Cluster.log(f"Error: Timeout exceeded {timeout} seconds while waiting for checkpoints collection to appear")
         return False
+
+

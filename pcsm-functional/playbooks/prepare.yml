@@ -134,7 +134,7 @@
       user:
         name: "{{ ssh_user }}"
         shell: /bin/bash
-        groups: wheel
+        groups: wheel,adm,systemd-journal
         append: yes
       when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'RedHat'
 
@@ -142,7 +142,7 @@
       user:
         name: "{{ ssh_user }}"
         shell: /bin/bash
-        groups: ubuntu
+        groups: ubuntu,systemd-journal,adm,sudo
         append: yes
       when: ssh_user != "none" and ssh_pubkey != "none" and ansible_facts['os_family'] == 'Debian'
 
