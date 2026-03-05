@@ -197,7 +197,7 @@ no_passthrough_execution_control_with_prioritization
 no_passthrough_network
 no_passthrough_primary_driven_index_builds
 no_passthrough_with_mongod
-ocsp --jobs=1
+ocsp --jobs=1|wiredTiger|pip uninstall -y oscrypto && pip install -I git+https://github.com/wbond/oscrypto.git
 oidc --jobs=1
 percona_no_passthrough_with_mongod
 pretty-printer-tests
