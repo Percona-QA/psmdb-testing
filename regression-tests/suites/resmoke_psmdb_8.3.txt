@@ -369,7 +369,6 @@ simulate_crash_concurrency_replication
 slow1
 ssl
 ssl_linear
-ssl_linear_macos
 ssl_special
 ssl_x509
 tde_cbc
