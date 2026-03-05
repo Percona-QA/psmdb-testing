@@ -411,4 +411,4 @@ vector_search_extension_fully_enabled_sharded_collections --installDir /usr/bin
 vector_search_extension_fully_enabled_single_shard --installDir /usr/bin
 vector_search_ssl --installDir /usr/bin
 watchdog
-write_concern_majority_passthrough
+ write_concern_majority_passthrough
