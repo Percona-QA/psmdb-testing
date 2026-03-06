@@ -45,7 +45,7 @@ benchmarks_sorter
 benchmarks_storage
 benchmarks_streams
 benchmarks_util
-buildscripts_test
+ buildscripts_test
 bulk_write_causally_consistent_jscore_passthrough
 bulk_write_multi_op_causally_consistent_jscore_passthrough
 bulk_write_multi_op_sharded_collections_jscore_passthrough
@@ -285,8 +285,8 @@ replica_sets_terminate_primary_jscore_passthrough
 replica_sets_transition_to_csrs_jscore_passthrough
 replica_sets_uninitialized_fcv_jscore_passthrough
 replica_sets_with_priority_ports
-resmoke_end2end_tests
-resmoke_validation_tests
+ resmoke_end2end_tests
+ resmoke_validation_tests
 retryable_writes_downgrade
 retryable_writes_downgrade_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
 retryable_writes_jscore_passthrough
@@ -377,7 +377,7 @@ telemetry --jobs=1
 timeseries_crud_jscore_passthrough
 tla_plus --jobs=1|wiredTiger|apt install -y default-jre && mkdir -p /opt/java/jdk11/bin/ && ln -s /usr/bin/java /opt/java/jdk11/bin/java && ./src/mongo/tla_plus/download-tlc.sh && cp tla2tools.jar src/mongo/tla_plus/
 transitioning_replica_sets_jscore_passthrough
-unittest_shell_hang_analyzer
+ unittest_shell_hang_analyzer
 unittests
 unittests_auth
 unittests_client
