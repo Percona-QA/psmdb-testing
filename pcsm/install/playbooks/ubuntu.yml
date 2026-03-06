@@ -12,6 +12,12 @@
         # User to log into each AWS Instance
         ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
 
+    - set_fact:
+        mongodb_community: "{{ lookup('env', 'MONGODB_COMMUNITY') | default('False', true) }}"
+
+    - set_fact:
+        mongodb_image: "{{ 'mongodb/mongodb-community-server' if mongodb_community | bool else 'percona/percona-server-mongodb' }}:{{ psmdb_version }}"
+
     - name: Create keyrings directory
       file:
         path: /etc/apt/keyrings
@@ -121,7 +127,7 @@
     - name: Create Source PSMDB container
       community.docker.docker_container:
         name: source
-        image: percona/percona-server-mongodb:{{ psmdb_version }}
+        image: "{{ mongodb_image }}"
         state: started
         restart_policy: unless-stopped
         published_ports:
@@ -131,7 +137,7 @@
     - name: Create Destination PSMDB container
       community.docker.docker_container:
         name: destination
-        image: percona/percona-server-mongodb:{{ psmdb_version }}
+        image: "{{ mongodb_image }}"
         state: started
         restart_policy: unless-stopped
         published_ports:

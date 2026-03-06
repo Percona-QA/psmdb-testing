@@ -12,6 +12,12 @@
         # User to log into each AWS Instance
         ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
 
+    - set_fact:
+        mongodb_community: "{{ lookup('env', 'MONGODB_COMMUNITY') | default('False', true) }}"
+
+    - set_fact:
+        mongodb_image: "{{ 'docker.io/mongodb/mongodb-community-server' if mongodb_community | bool else 'docker.io/percona/percona-server-mongodb' }}:{{ psmdb_version }}"
+
     - name: Install dependencies
       yum:
         name: "{{ packages }}"
@@ -39,7 +45,7 @@
     - name: Create Source PSMDB container
       containers.podman.podman_container:
         name: source
-        image: docker.io/percona/percona-server-mongodb:{{ psmdb_version }}
+        image: "{{ mongodb_image }}"
         state: started
         restart_policy: unless-stopped
         published_ports:
@@ -49,7 +55,7 @@
     - name: Create Destination PSMDB container
       containers.podman.podman_container:
         name: destination
-        image: docker.io/percona/percona-server-mongodb:{{ psmdb_version }}
+        image: "{{ mongodb_image }}"
         state: started
         restart_policy: unless-stopped
         published_ports:
