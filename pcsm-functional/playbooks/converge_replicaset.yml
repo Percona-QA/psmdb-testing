@@ -17,7 +17,7 @@
   tasks:
     - set_fact:
         # Version of psmdb release to be enabled (6, 7, or 8)
-        psmdb_version: "{{ lookup('env', 'PSMDB') | default('8', true) }}"
+        mongodb_version: "{{ lookup('env', 'MONGODB_VERSION') | default('8', true) }}"
 
     - set_fact:
         # Branch of pcsm branch to test
@@ -29,7 +29,7 @@
 
     - set_fact:
         # MongoDB provider: Percona_MongoDB or MongoDB_Community
-        mongodb_provider: "{{ lookup('env', 'MONGODB_PROVIDER') | default('Percona_MongoDB', true) }}"
+        mongodb_provider: "{{ 'MongoDB_Community' if lookup('env', 'MONGODB_COMMUNITY') | bool else 'Percona_MongoDB' }}"
 
     - set_fact:
         # User to log into each AWS Instance
@@ -479,7 +479,7 @@
       when:
         - inventory_hostname in groups['psmdb']
         - pmm_user_check.stdout == "null"
-        - psmdb_version | int >= 8
+        - mongodb_version | int >= 8
 
     - name: Create MongoDB PMM User role on psmdb < 8
       community.mongodb.mongodb_shell:
@@ -496,7 +496,7 @@
       when:
         - inventory_hostname in groups['psmdb']
         - pmm_user_check.stdout == "null"
-        - psmdb_version | int < 8
+        - mongodb_version | int < 8
 
     - name: Check if MongoDB is already registered in PMM
       shell: pmm-admin list | grep mongodb

@@ -20,7 +20,7 @@
   when: ansible_os_family == "RedHat"
 
 - name: setup psmdb repo with percona-release
-  command: percona-release enable psmdb-{{ psmdb_version }}0 release
+  command: percona-release enable psmdb-{{ mongodb_version }}0 release
 
 - name: Install psmdb deb packages
   apt:
