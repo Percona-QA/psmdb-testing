@@ -379,19 +379,19 @@ tla_plus --jobs=1|wiredTiger|apt install -y default-jre && mkdir -p /opt/java/jd
 transitioning_replica_sets_jscore_passthrough
  unittest_shell_hang_analyzer
 unittests
-unittests_auth
-unittests_client
-unittests_eighth_group
-unittests_fifth_group
-unittests_first_group
-unittests_fourth_group
-unittests_query
-unittests_repl
-unittests_second_group
-unittests_seventh_group
-unittests_sharding
-unittests_sixth_group
-unittests_third_group
+ unittests_auth
+ unittests_client
+ unittests_eighth_group
+ unittests_fifth_group
+ unittests_first_group
+ unittests_fourth_group
+ unittests_query
+ unittests_repl
+ unittests_second_group
+ unittests_seventh_group
+ unittests_sharding
+ unittests_sixth_group
+ unittests_third_group
 unsplittable_collections_created_on_any_shard_jscore_passthrough
 unsplittable_collections_on_random_shard_jscore_txns
 v1index_jscore_passthrough
