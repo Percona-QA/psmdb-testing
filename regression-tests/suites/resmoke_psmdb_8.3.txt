@@ -159,7 +159,7 @@ feature_flag_multiversion|wiredTiger|python buildscripts/setup_multiversion_mong
 fle
 fle2
 fle2_high_cardinality
-fle2_query_analysis
+ fle2_query_analysis
 fle2_sharding
 fle2_sharding_high_cardinality
 identity_views_passthrough
@@ -200,7 +200,7 @@ no_passthrough_with_mongod
 ocsp --jobs=1|wiredTiger|pip uninstall -y oscrypto && pip install -I git+https://github.com/wbond/oscrypto.git
 oidc --jobs=1
 percona_no_passthrough_with_mongod
-pretty-printer-tests
+ pretty-printer-tests
 product_limits
 query_cbr_automatic_cost_choice_aggregation_passthrough
 query_cbr_automatic_cost_choice_jscore_passthrough
