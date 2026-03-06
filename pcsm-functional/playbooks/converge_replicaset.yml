@@ -402,6 +402,21 @@
         executable: /bin/bash
       when: inventory_hostname == "replicaset-pcsm-clustersync"
 
+    - name: Install percona-release (RedHat) for PMM client
+      command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+      when:
+        - inventory_hostname in groups['psmdb']
+        - mongodb_provider == 'MongoDB_Community'
+        - ansible_os_family == 'RedHat'
+
+    - name: Install percona-release (Debian) for PMM client
+      apt:
+        deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+      when:
+        - inventory_hostname in groups['psmdb']
+        - mongodb_provider == 'MongoDB_Community'
+        - ansible_os_family == 'Debian'
+
     - name: Enable pmm3-client repository
       command: percona-release enable pmm3-client
       when: inventory_hostname in groups['psmdb']
