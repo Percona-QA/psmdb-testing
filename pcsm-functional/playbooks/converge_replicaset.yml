@@ -280,7 +280,7 @@
         replace: '  bindIp: 0.0.0.0'
       when: inventory_hostname in groups['psmdb']
 
-    - name: Enabling Operation Profiling for PMM QAN
+    - name: Enabling Operation Profiling for PMM QAN (Percona)
       replace:
         path: /etc/mongod.conf
         regexp: '^#operationProfiling:'
@@ -289,7 +289,17 @@
             mode: all
             slowOpThresholdMs: 1
             rateLimit: 100
-      when: inventory_hostname in groups['psmdb']
+      when: inventory_hostname in groups['psmdb'] and mongodb_provider != 'MongoDB_Community'
+
+    - name: Enabling Operation Profiling for PMM QAN (Community)
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#operationProfiling:'
+        replace: |
+          operationProfiling:
+            mode: all
+            slowOpThresholdMs: 1
+      when: inventory_hostname in groups['psmdb'] and mongodb_provider == 'MongoDB_Community'
 
     - name: start mongod service
       service: name=mongod state=started
