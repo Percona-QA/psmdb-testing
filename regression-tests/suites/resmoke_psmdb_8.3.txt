@@ -192,8 +192,8 @@ multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --inst
 multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
 multiversion_sanity_check|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
 no_causal_consistency_replica_sets_kill_stepdown_terminate_jscore_passthrough
-no_passthrough
-no_passthrough_execution_control_with_prioritization
+no_passthrough|wiredTiger|export TZ=Europe/London
+no_passthrough_execution_control_with_prioritization|wiredTiger|export TZ=Europe/London
 no_passthrough_network
 no_passthrough_primary_driven_index_builds
 no_passthrough_with_mongod
