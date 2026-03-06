@@ -145,7 +145,7 @@ core_txns_large_txns_format
 core_wildcard_indexes
 cwrwc_passthrough
 cwrwc_rc_majority_passthrough
-cwrwc_wc_majority_passthrough
+ cwrwc_wc_majority_passthrough
 decimal
 disk_wiredtiger
 external_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
