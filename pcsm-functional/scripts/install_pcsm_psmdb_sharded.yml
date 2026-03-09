@@ -255,8 +255,8 @@
     path: /mnt/data/db
     state: directory
     mode: '0755'
-    owner: "{{ 'mongodb' if mongodb_provider == 'MongoDB_Community' else 'mongod' }}"
-    group: "{{ 'mongodb' if mongodb_provider == 'MongoDB_Community' else 'mongod' }}"
+    owner: "{{ 'mongodb' if (mongodb_provider == 'MongoDB_Community' and ansible_os_family == 'Debian') else 'mongod' }}"
+    group: "{{ 'mongodb' if (mongodb_provider == 'MongoDB_Community' and ansible_os_family == 'Debian') else 'mongod' }}"
   when: inventory_hostname in groups['psmdb']
 
 - name: Switch mongod to new dbPath
