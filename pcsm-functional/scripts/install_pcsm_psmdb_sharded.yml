@@ -259,6 +259,10 @@
     group: "{{ 'mongodb' if (mongodb_provider == 'MongoDB_Community' and ansible_os_family == 'Debian') else 'mongod' }}"
   when: inventory_hostname in groups['psmdb']
 
+- name: Fix SELinux context on data directory
+  ansible.builtin.command: chcon -Rv -t mongod_var_lib_t /mnt/data
+  when: inventory_hostname in groups['psmdb'] and ansible_os_family == "RedHat"
+
 - name: Switch mongod to new dbPath
   replace:
     path: /etc/mongod.conf
