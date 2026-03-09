@@ -283,6 +283,10 @@
         --fork
       when: inventory_hostname == "sharded-pcsm-destination" and ansible_os_family == "RedHat"
 
+    - name: Wait for replica set primaries to be elected
+      pause:
+        seconds: 15
+
     - name: Add shard 1 srcShard1 to source cluster
       community.mongodb.mongodb_shell:
         login_host: "{{ private_source_ip }}"
