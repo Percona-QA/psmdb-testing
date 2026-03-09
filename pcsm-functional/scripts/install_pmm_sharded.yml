@@ -34,6 +34,17 @@
     executable: /bin/bash
   when: inventory_hostname == "sharded-pcsm-clustersync"
 
+- name: Wait for PMM Server to be ready
+  uri:
+    url: "https://{{ private_clustersync_ip }}:443/v1/server/readiness"
+    validate_certs: no
+    status_code: 200
+  register: pmm_ready
+  until: pmm_ready.status == 200
+  retries: 30
+  delay: 10
+  when: inventory_hostname == "sharded-pcsm-clustersync"
+
 - name: Install percona-release (RedHat) for PMM client
   command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
   when:
