@@ -31,6 +31,10 @@
         # MongoDB provider: Percona_MongoDB or MongoDB_Community
         mongodb_provider: "{{ 'MongoDB_Community' if lookup('env', 'MONGODB_COMMUNITY') | bool else 'Percona_MongoDB' }}"
 
+    - name: Show MongoDB provider
+      debug:
+        msg: "MongoDB provider: {{ mongodb_provider }}"
+
     - name: Install PSMDB and PCSM Source and Destination
       include_tasks: ../scripts/install_pcsm_psmdb_sharded.yml
 
