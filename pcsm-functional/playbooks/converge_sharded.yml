@@ -268,7 +268,7 @@
         --configdb configReplSet/pcsm-source:27017 \
         --port 27018 \
         --bind_ip 0.0.0.0 \
-        --logpath /var/log/mongo/mongos.log \
+        --logpath {{ '/var/log/mongodb' if mongodb_provider == 'MongoDB_Community' else '/var/log/mongo' }}/mongos.log \
         --fork
       when: inventory_hostname == "sharded-pcsm-source" and ansible_os_family == "RedHat"
 
@@ -279,7 +279,7 @@
         --configdb configReplSet/pcsm-destination:27017 \
         --port 27018 \
         --bind_ip 0.0.0.0 \
-        --logpath /var/log/mongo/mongos.log \
+        --logpath {{ '/var/log/mongodb' if mongodb_provider == 'MongoDB_Community' else '/var/log/mongo' }}/mongos.log \
         --fork
       when: inventory_hostname == "sharded-pcsm-destination" and ansible_os_family == "RedHat"
 
