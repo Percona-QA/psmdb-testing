@@ -60,28 +60,12 @@
     - git
   when: ansible_os_family == "RedHat"
 
-- name: Update apt cache with fix-missing
-  shell: apt-get update --fix-missing
-  when: ansible_os_family == "Debian"
-
 - name: Install deps
-  apt:
-    name: "{{ packages }}"
-    state: present
-  vars:
-    packages:
-    - jq
-    - vim
-    - zlib1g-dev
-    - libjpeg-dev
-    - libfreetype6-dev
-    - gcc
-    - python3-dev
-    - python3-pip
-    - make
-    - wget
-    - git
-    - iputils-ping
+  shell: >
+    apt-get update --fix-missing &&
+    apt-get install -y --fix-missing
+    jq vim zlib1g-dev libjpeg-dev libfreetype6-dev gcc
+    python3-dev python3-pip make wget git iputils-ping
   when: ansible_os_family == "Debian"
 
 - name: Install Go from official tarball on PCSM host
