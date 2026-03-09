@@ -155,7 +155,7 @@ fcv_upgrade_downgrade_primary_step_down_passthrough
 fcv_upgrade_downgrade_replica_sets_jscore_passthrough
 fcv_upgrade_downgrade_sharded_collections_jscore_passthrough
 fcv_upgrade_downgrade_sharding_jscore_passthrough
-feature_flag_multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
+ feature_flag_multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.2
 fle
 fle2
 fle2_high_cardinality
@@ -188,9 +188,9 @@ multi_shard_multi_stmt_txn_jscore_passthrough_rate_limited
 multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough
 multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough
 multi_stmt_txn_jscore_passthrough_with_migration
-multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
-multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
-multiversion_sanity_check|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
+multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.2
+multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.2
+multiversion_sanity_check|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.2
 no_causal_consistency_replica_sets_kill_stepdown_terminate_jscore_passthrough
 no_passthrough|wiredTiger|export TZ=Europe/London
 no_passthrough_execution_control_with_prioritization|wiredTiger|export TZ=Europe/London
@@ -262,7 +262,7 @@ replica_sets_kill_secondaries_jscore_passthrough
 replica_sets_lag_oplog_application_jscore_passthrough
 replica_sets_large_txns_format
 replica_sets_large_txns_format_jscore_passthrough
-replica_sets_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
+replica_sets_last_lts --excludeWithAnyTags=requires_fcv_81,requires_fcv_82,requires_fcv_83|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
 replica_sets_max_mirroring
 replica_sets_multi_stmt_txn_jscore_passthrough
 replica_sets_multi_stmt_txn_kill_primary_jscore_passthrough
@@ -288,7 +288,7 @@ replica_sets_with_priority_ports
  resmoke_end2end_tests
  resmoke_validation_tests
 retryable_writes_downgrade
-retryable_writes_downgrade_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
+retryable_writes_downgrade_last_lts --excludeWithAnyTags=requires_fcv_81,requires_fcv_82,requires_fcv_83|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
 retryable_writes_jscore_passthrough
  retryable_writes_jscore_passthrough_primary_driven_index_builds
 retryable_writes_jscore_stepdown_passthrough
@@ -349,7 +349,7 @@ sharding_jscore_passthrough_with_config_transitions_and_add_remove_shard
 sharding_jscore_passthrough_with_dynamic_execution_control
 sharding_jscore_passthrough_with_injected_catalog_metadata
 sharding_kill_stepdown_terminate_jscore_passthrough
-sharding_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
+sharding_last_lts --excludeWithAnyTags=requires_fcv_81,requires_fcv_82,requires_fcv_83|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
 sharding_legacy_timeseries_no_rawdata
 sharding_max_mirroring
 sharding_max_mirroring_opportunistic_secondary_targeting
