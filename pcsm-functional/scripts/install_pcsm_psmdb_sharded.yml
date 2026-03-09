@@ -250,7 +250,7 @@
 
 - name: Install MongoDB Community
   include_tasks: install_mongodb_community.yml
-  when: mongodb_provider == "MongoDB_Community" and inventory_hostname in groups['psmdb'] and ansible_os_family == "RedHat"
+  when: mongodb_provider == "MongoDB_Community" and inventory_hostname in groups['psmdb']
 
 - name: Copy mongosh binary to mongo path for test scripts
   file:
