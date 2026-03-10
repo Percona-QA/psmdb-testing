@@ -34,14 +34,14 @@
     executable: /bin/bash
   when: inventory_hostname == "sharded-pcsm-clustersync"
 
-- name: Install percona-release (RedHat) for PMM client
+- name: Install percona-release for PMM client (RedHat)
   command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
   when:
     - inventory_hostname in groups['psmdb']
     - mongodb_provider == 'MongoDB_Community'
     - ansible_os_family == 'RedHat'
 
-- name: Install percona-release (Debian) for PMM client
+- name: Install percona-release for PMM client (Debian)
   apt:
     deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
   when:

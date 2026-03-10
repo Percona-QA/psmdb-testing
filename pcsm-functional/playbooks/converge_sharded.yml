@@ -285,7 +285,7 @@
 
     - name: Wait for replica set primaries to be elected
       pause:
-        seconds: 15
+        seconds: 5
 
     - name: Add shard 1 srcShard1 to source cluster
       community.mongodb.mongodb_shell:

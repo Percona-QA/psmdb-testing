@@ -5,7 +5,7 @@
   become_method: sudo
   tasks:
     - set_fact:
-        # 8.0.19-7 for Percona, 8.0.19-ubi8 for Mongodb Community
+        # Mongodb version to use e.g. 8.0.19-7 for Percona, 8.0.19-ubi8 for Mongodb Community
         MONGODB_VERSION: "{{ lookup('env', 'MONGODB_VERSION') | default('8.0', true) }}"
 
     - set_fact:

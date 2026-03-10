@@ -1,7 +1,5 @@
 ---
 galaxy_info:
-  author: percona
-  role_name: replicaset
   namespace: percona
   description: PCSM replicaset functional tests
   company: Percona

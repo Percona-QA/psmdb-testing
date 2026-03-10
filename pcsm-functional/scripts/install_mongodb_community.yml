@@ -50,12 +50,12 @@
     | tee /etc/apt/sources.list.d/mongodb-org-{{ mongodb_version }}.0.list
   when: ansible_os_family == "Debian" and ansible_distribution == "Debian"
 
-- name: Add MongoDB apt repository (Ubuntu)
+- name: Add MongoDB apt repository (Debian)
   shell: >
     echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-{{ mongodb_version }}.0.gpg ]
     https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/{{ mongodb_version }}.0 multiverse"
     | tee /etc/apt/sources.list.d/mongodb-org-{{ mongodb_version }}.0.list
-  when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+  when: ansible_os_family == "Debian"
 
 - name: Install mongodb-org packages (Debian)
   apt:
