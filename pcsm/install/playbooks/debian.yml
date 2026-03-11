@@ -5,12 +5,18 @@
   become_method: sudo
   tasks:
     - set_fact:
-        # Version of psmdb (e.g. 6.0, 7.0, 8.0)
-        psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') | default('8.0', true) }}"
+        # Mongodb version to use e.g. 8.0.19-7 for Percona, 8.0.19-ubi8 for Mongodb Community
+        MONGODB_VERSION: "{{ lookup('env', 'MONGODB_VERSION') | default('8.0', true) }}"
 
     - set_fact:
         # User to log into each AWS Instance
         ssh_user: "{{ lookup('env', 'SSH_USER') | default('none', true) }}"
+
+    - set_fact:
+        mongodb_community: "{{ lookup('env', 'MONGODB_COMMUNITY') | default('False', true) }}"
+
+    - set_fact:
+        mongodb_image: "{{ 'mongodb/mongodb-community-server' if mongodb_community | bool else 'percona/percona-server-mongodb' }}:{{ MONGODB_VERSION }}"
 
     - name: Create keyrings directory
       file:
@@ -137,7 +143,7 @@
     - name: Create Source PSMDB container
       community.docker.docker_container:
         name: source
-        image: percona/percona-server-mongodb:{{ psmdb_version }}
+        image: "{{ mongodb_image }}"
         state: started
         restart_policy: unless-stopped
         published_ports:
@@ -147,7 +153,7 @@
     - name: Create Destination PSMDB container
       community.docker.docker_container:
         name: destination
-        image: percona/percona-server-mongodb:{{ psmdb_version }}
+        image: "{{ mongodb_image }}"
         state: started
         restart_policy: unless-stopped
         published_ports:
