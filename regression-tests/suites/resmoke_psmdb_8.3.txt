@@ -303,7 +303,7 @@ search_ssl
 secondary_reads_passthrough
  secondary_reads_passthrough_with_replica_set_endpoint
 serial_run
-server_selection_json_test
+server_selection_json_test --installDir /usr/bin/||buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //src/mongo/client/sdam:server_selection_json_test --define=MONGO_VERSION=8.3.0 && cp -RL bazel-bin/src/mongo/client/sdam/server_selection_json_test /usr/bin/
 serverless
 session_jscore_passthrough
 sharded_causally_consistent_jscore_passthrough
