@@ -188,9 +188,9 @@ multi_shard_multi_stmt_txn_jscore_passthrough_rate_limited
 multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough
 multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough
 multi_stmt_txn_jscore_passthrough_with_migration
-multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.2
-multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.2
-multiversion_sanity_check|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.2
+multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.2 && buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions-stripped --define=MONGO_VERSION=8.3.0 && mkdir /opt/lib && cp -RL bazel-bin/install-extensions-stripped/lib/* /opt/lib/
+multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.2 && buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions-stripped --define=MONGO_VERSION=8.3.0 && mkdir /opt/lib && cp -RL bazel-bin/install-extensions-stripped/lib/* /opt/lib/
+multiversion_sanity_check|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.2 && buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions-stripped --define=MONGO_VERSION=8.3.0 && mkdir /opt/lib && cp -RL bazel-bin/install-extensions-stripped/lib/* /opt/lib/
 no_causal_consistency_replica_sets_kill_stepdown_terminate_jscore_passthrough
 no_passthrough|wiredTiger|export TZ=Europe/London
 no_passthrough_execution_control_with_prioritization|wiredTiger|export TZ=Europe/London
