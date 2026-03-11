@@ -169,7 +169,7 @@ integration_tests_sharded
 integration_tests_standalone
 integration_tests_standalone_audit
 integration_tests_standalone_grpc
- json_schema
+json_schema
 knobs
 ldapauthz|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 libfuzzer
