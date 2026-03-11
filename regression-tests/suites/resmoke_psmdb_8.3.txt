@@ -242,7 +242,7 @@ redaction
 replica_sets
 replica_sets_api_version_jscore_passthrough
 replica_sets_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
-replica_sets_configsvr_param_jscore_passthrough
+ replica_sets_configsvr_param_jscore_passthrough
 replica_sets_execution_control_with_prioritization
 replica_sets_fcbis_jscore_passthrough
 replica_sets_initsync_jscore_passthrough --jobs=1
