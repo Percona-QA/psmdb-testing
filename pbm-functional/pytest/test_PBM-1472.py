@@ -13,14 +13,14 @@ def cluster(config):
 @pytest.fixture(scope="function")
 def start_cluster(cluster, request):
     try:
-        cluster.destroy()
+        cluster.destroy(cleanup_backups=True)
         cluster.create()
         cluster.setup_pbm()
         yield True
     finally:
         if request.config.getoption("--verbose"):
             cluster.get_logs()
-        cluster.destroy()
+        cluster.destroy(cleanup_backups=True)
 
 def check_backup_exists(cluster, backup):
     result = cluster.exec_pbm_cli("status -s backups --out json")
