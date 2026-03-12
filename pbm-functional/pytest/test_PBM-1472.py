@@ -40,7 +40,7 @@ def test_bucket_trailing_slash_PBM_315(start_cluster, cluster):
     Test that PBM handles a bucket name with a trailing forward slash.
     """
     result = cluster.exec_pbm_cli("config --set storage.s3.bucket=bcp/ --wait")
-    assert result.rc == 0, f"Failed to set bucket with trailing slash"
+    assert result.rc == 0, "Failed to set bucket with trailing slash"
 
     backup = cluster.make_backup("logical")
     Cluster.log(f"Backup completed: {backup}")
@@ -53,7 +53,7 @@ def test_bucket_preceding_slash_PBM_316(start_cluster, cluster):
     Test that PBM handles a prefix with a preceding forward slash.
     """
     result = cluster.exec_pbm_cli("config --set storage.s3.prefix=/pbme2etest storage.s3.bucket=bcp/ --wait")
-    assert result.rc == 0, f"Failed to set prefix with preceding slash"
+    assert result.rc == 0, "Failed to set prefix with preceding slash"
 
     backup = cluster.make_backup("logical")
     Cluster.log(f"Backup completed: {backup}")
