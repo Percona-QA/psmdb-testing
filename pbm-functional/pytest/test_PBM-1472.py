@@ -48,7 +48,7 @@ def test_bucket_trailing_slash_PBM_315(start_cluster, cluster):
     assert check_backup_exists(cluster, backup), f"Backup {backup} does not exist"
 
 @pytest.mark.timeout(300, func_only=True)
-def test_bucket_preceding_slash_PBM_316(start_cluster, cluster):
+def test_prefix_preceding_slash_PBM_316(start_cluster, cluster):
     """
     Test that PBM handles a prefix with a preceding forward slash.
     """
