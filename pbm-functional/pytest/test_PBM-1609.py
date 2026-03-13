@@ -44,7 +44,7 @@ def insert_documents(connection, stop_event):
 
 
 @pytest.mark.timeout(600, func_only=True)
-def test_pitr_stopped_during_restore_PBM_1609(start_cluster, cluster):
+def test_pitr_stopped_during_restore_PBM_T317(start_cluster, cluster):
     """
     Test that the oplog slicer is stopped and does not create any chunks during the restore phase.
     """
