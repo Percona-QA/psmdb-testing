@@ -6,16 +6,13 @@ import pytest
 
 from cluster import Cluster
 
+@pytest.fixture(scope="function")
+def config(cluster_configs):
+    return cluster_configs
 
-@pytest.fixture(scope="package")
-def config():
-    return {"_id": "rs1", "members": [{"host": "rs101"}, {"host": "rs102"}, {"host": "rs103"}]}
-
-
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="function")
 def cluster(config):
     return Cluster(config)
-
 
 @pytest.fixture(scope="function")
 def start_cluster(cluster, request):
@@ -29,7 +26,6 @@ def start_cluster(cluster, request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-
 def insert_documents(connection, stop_event):
     """Continuously insert documents to keep the oplog busy."""
     client = pymongo.MongoClient(connection)
@@ -42,7 +38,7 @@ def insert_documents(connection, stop_event):
     finally:
         client.close()
 
-
+@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(600, func_only=True)
 def test_pitr_stopped_during_restore_PBM_T317(start_cluster, cluster):
     """
@@ -78,9 +74,6 @@ def test_pitr_stopped_during_restore_PBM_T317(start_cluster, cluster):
     finally:
         stop_event.set()
         insert_documents_thread.join()
-
-    stop_event.set()
-    insert_documents_thread.join(timeout=5)
 
     pbm_logs = cluster.exec_pbm_cli("logs -sD -t0")
     lines = pbm_logs.stdout.splitlines()
