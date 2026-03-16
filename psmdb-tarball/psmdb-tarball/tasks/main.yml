@@ -22,6 +22,7 @@
     - "8.0"
   when:
     - ( repo_branch[0] == "9.0" and item == "8.0" ) or
+      ( repo_branch[0] == "8.3" and item == "8.0" ) or
       ( repo_branch[0] == "8.0" and item == "7.0" ) or
       ( repo_branch[0] == "7.0" and item == "6.0" ) or
       ( repo_branch[0] == "6.0" and item == "5.0" ) or
@@ -139,6 +140,15 @@
     dest: /percona-server-mongodb
     version: "v{{ repo_branch[0] }}"
     single_branch: yes
+  when: repo_branch[0] != "8.3"
+
+- name: Clone PSMDB repo (preview branch for 8.3)
+  git:
+    repo: 'https://github.com/percona/percona-server-mongodb.git'
+    dest: /percona-server-mongodb
+    version: "preview-8.3.0-0"
+    single_branch: yes
+  when: repo_branch[0] == "8.3"
 
 - name: Clone psmdb-testing repo
   git:
@@ -256,9 +266,18 @@
     line: "mongo_version: {{mongodb_ver[0]}}"
     create: yes
 
-- name: Fix test
+- name: Fix test (before 8.3)
   shell: sed -E 's/.+last-continuous.+//g' -i /percona-server-mongodb/jstests/multiVersion/genericSetFCVUsage/do_upgrade_downgrade.js
+  when: repo_branch[0] | float < 8.3
+
+- name: Fix test (8.3+)
+  shell: sed -E 's/, "last-continuous"//g' -i /percona-server-mongodb/jstests/multiVersion/genericSetFCVUsage/upgrade_downgrade_cluster.js
+  when: repo_branch[0] | float >= 8.3
 
 - name: Copy suites
   shell: cp -rp /package-testing/suites/* /percona-server-mongodb/buildscripts/resmokeconfig/suites/
   ignore_errors: true
+
+- name: Fix suite files for 8.3+
+  shell: sed -i 's/do_upgrade_downgrade\.js/upgrade_downgrade_cluster.js/g' /percona-server-mongodb/buildscripts/resmokeconfig/suites/multiversion_vault.yml /percona-server-mongodb/buildscripts/resmokeconfig/suites/multiversion_kmip.yml
+  when: repo_branch[0] | float >= 8.3
