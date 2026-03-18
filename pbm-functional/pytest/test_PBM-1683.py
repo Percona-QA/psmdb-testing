@@ -1,5 +1,4 @@
 import json
-from time import sleep
 
 import boto3
 import pymongo
@@ -26,9 +25,7 @@ def s3_client():
     )
 
 def get_backup_storage_size(backup_name):
-    """
-    Returns the total size in bytes of all objects stored in minio for the given backup name.
-    """
+    """Returns the total size in bytes of all objects stored in minio for the given backup name."""
     s3 = s3_client()
     paginator = s3.get_paginator("list_objects_v2")
     total = sum(
@@ -39,9 +36,7 @@ def get_backup_storage_size(backup_name):
     return total
 
 def get_uncompressed_size_from_filelist(backup_name):
-    """
-    Calculate size_uncompressed by reading filelist.pbm from minio for each RS.
-    """
+    """Calculate size_uncompressed by reading filelist.pbm from minio for each RS."""
     s3 = s3_client()
     paginator = s3.get_paginator("list_objects_v2")
     total = 0
@@ -78,9 +73,7 @@ def start_cluster(cluster, request):
 
 @pytest.mark.timeout(2400, func_only=True)
 def test_compression_size_uncompressed(start_cluster, cluster):
-    """
-    Verify size_uncompressed_h matches size_h if backup.compression=none is set for a non-based incremental backup.
-    """
+    """Verify size_uncompressed_h matches size_h if backup.compression=none is set for a non-based incremental backup."""
     result = cluster.exec_pbm_cli("config --set backup.compression=none --wait")
     assert result.rc == 0, f"Failed to set backup.compression=none: rc={result.rc}, stdout={result.stdout}, stderr={result.stderr}"
 
@@ -98,9 +91,6 @@ def test_compression_size_uncompressed(start_cluster, cluster):
     incr_desc = json.loads(result.stdout)
     Cluster.log(f"Increment backup - size_h: {incr_desc['size_h']}, size_uncompressed_h: {incr_desc['size_uncompressed_h']}")
 
-    print("SLEEPING")
-    sleep(2400)
-
     assert incr_desc["size"] == incr_desc["size_uncompressed"], f"Increment size: ({incr_desc['size_h']}) does not equal size_uncompressed: ({incr_desc['size_uncompressed_h']})."
 
     incr_storage_total = get_backup_storage_size(incr_backup)
@@ -111,9 +101,7 @@ def test_compression_size_uncompressed(start_cluster, cluster):
 
 @pytest.mark.timeout(300, func_only=True)
 def test_incremental_size_uncompressed_with_compression(start_cluster, cluster):
-    """
-    Verify size_uncompressed_h matches uncompressed file size of non based incremental backup.
-    """
+    """Verify size_uncompressed_h matches uncompressed file size of non based incremental backup."""
     cluster.check_pbm_status()
 
     client = pymongo.MongoClient(cluster.connection)
