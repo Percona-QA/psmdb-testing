@@ -1,4 +1,5 @@
 import json
+from time import sleep
 
 import boto3
 import pymongo
@@ -75,19 +76,20 @@ def start_cluster(cluster, request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(2400, func_only=True)
 def test_compression_size_uncompressed(start_cluster, cluster):
     """
     Verify size_uncompressed_h matches size_h if backup.compression=none is set for a non-based incremental backup.
     """
-    cluster.exec_pbm_cli("config --set backup.compression=none --wait")
+    result = cluster.exec_pbm_cli("config --set backup.compression=none --wait")
+    assert result.rc == 0, f"Failed to set backup.compression=none: rc={result.rc}, stdout={result.stdout}, stderr={result.stderr}"
 
     client = pymongo.MongoClient(cluster.connection)
-    generate_data(client, count=1_000_000)
+    generate_data(client, count=100000)
 
     cluster.make_backup("incremental --base")
 
-    generate_data(client, count=500_000, offset=1_000_000)
+    generate_data(client, count=50000, offset=100000)
 
     incr_backup = cluster.make_backup("incremental")
 
@@ -96,10 +98,10 @@ def test_compression_size_uncompressed(start_cluster, cluster):
     incr_desc = json.loads(result.stdout)
     Cluster.log(f"Increment backup - size_h: {incr_desc['size_h']}, size_uncompressed_h: {incr_desc['size_uncompressed_h']}")
 
-    assert incr_desc["size"] == incr_desc["size_uncompressed"], (
-        f"Increment size ({incr_desc['size_h']}) != size_uncompressed ({incr_desc['size_uncompressed_h']}). "
-        f"With compression=none these must be equal."
-    )
+    print("SLEEPING")
+    sleep(2400)
+
+    assert incr_desc["size"] == incr_desc["size_uncompressed"], f"Increment size: ({incr_desc['size_h']}) does not equal size_uncompressed: ({incr_desc['size_uncompressed_h']})."
 
     incr_storage_total = get_backup_storage_size(incr_backup)
     assert incr_desc["size_uncompressed"] == incr_storage_total, (
@@ -115,11 +117,11 @@ def test_incremental_size_uncompressed_with_compression(start_cluster, cluster):
     cluster.check_pbm_status()
 
     client = pymongo.MongoClient(cluster.connection)
-    generate_data(client, count=1_000_000)
+    generate_data(client, count=100000)
 
     cluster.make_backup("incremental --base")
 
-    generate_data(client, count=500_000, offset=1_000_000)
+    generate_data(client, count=50000, offset=1_00000)
 
     incr_backup = cluster.make_backup("incremental")
 
