@@ -118,7 +118,7 @@ def test_incremental_size_uncompressed_with_compression_PBM_T319(start_cluster, 
     incr_desc = json.loads(result.stdout)
     Cluster.log(f"Increment backup - size_h: {incr_desc['size_h']}, size_uncompressed_h: {incr_desc['size_uncompressed_h']}")
 
-    assert incr_desc["size"] == incr_desc[
+    assert incr_desc["size"] != incr_desc[
         "size_uncompressed"], f"Increment size: ({incr_desc['size_h']}) should not equal size_uncompressed: ({incr_desc['size_uncompressed_h']})."
 
     filelist_uncompressed = get_uncompressed_size_from_filelist(incr_backup)
