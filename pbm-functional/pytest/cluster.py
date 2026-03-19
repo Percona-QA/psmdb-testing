@@ -495,7 +495,7 @@ class Cluster:
         Cluster.log("Restore started")
         timeout=kwargs.get('timeout', 240)
         result = n.run('SSL_CERT_FILE=/etc/nginx-minio/ca.crt timeout ' + str(timeout) +
-            ' pbm restore ' + name + ' ' + ' '.join(restore_opts) + ' --wait')
+            ' pbm restore ' + name + ' -y ' + ' '.join(restore_opts) + ' --wait')
         if "--fallback-enabled=true" in restore_opts and result.rc == 1 and "fallback is applied" in result.stderr.lower():
             # if fallback is enabled and restore fails, PBM should revert the cluster
             # to the state before restore, so just continue execution without raising error
