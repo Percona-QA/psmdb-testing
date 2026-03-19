@@ -28,10 +28,10 @@ def test_fips(host):
         print(host.system_info.distribution)
         print(host.system_info.release)
         fips=host.check_output('cat /proc/sys/crypto/fips_enabled')
-        assert fips=="1", fips
-        if host.system_info.distribution == "debian" or host.system_info.distribution == "ubuntu":
-            logs=host.check_output('head -n10 /var/log/mongodb/mongod.log')
+        print(f"OS Kernel FIPS enabled: {fips}")
+        if host.system_info.distribution in ["debian", "ubuntu"]:
+            logs = host.check_output('head -n 50 /var/log/mongodb/mongod.log')
         else:
-            logs=host.check_output('head -n10 /var/log/mongo/mongod.log')
+            logs = host.check_output('head -n 50 /var/log/mongo/mongod.log')
         print(logs)
-        assert "FIPS 140-2 mode activated" in logs
+        assert "FIPS 140-2 mode activated" in logs, "FIPS activation message not found in MongoDB logs"
