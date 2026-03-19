@@ -205,8 +205,8 @@ RUN cp -r /usr/bin/x509 /opt/percona-server-mongodb || true && \
     cp /usr/bin/dbtest . || true && \
     support-files/ldap-sasl/deploy_ldap_and_sasl.sh || true && \
     echo "START=yes" >> /etc/default/saslauthd || true && \
-    python -m pipx install db-contrib-tool && \
-    db-contrib-tool setup-mongot-repro-env --installDir /usr/bin
+    python -m pipx install db-contrib-tool || true && \
+    db-contrib-tool setup-mongot-repro-env --installDir /usr/bin || true
 ENV PYTHONPATH="/opt/percona-server-mongodb:/opt/percona-server-mongodb/src"
 ENV TZ=America/New_York
 ENV PORTABLE=1
