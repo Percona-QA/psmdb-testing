@@ -94,7 +94,7 @@ def test_logical_PBM_T307(start_cluster, cluster):
     log = re.compile(r'\[rscfg/rscfg01:27017\][^\n]*dump collection "test\.data2" done')
 
     while backup_thread.is_alive() and not log_found:
-        result = cluster.exec_pbm_cli("logs --tail=2000")
+        result = cluster.exec_pbm_cli("logs --tail=10000")
         out = result.stdout
 
         if log.search(out):
@@ -109,7 +109,15 @@ def test_logical_PBM_T307(start_cluster, cluster):
     backup_thread.join()
     assert log_found, f"Targeted log {target_log_pattern} not found"
     backup_name = backup_result["backup_full"]
+
+    pre_restore_count = client["test"]["data2"].count_documents({})
+    Cluster.log(f"Pre-restore document count in test.data2: {pre_restore_count} (expected 1002)")
+
+    result = cluster.exec_pbm_cli(f"describe-backup {backup_name} --out=json")
+    Cluster.log(f"Backup description: {result.stdout}")
+
     cluster.make_restore(backup_name, restore_opts=["--ns=test.data2"], restart_cluster=False, check_pbm_status=True)
 
     document_count = client["test"]["data2"].count_documents({})
+    Cluster.log(f"Post-restore document count in test.data2: {document_count} (expected 1002)")
     assert document_count == 1002, f"Expected {1000 + len(documents_post_snapshot)} documents, got {document_count} instead"
