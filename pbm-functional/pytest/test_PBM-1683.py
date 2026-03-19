@@ -1,4 +1,5 @@
 import json
+from time import sleep
 
 import boto3
 import pymongo
@@ -71,7 +72,7 @@ def start_cluster(cluster, request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.timeout(2400, func_only=True)
+@pytest.mark.timeout(300, func_only=True)
 def test_compression_size_uncompressed_PBM_T318(start_cluster, cluster):
     """Verify size_uncompressed_h matches size_h if backup.compression=none is set for a non-based incremental backup."""
     result = cluster.exec_pbm_cli("config --set backup.compression=none --wait")
@@ -91,7 +92,7 @@ def test_compression_size_uncompressed_PBM_T318(start_cluster, cluster):
     incr_desc = json.loads(result.stdout)
     Cluster.log(f"Increment backup - size_h: {incr_desc['size_h']}, size_uncompressed_h: {incr_desc['size_uncompressed_h']}")
 
-    assert incr_desc["size"] == incr_desc["size_uncompressed"], f"Increment size: ({incr_desc['size_h']}) does not equal size_uncompressed: ({incr_desc['size_uncompressed_h']})."
+    assert incr_desc["size"] == incr_desc["size_uncompressed"], f"Increment size: ({incr_desc['size_h']}) should equal size_uncompressed: ({incr_desc['size_uncompressed_h']})."
 
     incr_storage_total = get_backup_storage_size(incr_backup)
     assert incr_desc["size_uncompressed"] == incr_storage_total, (
@@ -117,6 +118,9 @@ def test_incremental_size_uncompressed_with_compression_PBM_T319(start_cluster, 
     assert result.rc == 0, f"describe-backup failed: {result.stderr}"
     incr_desc = json.loads(result.stdout)
     Cluster.log(f"Increment backup - size_h: {incr_desc['size_h']}, size_uncompressed_h: {incr_desc['size_uncompressed_h']}")
+
+    assert incr_desc["size"] == incr_desc[
+        "size_uncompressed"], f"Increment size: ({incr_desc['size_h']}) should not equal size_uncompressed: ({incr_desc['size_uncompressed_h']})."
 
     filelist_uncompressed = get_uncompressed_size_from_filelist(incr_backup)
     assert incr_desc["size_uncompressed"] == filelist_uncompressed, (
