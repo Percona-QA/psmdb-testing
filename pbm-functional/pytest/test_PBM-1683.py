@@ -109,7 +109,7 @@ def test_incremental_size_uncompressed_with_compression_PBM_T319(start_cluster, 
 
     cluster.make_backup("incremental --base")
 
-    generate_data(client, count=50000, offset=1_00000)
+    generate_data(client, count=50000, offset=100000)
 
     incr_backup = cluster.make_backup("incremental")
 
