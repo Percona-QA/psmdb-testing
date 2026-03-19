@@ -1,4 +1,5 @@
 import json
+import time
 
 import boto3
 import pymongo
@@ -85,18 +86,33 @@ def test_compression_size_uncompressed_PBM_T318(start_cluster, cluster):
     generate_data(client, count=50000, offset=100000)
 
     incr_backup = cluster.make_backup("incremental")
+    phys_backup = cluster.make_backup("physical")
 
     result = cluster.exec_pbm_cli(f"describe-backup {incr_backup} --out=json")
     assert result.rc == 0, f"describe-backup failed: {result.stderr}"
     incr_desc = json.loads(result.stdout)
     Cluster.log(f"Increment backup - size_h: {incr_desc['size_h']}, size_uncompressed_h: {incr_desc['size_uncompressed_h']}")
 
+    result = cluster.exec_pbm_cli(f"describe-backup {phys_backup} --out=json")
+    assert result.rc == 0, f"describe-backup failed: {result.stderr}"
+    phys_desc = json.loads(result.stdout)
+    Cluster.log(
+        f"Physical backup - size_h: {phys_desc['size_h']}, size_uncompressed_h: {phys_desc['size_uncompressed_h']}")
+
     assert incr_desc["size"] == incr_desc["size_uncompressed"], f"Increment size: ({incr_desc['size_h']}) should equal size_uncompressed: ({incr_desc['size_uncompressed_h']})."
+
+    assert phys_desc["size"] == phys_desc["size_uncompressed"], f"Increment size: ({phys_desc['size_h']}) should equal size_uncompressed: ({phys_desc['size_uncompressed_h']})."
 
     incr_storage_total = get_backup_storage_size(incr_backup)
     assert incr_desc["size_uncompressed"] == incr_storage_total, (
         f"Increment size_uncompressed ({incr_desc['size_uncompressed_h']}) does not match "
         f"actual uncompressed storage total ({incr_storage_total} bytes). "
+    )
+
+    phys_storage_total = get_backup_storage_size(phys_backup)
+    assert phys_desc["size_uncompressed"] == phys_storage_total, (
+        f"Physical size_uncompressed ({phys_desc['size_uncompressed_h']}) does not match "
+        f"actual uncompressed storage total ({phys_storage_total} bytes). "
     )
 
 @pytest.mark.timeout(300, func_only=True)
@@ -112,17 +128,32 @@ def test_incremental_size_uncompressed_with_compression_PBM_T319(start_cluster, 
     generate_data(client, count=50000, offset=100000)
 
     incr_backup = cluster.make_backup("incremental")
+    phys_backup = cluster.make_backup("physical")
 
     result = cluster.exec_pbm_cli(f"describe-backup {incr_backup} --out=json")
     assert result.rc == 0, f"describe-backup failed: {result.stderr}"
     incr_desc = json.loads(result.stdout)
     Cluster.log(f"Increment backup - size_h: {incr_desc['size_h']}, size_uncompressed_h: {incr_desc['size_uncompressed_h']}")
 
+    result = cluster.exec_pbm_cli(f"describe-backup {phys_backup} --out=json")
+    assert result.rc == 0, f"describe-backup failed: {result.stderr}"
+    phys_desc = json.loads(result.stdout)
+    Cluster.log(f"Physical backup - size_h: {phys_desc['size_h']}, size_uncompressed_h: {phys_desc['size_uncompressed_h']}")
+
     assert incr_desc["size"] != incr_desc[
         "size_uncompressed"], f"Increment size: ({incr_desc['size_h']}) should not equal size_uncompressed: ({incr_desc['size_uncompressed_h']})."
 
-    filelist_uncompressed = get_uncompressed_size_from_filelist(incr_backup)
-    assert incr_desc["size_uncompressed"] == filelist_uncompressed, (
+    assert phys_desc["size"] != phys_desc[
+        "size_uncompressed"], f"Physical size: ({phys_desc['size_h']}) should not equal size_uncompressed: ({phys_desc['size_uncompressed_h']})."
+
+    incr_filelist_uncompressed = get_uncompressed_size_from_filelist(incr_backup)
+    assert incr_desc["size_uncompressed"] == incr_filelist_uncompressed, (
         f"Increment size_uncompressed ({incr_desc['size_uncompressed_h']}) does not match "
-        f"uncompressed size derived from filelist.pbm ({filelist_uncompressed} bytes)."
+        f"uncompressed size derived from filelist.pbm ({incr_filelist_uncompressed} bytes)."
+    )
+
+    phys_filelist_uncompressed = get_uncompressed_size_from_filelist(phys_backup)
+    assert phys_desc["size_uncompressed"] == phys_filelist_uncompressed, (
+        f"Physical size_uncompressed ({phys_desc['size_uncompressed_h']}) does not match "
+        f"uncompressed size derived from filelist.pbm ({phys_filelist_uncompressed} bytes)."
     )
