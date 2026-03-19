@@ -494,8 +494,9 @@ class Cluster:
             time.sleep(1)
         Cluster.log("Restore started")
         timeout=kwargs.get('timeout', 240)
+        confirm_flag = '-y ' if kwargs.get('confirm', True) else ''
         result = n.run('SSL_CERT_FILE=/etc/nginx-minio/ca.crt timeout ' + str(timeout) +
-            ' pbm restore ' + name + ' ' + ' '.join(restore_opts) + ' --wait')
+            ' pbm restore ' + name + ' ' + confirm_flag + ' '.join(restore_opts) + ' --wait')
         if "--fallback-enabled=true" in restore_opts and result.rc == 1 and "fallback is applied" in result.stderr.lower():
             # if fallback is enabled and restore fails, PBM should revert the cluster
             # to the state before restore, so just continue execution without raising error
@@ -985,7 +986,7 @@ class Cluster:
         result = n.check_output("pbm backup-finish " + name)
         Cluster.log("External backup finished: " + result)
 
-    def external_restore_start(self, exit=False):
+    def external_restore_start(self, exit=False, confirm=True):
         timeout = time.time() + 60
         while True:
             if not self.get_status()['running']:
@@ -1005,10 +1006,11 @@ class Cluster:
             self.stop_mongos()
         self.stop_arbiters()
         n = testinfra.get_host("docker://" + self.pbm_cli)
+        confirm_flag = "-y " if confirm else ""
         if exit:
-            result = n.check_output("pbm restore --external --exit")
+            result = n.check_output("pbm restore " + confirm_flag + "--external --exit")
         else:
-            result = n.check_output("pbm restore --external")
+            result = n.check_output("pbm restore " + confirm_flag + "--external")
         Cluster.log(result)
         restore=result.split()[2]
         Cluster.log("Restore name: " + restore)
