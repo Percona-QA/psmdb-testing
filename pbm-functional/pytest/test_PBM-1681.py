@@ -49,7 +49,7 @@ def start_cluster(cluster, request):
 
         client = pymongo.MongoClient(cluster.connection)
         cluster.exec_pbm_cli("config --set compression=none")
-        Cluster.log(client.admin.command({"transitionFromDedicatedConfigServer": 1}))
+        client.admin.command({"transitionFromDedicatedConfigServer": 1})
         client.admin.command("enableSharding", "test")
         client.admin.command("shardCollection", "test.data2", key={"x": 1})
         client.admin.command("split", "test.data2", middle={"x": 0})
@@ -67,7 +67,7 @@ def test_logical_PBM_T307(start_cluster, cluster):
 
     Test checks that when documents are added during the oplog slicing phase, they are included in the backup.
     Steps:
-        1: Add 100k documents to the test.data collection and 1k into the test.data2 collection.
+        1: Add 500k documents to the test.data collection and 1k into the test.data2 collection.
         2: Logical backup occurs
         3: Searching for log 'dump collection "test.data2" done'. When it is found 2 more documents are added.
         4: A restore is performed with the new backup.
@@ -76,7 +76,7 @@ def test_logical_PBM_T307(start_cluster, cluster):
     cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
 
-    client["test"]["data"].insert_many([{"x": (i + 1), "pad": "x" * 2000} for i in range(100000)])
+    client["test"]["data"].insert_many([{"x": (i + 1), "pad": "x" * 2000} for i in range(500000)])
     client["test"]["data2"].insert_many([{"x": (i + 1), "pad": "x" * 2000} for i in range(1000)])
 
     backup_result = {"backup_full": None}
@@ -87,7 +87,6 @@ def test_logical_PBM_T307(start_cluster, cluster):
     backup_thread = threading.Thread(target=run_backup)
     backup_thread.start()
 
-    target_log_pattern = 'dump collection "test.data2" done'
     max_wait_time = 300
     start_time = time.time()
     log_found = False
@@ -98,7 +97,6 @@ def test_logical_PBM_T307(start_cluster, cluster):
         out = result.stdout
 
         if log.search(out):
-            print("DOCUMENTS ADDED")
             client["test"]["data2"].insert_many(documents_post_snapshot)
             log_found = True
 
@@ -107,7 +105,7 @@ def test_logical_PBM_T307(start_cluster, cluster):
             break
 
     backup_thread.join()
-    assert log_found, f"Targeted log {target_log_pattern} not found"
+    assert log_found, 'Targeted log \'dump collection "test.data2" done\' not found'
     backup_name = backup_result["backup_full"]
     cluster.make_restore(backup_name, restore_opts=["--ns=test.data2"], restart_cluster=False, check_pbm_status=True)
 
