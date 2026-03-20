@@ -73,7 +73,7 @@ def start_cluster(cluster, request):
 
 @pytest.mark.timeout(300, func_only=True)
 def test_compression_size_uncompressed_PBM_T318(start_cluster, cluster):
-    """Verify size_uncompressed_h matches size_h if backup.compression=none is set for a non-based incremental backup."""
+    """Verify size_uncompressed_h matches size_h if backup.compression=none match in describe-backup"""
     result = cluster.exec_pbm_cli("config --set backup.compression=none --wait")
     assert result.rc == 0, f"Failed to set backup.compression=none: rc={result.rc}, stdout={result.stdout}, stderr={result.stderr}"
 
@@ -129,7 +129,7 @@ def test_compression_size_uncompressed_PBM_T318(start_cluster, cluster):
 
 @pytest.mark.timeout(300, func_only=True)
 def test_incremental_size_uncompressed_with_compression_PBM_T319(start_cluster, cluster):
-    """Verify size_uncompressed_h matches uncompressed file size of non based incremental backup."""
+    """Verify size_uncompressed_h matches uncompressed file size in describe-backup"""
     cluster.check_pbm_status()
 
     client = pymongo.MongoClient(cluster.connection)
