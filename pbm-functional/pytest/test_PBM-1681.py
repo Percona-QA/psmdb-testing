@@ -76,7 +76,7 @@ def test_logical_PBM_T307(start_cluster, cluster):
     cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
 
-    client["test"]["data"].insert_many([{"x": (i + 1), "pad": "x" * 2000} for i in range(100000)])
+    client["test"]["data"].insert_many([{"x": (i + 1), "pad": "x" * 2000} for i in range(500000)])
     client["test"]["data2"].insert_many([{"x": (i + 1), "pad": "x" * 2000} for i in range(1000)])
 
     backup_result = {"backup_full": None}
