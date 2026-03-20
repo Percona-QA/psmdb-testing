@@ -49,7 +49,7 @@ def start_cluster(cluster, request):
 
         client = pymongo.MongoClient(cluster.connection)
         cluster.exec_pbm_cli("config --set compression=none")
-        Cluster.log(client.admin.command({"transitionFromDedicatedConfigServer": 1}))
+        client.admin.command({"transitionFromDedicatedConfigServer": 1})
         client.admin.command("enableSharding", "test")
         client.admin.command("shardCollection", "test.data2", key={"x": 1})
         client.admin.command("split", "test.data2", middle={"x": 0})
@@ -67,7 +67,7 @@ def test_logical_PBM_T307(start_cluster, cluster):
 
     Test checks that when documents are added during the oplog slicing phase, they are included in the backup.
     Steps:
-        1: Add 100k documents to the test.data collection and 1k into the test.data2 collection.
+        1: Add 500k documents to the test.data collection and 1k into the test.data2 collection.
         2: Logical backup occurs
         3: Searching for log 'dump collection "test.data2" done'. When it is found 2 more documents are added.
         4: A restore is performed with the new backup.
@@ -87,18 +87,16 @@ def test_logical_PBM_T307(start_cluster, cluster):
     backup_thread = threading.Thread(target=run_backup)
     backup_thread.start()
 
-    target_log_pattern = 'dump collection "test.data2" done'
     max_wait_time = 300
     start_time = time.time()
     log_found = False
     log = re.compile(r'\[rscfg/rscfg01:27017\][^\n]*dump collection "test\.data2" done')
 
     while backup_thread.is_alive() and not log_found:
-        result = cluster.exec_pbm_cli("logs --tail=10000")
+        result = cluster.exec_pbm_cli("logs --tail=2000")
         out = result.stdout
 
         if log.search(out):
-            print("DOCUMENTS ADDED")
             client["test"]["data2"].insert_many(documents_post_snapshot)
             log_found = True
 
@@ -107,17 +105,9 @@ def test_logical_PBM_T307(start_cluster, cluster):
             break
 
     backup_thread.join()
-    assert log_found, f"Targeted log {target_log_pattern} not found"
+    assert log_found, 'Targeted log \'dump collection "test.data2" done\' not found'
     backup_name = backup_result["backup_full"]
-
-    pre_restore_count = client["test"]["data2"].count_documents({})
-    Cluster.log(f"Pre-restore document count in test.data2: {pre_restore_count} (expected 1002)")
-
-    result = cluster.exec_pbm_cli(f"describe-backup {backup_name} --out=json")
-    Cluster.log(f"Backup description: {result.stdout}")
-
     cluster.make_restore(backup_name, restore_opts=["--ns=test.data2"], restart_cluster=False, check_pbm_status=True)
 
     document_count = client["test"]["data2"].count_documents({})
-    Cluster.log(f"Post-restore document count in test.data2: {document_count} (expected 1002)")
     assert document_count == 1002, f"Expected {1000 + len(documents_post_snapshot)} documents, got {document_count} instead"
