@@ -1,9 +1,13 @@
+import re
+
 import pytest
 
 from data_generator import create_all_types_db, stop_all_crud_operations
 from data_integrity_check import compare_data
 
-def assert_metrics(metrics):
+METRIC_PREFIX = "percona_clustersync_mongodb_"
+
+def assert_metrics(metrics, check_worker_metrics=False):
     assert isinstance(metrics, dict)
     expected_metrics_with_checks = {
         'go_gc_duration_seconds{quantile="0"}': lambda v: 0 <= v <= 0.02,
@@ -40,25 +44,26 @@ def assert_metrics(metrics):
         'go_memstats_stack_inuse_bytes': lambda v: 0 <= v <= 10_000_000,
         'go_memstats_stack_sys_bytes': lambda v: 0 <= v <= 10_000_000,
         'go_memstats_sys_bytes': lambda v: 0 <= v <= 2**34,
-        'percona_clustersync_mongodb_copy_insert_batch_duration_seconds': lambda v: 0 <= v <= 1,
-        'percona_clustersync_mongodb_copy_insert_document_total': lambda v: 0 <= v <= 100_000,
-        'percona_clustersync_mongodb_copy_insert_size_bytes_total': lambda v: 0 <= v <= 2**30,
-        'percona_clustersync_mongodb_copy_read_batch_duration_seconds': lambda v: 0 <= v <= 1,
-        'percona_clustersync_mongodb_copy_read_document_total': lambda v: 0 <= v <= 100_000,
-        'percona_clustersync_mongodb_copy_read_size_bytes_total': lambda v: 0 <= v <= 2**30,
-        'percona_clustersync_mongodb_estimated_total_size_bytes': lambda v: 0 <= v <= 2**30,
-        'percona_clustersync_mongodb_events_applied_total': lambda v: 0 <= v <= 50_000,
-        'percona_clustersync_mongodb_initial_sync_lag_time_seconds': lambda v: v >= 0 and v <= 600,
-        'percona_clustersync_mongodb_lag_time_seconds': lambda v: v >= 0 and v <= 600,
-        'percona_clustersync_mongodb_process_cpu_seconds_total': lambda v: 0 <= v <= 600,
-        'percona_clustersync_mongodb_process_max_fds': lambda v: 0 < v <= 2**31,
-        'percona_clustersync_mongodb_process_network_receive_bytes_total': lambda v: 0 <= v <= 2**30,
-        'percona_clustersync_mongodb_process_network_transmit_bytes_total': lambda v: 0 <= v <= 2**30,
-        'percona_clustersync_mongodb_process_open_fds': lambda v: 1 <= v <= 100,
-        'percona_clustersync_mongodb_process_resident_memory_bytes': lambda v: 0 < v <= 2*2**30,
-        'percona_clustersync_mongodb_process_start_time_seconds': lambda v: 1_700_000_000 <= v <= 2_000_000_000,
-        'percona_clustersync_mongodb_process_virtual_memory_bytes': lambda v: 0 < v <= 10*2**30,
-        'percona_clustersync_mongodb_process_virtual_memory_max_bytes': lambda v: 0 < v <= 2**64,
+        f'{METRIC_PREFIX}copy_insert_batch_duration_seconds': lambda v: 0 <= v <= 1,
+        f'{METRIC_PREFIX}copy_insert_document_total': lambda v: 0 <= v <= 100_000,
+        f'{METRIC_PREFIX}copy_insert_size_bytes_total': lambda v: 0 <= v <= 2**30,
+        f'{METRIC_PREFIX}copy_read_batch_duration_seconds': lambda v: 0 <= v <= 1,
+        f'{METRIC_PREFIX}copy_read_document_total': lambda v: 0 <= v <= 100_000,
+        f'{METRIC_PREFIX}copy_read_size_bytes_total': lambda v: 0 <= v <= 2**30,
+        f'{METRIC_PREFIX}estimated_total_size_bytes': lambda v: 0 <= v <= 2**30,
+        f'{METRIC_PREFIX}events_applied_total': lambda v: 0 <= v <= 50_000,
+        f'{METRIC_PREFIX}initial_sync_lag_time_seconds': lambda v: v >= 0 and v <= 600,
+        f'{METRIC_PREFIX}lag_time_seconds': lambda v: v >= 0 and v <= 600,
+        f'{METRIC_PREFIX}process_cpu_seconds_total': lambda v: 0 <= v <= 600,
+        f'{METRIC_PREFIX}process_max_fds': lambda v: 0 < v <= 2**31,
+        f'{METRIC_PREFIX}process_network_receive_bytes_total': lambda v: 0 <= v <= 2**30,
+        f'{METRIC_PREFIX}process_network_transmit_bytes_total': lambda v: 0 <= v <= 2**30,
+        f'{METRIC_PREFIX}process_open_fds': lambda v: 1 <= v <= 100,
+        f'{METRIC_PREFIX}process_resident_memory_bytes': lambda v: 0 < v <= 2*2**30,
+        f'{METRIC_PREFIX}process_start_time_seconds': lambda v: 1_700_000_000 <= v <= 2_000_000_000,
+        f'{METRIC_PREFIX}process_virtual_memory_bytes': lambda v: 0 < v <= 10*2**30,
+        f'{METRIC_PREFIX}process_virtual_memory_max_bytes': lambda v: 0 < v <= 2**64,
+        f'{METRIC_PREFIX}repl_event_queue_size': lambda v: 0 <= v <= 50_000,
     }
     missing = [key for key in expected_metrics_with_checks if key not in metrics]
     assert not missing, f"Missing expected metrics: {missing}"
@@ -71,6 +76,25 @@ def assert_metrics(metrics):
         except Exception:
             invalid.append((key, value))
     assert not invalid, f"Invalid metric values: {invalid}"
+    if check_worker_metrics:
+        per_worker_families = [
+            "repl_worker_event_queue_size",
+            "repl_worker_events_applied_total",
+            "repl_worker_bulk_queue_size"]
+        for family in per_worker_families:
+            pattern = re.compile(rf'^{re.escape(METRIC_PREFIX)}{family}\{{worker="(\d+)"\}}$')
+            matched = [k for k in metrics if pattern.match(k)]
+            assert matched, \
+                f"No per-worker metrics found for {family}. Available: {[k for k in metrics if 'repl_worker' in k]}"
+            for k in matched:
+                assert metrics[k] >= 0, f"{k} has negative value: {metrics[k]}"
+        histogram_families = [
+            "repl_worker_flush_batch_size",
+            "repl_worker_flush_duration_seconds"]
+        for family in histogram_families:
+            prefix = f"{METRIC_PREFIX}{family}"
+            assert any(k.startswith(prefix) for k in metrics), \
+                f"No metrics with prefix {prefix}. Available: {[k for k in metrics if 'repl_worker' in k]}"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(600,func_only=True)
@@ -106,7 +130,7 @@ def test_csync_PML_T44(start_cluster, src_cluster, dst_cluster, csync):
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
     metrics = csync.metrics()
     assert metrics["success"], f"Failed to fetch metrics after start: {metrics.get('error')}"
-    assert_metrics(metrics["data"])
+    assert_metrics(metrics["data"], check_worker_metrics=True)
     assert csync.finalize(), "Failed to finalize csync service"
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"

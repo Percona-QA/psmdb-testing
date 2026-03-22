@@ -8,7 +8,7 @@ from clustersync import Clustersync
 from conftest import get_cluster_config
 from data_generator import create_all_types_db
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def src_cluster():
     """Create src cluster once per function"""
     config = get_cluster_config("replicaset")
@@ -17,7 +17,7 @@ def src_cluster():
     yield cluster
     cluster.destroy()
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def dst_cluster():
     """Create dst cluster once per function"""
     config = get_cluster_config("replicaset")
@@ -32,6 +32,7 @@ def csync(src_cluster, dst_cluster, request, csync_env):
     # Extract log level marker
     log_marker = request.node.get_closest_marker("csync_log_level")
     log_level = log_marker.args[0] if log_marker and log_marker.args else "debug"
+    cleanup_test_databases(dst_cluster.connection)
 
     # Create csync instance with env vars from csync_env fixture
     csync = Clustersync('csync',
@@ -375,3 +376,230 @@ def test_pcsm_use_collection_bulk_write_env_var_PML_T78(start_cluster, src_clust
     assert csync.wait_for_repl_stage(), "Failed to start replication stage"
     assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
     assert expected_log in csync.logs(tail=None), f"Expected '{expected_log}' does not appear in logs"
+
+@pytest.mark.timeout(300, func_only=True)
+def test_repl_num_workers_PML_T82(csync, src_cluster, dst_cluster):
+    """
+    Test PCSM --repl-num-workers CLI flag and replNumWorkers HTTP API parameter.
+    Validates input parsing, log output, and successful replication with non-default worker counts.
+    """
+    test_cases = [
+        (["--repl-num-workers=2.5"], False, 'invalid syntax', "", "cli"),
+        (["--repl-num-workers=2"], True, '"ok": true', "Worker pool started", "cli"),
+        ({"replNumWorkers": 4}, True, '"ok":true', "Worker pool started", "http")]
+    failures = []
+    create_test_collection(src_cluster.connection)
+    for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
+        try:
+            result = csync.start(mode=mode, raw_args=raw_args)
+            assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
+            assert check_command_output(expected_cmd_return, csync), \
+                f"Expected command output '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            if should_pass:
+                assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+                assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
+            if expected_log and should_pass:
+                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+        except AssertionError as e:
+            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+        finally:
+            cleanup_test_databases(dst_cluster.connection)
+            csync.create()
+    if failures:
+        pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
+
+@pytest.mark.parametrize("csync_env", [{"PCSM_REPL_NUM_WORKERS": "2"}], indirect=True)
+@pytest.mark.timeout(300, func_only=True)
+def test_pcsm_repl_num_workers_env_var_PML_T83(csync, src_cluster, dst_cluster, csync_env):
+    """
+    Test the PCSM_REPL_NUM_WORKERS environment variable.
+    Verify that setting worker count via env var results in successful replication
+    and the worker pool log message reflects the configured count.
+    """
+    create_test_collection(src_cluster.connection)
+    assert csync.start()
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+    assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
+    logs = csync.logs(tail=3000)
+    assert 'Worker pool started' in logs, "Expected worker pool log message not found"
+
+@pytest.mark.timeout(300, func_only=True)
+def test_repl_change_stream_batch_size_PML_T84(csync, src_cluster, dst_cluster):
+    """
+    Test PCSM --repl-change-stream-batch-size CLI flag and replChangeStreamBatchSize HTTP API parameter.
+    """
+    test_cases = [
+        (["--repl-change-stream-batch-size=true"], False, 'invalid syntax', "", "cli"),
+        (["--repl-change-stream-batch-size=20000"], True, '"ok": true', "", "cli"),
+        ({"replChangeStreamBatchSize": 1000}, True, '"ok":true', "", "http")]
+    failures = []
+    create_test_collection(src_cluster.connection)
+    for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
+        try:
+            result = csync.start(mode=mode, raw_args=raw_args)
+            assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
+            assert check_command_output(expected_cmd_return, csync), \
+                f"Expected command output '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            if should_pass:
+                assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+                assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
+            if expected_log and should_pass:
+                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+        except AssertionError as e:
+            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+        finally:
+            cleanup_test_databases(dst_cluster.connection)
+            csync.create()
+    if failures:
+        pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
+
+@pytest.mark.timeout(300, func_only=True)
+def test_repl_event_queue_size_PML_T85(csync, src_cluster, dst_cluster):
+    """
+    Test PCSM --repl-event-queue-size CLI flag and replEventQueueSize HTTP API parameter.
+    """
+    test_cases = [
+        (["--repl-event-queue-size=0.5"], False, 'invalid syntax', "", "cli"),
+        (["--repl-event-queue-size=100"], True, '"ok": true', "", "cli"),
+        ({"replEventQueueSize": 2000}, True, '"ok":true', "", "http")]
+    failures = []
+    create_test_collection(src_cluster.connection)
+    for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
+        try:
+            result = csync.start(mode=mode, raw_args=raw_args)
+            assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
+            assert check_command_output(expected_cmd_return, csync), \
+                f"Expected command output '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            if should_pass:
+                assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+                assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
+            if expected_log and should_pass:
+                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+        except AssertionError as e:
+            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+        finally:
+            cleanup_test_databases(dst_cluster.connection)
+            csync.create()
+    if failures:
+        pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
+
+@pytest.mark.timeout(300, func_only=True)
+def test_repl_worker_queue_size_PML_T86(csync, src_cluster, dst_cluster):
+    """
+    Test PCSM --repl-worker-queue-size CLI flag and replWorkerQueueSize HTTP API parameter.
+    """
+    test_cases = [
+        (["--repl-worker-queue-size=true"], False,'invalid syntax', "", "cli"),
+        (["--repl-worker-queue-size=100"], True, '"ok": true', "", "cli"),
+        ({"replWorkerQueueSize": 2000}, True, '"ok":true', "", "http")]
+    failures = []
+    create_test_collection(src_cluster.connection)
+    for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
+        try:
+            result = csync.start(mode=mode, raw_args=raw_args)
+            assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
+            assert check_command_output(expected_cmd_return, csync), \
+                f"Expected command output '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            if should_pass:
+                assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+                assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
+            if expected_log and should_pass:
+                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+        except AssertionError as e:
+            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+        finally:
+            cleanup_test_databases(dst_cluster.connection)
+            csync.create()
+    if failures:
+        pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
+
+@pytest.mark.timeout(300, func_only=True)
+def test_repl_bulk_ops_size_PML_T87(csync, src_cluster, dst_cluster):
+    """
+    Test PCSM --repl-bulk-ops-size CLI flag and replBulkOpsSize HTTP API parameter.
+    """
+    test_cases = [
+        (["--repl-bulk-ops-size=true"], False, 'invalid syntax', "", "cli"),
+        (["--repl-bulk-ops-size=10000"], True, '"ok": true', "", "cli"),
+        ({"replBulkOpsSize": 500}, True, '"ok":true', "", "http")]
+    failures = []
+    create_test_collection(src_cluster.connection)
+    for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
+        try:
+            result = csync.start(mode=mode, raw_args=raw_args)
+            assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
+            assert check_command_output(expected_cmd_return, csync), \
+                f"Expected command output '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            if should_pass:
+                assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+                assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
+            if expected_log and should_pass:
+                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+        except AssertionError as e:
+            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+        finally:
+            cleanup_test_databases(dst_cluster.connection)
+            csync.create()
+    if failures:
+        pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
+
+@pytest.mark.timeout(300, func_only=True)
+def test_repl_worker_flush_interval_PML_T88(csync, src_cluster, dst_cluster):
+    """
+    Test PCSM --repl-worker-flush-interval CLI flag and replWorkerFlushInterval HTTP API parameter
+    Note: this flag uses string type (duration), not int.
+    """
+    test_cases = [
+        (["--repl-worker-flush-interval=45"], False, 'missing unit in duration', "", "cli"),
+        (["--repl-worker-flush-interval=500ms"], True, '"ok": true', "", "cli"),
+        ({"replWorkerFlushInterval": "1s"}, True, '"ok":true', "", "http")]
+    failures = []
+    create_test_collection(src_cluster.connection)
+    for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
+        try:
+            result = csync.start(mode=mode, raw_args=raw_args)
+            assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
+            assert check_command_output(expected_cmd_return, csync), \
+                f"Expected command output '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            if should_pass:
+                assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+                assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
+            if expected_log and should_pass:
+                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+        except AssertionError as e:
+            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+        finally:
+            cleanup_test_databases(dst_cluster.connection)
+            csync.create()
+    if failures:
+        pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
+
+@pytest.mark.timeout(300, func_only=True)
+def test_repl_worker_bulk_queue_size_PML_T89(csync, src_cluster, dst_cluster):
+    """
+    Test PCSM --repl-worker-bulk-queue-size CLI flag and replWorkerBulkQueueSize HTTP API parameter
+    """
+    test_cases = [
+        (["--repl-worker-bulk-queue-size=true"], False, 'invalid syntax', "", "cli"),
+        (["--repl-worker-bulk-queue-size=1"], True, '"ok": true', "", "cli"),
+        ({"replWorkerBulkQueueSize": 2}, True, '"ok":true', "", "http")]
+    failures = []
+    create_test_collection(src_cluster.connection)
+    for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
+        try:
+            result = csync.start(mode=mode, raw_args=raw_args)
+            assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
+            assert check_command_output(expected_cmd_return, csync), \
+                f"Expected command output '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            if should_pass:
+                assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+                assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
+            if expected_log and should_pass:
+                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+        except AssertionError as e:
+            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+        finally:
+            cleanup_test_databases(dst_cluster.connection)
+            csync.create()
+    if failures:
+        pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
