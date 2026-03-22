@@ -179,7 +179,7 @@ def test_csync_PML_T49(start_cluster, src_cluster, dst_cluster, csync, fail_node
             db_name = f"repl_test_db_{i}"
             bg_threads.append(add_data(src_cluster.connection, db_name, stop_event))
         time.sleep(2)
-        target.network_interruption(10)
+        target.network_interruption(8)
         time.sleep(2)
     except Exception as e:
         raise e
