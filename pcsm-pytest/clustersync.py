@@ -350,11 +350,13 @@ class Clustersync:
         last_events_read = None
         last_events_applied = None
         stability_counter = 0
+        self.last_error = None
 
         try:
             src_client = pymongo.MongoClient(self.src_internal or self.src)
         except Exception as e:
-            Cluster.log(f"Error: Failed to connect to source MongoDB URI: {e}")
+            self.last_error = f"Failed to connect to source MongoDB URI: {e}"
+            Cluster.log(f"Error: {self.last_error}")
             return False
 
         while time.time() - start_time < timeout:
@@ -363,16 +365,22 @@ class Clustersync:
                 cluster_time = ping_result.get("$clusterTime", {}).get("clusterTime")
 
                 if cluster_time is None:
-                    Cluster.log("Error: Failed to get clusterTime from source")
+                    self.last_error = "Failed to get clusterTime from source"
+                    Cluster.log(f"Error: {self.last_error}")
                     return False
             except Exception as e:
-                Cluster.log(f"Error: Failed to retrieve clusterTime from source: {e}")
+                self.last_error = f"Failed to retrieve clusterTime from source: {e}"
+                Cluster.log(f"Error: {self.last_error}")
                 return False
 
             status_response = self.status()
-            if not status_response.get("success") or not status_response["data"].get("ok"):
-                error_msg = status_response["data"].get("error", "Unknown error")
-                Cluster.log(f"Error: replication failed, error: {error_msg}")
+            if not status_response.get("success"):
+                self.last_error = status_response.get("error", "Failed to retrieve status")
+                Cluster.log(f"Error: {self.last_error}")
+                return False
+            if not status_response["data"].get("ok"):
+                self.last_error = status_response["data"].get("error", "Unknown error")
+                Cluster.log(f"Error: replication failed, error: {self.last_error}")
                 return False
 
             status_data = status_response["data"]
@@ -381,17 +389,20 @@ class Clustersync:
             current_events_applied = status_data.get("eventsApplied")
 
             if last_repl_op is None:
-                Cluster.log("Error: No 'lastReplicatedOpTime' field found in status response")
+                self.last_error = "No 'lastReplicatedOpTime' field found in status response"
+                Cluster.log(f"Error: {self.last_error}")
                 return False
 
             try:
                 parts = str(last_repl_op).split(".")
                 if len(parts) != 2:
-                    Cluster.log("Error: Invalid lastReplicatedOpTime format, expected 'seconds.increment'")
+                    self.last_error = "Invalid lastReplicatedOpTime format, expected 'seconds.increment'"
+                    Cluster.log(f"Error: {self.last_error}")
                     return False
                 last_ts = Timestamp(int(parts[0]), int(parts[1]))
             except Exception as e:
-                Cluster.log(f"Error: Failed to parse lastReplicatedOpTime: {e}")
+                self.last_error = f"Failed to parse lastReplicatedOpTime: {e}"
+                Cluster.log(f"Error: {self.last_error}")
                 return False
 
             events_stable = (last_events_read is not None and last_events_applied is not None and
@@ -413,7 +424,8 @@ class Clustersync:
             last_events_applied = current_events_applied
             time.sleep(interval)
 
-        Cluster.log("Error: Timeout reached while waiting for replication to catch up")
+        self.last_error = "Timeout reached while waiting for replication to catch up"
+        Cluster.log(f"Error: {self.last_error}")
         return False
 
     def wait_for_repl_stage(self, timeout=60, interval=1, stable_duration=2):
