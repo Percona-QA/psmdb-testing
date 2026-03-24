@@ -985,7 +985,7 @@ class Cluster:
         result = n.check_output("pbm backup-finish " + name)
         Cluster.log("External backup finished: " + result)
 
-    def external_restore_start(self, exit=False):
+    def external_restore_start(self, exit=False, yes=True):
         timeout = time.time() + 60
         while True:
             if not self.get_status()['running']:
@@ -1005,10 +1005,11 @@ class Cluster:
             self.stop_mongos()
         self.stop_arbiters()
         n = testinfra.get_host("docker://" + self.pbm_cli)
+        yes_flag = " -y" if yes else ""
         if exit:
-            result = n.check_output("pbm restore -y --external --exit")
+            result = n.check_output(f"pbm restore{yes_flag} --external --exit")
         else:
-            result = n.check_output("pbm restore -y --external")
+            result = n.check_output(f"pbm restore{yes_flag} --external")
         Cluster.log(result)
         restore=result.split()[2]
         Cluster.log("Restore name: " + restore)
