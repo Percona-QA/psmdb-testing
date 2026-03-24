@@ -91,13 +91,17 @@ ENV PYTHON_BIN_PATH=/opt/venv/bin/python
 ENV CMAKE_C_FLAGS=" -Wno-error=uninitialized "
 ENV CMAKE_CXX_FLAGS=" -Wno-error=deprecated-declarations -Wno-error=uninitialized "
 ARG AWS_VERSION=1.9.379
-RUN cd /opt && git clone --branch $AWS_VERSION --single-branch https://github.com/aws/aws-sdk-cpp.git && \
-    mkdir -p /opt/aws && \
-    cd aws-sdk-cpp && git submodule update --init --recursive && \
-    mkdir build && cd build && \
-    cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="/usr" -DAUTORUN_UNIT_TESTS=OFF && \
-    make -j "$(nproc)" && make install && \
-    cd /opt && rm -rf aws-sdk-cpp
+ARG BUILD_AWS_LIBS=no
+RUN set -ex; \
+    if [ "$BUILD_AWS_LIBS" = "yes" ]; then \
+        cd /opt && git clone --branch $AWS_VERSION --single-branch https://github.com/aws/aws-sdk-cpp.git && \
+        mkdir -p /opt/aws && \
+        cd aws-sdk-cpp && git submodule update --init --recursive && \
+        mkdir build && cd build && \
+        cmake .. -DCMAKE_C_FLAGS="$CMAKE_C_FLAGS" -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3;transfer" -DBUILD_SHARED_LIBS=OFF -DMINIMIZE_SIZE=ON -DCMAKE_INSTALL_PREFIX="/usr" -DAUTORUN_UNIT_TESTS=OFF && \
+        make -j "$(nproc)" && make install && \
+        cd /opt && rm -rf aws-sdk-cpp; \
+    fi
 ARG E2FS_VERSION=v1.47.2
 RUN cd /opt && git clone --branch $E2FS_VERSION --single-branch https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git && \
     mkdir -p /opt/e2fs && cd e2fsprogs && \
