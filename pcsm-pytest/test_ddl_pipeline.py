@@ -421,3 +421,124 @@ def test_csync_PML_T54(start_cluster, src_cluster, dst_cluster, csync):
     except AssertionError:
         pytest.xfail("Known limitation: PCSM-139")
     assert csync.check_csync_errors()[0]
+
+def _build_pipeline_update_scenario(scenario_name):
+    STAGE_LIMIT_ITEMS_LEN = 2000
+    STAGE_LIMIT_SLICE_TO = 1000
+    STAGE_LIMIT_EXTRAS = 3000
+    BUFBUILDER_NUM_ELEMENTS = 300
+    BUFBUILDER_NUM_MODIFY = 100
+    BUFBUILDER_TRUNCATE_TO = 250
+    BUFBUILDER_LARGE_VAL = "X" * 20_000
+    BUFBUILDER_PAD_VAL = "P" * 10_000
+    BUFBUILDER_NEW_VAL = "Y" * 20_000
+
+    if scenario_name == "stage_limit":
+        doc = {
+            "_id": 1,
+            "items": [f"old_val_{i}" for i in range(STAGE_LIMIT_ITEMS_LEN)],
+            "items_count": STAGE_LIMIT_ITEMS_LEN,
+            "metadata": "initial"}
+        massive_set = {"items_count": STAGE_LIMIT_SLICE_TO}
+        for i in range(STAGE_LIMIT_EXTRAS):
+            massive_set[f"extra_field_{i}"] = "value"
+        update = [
+            {"$set": {"items": {"$slice": ["$items", STAGE_LIMIT_SLICE_TO]}}},
+            {"$set": massive_set}]
+        return {"doc": doc, "update": update}
+
+    if scenario_name == "bufbuilder":
+        doc = {
+            "_id": 1,
+            "arr": [
+                {
+                    "d": BUFBUILDER_LARGE_VAL,
+                    "pad1": BUFBUILDER_PAD_VAL,
+                    "pad2": BUFBUILDER_PAD_VAL,
+                    "v": i + 1,
+                }
+                for i in range(BUFBUILDER_NUM_ELEMENTS)
+            ],
+        }
+        update = [
+            {
+                "$set": {
+                    "arr": {
+                        "$slice": [
+                            {
+                                "$map": {
+                                    "input": "$arr",
+                                    "as": "el",
+                                    "in": {
+                                        "$cond": {
+                                            "if": {"$lte": ["$$el.v", BUFBUILDER_NUM_MODIFY]},
+                                            "then": {
+                                                "$mergeObjects": [
+                                                    "$$el",
+                                                    {"d": BUFBUILDER_NEW_VAL},
+                                                ]
+                                            },
+                                            "else": "$$el",
+                                        }
+                                    },
+                                }
+                            },
+                            BUFBUILDER_TRUNCATE_TO,
+                        ]
+                    }
+                }
+            }
+        ]
+        return {"doc": doc, "update": update}
+
+    if scenario_name == "slice_zero":
+        padding = "X" * 1_000
+        num_elements = 100
+        empty_idx = 50
+        truncate_to = 80
+        arr = []
+        for i in range(num_elements):
+            sub = [] if i == empty_idx else [i * 10, i * 10 + 1, i * 10 + 2]
+            arr.append({"items": sub, "pad": padding, "idx": i})
+        doc = {"_id": 1, "arr": arr}
+        update = [
+            {"$set": {"arr": {"$slice": ["$arr", truncate_to]}}},
+            {"$set": {f"arr.{empty_idx}.items.0": 99}}]
+        return {"doc": doc, "update": update, "failure_timeout": 10}
+
+@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
+@pytest.mark.parametrize("scenario_name",["stage_limit", "bufbuilder", "slice_zero"])
+@pytest.mark.timeout(900, func_only=True)
+def test_csync_PML_T82(start_cluster, src_cluster, dst_cluster, csync, scenario_name):
+    """Pipeline update regression: stage-limit, bufbuilder overflow, and $slice-zero"""
+    src = pymongo.MongoClient(src_cluster.connection)
+    db = "pipeline_test_db"
+    if src_cluster.is_sharded:
+        src.admin.command("enableSharding", db)
+    scenario = _build_pipeline_update_scenario(scenario_name)
+    doc = scenario["doc"]
+    update = scenario["update"]
+    coll_name = f"pipeline_{scenario_name}"
+    collection = src[db][coll_name]
+    sharded_collection = None
+    sharded_name = f"sharded_{coll_name}"
+    if src_cluster.is_sharded:
+        sharded_collection = src[db][sharded_name]
+        src.admin.command("shardCollection", f"{db}.{sharded_name}", key={"_id": "hashed"})
+    assert csync.start() and csync.wait_for_repl_stage()
+    collection.insert_one(doc)
+    if sharded_collection is not None:
+        sharded_collection.insert_one(doc)
+    collections_to_update = [collection]
+    if sharded_collection is not None:
+        collections_to_update.append(sharded_collection)
+    for coll_obj in collections_to_update:
+        coll_obj.update_one({"_id": 1}, update)
+    time.sleep(15)
+    if not csync.wait_for_zero_lag():
+        pytest.fail(f"Replication failed: {csync.last_error}")
+    assert csync.finalize(), "Failed to finalize csync service"
+    result, _ = compare_data(src_cluster, dst_cluster)
+    assert result is True, "Data mismatch after synchronization"
+    csync_error, error_logs = csync.check_csync_errors()
+    assert csync_error is True, f"csync reported errors in logs: {error_logs}"
