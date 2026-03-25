@@ -41,7 +41,7 @@ def start_cluster(cluster, request):
         cluster.destroy(cleanup_backups=True)
 
 
-@pytest.mark.timeout(2400, func_only=True)
+@pytest.mark.timeout(300, func_only=True)
 def test_wait_returns_error_on_agent_crash_PBM_T320(start_cluster, cluster):
     """Verify pbm backup --wait exits after 30 seconds when the CSRS agent crashes mid-backup"""
     client = pymongo.MongoClient(cluster.connection)
