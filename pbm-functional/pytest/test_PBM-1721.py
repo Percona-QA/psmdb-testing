@@ -55,6 +55,6 @@ def test_physical_restore_non_localhost_no_auth_PBM_T321(start_cluster, cluster)
         "Expected pbm restore to exit non-zero when shutdown is rejected with Unauthorized"
     )
     error_output = result.stdout + result.stderr
-    assert "unauthorized" in error_output.lower(), (
-        f"Expected 'Unauthorized' in output.\nActual output\n: STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
+    assert "non-localhost connection with auth disabled" in error_output.lower(), (
+        f"Expected 'non-localhost connection with auth disabled' in output.\nActual output\n: STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
     )
