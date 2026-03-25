@@ -49,8 +49,10 @@ def test_wait_returns_error_on_agent_crash_PBM_T320(start_cluster, cluster):
     for start in range(0, 20000, 1000):
         client["test"]["data"].insert_many([{"x": i, "pad": "x" * 500} for i in range(start, start + 1000)])
 
+    backup_result = {}
+
     def run_backup():
-        cluster.exec_pbm_cli("backup --type=logical --wait")
+        backup_result["rc"] = cluster.exec_pbm_cli("backup --type=logical --wait").rc
 
     backup_thread = threading.Thread(target=run_backup)
     backup_thread.start()
@@ -79,3 +81,5 @@ def test_wait_returns_error_on_agent_crash_PBM_T320(start_cluster, cluster):
 
     if backup_thread.is_alive():
         pytest.fail("PBM backup is hanging after 60 seconds despite PBM Agent being down")
+
+    assert backup_result.get("rc") != 0, "Expected pbm backup --wait to exit with non-zero when agent crashes"
