@@ -1,0 +1,6 @@
+storage:
+  type: gcs
+  gcs:
+    bucket: pbm-1660-test-bucket
+    credentials:
+      workloadIdentity: true
