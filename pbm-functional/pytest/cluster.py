@@ -370,13 +370,15 @@ class Cluster:
             time.sleep(2)
             self.__setup_replicasets(
                 self.config['shards'] + [self.config['configserver']])
-            self.__setup_authorizations(self.config['shards'])
+            if not self.no_auth:
+                self.__setup_authorizations(self.config['shards'])
             Cluster.log("Creating container " + self.config['mongos'])
+            keyfile_arg = "" if self.no_auth else "--keyFile=/etc/keyfile "
             docker.from_env().containers.run(
                 image='replica_member/local',
                 name=self.config['mongos'],
                 hostname=self.config['mongos'],
-                command='mongos --keyFile=/etc/keyfile --configdb ' +
+                command='mongos ' + keyfile_arg + '--configdb ' +
                 configdb + ' --port 27017 --bind_ip 0.0.0.0',
                 detach=True,
                 network='test'
