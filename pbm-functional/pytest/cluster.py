@@ -28,6 +28,7 @@ class Cluster:
         self.mongod_extra_args = kwargs.get('mongod_extra_args', " --setParameter=logicalSessionRefreshMillis=10000 --setParameter=shutdownTimeoutMillisForSignaledShutdown=300")
         self.mongod_datadir = kwargs.get('mongod_datadir', "/var/lib/mongo")
         self.pbm_mongodb_uri = kwargs.get('pbm_mongodb_uri', "mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin")
+        self.no_auth = kwargs.get('no_auth', False)
         self.cmd_stdout = ""
         self.cmd_stderr = ""
         self.extra_environment = kwargs.get('extra_environment') or {}
@@ -158,10 +159,11 @@ class Cluster:
     # returns mongodb connection string to cluster, for replicaset layout we excpect that the first member will always be primary
     @property
     def connection(self):
+        credentials = "" if self.no_auth else "root:root@"
         if self.layout == "replicaset":
-            return "mongodb://root:root@" + self.config['members'][0]['host'] + ":27017/"
+            return "mongodb://" + credentials + self.config['members'][0]['host'] + ":27017/"
         else:
-            return "mongodb://root:root@" + self.config['mongos'] + ":27017/"
+            return "mongodb://" + credentials + self.config['mongos'] + ":27017/"
 
     # returns array of hosts with pbm-agent - all hosts except mongos and arbiters
     @property
@@ -275,7 +277,7 @@ class Cluster:
                             "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
                             "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
                             "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
-                            "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + mongod_args,
+                            "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + ("" if self.no_auth else " --keyFile /etc/keyfile") + " " + mongod_args,
                             "GOCOVERDIR=/gocoverdir/reports"]
                 env_list += [k + "=" + str(v) for k, v in self.extra_environment.items()]
                 docker.from_env().containers.run(
@@ -293,7 +295,8 @@ class Cluster:
                         self.__delete_pbm(host['host'])
             time.sleep(2)
             Cluster.setup_replicaset(self.config)
-            Cluster.setup_authorization(self.config['members'][0]['host'],self.pbm_mongodb_uri)
+            if not self.no_auth:
+                Cluster.setup_authorization(self.config['members'][0]['host'],self.pbm_mongodb_uri)
         else:
             shards = []
             for shard in self.config['shards']:
@@ -315,7 +318,7 @@ class Cluster:
                                 "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
                                 "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
                                 "KRB5_TRACE=/dev/stderr",
-                                "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + mongod_args,
+                                "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr" + ("" if self.no_auth else " --keyFile /etc/keyfile") + " " + mongod_args,
                                 "GOCOVERDIR=/gocoverdir/reports"]
                     env_list += [k + "=" + str(v) for k, v in self.extra_environment.items()]
                     docker.from_env().containers.run(
@@ -353,7 +356,7 @@ class Cluster:
                             "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
                             "KRB5_TRACE=/dev/stderr",
                             "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
-                            self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + mongod_args,
+                            self.config['configserver']['_id'] + " --configsvr" + ("" if self.no_auth else " --keyFile /etc/keyfile") + " " + mongod_args,
                             "GOCOVERDIR=/gocoverdir/reports"]
                 env_list += [k + "=" + str(v) for k, v in self.extra_environment.items()]
                 docker.from_env().containers.run(
@@ -374,18 +377,21 @@ class Cluster:
             time.sleep(2)
             self.__setup_replicasets(
                 self.config['shards'] + [self.config['configserver']])
-            self.__setup_authorizations(self.config['shards'])
+            if not self.no_auth:
+                self.__setup_authorizations(self.config['shards'])
             Cluster.log("Creating container " + self.config['mongos'])
+            keyfile_arg = "" if self.no_auth else "--keyFile=/etc/keyfile "
             docker.from_env().containers.run(
                 image='replica_member/local',
                 name=self.config['mongos'],
                 hostname=self.config['mongos'],
-                command='mongos --keyFile=/etc/keyfile --configdb ' +
+                command='mongos ' + keyfile_arg + '--configdb ' +
                 configdb + ' --port 27017 --bind_ip 0.0.0.0',
                 detach=True,
                 network='test'
             )
-            Cluster.setup_authorization(self.config['mongos'],self.pbm_mongodb_uri)
+            if not self.no_auth:
+                Cluster.setup_authorization(self.config['mongos'],self.pbm_mongodb_uri)
             connection = self.connection
             client = pymongo.MongoClient(connection)
             set_default_rw_done = False
