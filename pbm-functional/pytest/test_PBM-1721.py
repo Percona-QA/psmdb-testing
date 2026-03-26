@@ -46,7 +46,7 @@ def test_physical_restore_non_localhost_no_auth_PBM_T321(start_cluster, cluster)
 
     host = testinfra.get_host("docker://rs101")
 
-    result = host.run("timeout 120 pbm restore -y" + backup + " --wait")
+    result = host.run("timeout 120 pbm restore -y " + backup + " --wait")
 
     assert result.rc not in (124, 137), (
         "pbm restore hung and was killed by timeout — expected it to exit with an Unauthorized error"
