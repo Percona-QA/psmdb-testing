@@ -205,6 +205,21 @@ class Clustersync:
                     json_response = json.loads(response)
                     if json_response.get("ok") is True:
                         Cluster.log("Sync paused successfully")
+                        try:
+                            dst_client = pymongo.MongoClient(self.dst)
+                            start_time = time.time()
+                            while time.time() - start_time < 10:
+                                doc = dst_client["percona_clustersync_mongodb"]["checkpoints"].find_one({"_id": "pcsm", "data.state": "paused"})
+                                if doc:
+                                    Cluster.log("Checkpoint state confirmed as 'paused'")
+                                    break
+                                time.sleep(1)
+                            else:
+                                Cluster.log("Warning: checkpoint state is not 'paused' after 10 seconds")
+                                return False
+                        except Exception as e:
+                            Cluster.log(f"Failed to verify checkpoint state: {e}")
+                            return False
                         return True
                     elif json_response.get("ok") is False:
                         error_msg = json_response.get("error", "Unknown error")
