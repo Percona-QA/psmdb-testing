@@ -204,7 +204,7 @@ def test_clone_segment_size_PML_T73(csync, src_cluster, dst_cluster):
         # Exactly 457.76MiB (true size)
         (["--clone-segment-size=479994880B"], True, '"ok": true', "SegmentSizeBytes: 479994880 (480 MB)", "cli"),
         (["--clone-segment-size=64GiB"], True, '"ok": true', "SegmentSizeBytes: 68719476736 (69 GB)", "cli"),
-        ({"cloneSegmentSize": "64GiB"}, True, '"ok":true', "DBG SegmentSizeBytes: 68719476736 (69 GB)", "http"),
+        ({"cloneSegmentSize": "64GiB"}, True, '"ok":true', "SegmentSizeBytes: 68719476736 (69 GB)", "http"),
     ]
     failures = []
     create_test_collection(src_cluster.connection)
