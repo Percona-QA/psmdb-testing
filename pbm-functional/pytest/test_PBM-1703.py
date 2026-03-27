@@ -44,6 +44,7 @@ def start_cluster(cluster,request):
 
 @pytest.mark.timeout(120,func_only=True)
 def test_PBM_T322(start_cluster,cluster):
+    """Verify that PBM does not perform unnecessary requests for .pbm.init.pbmpart.1"""
     cluster.check_pbm_status()
     cluster.exec_pbm_cli("config --set storage.s3.debugLogLevels=Request,Response --wait")
 
@@ -68,6 +69,7 @@ def test_PBM_T322(start_cluster,cluster):
 
 @pytest.mark.timeout(3600, func_only=True)
 def test_PBM_T323(start_cluster, cluster):
+    """Verify that multipart splitting works correctly for large backup files and that data is fully restored."""
     cluster.check_pbm_status()
     cluster.exec_pbm_cli("config --set backup.compression=none,storage.s3.maxObjSizeGB=1 --wait")
 
