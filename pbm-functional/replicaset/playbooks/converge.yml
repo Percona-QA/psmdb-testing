@@ -258,7 +258,7 @@
           User=mongod
           Group=mongod
           PermissionsStartOnly=true
-          ExecStart=/usr/bin/pbm-agent
+          ExecStart=/usr/bin/pbm-agent --log-level=D
 
           [Install]
           WantedBy=multi-user.target
@@ -271,6 +271,7 @@
         create: true
         block: |
           PBM_MONGODB_URI="mongodb://localhost:27017/"
+          PBM_LOG_LEVEL="D"
       when: ansible_os_family == "Debian"
 
     - name: edit pbm-agent service config for rhel
