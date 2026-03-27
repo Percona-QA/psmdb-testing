@@ -6,7 +6,7 @@ from data_generator import create_all_types_db, stop_all_crud_operations
 from data_integrity_check import compare_data
 
 def check_expected_logs(csync, expected_logs):
-    logs = csync.logs(tail=3000)
+    logs = csync.logs(tail=None)
     for pattern in expected_logs:
         if not re.search(pattern, logs):
             raise AssertionError(f"Expected log pattern not found: {pattern}")

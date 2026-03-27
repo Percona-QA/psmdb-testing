@@ -316,7 +316,9 @@ class Clustersync:
             lines = raw_logs.splitlines()
             if filter:
                 lines = [line for line in lines if "GET /status" not in line]
-            last_logs = "\n".join(lines[-tail:])
+            if tail is not None:
+                lines = lines[-tail:]
+            last_logs = "\n".join(lines)
             return last_logs if last_logs else "No logs found"
 
         except docker.errors.NotFound:
