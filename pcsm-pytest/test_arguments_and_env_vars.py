@@ -38,7 +38,7 @@ def csync(src_cluster, dst_cluster, request, csync_env):
     csync = Clustersync('csync',
                         src_cluster.csync_connection,
                         dst_cluster.csync_connection)
-    csync.create(log_level=log_level, env_vars=csync_env)
+    csync.create(extra_args="--reset-state", log_level=log_level, env_vars=csync_env)
 
     yield csync
 
@@ -385,8 +385,8 @@ def test_repl_num_workers_PML_T82(csync, src_cluster, dst_cluster):
     """
     test_cases = [
         (["--repl-num-workers=2.5"], False, 'invalid syntax', "", "cli"),
-        (["--repl-num-workers=2"], True, '"ok": true', "Worker pool started", "cli"),
-        ({"replNumWorkers": 4}, True, '"ok":true', "Worker pool started", "http")]
+        (["--repl-num-workers=2"], True, '"ok": true', "NumWorkers: 2", "cli"),
+        ({"replNumWorkers": 4}, True, '"ok":true', "NumWorkers: 4", "http")]
     failures = []
     create_test_collection(src_cluster.connection)
     for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
@@ -421,7 +421,7 @@ def test_pcsm_repl_num_workers_env_var_PML_T83(csync, src_cluster, dst_cluster, 
     assert csync.wait_for_repl_stage(), "Failed to start replication stage"
     assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
     logs = csync.logs(tail=3000)
-    assert 'Worker pool started' in logs, "Expected worker pool log message not found"
+    assert 'NumWorkers: 2' in logs, "Expected 'NumWorkers: 2' not found in logs"
 
 @pytest.mark.timeout(300, func_only=True)
 def test_repl_change_stream_batch_size_PML_T84(csync, src_cluster, dst_cluster):
@@ -430,8 +430,8 @@ def test_repl_change_stream_batch_size_PML_T84(csync, src_cluster, dst_cluster):
     """
     test_cases = [
         (["--repl-change-stream-batch-size=true"], False, 'invalid syntax', "", "cli"),
-        (["--repl-change-stream-batch-size=20000"], True, '"ok": true', "", "cli"),
-        ({"replChangeStreamBatchSize": 1000}, True, '"ok":true', "", "http")]
+        (["--repl-change-stream-batch-size=20000"], True, '"ok": true', "ChangeStreamBatchSize: 20000", "cli"),
+        ({"replChangeStreamBatchSize": 1000}, True, '"ok":true', "ChangeStreamBatchSize: 1000", "http")]
     failures = []
     create_test_collection(src_cluster.connection)
     for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
@@ -460,8 +460,8 @@ def test_repl_event_queue_size_PML_T85(csync, src_cluster, dst_cluster):
     """
     test_cases = [
         (["--repl-event-queue-size=0.5"], False, 'invalid syntax', "", "cli"),
-        (["--repl-event-queue-size=100"], True, '"ok": true', "", "cli"),
-        ({"replEventQueueSize": 2000}, True, '"ok":true', "", "http")]
+        (["--repl-event-queue-size=100"], True, '"ok": true', "EventQueueSize: 100", "cli"),
+        ({"replEventQueueSize": 2000}, True, '"ok":true', "EventQueueSize: 2000", "http")]
     failures = []
     create_test_collection(src_cluster.connection)
     for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
@@ -490,8 +490,8 @@ def test_repl_worker_queue_size_PML_T86(csync, src_cluster, dst_cluster):
     """
     test_cases = [
         (["--repl-worker-queue-size=true"], False,'invalid syntax', "", "cli"),
-        (["--repl-worker-queue-size=100"], True, '"ok": true', "", "cli"),
-        ({"replWorkerQueueSize": 2000}, True, '"ok":true', "", "http")]
+        (["--repl-worker-queue-size=100"], True, '"ok": true', "WorkerQueueSize: 100", "cli"),
+        ({"replWorkerQueueSize": 2000}, True, '"ok":true', "WorkerQueueSize: 2000", "http")]
     failures = []
     create_test_collection(src_cluster.connection)
     for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
@@ -520,8 +520,8 @@ def test_repl_bulk_ops_size_PML_T87(csync, src_cluster, dst_cluster):
     """
     test_cases = [
         (["--repl-bulk-ops-size=true"], False, 'invalid syntax', "", "cli"),
-        (["--repl-bulk-ops-size=10000"], True, '"ok": true', "", "cli"),
-        ({"replBulkOpsSize": 500}, True, '"ok":true', "", "http")]
+        (["--repl-bulk-ops-size=10000"], True, '"ok": true', "BulkOpsSize: 10000", "cli"),
+        ({"replBulkOpsSize": 500}, True, '"ok":true', "BulkOpsSize: 500", "http")]
     failures = []
     create_test_collection(src_cluster.connection)
     for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
@@ -551,8 +551,8 @@ def test_repl_worker_flush_interval_PML_T88(csync, src_cluster, dst_cluster):
     """
     test_cases = [
         (["--repl-worker-flush-interval=45"], False, 'missing unit in duration', "", "cli"),
-        (["--repl-worker-flush-interval=500ms"], True, '"ok": true', "", "cli"),
-        ({"replWorkerFlushInterval": "1s"}, True, '"ok":true', "", "http")]
+        (["--repl-worker-flush-interval=500ms"], True, '"ok": true', "WorkerFlushInterval: 500ms", "cli"),
+        ({"replWorkerFlushInterval": "1s"}, True, '"ok":true', "WorkerFlushInterval: 1s", "http")]
     failures = []
     create_test_collection(src_cluster.connection)
     for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
@@ -581,8 +581,8 @@ def test_repl_worker_bulk_queue_size_PML_T89(csync, src_cluster, dst_cluster):
     """
     test_cases = [
         (["--repl-worker-bulk-queue-size=true"], False, 'invalid syntax', "", "cli"),
-        (["--repl-worker-bulk-queue-size=1"], True, '"ok": true', "", "cli"),
-        ({"replWorkerBulkQueueSize": 2}, True, '"ok":true', "", "http")]
+        (["--repl-worker-bulk-queue-size=1"], True, '"ok": true', "WorkerBulkQueueSize: 1", "cli"),
+        ({"replWorkerBulkQueueSize": 2}, True, '"ok":true', "WorkerBulkQueueSize: 2", "http")]
     failures = []
     create_test_collection(src_cluster.connection)
     for idx, (raw_args, should_pass, expected_cmd_return, expected_log, mode) in enumerate(test_cases):
@@ -603,3 +603,58 @@ def test_repl_worker_bulk_queue_size_PML_T89(csync, src_cluster, dst_cluster):
             csync.create()
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
+
+@pytest.mark.timeout(300, func_only=True)
+def test_client_compressors_PML_T90(csync, src_cluster, dst_cluster):
+    """
+    Test PCSM --source-client-compressors and --target-client-compressors server flags.
+    These are server-level flags passed when starting the PCSM server process.
+    Invalid compressor values are silently filtered out by the server.
+    """
+    test_cases = [
+        # (extra_args, expected_logs)
+        ("", ["source client compressors: [snappy zstd zlib]",
+              "target client compressors: [snappy zstd zlib]"]),
+        ("--source-client-compressors=zstd", ["source client compressors: [zstd]"]),
+        ("--target-client-compressors=snappy", ["target client compressors: [snappy]"]),
+        ("--source-client-compressors=zstd,zlib --target-client-compressors=snappy,zstd",
+         ["source client compressors: [zstd zlib]", "target client compressors: [snappy zstd]"]),
+    ]
+    failures = []
+    create_test_collection(src_cluster.connection)
+    for idx, (extra_args, expected_logs) in enumerate(test_cases):
+        try:
+            cleanup_test_databases(dst_cluster.connection)
+            csync.create(extra_args="--reset-state " + extra_args)
+            result = csync.start()
+            assert result is True, f"Failed to start csync"
+            assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+            assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
+            logs = csync.logs(tail=None)
+            for expected_log in expected_logs:
+                assert expected_log in logs, f"Expected '{expected_log}' does not appear in logs"
+        except AssertionError as e:
+            failures.append(f"Case {idx+1} [{extra_args or 'defaults'}]: {str(e)}")
+    if failures:
+        pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
+
+@pytest.mark.parametrize("csync_env", [
+    {"PCSM_SOURCE_CLIENT_COMPRESSORS": "zstd"},
+    {"PCSM_TARGET_CLIENT_COMPRESSORS": "snappy,zlib"},
+], indirect=True)
+@pytest.mark.timeout(300, func_only=True)
+def test_client_compressors_env_var_PML_T91(csync, src_cluster, dst_cluster, csync_env):
+    """
+    Test PCSM_SOURCE_CLIENT_COMPRESSORS and PCSM_TARGET_CLIENT_COMPRESSORS environment variables.
+    """
+    create_test_collection(src_cluster.connection)
+    assert csync.start()
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+    assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
+    logs = csync.logs(tail=None)
+    if "PCSM_SOURCE_CLIENT_COMPRESSORS" in csync_env:
+        expected = "source client compressors: [zstd]"
+        assert expected in logs, f"Expected '{expected}' does not appear in logs"
+    if "PCSM_TARGET_CLIENT_COMPRESSORS" in csync_env:
+        expected = "target client compressors: [snappy zlib]"
+        assert expected in logs, f"Expected '{expected}' does not appear in logs"
