@@ -16,6 +16,9 @@
         mongodb_community: "{{ lookup('env', 'MONGODB_COMMUNITY') | default('False', true) }}"
 
     - set_fact:
+        pcsm_version: "{{ lookup('env', 'pcsm_version') | default('', true) }}"
+
+    - set_fact:
         mongodb_image: "{{ 'mongodb/mongodb-community-server' if mongodb_community | bool else 'percona/percona-server-mongodb' }}:{{ MONGODB_VERSION }}"
 
     - name: Create keyrings directory
@@ -76,9 +79,9 @@
 
     - name: Install PCSM
       apt:
-        name: "percona-clustersync-mongodb"
+        name: "percona-clustersync-mongodb{{ '=' + pcsm_version if pcsm_version != '' else '' }}"
         update_cache: yes
-        state: latest
+        state: "{{ 'present' if pcsm_version != '' else 'latest' }}"
 
     - name: Update apt cache
       apt:
