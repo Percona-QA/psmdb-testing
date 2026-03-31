@@ -4,10 +4,10 @@ import boto3
 import pymongo
 import pytest
 import testinfra
+from azure.storage.blob import BlobServiceClient
 from botocore.config import Config
 
 from cluster import Cluster
-
 
 def s3_client():
     return boto3.client(
@@ -69,7 +69,7 @@ def test_PBM_T322(start_cluster,cluster):
 
 @pytest.mark.timeout(3600, func_only=True)
 def test_PBM_T323(start_cluster, cluster):
-    """Verify that multipart splitting works correctly for large backup files and that data is fully restored."""
+    """Verify that multipart splitting works correctly for large backup files on S3 storage and that data is fully restored."""
     cluster.check_pbm_status()
     cluster.exec_pbm_cli("config --set backup.compression=none,storage.s3.maxObjSizeGB=1 --wait")
 
@@ -100,3 +100,4 @@ def test_PBM_T323(start_cluster, cluster):
 
     restored_count = client["test"]["data"].count_documents({})
     assert restored_count == 230000, f"Expected 230000 documents after restore, got {restored_count}"
+
