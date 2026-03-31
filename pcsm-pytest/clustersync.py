@@ -20,6 +20,7 @@ class Clustersync:
         self.csync_image = kwargs.get('csync_image', "csync/local")
         self.cmd_stdout = ""
         self.cmd_stderr = ""
+        self.last_error = None
 
     @property
     def container(self):

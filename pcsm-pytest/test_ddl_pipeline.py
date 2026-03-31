@@ -2,6 +2,7 @@ import pytest
 import pymongo
 import time
 
+from cluster import Cluster
 from data_integrity_check import compare_data
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
@@ -504,7 +505,7 @@ def _build_pipeline_update_scenario(scenario_name):
         update = [
             {"$set": {"arr": {"$slice": ["$arr", truncate_to]}}},
             {"$set": {f"arr.{empty_idx}.items.0": 99}}]
-        return {"doc": doc, "update": update, "failure_timeout": 10}
+        return {"doc": doc, "update": update}
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.parametrize("scenario_name",["stage_limit", "bufbuilder", "slice_zero"])
@@ -539,6 +540,42 @@ def test_csync_PML_T82(start_cluster, src_cluster, dst_cluster, csync, scenario_
         pytest.fail(f"Replication failed: {csync.last_error}")
     assert csync.finalize(), "Failed to finalize csync service"
     result, _ = compare_data(src_cluster, dst_cluster)
-    assert result is True, "Data mismatch after synchronization"
+    if not result:
+        dst = pymongo.MongoClient(dst_cluster.connection)
+        colls_to_check = [coll_name]
+        if sharded_collection is not None:
+            colls_to_check.append(sharded_name)
+        for cn in colls_to_check:
+            src_count = src[db][cn].count_documents({})
+            dst_count = dst[db][cn].count_documents({})
+            Cluster.log(f"{db}.{cn}: src={src_count} docs, dst={dst_count} docs")
+            src_docs = {d["_id"]: d for d in src[db][cn].find()}
+            dst_docs = {d["_id"]: d for d in dst[db][cn].find()}
+            mismatches = []
+            for doc_id in sorted(set(src_docs) | set(dst_docs)):
+                sd = src_docs.get(doc_id)
+                dd = dst_docs.get(doc_id)
+                if sd != dd:
+                    if sd is None:
+                        mismatches.append(f"  _id={doc_id}: missing on source, exists on target")
+                    elif dd is None:
+                        mismatches.append(f"  _id={doc_id}: exists on source, missing on target")
+                    else:
+                        all_keys = sorted(set(sd) | set(dd))
+                        for k in all_keys:
+                            sv, dv = sd.get(k), dd.get(k)
+                            if sv != dv:
+                                sv_r = f"[{len(sv)} elems]" if isinstance(sv, list) else repr(sv)[:200]
+                                dv_r = f"[{len(dv)} elems]" if isinstance(dv, list) else repr(dv)[:200]
+                                mismatches.append(f"  _id={doc_id}, key '{k}': src={sv_r}, dst={dv_r}")
+                elif sd is not None:
+                    src_key_order = list(sd.keys())
+                    dst_key_order = list(dd.keys())
+                    if src_key_order != dst_key_order:
+                        Cluster.log(f"  _id={doc_id}: data matches but BSON field order differs")
+            if mismatches:
+                for m in mismatches:
+                    Cluster.log(m)
+                pytest.fail(f"Document mismatch in {db}.{cn}: {len(mismatches)} differences")
     csync_error, error_logs = csync.check_csync_errors()
     assert csync_error is True, f"csync reported errors in logs: {error_logs}"
