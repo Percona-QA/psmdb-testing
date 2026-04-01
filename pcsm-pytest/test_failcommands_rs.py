@@ -1,3 +1,5 @@
+import json
+
 import pytest
 import pymongo
 import time
@@ -105,6 +107,20 @@ def test_csync_PML_T33(start_cluster, srcRS, dstRS, csync):
     assert not status['data']['ok']
     assert status['data']['state'] != 'running'
     assert status['data']['error'] == "change replication: oplog history is lost"
+    # PCSM-300: verify CLI `pcsm status` returns full JSON in failed state
+    exec_result = csync.container.exec_run("pcsm status", demux=True)
+    stdout = exec_result.output[0].decode("utf-8", errors="replace") if exec_result.output[0] else ""
+    stderr = exec_result.output[1].decode("utf-8", errors="replace") if exec_result.output[1] else ""
+    try:
+        cli_json = json.loads(stdout)
+    except json.JSONDecodeError:
+        pytest.fail(f"PCSM-300: 'pcsm status' did not return valid JSON in failed state.\n"
+            f"STDOUT: {stdout}\nSTDERR: {stderr}")
+    required_fields = ["state", "error", "eventsRead", "eventsApplied", "lagTimeSeconds", "initialSync"]
+    missing = [f for f in required_fields if f not in cli_json]
+    assert not missing, f"PCSM-300: CLI status missing fields: {missing}"
+    assert cli_json["state"] == "failed"
+    assert cli_json["error"] == status['data']['error']
 
 @pytest.mark.timeout(300,func_only=True)
 def test_csync_PML_T39(start_cluster, srcRS, dstRS, csync):
