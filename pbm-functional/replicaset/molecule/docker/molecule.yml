@@ -4,7 +4,7 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: keith-primary-rs
+  - name: primary-rs
     groups: 
       - mongo
       - primary
@@ -17,7 +17,7 @@ platforms:
     pre_build_image: true
     networks: 
       - name: test
-  - name: keith-secondary1-rs
+  - name: secondary1-rs
     groups:
       - mongo
       - secondary
@@ -29,7 +29,7 @@ platforms:
     pre_build_image: true
     networks: 
        - name: test
-  - name: keith-secondary2-rs
+  - name: secondary2-rs
     groups:
       - mongo
       - secondary
@@ -41,7 +41,7 @@ platforms:
     pre_build_image: true
     networks: 
       - name: test
-  - name: keith-minio
+  - name: minio
     groups:
       - minio
     image: "minio/minio"
