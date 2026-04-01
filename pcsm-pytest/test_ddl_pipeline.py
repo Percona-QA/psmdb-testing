@@ -609,5 +609,6 @@ def test_csync_PML_T82(start_cluster, src_cluster, dst_cluster, csync, scenario_
                     Cluster.log(f"  key '{k}': src={repr(sv)[:200]}")
                     Cluster.log(f"  key '{k}': dst={repr(dv)[:200]}")
             pytest.fail(f"Document mismatch in {db}.{cn}")
+    assert result is True, "Data mismatch after synchronization"
     csync_error, error_logs = csync.check_csync_errors()
     assert csync_error is True, f"csync reported errors in logs: {error_logs}"
