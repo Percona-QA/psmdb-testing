@@ -271,7 +271,6 @@
         create: true
         block: |
           PBM_MONGODB_URI="mongodb://localhost:27017/"
-          LOG_LEVEL="D"
       when: ansible_os_family == "Debian"
 
     - name: edit pbm-agent service config for rhel
@@ -281,7 +280,6 @@
         create: true
         block: |
           PBM_MONGODB_URI="mongodb://localhost:27017/"
-          LOG_LEVEL="D"
       when: ansible_os_family == "RedHat"
 
     - name: reload systemd
