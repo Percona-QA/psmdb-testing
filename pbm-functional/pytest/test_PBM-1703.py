@@ -4,7 +4,6 @@ import boto3
 import pymongo
 import pytest
 import testinfra
-from azure.storage.blob import BlobServiceClient
 from botocore.config import Config
 
 from cluster import Cluster
