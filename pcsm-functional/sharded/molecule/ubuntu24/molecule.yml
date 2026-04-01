@@ -9,7 +9,7 @@ platforms:
       - psmdb
     region: us-west-2
     image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
-    vpc_subnet_id: subnet-0dc7518100473f19d
+    vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ubuntu
     root_device_name: /dev/sda1
@@ -20,7 +20,7 @@ platforms:
       - psmdb
     region: us-west-2
     image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
-    vpc_subnet_id: subnet-0dc7518100473f19d
+    vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ubuntu
     root_device_name: /dev/sda1
@@ -32,7 +32,7 @@ platforms:
       - shard
     region: us-west-2
     image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
-    vpc_subnet_id: subnet-0dc7518100473f19d
+    vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ubuntu
     root_device_name: /dev/sda1
@@ -44,7 +44,7 @@ platforms:
       - shard
     region: us-west-2
     image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
-    vpc_subnet_id: subnet-0dc7518100473f19d
+    vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ubuntu
     root_device_name: /dev/sda1
@@ -56,7 +56,7 @@ platforms:
       - shard
     region: us-west-2
     image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
-    vpc_subnet_id: subnet-0dc7518100473f19d
+    vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ubuntu
     root_device_name: /dev/sda1
@@ -68,7 +68,7 @@ platforms:
       - shard
     region: us-west-2
     image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
-    vpc_subnet_id: subnet-0dc7518100473f19d
+    vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ubuntu
     root_device_name: /dev/sda1
@@ -77,7 +77,7 @@ platforms:
   - name: sharded-pcsm-clustersync
     region: us-west-2
     image: "${MOLECULE_UNOBLE_AMI:-ami-0ea4e9f7a6f7c30c8}"
-    vpc_subnet_id: subnet-0dc7518100473f19d
+    vpc_subnet_id: subnet-03136d8c244f56036
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: ubuntu
     root_device_name: /dev/sda1
