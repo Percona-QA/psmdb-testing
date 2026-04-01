@@ -33,6 +33,8 @@ def start_cluster(cluster,request):
         cluster.create()
         n = testinfra.get_host("docker://rs101")
         n.check_output("sed -i 's|pbm-agent --mongodb-uri|pbm-agent --log-level=D --mongodb-uri|' /etc/supervisord.d/pbm-agent.ini")
+        n.check_output("supervisorctl reread")
+        n.check_output("supervisorctl update")
         Cluster.restart_pbm_agent("rs101")
         cluster.setup_pbm()
         yield True
@@ -42,7 +44,7 @@ def start_cluster(cluster,request):
         cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(120,func_only=True)
-def test_PBM_T322(start_cluster,cluster):
+def test_no_unnecessary_pbm_init_part_head_requests_PBM_T323(start_cluster,cluster):
     """Verify that PBM does not perform unnecessary requests for .pbm.init.pbmpart.1"""
     cluster.check_pbm_status()
     cluster.exec_pbm_cli("config --set storage.s3.debugLogLevels=Request,Response --wait")
@@ -65,9 +67,8 @@ def test_PBM_T322(start_cluster,cluster):
     assert not any(".pbmpart.1" in key for key in keys), \
         "Unexpected .pbm.init.pbmpart.1 file found on storage"
 
-
-@pytest.mark.timeout(3600, func_only=True)
-def test_PBM_T323(start_cluster, cluster):
+@pytest.mark.timeout(300, func_only=True)
+def test_maxObjSizeGB_config_option_PBM_T324(start_cluster, cluster):
     """Verify that multipart splitting works correctly for large backup files on S3 storage and that data is fully restored."""
     cluster.check_pbm_status()
     cluster.exec_pbm_cli("config --set backup.compression=none,storage.s3.maxObjSizeGB=1 --wait")
@@ -94,6 +95,7 @@ def test_PBM_T323(start_cluster, cluster):
     assert not any(".pbmpart.3" in key for key in keys), \
         f"Unexpected .pbmpart.3 file found in backup {backup}"
 
+    client["test"]["data"].drop()
     cluster.make_restore(backup)
     cluster.check_pbm_status()
 
