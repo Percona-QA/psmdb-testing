@@ -17,7 +17,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: secondary1-rs                        
+  - name: secondary1-rs
     groups:
       - mongo
       - secondary
