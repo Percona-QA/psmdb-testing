@@ -6,7 +6,6 @@ import pytest
 
 from cluster import Cluster
 
-
 @pytest.fixture(scope="package")
 def config():
     return {"_id": "rs1", "members": [{"host": "rs101"}, {"host": "rs102"}, {"host": "rs103"}]}
@@ -51,7 +50,7 @@ def pitr_restore_time(start_cluster, cluster):
     ("", "y", True),
     ("", "n", False),
 ], ids=["with -y", "with --yes", "no flag accept", "no flag deny"])
-def test_delete_backup_confirmation_PBM_T000(start_cluster, cluster, flag, prompt_response, expect_deleted):
+def test_delete_backup_confirmation_PBM_T325(start_cluster, cluster, flag, prompt_response, expect_deleted):
     """
     Verify confirmation prompt behaviour for pbm delete-backup command
     """
@@ -86,7 +85,7 @@ def test_delete_backup_confirmation_PBM_T000(start_cluster, cluster, flag, promp
     ("", "y", True),
     ("", "n", False),
 ], ids=["with -y", "with --yes", "no flag accept", "no flag deny"])
-def test_delete_pitr_confirmation_PBM_T000(start_cluster, cluster, flag, prompt_response, expect_deleted):
+def test_delete_pitr_confirmation_PBM_T326(start_cluster, cluster, flag, prompt_response, expect_deleted):
     """
     Verify confirmation prompt behaviour for pbm delete-pitr command
     """
@@ -128,7 +127,7 @@ def test_delete_pitr_confirmation_PBM_T000(start_cluster, cluster, flag, prompt_
     ("", "y", True),
     ("", "n", False),
 ], ids=["with -y", "with --yes", "no flag accept", "no flag deny"])
-def test_restore_confirmation_PBM_T000(restore_backup, cluster, flag, prompt_response, expect_restored):
+def test_restore_confirmation_PBM_T327(restore_backup, cluster, flag, prompt_response, expect_restored):
     """
     Verify confirmation prompt behaviour for pbm restore command
     """
@@ -160,9 +159,9 @@ def test_restore_confirmation_PBM_T000(restore_backup, cluster, flag, prompt_res
     ("", "y", True),
     ("", "n", False),
 ], ids=["with -y", "with --yes", "no flag accept", "no flag deny"])
-def test_pitr_restore_confirmation_PBM_T000(pitr_restore_time, cluster, flag, prompt_response, expect_restored):
+def test_pitr_restore_confirmation_PBM_T328(pitr_restore_time, cluster, flag, prompt_response, expect_restored):
     """
-    Verify restore confirmation prompt behaviour for pbm restore --time:
+    Verify restore confirmation prompt behaviour for pbm restore --time
     """
     cluster.wait_pbm_status()
 
@@ -192,9 +191,9 @@ def test_pitr_restore_confirmation_PBM_T000(pitr_restore_time, cluster, flag, pr
     ("", "y", True),
     ("", "n", False),
 ], ids=["with -y", "with --yes", "no flag accept", "no flag deny"])
-def test_cleanup_confirmation_PBM_T000(start_cluster, cluster, flag, prompt_response, expect_deleted):
+def test_cleanup_confirmation_PBM_T329(start_cluster, cluster, flag, prompt_response, expect_deleted):
     """
-    Verify confirmation prompt behaviour for pbm cleanup command:
+    Verify confirmation prompt behaviour for pbm cleanup command
     """
     cluster.wait_pbm_status()
     cluster.make_backup("logical")
