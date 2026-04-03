@@ -6,5 +6,6 @@ RUN pip install --no-cache-dir --break-system-packages docker && \
     pip install --no-cache-dir --break-system-packages pytest-shard && \
     pip install --no-cache-dir --break-system-packages pymongo pyyaml && \
     pip install --no-cache-dir --break-system-packages azure-storage-blob && \
-    pip install --no-cache-dir --break-system-packages boto3
+    pip install --no-cache-dir --break-system-packages boto3 && \
+    pip install --no-cache-dir --break-system-packages pexpect
 WORKDIR /test
