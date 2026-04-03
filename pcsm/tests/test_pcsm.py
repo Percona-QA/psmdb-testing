@@ -200,7 +200,6 @@ def get_git_commit():
         print(f"Unable to obtain git commit, failed with status code: {git_commit.status_code}")
         return False
 
-@pytest.mark.xfail(reason="Git Branch may be incorrect")
 def test_pcsm_version(host):
     """Test that pcsm version output is correct"""
     result = pcsm_version(host)
@@ -208,14 +207,8 @@ def test_pcsm_version(host):
     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
     assert parsed_config['Version'] == f"v{version}", "Failed, actual version is " + parsed_config['Version']
     assert parsed_config['Platform'], "Failed, actual platform is " + parsed_config['Platform']
-    try:
-        assert parsed_config['GitCommit'] == get_git_commit()
-    except AssertionError:
-        pytest.xfail(f"Non-blocking failure: GitCommit mismatch. Got '{parsed_config['GitCommit']}'")
-    try:
-        assert parsed_config['GitBranch'] == f"release-{version}"
-    except AssertionError:
-        pytest.xfail(f"Non-blocking failure: GitBranch mismatch. Got '{parsed_config['GitBranch']}'")
+    assert parsed_config['GitCommit'] == get_git_commit(), f"GitCommit mismatch. Got '{parsed_config['GitCommit']}'"
+    assert parsed_config['GitBranch'] == f"release-{version}", f"GitBranch mismatch. Got '{parsed_config['GitBranch']}'"
     assert parsed_config['BuildTime'], parsed_config
     assert parsed_config['GoVersion'], parsed_config
 

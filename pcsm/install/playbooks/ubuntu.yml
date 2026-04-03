@@ -79,7 +79,7 @@
 
     - name: Install PCSM
       apt:
-        name: "percona-clustersync-mongodb{{ '=' + pcsm_version if pcsm_version != '' else '' }}"
+        name: "percona-clustersync-mongodb{{ '=' + pcsm_version + '*' if pcsm_version != '' else '' }}"
         update_cache: yes
         state: "{{ 'present' if pcsm_version != '' else 'latest' }}"
 
