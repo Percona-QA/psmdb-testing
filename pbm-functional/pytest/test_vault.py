@@ -124,6 +124,7 @@ def test_incremental_PBM_T200(start_cluster,cluster):
 
 @pytest.mark.timeout(600,func_only=True)
 def test_external_PBM_T239(start_cluster,cluster):
+    cluster.setup_pbm()
     client = pymongo.MongoClient(cluster.connection)
     client["test"]["test"].insert_many([{"data": i} for i in range(1000)])
     backup = cluster.external_backup_start()
