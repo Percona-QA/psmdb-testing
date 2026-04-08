@@ -371,6 +371,8 @@ ssl_special
 ssl_x509
 tde_cbc
 tde_gcm
+tde_deferred_cleanup_cbc|wiredTiger
+tde_deferred_cleanup_gcm|wiredTiger
 telemetry --jobs=1
 timeseries_crud_jscore_passthrough
 tla_plus --jobs=1|wiredTiger|apt install -y default-jre && mkdir -p /opt/java/jdk11/bin/ && ln -s /usr/bin/java /opt/java/jdk11/bin/java && ./src/mongo/tla_plus/download-tlc.sh && cp tla2tools.jar src/mongo/tla_plus/
