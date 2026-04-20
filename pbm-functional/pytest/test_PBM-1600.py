@@ -1,5 +1,7 @@
 from datetime import datetime
 
+import time
+
 import pexpect
 import pymongo
 import pytest
@@ -96,6 +98,7 @@ def test_delete_pitr_confirmation_PBM_T326(start_cluster, cluster, flag, prompt_
     pitr_time = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
     cluster.disable_pitr(time_param=pitr_time)
     cluster.wait_pbm_status()
+    time.sleep(10)  # allow any in-flight PITR slice uploads to complete before deleting
 
     if flag:
         result = cluster.exec_pbm_cli(f"delete-pitr --all {flag} --wait")
