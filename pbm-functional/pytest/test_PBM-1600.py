@@ -127,7 +127,8 @@ def test_delete_pitr_confirmation_PBM_T326(start_cluster, cluster, flag, prompt_
     ("--yes", None, True),
     ("", "y", True),
     ("", "n", False),
-], ids=["with --yes", "no flag accept", "no flag deny"])
+    ("-y --out=json", None, True),
+], ids=["with --yes", "no flag accept", "no flag deny", "with --yes and --json"])
 def test_restore_confirmation_PBM_T327(restore_backup, cluster, flag, prompt_response, expect_restored):
     """
     Verify confirmation prompt behaviour for pbm restore command
@@ -139,7 +140,7 @@ def test_restore_confirmation_PBM_T327(restore_backup, cluster, flag, prompt_res
         output = result.stdout + result.stderr
         assert result.rc == 0, output
         assert "canceled" not in output.lower()
-        assert "starting restore" in output.lower()
+        assert "started logical restore" in output.lower()
     else:
         child = pexpect.spawn(f"docker exec -it {cluster.pbm_cli} pbm restore {restore_backup} --wait")
         child.expect(r"\[y/N\]")
