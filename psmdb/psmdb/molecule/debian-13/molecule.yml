@@ -17,6 +17,8 @@ platforms:
 provisioner:
   name: ansible
   log: True
+  env:
+    ANSIBLE_ROLES_PATH: /workspace/psmdb
   playbooks:
     create: ../../../../playbooks/create.yml
     destroy: ../../../../playbooks/destroy.yml
