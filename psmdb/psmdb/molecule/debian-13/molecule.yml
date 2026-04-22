@@ -4,7 +4,7 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: debian13-${BUILD_NUMBER}-${JOB_NAME}
+  - name: keith-debian13-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
     image: "${MOLECULE_DEBIAN13_AMI:-ami-0fe6846994ce9a506}"
     vpc_subnet_id: subnet-03136d8c244f56036
