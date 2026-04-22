@@ -25,6 +25,7 @@ provisioner:
     converge: ../../playbooks/playbook.yml
   env:
     ANSIBLE_SSH_TRANSFER_METHOD: piped
+    ANSIBLE_ROLES_PATH: /workspace/psmdb
 verifier:
   name: testinfra
   directory: ../../../tests/
