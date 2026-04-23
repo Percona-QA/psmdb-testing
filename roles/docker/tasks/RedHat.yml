@@ -42,6 +42,15 @@
       - containerd.io
   when: ansible_os_family == "RedHat"
 
+- name: Load xt_addrtype kernel module for Docker networking on RHEL 10
+  community.general.modprobe:
+    name: xt_addrtype
+    state: present
+    persistent: present
+  when:
+    - ansible_distribution == "RedHat"
+    - ansible_distribution_major_version == "10"
+
 - name: Enable and start Docker service
   service:
     name: docker
