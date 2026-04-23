@@ -20,6 +20,7 @@
   file:
     path: /etc/vault/
     state: directory
+    mode: "0777"
 
 - name: Copy vault.crt to /etc/vault folder
   copy:
