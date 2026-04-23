@@ -20,13 +20,14 @@
   when:
     - ansible_os_family == "RedHat"
 
-- name: Force release server to use 9 in Docker repo for AL2023 compatibility
+- name: Force release server to use 9 in Docker repo for AL2023/RHEL10 compatibility
   replace:
     path: /etc/yum.repos.d/docker-ce.repo
     regexp: '\$releasever'
     replace: '9'
-  when:
-    - ansible_distribution == "Amazon"
+  when: >
+    ansible_distribution == "Amazon" or
+    (ansible_distribution == "RedHat" and ansible_distribution_major_version == "10")
 
 - name: Install dependencies
   yum:
