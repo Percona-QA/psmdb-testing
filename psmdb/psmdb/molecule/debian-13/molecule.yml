@@ -21,7 +21,7 @@ provisioner:
     ANSIBLE_ROLES_PATH: /workspace/psmdb
   playbooks:
     create: ../../../../playbooks/create.yml
-    destroy: ../../../../playbooks/destroy.yml
+#    destroy: ../../../../playbooks/destroy.yml
     prepare: ../../../../playbooks/prepare.yml
     cleanup: ../../playbooks/cleanup.yml
     converge: ../../playbooks/playbook.yml
@@ -36,8 +36,8 @@ verifier:
     junitxml: debian13-report.xml
 scenario:
   name: debian-13
-  destroy_sequence:
-    - destroy
+#  destroy_sequence:
+#    - destroy
   cleanup_sequence:
     - cleanup
   test_sequence:
@@ -46,4 +46,4 @@ scenario:
     - prepare
     - converge
     - verify
-    - destroy
+#    - destroy
