@@ -46,6 +46,7 @@
       VAULT_CACERT: /etc/vault/ca.crt
       VAULT_LICENSE: "{{ vault_license }}"
       SKIP_SETCAP: "true"
+      VAULT_DISABLE_MLOCK: "true"
     volumes:
       - "/etc/vault:/etc/vault"
     capabilities:
