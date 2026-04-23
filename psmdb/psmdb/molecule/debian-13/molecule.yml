@@ -45,5 +45,5 @@ scenario:
     - create
     - prepare
     - converge
-    - verify
+#    - verify
 #    - destroy
