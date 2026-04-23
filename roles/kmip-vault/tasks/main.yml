@@ -45,6 +45,7 @@
       VAULT_ADDR: https://127.0.0.1:8200
       VAULT_CACERT: /etc/vault/ca.crt
       VAULT_LICENSE: "{{ vault_license }}"
+      SKIP_SETCAP: "true"
     volumes:
       - "/etc/vault:/etc/vault"
     capabilities:
