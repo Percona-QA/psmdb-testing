@@ -42,9 +42,23 @@
       - containerd.io
   when: ansible_os_family == "RedHat"
 
-- name: Initialize nftables nat table so Docker can append rules on RHEL 10
-  command: iptables -t nat -L
-  changed_when: false
+- name: Create /etc/docker directory on RHEL 10
+  file:
+    path: /etc/docker
+    state: directory
+    mode: '0755'
+  when:
+    - ansible_distribution == "RedHat"
+    - ansible_distribution_major_version == "10"
+
+- name: Configure Docker to not manage iptables on RHEL 10
+  copy:
+    dest: /etc/docker/daemon.json
+    mode: '0644'
+    content: |
+      {
+        "iptables": false
+      }
   when:
     - ansible_distribution == "RedHat"
     - ansible_distribution_major_version == "10"
@@ -54,6 +68,27 @@
     name: docker
     state: started
     enabled: true
+
+- name: Enable IP forwarding on RHEL 10
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: yes
+  when:
+    - ansible_distribution == "RedHat"
+    - ansible_distribution_major_version == "10"
+
+- name: Add nftables masquerade rule for Docker containers on RHEL 10
+  shell: |
+    nft add table ip nat 2>/dev/null || true
+    nft list chain ip nat POSTROUTING 2>/dev/null || \
+      nft add chain ip nat POSTROUTING '{ type nat hook postrouting priority 100; }'
+    nft list ruleset | grep -q 'masquerade' || \
+      nft add rule ip nat POSTROUTING ip saddr 172.16.0.0/12 masquerade
+  changed_when: false
+  when:
+    - ansible_distribution == "RedHat"
+    - ansible_distribution_major_version == "10"
 
 - name: Ensure docker group exists
   group:
