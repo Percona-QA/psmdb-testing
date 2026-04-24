@@ -42,18 +42,9 @@
       - containerd.io
   when: ansible_os_family == "RedHat"
 
-- name: Install iptables-legacy for Docker on RHEL 10
-  yum:
-    name: iptables-legacy
-    state: present
-  when:
-    - ansible_distribution == "RedHat"
-    - ansible_distribution_major_version == "10"
-
-- name: Switch iptables alternative to legacy for Docker on RHEL 10
-  community.general.alternatives:
-    name: iptables
-    path: /usr/sbin/iptables-legacy
+- name: Initialize nftables nat table so Docker can append rules on RHEL 10
+  command: iptables -t nat -L
+  changed_when: false
   when:
     - ansible_distribution == "RedHat"
     - ansible_distribution_major_version == "10"
