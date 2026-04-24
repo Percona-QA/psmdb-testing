@@ -42,15 +42,21 @@
       - containerd.io
   when: ansible_os_family == "RedHat"
 
-- name: Load xt_addrtype kernel module for Docker networking on RHEL 10
-  community.general.modprobe:
-    name: xt_addrtype
+- name: Install iptables-legacy for Docker on RHEL 10
+  yum:
+    name: iptables-legacy
     state: present
-    persistent: present
   when:
     - ansible_distribution == "RedHat"
     - ansible_distribution_major_version == "10"
-  ignore_errors: true
+
+- name: Switch iptables alternative to legacy for Docker on RHEL 10
+  community.general.alternatives:
+    name: iptables
+    path: /usr/sbin/iptables-legacy
+  when:
+    - ansible_distribution == "RedHat"
+    - ansible_distribution_major_version == "10"
 
 - name: Enable and start Docker service
   service:
