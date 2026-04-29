@@ -1,0 +1,767 @@
+
+{
+    "title": "Percona ClusterSync MongoDB",
+    "uid": "aegcuit193shse",
+    "editable": true,
+    "panels": [
+      {
+        "type": "timeseries",
+        "title": "MongoDB QPS (pcsm-source-mongodb)",
+        "id": 28,
+        "description": "MongoDB operations/sec from PMM exporter for service_name=pcsm-source-mongodb (source node). Excludes command op type.",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(mongodb_mongod_op_counters_total{service_name=\"pcsm-source-mongodb\",type!=\"command\"}[5m]) or irate(mongodb_mongod_op_counters_total{service_name=\"pcsm-source-mongodb\",type!=\"command\"}[5m]) or rate(mongodb_op_counters_total{service_name=\"pcsm-source-mongodb\",type!=\"command\"}[5m]) or irate(mongodb_op_counters_total{service_name=\"pcsm-source-mongodb\",type!=\"command\"}[5m]))",
+            "legendFormat": "QPS",
+            "refId": "A",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "MongoDB QPS (pcsm-destination-mongodb)",
+        "id": 29,
+        "description": "MongoDB operations/sec from PMM exporter for service_name=pcsm-destination-mongodb (destination node). Excludes command op type.",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(mongodb_mongod_op_counters_total{service_name=\"pcsm-destination-mongodb\",type!=\"command\"}[5m]) or irate(mongodb_mongod_op_counters_total{service_name=\"pcsm-destination-mongodb\",type!=\"command\"}[5m]) or rate(mongodb_op_counters_total{service_name=\"pcsm-destination-mongodb\",type!=\"command\"}[5m]) or irate(mongodb_op_counters_total{service_name=\"pcsm-destination-mongodb\",type!=\"command\"}[5m]))",
+            "legendFormat": "QPS",
+            "refId": "A",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Events Rate",
+        "id": 3,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "rate(percona_clustersync_mongodb_events_read_total[10s])",
+            "legendFormat": "Events Read",
+            "refId": "A",
+            "instant": false
+          },
+          {
+            "expr": "rate(percona_clustersync_mongodb_events_applied_total[10s])",
+            "legendFormat": "Events Applied",
+            "refId": "B",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "eps"
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Lag Time",
+        "id": 5,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "percona_clustersync_mongodb_lag_time_seconds",
+            "legendFormat": "Lag Time",
+            "refId": "A",
+            "instant": false
+          },
+          {
+            "expr": "percona_clustersync_mongodb_initial_sync_lag_time_seconds",
+            "legendFormat": "Initial Sync Lag Time",
+            "refId": "B",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Event Queue Size",
+        "id": 16,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "description": "Events buffered in the dispatcher queue. Red line = max capacity (5000).",
+        "targets": [
+          {
+            "expr": "percona_clustersync_mongodb_repl_event_queue_size",
+            "legendFormat": "Event Queue",
+            "refId": "A",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Worker Event Queue Size",
+        "id": 17,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "description": "Per-worker event queue depth. Red line = max capacity (5000).",
+        "targets": [
+          {
+            "expr": "percona_clustersync_mongodb_repl_worker_event_queue_size",
+            "legendFormat": "Worker {{worker}}",
+            "refId": "A",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Running Goroutines",
+        "id": 8,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 32
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "go_goroutines",
+            "legendFormat": "Goroutines",
+            "refId": "A",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Running Threads",
+        "id": 9,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 32
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "go_threads",
+            "legendFormat": "Threads",
+            "refId": "A",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "System Memory Usage (in MB)",
+        "id": 10,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 24
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "(node_memory_MemTotal_bytes{node_name=~\"pcsm-clustersync\"} - node_memory_MemAvailable_bytes{node_name=~\"pcsm-clustersync\"}) / 1024 / 1024",
+            "legendFormat": "System Used",
+            "refId": "A",
+            "instant": false
+          },
+          {
+            "expr": "node_memory_MemTotal_bytes{node_name=~\"pcsm-clustersync\"} / 1024 / 1024",
+            "legendFormat": "System Total",
+            "refId": "B",
+            "instant": false
+          },
+          {
+            "expr": "sum(percona_clustersync_mongodb_process_resident_memory_bytes) / 1024 / 1024",
+            "legendFormat": "PCSM Process",
+            "refId": "C",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "decmbytes"
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "System CPU Usage",
+        "id": 22,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 24
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "1 - avg(clamp_max(rate(node_cpu_seconds_total{node_name=~\"pcsm-clustersync\", mode=\"idle\"}[5s]), 1))",
+            "legendFormat": "System CPU",
+            "refId": "A",
+            "instant": false
+          },
+          {
+            "expr": "sum(rate(percona_clustersync_mongodb_process_cpu_seconds_total[1m]))",
+            "legendFormat": "PCSM CPU",
+            "refId": "B",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit"
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Resident Memory (in MB)",
+        "id": 23,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 40
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "percona_clustersync_mongodb_process_resident_memory_bytes / 1024 / 1024",
+            "legendFormat": "Resident Memory",
+            "refId": "A",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "decmbytes"
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Open File Descriptors",
+        "id": 24,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 40
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "percona_clustersync_mongodb_process_open_fds",
+            "legendFormat": "Open FDs",
+            "refId": "A",
+            "instant": false
+          },
+          {
+            "expr": "percona_clustersync_mongodb_process_max_fds",
+            "legendFormat": "Max FDs",
+            "refId": "B",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "GC Pause Duration",
+        "id": 25,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 48
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "go_gc_duration_seconds{quantile=\"0.5\"}",
+            "legendFormat": "p50",
+            "refId": "A",
+            "instant": false
+          },
+          {
+            "expr": "go_gc_duration_seconds{quantile=\"1\"}",
+            "legendFormat": "max",
+            "refId": "B",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "calcs": ["last"],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Heap Breakdown",
+        "id": 26,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 48
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "go_memstats_heap_inuse_bytes",
+            "legendFormat": "Heap In Use",
+            "refId": "A",
+            "instant": false
+          },
+          {
+            "expr": "go_memstats_heap_idle_bytes",
+            "legendFormat": "Heap Idle",
+            "refId": "B",
+            "instant": false
+          },
+          {
+            "expr": "go_memstats_sys_bytes",
+            "legendFormat": "Total from OS",
+            "refId": "C",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "calcs": ["last"],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "decbytes"
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Worker Flush Duration (p99)",
+        "id": 20,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 56
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, rate(percona_clustersync_mongodb_repl_worker_flush_duration_seconds_bucket[1m]))",
+            "legendFormat": "Worker {{worker}}",
+            "refId": "A",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "calcs": ["last"],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Worker Flush Batch Size (p99)",
+        "id": 19,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 56
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, rate(percona_clustersync_mongodb_repl_worker_flush_batch_size_bucket[1m]))",
+            "legendFormat": "Worker {{worker}}",
+            "refId": "A",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "calcs": ["last"],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Worker Events Applied Rate",
+        "id": 18,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 64
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "targets": [
+          {
+            "expr": "rate(percona_clustersync_mongodb_repl_worker_events_applied_total[10s])",
+            "legendFormat": "Worker {{worker}}",
+            "refId": "A",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "eps"
+          },
+          "overrides": []
+        }
+      },
+      {
+        "type": "timeseries",
+        "title": "Worker Bulk Queue Size",
+        "id": 27,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 64
+        },
+        "datasource": {
+          "type": "prometheus",
+          "name": "Prometheus"
+        },
+        "description": "Sealed bulks pending write per worker. Red line = max capacity (3).",
+        "targets": [
+          {
+            "expr": "percona_clustersync_mongodb_repl_worker_bulk_queue_size",
+            "legendFormat": "Worker {{worker}}",
+            "refId": "A",
+            "instant": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        }
+      }
+    ],
+    "schemaVersion": 41,
+    "version": 1,
+    "refresh": "5s",
+    "time": {
+      "from": "now-3m",
+      "to": "now"
+    },
+    "timezone": "browser"
+  }

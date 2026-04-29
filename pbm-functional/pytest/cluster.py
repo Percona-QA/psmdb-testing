@@ -28,6 +28,10 @@ class Cluster:
         self.mongod_extra_args = kwargs.get('mongod_extra_args', " --setParameter=logicalSessionRefreshMillis=10000 --setParameter=shutdownTimeoutMillisForSignaledShutdown=300")
         self.mongod_datadir = kwargs.get('mongod_datadir', "/var/lib/mongo")
         self.pbm_mongodb_uri = kwargs.get('pbm_mongodb_uri', "mongodb://pbm:pbmpass@127.0.0.1:27017/?authSource=admin")
+        self.no_auth = kwargs.get('no_auth', False)
+        self.cmd_stdout = ""
+        self.cmd_stderr = ""
+        self.extra_environment = kwargs.get('extra_environment') or {}
 
     @property
     def config(self):
@@ -155,10 +159,11 @@ class Cluster:
     # returns mongodb connection string to cluster, for replicaset layout we excpect that the first member will always be primary
     @property
     def connection(self):
+        credentials = "" if self.no_auth else "root:root@"
         if self.layout == "replicaset":
-            return "mongodb://root:root@" + self.config['members'][0]['host'] + ":27017/"
+            return "mongodb://" + credentials + self.config['members'][0]['host'] + ":27017/"
         else:
-            return "mongodb://root:root@" + self.config['mongos'] + ":27017/"
+            return "mongodb://" + credentials + self.config['mongos'] + ":27017/"
 
     # returns array of hosts with pbm-agent - all hosts except mongos and arbiters
     @property
@@ -268,18 +273,20 @@ class Cluster:
                 if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                     pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
                 mongod_args = host.pop("mongod_extra_args", self.mongod_extra_args)
+                env_list = ["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
+                            "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
+                            "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                            "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
+                            "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + ("" if self.no_auth else " --keyFile /etc/keyfile") + " " + mongod_args,
+                            "GOCOVERDIR=/gocoverdir/reports"]
+                env_list += [k + "=" + str(v) for k, v in self.extra_environment.items()]
                 docker.from_env().containers.run(
                     image='replica_member/local',
                     name=host['host'],
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
-                                 "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
-                                 "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
-                                 "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
-                                 "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + self.config['_id'] + " --keyFile /etc/keyfile " + mongod_args,
-                                 "GOCOVERDIR=/gocoverdir/reports"],
+                    environment=env_list,
                     volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"],
                     cap_add=["NET_ADMIN", "NET_RAW"]
                 )
@@ -288,7 +295,8 @@ class Cluster:
                         self.__delete_pbm(host['host'])
             time.sleep(2)
             Cluster.setup_replicaset(self.config)
-            Cluster.setup_authorization(self.config['members'][0]['host'],self.pbm_mongodb_uri)
+            if not self.no_auth:
+                Cluster.setup_authorization(self.config['members'][0]['host'],self.pbm_mongodb_uri)
         else:
             shards = []
             for shard in self.config['shards']:
@@ -305,19 +313,21 @@ class Cluster:
                     if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                         pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
                     mongod_args = host.pop("mongod_extra_args", self.mongod_extra_args)
+                    env_list = ["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
+                                "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
+                                "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                                "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
+                                "KRB5_TRACE=/dev/stderr",
+                                "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr" + ("" if self.no_auth else " --keyFile /etc/keyfile") + " " + mongod_args,
+                                "GOCOVERDIR=/gocoverdir/reports"]
+                    env_list += [k + "=" + str(v) for k, v in self.extra_environment.items()]
                     docker.from_env().containers.run(
                         image='replica_member/local',
                         name=host['host'],
                         hostname=host['host'],
                         detach=True,
                         network='test',
-                        environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
-                                     "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir, 
-                                     "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
-                                     "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
-                                     "KRB5_TRACE=/dev/stderr",
-                                     "MONGODB_EXTRA_ARGS= --port 27017 --replSet " + shard['_id'] + " --shardsvr --keyFile /etc/keyfile " + mongod_args,
-                                     "GOCOVERDIR=/gocoverdir/reports"],
+                        environment=env_list,
                         volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
                     )
                     if 'arbiterOnly' in host:
@@ -340,20 +350,22 @@ class Cluster:
                 if "authMechanism=GSSAPI" in pbm_mongodb_uri:
                     pbm_mongodb_uri = pbm_mongodb_uri.replace("127.0.0.1",host['host'])
                 mongod_args = host.pop("mongod_extra_args", self.mongod_extra_args)
+                env_list = ["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
+                            "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
+                            "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
+                            "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
+                            "KRB5_TRACE=/dev/stderr",
+                            "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
+                            self.config['configserver']['_id'] + " --configsvr" + ("" if self.no_auth else " --keyFile /etc/keyfile") + " " + mongod_args,
+                            "GOCOVERDIR=/gocoverdir/reports"]
+                env_list += [k + "=" + str(v) for k, v in self.extra_environment.items()]
                 docker.from_env().containers.run(
                     image='replica_member/local',
                     name=host['host'],
                     hostname=host['host'],
                     detach=True,
                     network='test',
-                    environment=["AUTOSTART_CE=" + autostart_ce, "AUTOSTART_PSMDB=" + autostart_psmdb,
-                                 "PBM_MONGODB_URI=" + pbm_mongodb_uri, "DATADIR=" + self.mongod_datadir,
-                                 "KRB5_KTNAME=/keytabs/" + host['host'] + "/mongodb.keytab",
-                                 "KRB5_CLIENT_KTNAME=/keytabs/" + host['host'] + "/pbm.keytab",
-                                 "KRB5_TRACE=/dev/stderr",
-                                 "MONGODB_EXTRA_ARGS= --port 27017 --replSet " +
-                                 self.config['configserver']['_id'] + " --configsvr --keyFile /etc/keyfile " + mongod_args,
-                                 "GOCOVERDIR=/gocoverdir/reports"],
+                    environment=env_list,
                     volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
                 )
                 if "arbiterOnly" in host:
@@ -365,23 +377,37 @@ class Cluster:
             time.sleep(2)
             self.__setup_replicasets(
                 self.config['shards'] + [self.config['configserver']])
-            self.__setup_authorizations(self.config['shards'])
+            if not self.no_auth:
+                self.__setup_authorizations(self.config['shards'])
             Cluster.log("Creating container " + self.config['mongos'])
+            keyfile_arg = "" if self.no_auth else "--keyFile=/etc/keyfile "
             docker.from_env().containers.run(
                 image='replica_member/local',
                 name=self.config['mongos'],
                 hostname=self.config['mongos'],
-                command='mongos --keyFile=/etc/keyfile --configdb ' +
+                command='mongos ' + keyfile_arg + '--configdb ' +
                 configdb + ' --port 27017 --bind_ip 0.0.0.0',
                 detach=True,
                 network='test'
             )
-            Cluster.setup_authorization(self.config['mongos'],self.pbm_mongodb_uri)
+            if not self.no_auth:
+                Cluster.setup_authorization(self.config['mongos'],self.pbm_mongodb_uri)
             connection = self.connection
             client = pymongo.MongoClient(connection)
+            set_default_rw_done = False
             for shard in shards:
-                result = client.admin.command("addShard", shard)
-                Cluster.log("Adding shard \"" + shard + "\":\n" + str(result))
+                try:
+                    result = client.admin.command("addShard", shard)
+                    Cluster.log("Adding shard \"" + shard + "\":\n" + str(result))
+                except pymongo.errors.OperationFailure as e:
+                    errmsg = str(e.details.get("errmsg", ""))
+                    if e.code == 96 and "setDefaultRWConcern" in errmsg and not set_default_rw_done:
+                        client.admin.command({"setDefaultRWConcern": 1, "defaultWriteConcern": {"w": "majority"}})
+                        set_default_rw_done = True
+                        result = client.admin.command("addShard", shard)
+                        Cluster.log("Adding shard \"" + shard + "\" (after setDefaultRWConcern):\n" + str(result))
+                    else:
+                        raise
         self.restart_pbm_agents()
         duration = time.time() - start
         Cluster.log("The cluster was prepared in {} seconds".format(duration))
@@ -410,27 +436,34 @@ class Cluster:
         Cluster.log("Resync storage:\n" + result)
 
     # creates backup based on type (no checking input - it's hack for situation like 'incremental --base')
-    def make_backup(self, type):
+    def make_backup(self, type=None, allow_fail=False, **kwargs):
         n = testinfra.get_host("docker://" + self.pbm_cli)
         timeout = time.time() + 120
         while True:
             running = self.get_status()['running']
             Cluster.log("Current operation: " + str(running))
             if not running:
+                cmd = 'pbm backup --out=json'
+                for flag, value in kwargs.items():
+                    cmd += f' --{flag}={value}'
                 if type:
-                    start = n.run(
-                        'pbm backup --out=json --type=' + type)
-                else:
-                    start = n.run('pbm backup --out=json')
+                    cmd += f' --type={type}'
+                start = n.run(cmd)
                 if start.rc == 0:
                     name = json.loads(start.stdout)['name']
                     Cluster.log("Backup started")
+                    self.cmd_stdout = start.stdout
+                    self.cmd_stderr = start.stderr
                     break
                 elif "resync" in start.stdout.lower() or "resync" in start.stderr.lower():
-                    Cluster.log("Resync in progress, retrying: " + start.stdout)
+                    Cluster.log(f"Resync in progress, retrying: {start.stdout}")
                 else:
                     logs = n.check_output("pbm logs -sD -t0")
-                    assert False, "Backup failed" + start.stdout + start.stderr + '\n' + logs
+                    self.cmd_stdout = start.stdout
+                    self.cmd_stderr = start.stderr
+                    if allow_fail:
+                        return False
+                    assert False, f"Backup failed: STDOUT={start.stdout} STDERR={start.stderr}\n{logs}"
             if time.time() > timeout:
                 assert False, "Timeout for backup start exceeded"
             time.sleep(1)
@@ -445,11 +478,9 @@ class Cluster:
                             Cluster.log("Backup found: " + str(snapshot))
                             time.sleep(1) #wait for releasing locks
                             return name
-                            break
                         elif snapshot['status'] == 'error':
                             logs = n.check_output("pbm logs -sD -t0")
                             assert False, snapshot['error'] + '\n' + logs
-                            break
             if time.time() > timeout:
                 assert False, "Backup timeout exceeded"
             time.sleep(1)
@@ -476,8 +507,9 @@ class Cluster:
             time.sleep(1)
         Cluster.log("Restore started")
         timeout=kwargs.get('timeout', 240)
+        confirm_flag = '-y ' if kwargs.get('confirm', True) else ''
         result = n.run('SSL_CERT_FILE=/etc/nginx-minio/ca.crt timeout ' + str(timeout) +
-            ' pbm restore ' + name + ' ' + ' '.join(restore_opts) + ' --wait')
+            ' pbm restore ' + name + ' ' + confirm_flag + ' '.join(restore_opts) + ' --wait')
         if "--fallback-enabled=true" in restore_opts and result.rc == 1 and "fallback is applied" in result.stderr.lower():
             # if fallback is enabled and restore fails, PBM should revert the cluster
             # to the state before restore, so just continue execution without raising error
@@ -904,10 +936,17 @@ class Cluster:
     def log(*args, **kwargs):
         print("[%s]" % (datetime.now()).strftime('%Y-%m-%dT%H:%M:%S'),*args, **kwargs)
 
-    def delete_backup(self, name):
+    def delete_backup(self, name=None, allow_fail=False, **kwargs):
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output('pbm delete-backup -y ' + name)
-        if re.search(r"\[done\](?!.*\berror\b)", result):
+        cmd = 'pbm delete-backup -y'
+        if name:
+            cmd += f' {name}'
+        for flag, value in kwargs.items():
+            cmd += f' --{flag}={value}'
+        result = n.run(cmd)
+        self.cmd_stdout = result.stdout
+        self.cmd_stderr = result.stderr
+        if re.search(r"\[done\](?!.*\berror\b)", result.stdout):
             timeout = time.time() + 15
             while True:
                 if not self.get_status()['running']:
@@ -915,9 +954,12 @@ class Cluster:
                 if time.time() > timeout:
                     assert False, 'Backup deletion timeout exceeded'
                 time.sleep(0.5)
-            Cluster.log(result)
+            Cluster.log(result.stdout)
+            return True
         else:
-            assert False, result
+            if allow_fail:
+                return False
+            assert False, result.stdout
 
     def external_backup_start(self):
         n = testinfra.get_host("docker://" + self.pbm_cli)
@@ -957,7 +999,7 @@ class Cluster:
         result = n.check_output("pbm backup-finish " + name)
         Cluster.log("External backup finished: " + result)
 
-    def external_restore_start(self):
+    def external_restore_start(self, exit=False, confirm=True):
         timeout = time.time() + 60
         while True:
             if not self.get_status()['running']:
@@ -977,7 +1019,11 @@ class Cluster:
             self.stop_mongos()
         self.stop_arbiters()
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output("pbm restore --external")
+        confirm_flag = "-y " if confirm else ""
+        if exit:
+            result = n.check_output("pbm restore " + confirm_flag + "--external --exit")
+        else:
+            result = n.check_output("pbm restore " + confirm_flag + "--external")
         Cluster.log(result)
         restore=result.split()[2]
         Cluster.log("Restore name: " + restore)
@@ -1015,7 +1061,41 @@ class Cluster:
                     n.check_output("touch /var/lib/mongo/pbm.restore.log && chown mongodb /var/lib/mongo/pbm.restore.log")
                     Cluster.log("Copying files " + files + " to host " + node['host'])
 
-    def external_restore_finish(self, restore):
+    def external_restore_finish(self, restore, exit=False):
+        if exit:
+            if self.layout == "sharded":
+                rsname = self.config['configserver']['_id']
+                for node in self.config['configserver']['members']:
+                    n = testinfra.get_host("docker://" + node['host'])
+                    pbm_agent_external_command="command=/usr/bin/pbm-agent restore-finish " + restore + " -c /etc/pbm-aws-provider.conf " + " --rs " + rsname + " --node " + node['host'] + ":27017"
+                    n.check_output("sed '2d' -i /etc/supervisord.d/pbm-agent-external.ini")
+                    n.check_output("echo '" + pbm_agent_external_command + "' >>/etc/supervisord.d/pbm-agent-external.ini")
+                    n.check_output("supervisorctl reread")
+                    n.check_output("supervisorctl update")
+                    result=n.check_output("supervisorctl start pbm-agent-external")
+                    Cluster.log("Starting pbm-agent on host " + node['host'] + " :\n" + result)
+                for shard in self.config['shards']:
+                    rsname = shard['_id']
+                    for node in shard['members']:
+                        n = testinfra.get_host("docker://" + node['host'])
+                        pbm_agent_external_command="command=/usr/bin/pbm-agent restore-finish " + restore + " -c /etc/pbm-aws-provider.conf " + " --rs " + rsname + " --node " + node['host'] + ":27017"
+                        n.check_output("sed '2d' -i /etc/supervisord.d/pbm-agent-external.ini")
+                        n.check_output("echo '" + pbm_agent_external_command + "' >>/etc/supervisord.d/pbm-agent-external.ini")
+                        n.check_output("supervisorctl reread")
+                        n.check_output("supervisorctl update")
+                        result=n.check_output("supervisorctl start pbm-agent-external")
+                        Cluster.log("Starting pbm-agent on host " + node['host'] + " :\n" + result)
+            else:
+                rsname = self.config['_id']
+                for node in self.config['members']:
+                    n = testinfra.get_host("docker://" + node['host'])
+                    pbm_agent_external_command="command=/usr/bin/pbm-agent restore-finish " + restore + " -c /etc/pbm-aws-provider.conf " + " --rs " + rsname + " --node " + node['host'] + ":27017"
+                    n.check_output("sed '2d' -i /etc/supervisord.d/pbm-agent-external.ini")
+                    n.check_output("echo '" + pbm_agent_external_command + "' >>/etc/supervisord.d/pbm-agent-external.ini")
+                    n.check_output("supervisorctl reread")
+                    n.check_output("supervisorctl update")
+                    result=n.check_output("supervisorctl start pbm-agent-external")
+                    Cluster.log("Starting pbm-agent on host " + node['host'] + " :\n" + result)
         n = testinfra.get_host("docker://" + self.pbm_cli)
         result = n.check_output("pbm restore-finish " + restore + " -c /etc/pbm-aws-provider.conf")
         Cluster.log(result)

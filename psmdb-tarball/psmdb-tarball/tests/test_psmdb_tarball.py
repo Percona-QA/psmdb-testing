@@ -1,5 +1,6 @@
 import os
 import pytest
+from packaging import version
 
 import testinfra.utils.ansible_runner
 
@@ -12,7 +13,9 @@ BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
 
 psmdb_version = os.environ["PSMDB_VERSION"]
 
-JSTESTS = ['test_kerberos_simple.js','test_ldap_simple.js', 'test_oidc_simple.js']
+JSTESTS = ['test_kerberos_simple.js', 'test_ldap_simple.js']
+if version.parse(psmdb_version) >= version.parse("7.0.0"):
+    JSTESTS.append('test_oidc_simple.js')
 SUITES = ['multiversion_kmip', 'multiversion_vault']
 FIPS = ['ssl jstests/ssl/ssl_fips.js']
 

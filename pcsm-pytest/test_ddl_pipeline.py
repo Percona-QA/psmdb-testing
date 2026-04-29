@@ -2,6 +2,7 @@ import pytest
 import pymongo
 import time
 
+from cluster import Cluster
 from data_integrity_check import compare_data
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
@@ -421,3 +422,194 @@ def test_csync_PML_T54(start_cluster, src_cluster, dst_cluster, csync):
     except AssertionError:
         pytest.xfail("Known limitation: PCSM-139")
     assert csync.check_csync_errors()[0]
+
+def _build_pipeline_update_scenario(scenario_name):
+    STAGE_LIMIT_ITEMS_LEN = 2000
+    STAGE_LIMIT_SLICE_TO = 1000
+    STAGE_LIMIT_EXTRAS = 3000
+    BUFBUILDER_NUM_ELEMENTS = 300
+    BUFBUILDER_NUM_MODIFY = 100
+    BUFBUILDER_TRUNCATE_TO = 250
+    BUFBUILDER_LARGE_VAL = "X" * 20_000
+    BUFBUILDER_PAD_VAL = "P" * 10_000
+    BUFBUILDER_NEW_VAL = "Y" * 20_000
+    embedded = {"author": "test", "version": 1, "status": "active"}
+
+    if scenario_name == "stage_limit":
+        doc = {
+            "_id": 1,
+            "items": [f"old_val_{i}" for i in range(STAGE_LIMIT_ITEMS_LEN)],
+            "items_count": STAGE_LIMIT_ITEMS_LEN,
+            "metadata": "initial",
+            "meta": embedded}
+        massive_set = {"items_count": STAGE_LIMIT_SLICE_TO, "meta.updated": True}
+        for i in range(STAGE_LIMIT_EXTRAS):
+            massive_set[f"extra_field_{i}"] = "value"
+        update = [
+            {"$set": {"items": {"$slice": ["$items", STAGE_LIMIT_SLICE_TO]}}},
+            {"$set": massive_set}]
+        return {"doc": doc, "update": update}
+
+    if scenario_name == "bufbuilder":
+        doc = {
+            "_id": 1,
+            "meta": embedded,
+            "arr": [
+                {
+                    "d": BUFBUILDER_LARGE_VAL,
+                    "pad1": BUFBUILDER_PAD_VAL,
+                    "pad2": BUFBUILDER_PAD_VAL,
+                    "v": i + 1,
+                }
+                for i in range(BUFBUILDER_NUM_ELEMENTS)
+            ],
+        }
+        update = [
+            {
+                "$set": {
+                    "arr": {
+                        "$slice": [
+                            {
+                                "$map": {
+                                    "input": "$arr",
+                                    "as": "el",
+                                    "in": {
+                                        "$cond": {
+                                            "if": {"$lte": ["$$el.v", BUFBUILDER_NUM_MODIFY]},
+                                            "then": {
+                                                "$mergeObjects": [
+                                                    "$$el",
+                                                    {"d": BUFBUILDER_NEW_VAL},
+                                                ]
+                                            },
+                                            "else": "$$el",
+                                        }
+                                    },
+                                }
+                            },
+                            BUFBUILDER_TRUNCATE_TO,
+                        ]
+                    }
+                }
+            },
+            {"$set": {"meta.updated": True}},
+        ]
+        return {"doc": doc, "update": update}
+
+    if scenario_name == "slice_zero":
+        num_elements = 20
+        empty_idx = 10
+        truncate_to = 15
+        arr = []
+        for i in range(num_elements):
+            sub = [] if i == empty_idx else [i * 10, i * 10 + 1]
+            arr.append({"items": sub, "n": f"e{i}", "v": i})
+        doc = {"_id": 1, "meta": embedded, "arr": arr}
+        update = [
+            {"$set": {"arr": {"$slice": ["$arr", truncate_to]}}},
+            {"$set": {f"arr.{empty_idx}.items.0": 99, "meta.updated": True}}]
+        return {"doc": doc, "update": update}
+
+@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
+@pytest.mark.parametrize("scenario_name",["stage_limit", "bufbuilder", "slice_zero"])
+@pytest.mark.timeout(900, func_only=True)
+def test_csync_PML_T82(start_cluster, src_cluster, dst_cluster, csync, scenario_name):
+    """Pipeline update regression: stage-limit, bufbuilder overflow, and $slice-zero"""
+    src = pymongo.MongoClient(src_cluster.connection)
+    db = "pipeline_test_db"
+    if src_cluster.is_sharded:
+        src.admin.command("enableSharding", db)
+    scenario = _build_pipeline_update_scenario(scenario_name)
+    doc = scenario["doc"]
+    update = scenario["update"]
+    coll_name = f"pipeline_{scenario_name}"
+    collection = src[db][coll_name]
+    sharded_collection = None
+    sharded_name = f"sharded_{coll_name}"
+    if src_cluster.is_sharded:
+        sharded_collection = src[db][sharded_name]
+        src.admin.command("shardCollection", f"{db}.{sharded_name}", key={"_id": "hashed"})
+    assert csync.start() and csync.wait_for_repl_stage()
+    collection.insert_one(doc)
+    if sharded_collection is not None:
+        sharded_collection.insert_one(doc)
+    collections_to_update = [collection]
+    if sharded_collection is not None:
+        collections_to_update.append(sharded_collection)
+    dst = pymongo.MongoClient(dst_cluster.connection)
+    for coll_obj in collections_to_update:
+        coll_obj.update_one({"_id": 1}, update)
+    if not csync.wait_for_zero_lag():
+        pytest.fail(f"Replication failed: {csync.last_error}")
+    # Wait for any in-flight PCSM writes on target to complete
+    for _ in range(120):
+        try:
+            ops = dst.admin.command("currentOp", {"active": True, "ns": {"$regex": f"^{db}\\."}})
+            active = [op for op in ops.get("inprog", [])
+                      if op.get("ns", "").startswith(f"{db}.")]
+            if not active:
+                break
+            Cluster.log(f"Waiting for {len(active)} active ops on target: "
+                        f"{[(op.get('op'), op.get('ns')) for op in active[:3]]}")
+        except Exception:
+            break
+        time.sleep(1)
+    assert csync.finalize(), "Failed to finalize csync service"
+    result, _ = compare_data(src_cluster, dst_cluster)
+    if not result:
+        colls_to_check = [coll_name]
+        if sharded_collection is not None:
+            colls_to_check.append(sharded_name)
+        for cn in colls_to_check:
+            src_doc = src[db][cn].find_one({"_id": 1})
+            dst_doc = dst[db][cn].find_one({"_id": 1})
+            if dst_doc is None:
+                pytest.fail(f"Target document missing in {db}.{cn}")
+            if src_doc is None:
+                pytest.fail(f"Source document missing in {db}.{cn}")
+            def _bson_eq(a, b):
+                """Order-sensitive comparison (matches BSON/MongoDB behavior)."""
+                if not isinstance(a, type(b)) or not isinstance(b, type(a)):
+                    return False
+                if isinstance(a, dict):
+                    if list(a.keys()) != list(b.keys()):
+                        return False
+                    return all(_bson_eq(a[k], b[k]) for k in a)
+                if isinstance(a, list):
+                    return len(a) == len(b) and all(_bson_eq(x, y) for x, y in zip(a, b))
+                return a == b
+            # Compare each field value with order-sensitive check;
+            # top-level key order mismatch is just a warning.
+            if set(src_doc.keys()) != set(dst_doc.keys()):
+                only_src = set(src_doc) - set(dst_doc)
+                only_dst = set(dst_doc) - set(src_doc)
+                Cluster.log(f"Document key mismatch in {db}.{cn}:"
+                            f" only_src={only_src}, only_dst={only_dst}")
+                pytest.fail(f"Document key mismatch in {db}.{cn}")
+            value_errors = []
+            for k in src_doc:
+                sv, dv = src_doc[k], dst_doc[k]
+                if not _bson_eq(sv, dv):
+                    value_errors.append(k)
+            if not value_errors:
+                if list(src_doc.keys()) != list(dst_doc.keys()):
+                    Cluster.log(f"  WARNING: {cn}: top-level field order differs (data OK)")
+                continue
+            Cluster.log(f"Document mismatch in {db}.{cn}, fields: {value_errors[:10]}")
+            for k in value_errors[:5]:
+                sv, dv = src_doc[k], dst_doc[k]
+                if isinstance(sv, list) and isinstance(dv, list) and len(sv) == len(dv):
+                    diff_idx = [i for i in range(len(sv)) if not _bson_eq(sv[i], dv[i])]
+                    Cluster.log(f"  key '{k}': {len(sv)} elems, {len(diff_idx)} differ"
+                                f" at indices {diff_idx[:10]}{'...' if len(diff_idx) > 10 else ''}")
+                    for i in diff_idx[:3]:
+                        Cluster.log(f"    [{i}] src={repr(sv[i])[:200]}")
+                        Cluster.log(f"    [{i}] dst={repr(dv[i])[:200]}")
+                else:
+                    Cluster.log(f"  key '{k}': src={repr(sv)[:200]}")
+                    Cluster.log(f"  key '{k}': dst={repr(dv)[:200]}")
+            pytest.fail(f"Document mismatch in {db}.{cn}")
+    if not result:
+        pytest.xfail("Known limitation: PCSM-303")
+    csync_error, error_logs = csync.check_csync_errors()
+    assert csync_error is True, f"csync reported errors in logs: {error_logs}"

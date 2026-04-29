@@ -156,7 +156,18 @@ def csync(src_cluster, dst_cluster):
     return Clustersync('csync', src_cluster.csync_connection, dst_cluster.csync_connection)
 
 @pytest.fixture(scope="function")
-def start_cluster(src_cluster, dst_cluster, csync, request):
+def csync_env(request):
+    env = {}
+    marker = request.node.get_closest_marker("csync_env")
+    if marker and marker.args:
+        env.update(marker.args[0])
+    param_env = getattr(request, "param", None)
+    if isinstance(param_env, dict):
+        env.update(param_env)
+    return env
+
+@pytest.fixture(scope="function")
+def start_cluster(src_cluster, dst_cluster, csync, request, csync_env):
     """
     Unified cluster startup fixture that works with both RS and sharded
     clusters and handles cluster creation, csync startup and cleanup
@@ -166,7 +177,7 @@ def start_cluster(src_cluster, dst_cluster, csync, request):
     log_marker = request.node.get_closest_marker("csync_log_level")
     log_level = log_marker.args[0] if log_marker and log_marker.args else "debug"
     env_marker = request.node.get_closest_marker("csync_env")
-    env_vars = env_marker.args[0] if env_marker and env_marker.args else None
+    env_vars = dict(env_marker.args[0]) if env_marker and env_marker.args else {}
     cleanup_all_test_containers()
     def create_cluster(cluster_name, cluster):
         try:
@@ -191,6 +202,7 @@ def start_cluster(src_cluster, dst_cluster, csync, request):
             wait_for_thread(dst_create_thread, "dst")
         except TimeoutError:
             raise
+        env_vars.update(csync_env or {})
         csync.create(log_level=log_level, env_vars=env_vars)
         yield True
     finally:

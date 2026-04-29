@@ -1,3 +1,5 @@
+import json
+
 import pytest
 import pymongo
 import time
@@ -6,7 +8,6 @@ from bson import ObjectId
 
 from cluster import Cluster
 from clustersync import Clustersync
-from data_generator import generate_dummy_data
 
 @pytest.fixture(scope="module")
 def dstRS():
@@ -72,24 +73,54 @@ def disable_failpoint(connection):
 @pytest.mark.timeout(300,func_only=True)
 def test_csync_PML_T33(start_cluster, srcRS, dstRS, csync):
     """
-    Test insufficient oplog for replication
-    Configured delay on the destination cluster for bulkInsert command for 10 sec
-    Configured oplogSize on the source 20 Mb
-    Configured load - 5 million records, ~5.5 GB
+    Test PCSM detection of ChangeStreamHistoryLost (insufficient oplog).
+    Uses failCommand failpoint to inject error code 286 on the source
+    getMore command, simulating an oplog that has been truncated past
+    the change stream resume point.
+
+    PCSM must detect the error and transition to the 'failed' state
+    with error message 'change replication: oplog history is lost'.
     """
-    configure_failpoint_delay(dstRS.connection,['bulkWrite'],'alwaysOn',15000)
     csync.start()
-    generate_dummy_data(srcRS.connection, "dummy", 5, 1000000, 10000)
-    csync.wait_for_zero_lag(120)
+    assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
+    # Inject ChangeStreamHistoryLost (error code 286) on the next getMore.
+    # This simulates the oplog wrapping past the change stream cursor position.
+    src = pymongo.MongoClient(srcRS.connection)
+    result = src.admin.command({
+        'configureFailPoint': 'failCommand',
+        'mode': 'alwaysOn',
+        'data': {
+            'errorCode': 286,
+            'failCommands': ['getMore'],
+            'appName': 'pcsm'
+        }
+    })
+    Cluster.log(result)
+    status = None
     for _ in range(30):
         status = csync.status()
         Cluster.log(status)
         if not status['data']['ok'] and status['data']['state'] == 'failed':
             break
         time.sleep(1)
+    disable_failpoint(srcRS.connection)
     assert not status['data']['ok']
     assert status['data']['state'] != 'running'
     assert status['data']['error'] == "change replication: oplog history is lost"
+    # PCSM-300: verify CLI `pcsm status` returns full JSON in failed state
+    exec_result = csync.container.exec_run("pcsm status", demux=True)
+    stdout = exec_result.output[0].decode("utf-8", errors="replace") if exec_result.output[0] else ""
+    stderr = exec_result.output[1].decode("utf-8", errors="replace") if exec_result.output[1] else ""
+    try:
+        cli_json = json.loads(stdout)
+    except json.JSONDecodeError:
+        pytest.fail(f"PCSM-300: 'pcsm status' did not return valid JSON in failed state.\n"
+            f"STDOUT: {stdout}\nSTDERR: {stderr}")
+    required_fields = ["state", "error", "eventsRead", "eventsApplied", "lagTimeSeconds", "initialSync"]
+    missing = [f for f in required_fields if f not in cli_json]
+    assert not missing, f"PCSM-300: CLI status missing fields: {missing}"
+    assert cli_json["state"] == "failed"
+    assert cli_json["error"] == status['data']['error']
 
 @pytest.mark.timeout(300,func_only=True)
 def test_csync_PML_T39(start_cluster, srcRS, dstRS, csync):

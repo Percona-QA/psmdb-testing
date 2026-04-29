@@ -17,7 +17,7 @@
   tasks:
     - set_fact:
         # Version of psmdb release to be enabled (6, 7, or 8)
-        psmdb_version: "{{ lookup('env', 'PSMDB') | default('8', true) }}"
+        mongodb_version: "{{ lookup('env', 'MONGODB_VERSION') | default('8', true) }}"
 
     - set_fact:
         # Branch of pcsm branch to test
@@ -27,8 +27,20 @@
         # Go Version
         golang_version: "{{ lookup('env', 'GO_VERSION') | default('1.24.2', true) }}"
 
+    - set_fact:
+        # MongoDB provider: Percona_MongoDB or MongoDB_Community
+        mongodb_provider: "{{ 'MongoDB_Community' if lookup('env', 'MONGODB_COMMUNITY') | bool else 'Percona_MongoDB' }}"
+
+    - name: Show MongoDB provider
+      debug:
+        msg: "MongoDB provider: {{ mongodb_provider }}"
+
     - name: Install PSMDB and PCSM Source and Destination
       include_tasks: ../scripts/install_pcsm_psmdb_sharded.yml
+
+    - name: Install MongoDB Community
+      include_tasks: ../scripts/install_mongodb_community.yml
+      when: mongodb_provider == "MongoDB_Community" and inventory_hostname in groups['psmdb']
 
     - set_fact:
         ssh_pubkey: "{{ lookup('env', 'SSH_PUBKEY') | default('none', true) }}"
@@ -91,7 +103,17 @@
             mode: all
             slowOpThresholdMs: 1
             rateLimit: 100
-      when: inventory_hostname in groups['psmdb']
+      when: inventory_hostname in groups['psmdb'] and mongodb_provider == "Percona_MongoDB"
+
+    - name: Enabling Operation Profiling for PMM QAN (Community)
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#operationProfiling:'
+        replace: |
+          operationProfiling:
+            mode: all
+            slowOpThresholdMs: 1
+      when: inventory_hostname in groups['psmdb'] and mongodb_provider == 'MongoDB_Community'
 
     - name: start mongod service
       service: name=mongod state=started
@@ -246,7 +268,7 @@
         --configdb configReplSet/pcsm-source:27017 \
         --port 27018 \
         --bind_ip 0.0.0.0 \
-        --logpath /var/log/mongo/mongos.log \
+        --logpath {{ '/var/log/mongodb' if mongodb_provider == 'MongoDB_Community' else '/var/log/mongo' }}/mongos.log \
         --fork
       when: inventory_hostname == "sharded-pcsm-source" and ansible_os_family == "RedHat"
 
@@ -257,9 +279,13 @@
         --configdb configReplSet/pcsm-destination:27017 \
         --port 27018 \
         --bind_ip 0.0.0.0 \
-        --logpath /var/log/mongo/mongos.log \
+        --logpath {{ '/var/log/mongodb' if mongodb_provider == 'MongoDB_Community' else '/var/log/mongo' }}/mongos.log \
         --fork
       when: inventory_hostname == "sharded-pcsm-destination" and ansible_os_family == "RedHat"
+
+    - name: Wait for replica set primaries to be elected
+      pause:
+        seconds: 5
 
     - name: Add shard 1 srcShard1 to source cluster
       community.mongodb.mongodb_shell:

@@ -118,7 +118,7 @@
           - device_name: "{{ item.root_device_name }}"
             ebs:
               volume_type: gp2
-              volume_size: 40
+              volume_size: 50
               delete_on_termination: true
       register: server
       loop: "{{ molecule_yml.platforms }}"
@@ -131,7 +131,7 @@
       async_status:
         jid: "{{ item.ansible_job_id }}"
       register: ec2_jobs
-      until: ec2_jobs.finished
+      until: ec2_jobs.finished == 1
       retries: 300
       with_items: "{{ server.results }}"
 

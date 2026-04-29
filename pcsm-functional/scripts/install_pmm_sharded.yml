@@ -34,6 +34,21 @@
     executable: /bin/bash
   when: inventory_hostname == "sharded-pcsm-clustersync"
 
+- name: Install percona-release for PMM client (RedHat)
+  command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+  when:
+    - inventory_hostname in groups['psmdb']
+    - mongodb_provider == 'MongoDB_Community'
+    - ansible_os_family == 'RedHat'
+
+- name: Install percona-release for PMM client (Debian)
+  apt:
+    deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+  when:
+    - inventory_hostname in groups['psmdb']
+    - mongodb_provider == 'MongoDB_Community'
+    - ansible_os_family == 'Debian'
+
 - name: Enable pmm3-client repository
   command: percona-release enable pmm3-client
   when: inventory_hostname in groups['psmdb']
@@ -121,7 +136,7 @@
   when:
     - inventory_hostname in groups['psmdb']
     - pmm_user_check.stdout == "null"
-    - psmdb_version | int >= 8
+    - mongodb_version | int >= 8
 
 - name: Create MongoDB PMM User role on psmdb < 8
   community.mongodb.mongodb_shell:
@@ -138,7 +153,7 @@
   when:
     - inventory_hostname in groups['psmdb']
     - pmm_user_check.stdout == "null"
-    - psmdb_version | int < 8
+    - mongodb_version | int < 8
 
 - name: Check if MongoDB is already registered in PMM
   shell: pmm-admin list | grep mongodb

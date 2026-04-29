@@ -5,13 +5,14 @@ from cluster import Cluster
 
 config = { "mongos": "mongos",
            "configserver":
-                        {"_id": "rscfg", "members": [{"host": "rscfg01","tags": {"ce":"true"}}, {"host": "rscfg02"}, {"host": "rscfg03"}]},
+                        {"_id": "rscfg", "members": [{"host": "rscfg01"}, {"host": "rscfg02"}, {"host": "rscfg03"}]},
            "shards":[
                         {"_id": "rs1", "members": [{"host": "rs101"}, {"host": "rs102"}, {"host": "rs103"}]},
                         {"_id": "rs2", "members": [{"host": "rs201"}, {"host": "rs202"}, {"host": "rs203"}]}
                     ]}
 
-cluster = Cluster(config)
+#cluster = Cluster(config)
+cluster = Cluster(config, mongod_extra_args="--enableEncryption --kmipServerName cosmian --kmipPort 5696 --kmipServerCAFile /etc/pykmip/ca.crt --kmipClientCertificateFile /etc/pykmip/mongod.pem")
 
 def handler(signum,frame):
     cluster.destroy()

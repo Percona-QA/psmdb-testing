@@ -9,10 +9,12 @@ from packaging import version
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
-MONGO_FEATURES = ['MemoryEngine', 'HotBackup', 'BackupCursorAggregationStage', 'BackupCursorExtendAggregationStage', 'AWSIAM', 'Kerberos', 'LDAP', 'OIDC', 'TDE', 'FIPSMode', 'FCBIS', 'Auditing', 'ProfilingRateLimit', 'LogRedaction', 'ngram']
-
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
 toolkit = os.environ.get("ENABLE_TOOLKIT")
+
+MONGO_FEATURES = ['MemoryEngine', 'HotBackup', 'BackupCursorAggregationStage', 'BackupCursorExtendAggregationStage', 'AWSIAM', 'Kerberos', 'LDAP', 'TDE', 'FIPSMode', 'Auditing', 'ProfilingRateLimit', 'LogRedaction', 'ngram']
+if version.parse(PSMDB_VER) >= version.parse("7.0.0"):
+    MONGO_FEATURES.extend(['OIDC', 'FCBIS'])
 
 def get_default_conf(node):
     with node.sudo():
@@ -222,13 +224,14 @@ def test_telemetry(host):
             data = json.loads(telemetry_content)
         except Exception as e:
             pytest.fail(f"Telemetry file {telemetry_path} is not valid JSON: {e}\nContent:\n{telemetry_content}")
-        assert data.get("tde_key_storage") == "vault", (
-            f"'tde_key_storage' is not 'vault' in {telemetry_path}: {data.get('tde_key_storage')}")
-        tv = data.get("tde_vault_info")
-        assert isinstance(tv, dict), f"'tde_vault_info' section missing or not an object in {telemetry_path}"
-        assert tv.get("title") == "HashiCorp Vault API", (
-            f"'title' in tde_vault_info is not 'HashiCorp Vault API' in {telemetry_path}: {tv.get('title')}")
-        assert tv.get("version"), (f"'version' field missing or empty in tde_vault_info in {telemetry_path}")
+        if version.parse(PSMDB_VER) >= version.parse("7.0.0"):
+            assert data.get("tde_key_storage") == "vault", (
+                f"'tde_key_storage' is not 'vault' in {telemetry_path}: {data.get('tde_key_storage')}")
+            tv = data.get("tde_vault_info")
+            assert isinstance(tv, dict), f"'tde_vault_info' section missing or not an object in {telemetry_path}"
+            assert tv.get("title") == "HashiCorp Vault API", (
+                f"'title' in tde_vault_info is not 'HashiCorp Vault API' in {telemetry_path}: {tv.get('title')}")
+            assert tv.get("version"), (f"'version' field missing or empty in tde_vault_info in {telemetry_path}")
         time.sleep(15)
         logs=host.check_output('cat /var/log/percona/telemetry-agent/telemetry-agent.log')
         assert "Sending request to host=check-dev.percona.com." in logs
@@ -254,6 +257,8 @@ def test_profiling(host):
 
 @pytest.mark.parametrize("auth", ['LDAP','GSSAPI','MONGODB-AWS','MONGODB-OIDC'])
 def test_auth(host,auth):
+    if version.parse(PSMDB_VER) < version.parse("7.0.0") and auth == 'MONGODB-OIDC':
+        pytest.skip("This version doesn't support MONGODB-OIDC auth")
 
     restore_defaults(host)
 

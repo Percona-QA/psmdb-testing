@@ -18,6 +18,9 @@ class Clustersync:
         self.dst = dst
         self.src_internal = kwargs.get('src_internal')
         self.csync_image = kwargs.get('csync_image', "csync/local")
+        self.cmd_stdout = ""
+        self.cmd_stderr = ""
+        self.last_error = None
 
     @property
     def container(self):
@@ -35,8 +38,10 @@ class Clustersync:
 
         Cluster.log(f"Starting csync to sync from '{self.src}' → '{self.dst}'...")
         client = docker.from_env()
-
-        cmd = f"pcsm --source {self.src} --target {self.dst} --log-level={log_level} --no-color {extra_args}".strip()
+        env_vars = env_vars or {}
+        cmd = f"pcsm --source {self.src} --target {self.dst} --log-level={log_level} --log-no-color {extra_args}".strip()
+        if "PCSM_LOG_LEVEL" in env_vars:
+            cmd = f"pcsm --source {self.src} --target {self.dst} --log-no-color {extra_args}".strip()
         client.containers.run(
             image=self.csync_image,
             name=self.name,
@@ -66,36 +71,37 @@ class Clustersync:
         Cluster.log(f"HTTP server not ready after {timeout} seconds")
         return False
 
-    def start(self, include_namespaces=None, exclude_namespaces=None, mode="http"):
+    def start(self, mode="http", raw_args=None):
+        self.cmd_stdout = ""
+        self.cmd_stderr = ""
         try:
             if not self._wait_for_http_server():
                 Cluster.log("Failed to connect to HTTP server - server may not be ready")
                 return False
             if mode == "cli":
                 Cluster.log("Using CLI Mode")
-                args = []
-                if include_namespaces:
-                    args.append(f"--include-namespaces {include_namespaces}")
-                if exclude_namespaces:
-                    args.append(f"--exclude-namespaces {exclude_namespaces}")
-                cmd = "pcsm start " + " ".join(args) if args else "pcsm start"
-                exec_result = self.container.exec_run(cmd)
+                cmd = "pcsm start " + " ".join(raw_args) if raw_args else "pcsm start"
+                exec_result = self.container.exec_run(cmd, demux=True)
+                stdout, stderr = exec_result.output
+                self.cmd_stdout = stdout.decode("utf-8", errors="replace") if stdout else ""
+                self.cmd_stderr = stderr.decode("utf-8", errors="replace") if stderr else ""
             else:
                 Cluster.log("Using API Mode")
-                payload = {}
-                if include_namespaces:
-                    payload["includeNamespaces"] = include_namespaces
-                if exclude_namespaces:
-                    payload["excludeNamespaces"] = exclude_namespaces
-                json_data = json.dumps(payload)
-                exec_result = self.container.exec_run(f"curl -s -X POST http://localhost:2242/start -d '{json_data}'")
+                if raw_args is None:
+                    payload = {}
+                else:
+                    payload = raw_args
+                cmd = f"curl -s -X POST http://localhost:2242/start -H 'Content-Type: application/json' -d '{json.dumps(payload)}'"
+                exec_result = self.container.exec_run(cmd, demux=True)
+                stdout, stderr = exec_result.output
+                self.cmd_stdout = stdout.decode("utf-8", errors="replace") if stdout else ""
+                self.cmd_stderr = stderr.decode("utf-8", errors="replace") if stderr else ""
 
-            response = exec_result.output.decode("utf-8").strip()
             status_code = exec_result.exit_code
 
-            if status_code == 0 and response:
+            if status_code == 0 and self.cmd_stdout:
                 try:
-                    json_response = json.loads(response)
+                    json_response = json.loads(self.cmd_stdout)
 
                     if json_response.get("ok") is True:
                         Cluster.log("Synchronization between src and dst started successfully")
@@ -200,6 +206,21 @@ class Clustersync:
                     json_response = json.loads(response)
                     if json_response.get("ok") is True:
                         Cluster.log("Sync paused successfully")
+                        try:
+                            dst_client = pymongo.MongoClient(self.dst)
+                            start_time = time.time()
+                            while time.time() - start_time < 10:
+                                doc = dst_client["percona_clustersync_mongodb"]["checkpoints"].find_one({"_id": "pcsm", "data.state": "paused"})
+                                if doc:
+                                    Cluster.log("Checkpoint state confirmed as 'paused'")
+                                    break
+                                time.sleep(1)
+                            else:
+                                Cluster.log("Warning: checkpoint state is not 'paused' after 10 seconds")
+                                return False
+                        except Exception as e:
+                            Cluster.log(f"Failed to verify checkpoint state: {e}")
+                            return False
                         return True
                     elif json_response.get("ok") is False:
                         error_msg = json_response.get("error", "Unknown error")
@@ -296,7 +317,9 @@ class Clustersync:
             lines = raw_logs.splitlines()
             if filter:
                 lines = [line for line in lines if "GET /status" not in line]
-            last_logs = "\n".join(lines[-tail:])
+            if tail is not None:
+                lines = lines[-tail:]
+            last_logs = "\n".join(lines)
             return last_logs if last_logs else "No logs found"
 
         except docker.errors.NotFound:
@@ -328,11 +351,13 @@ class Clustersync:
         last_events_read = None
         last_events_applied = None
         stability_counter = 0
+        self.last_error = None
 
         try:
             src_client = pymongo.MongoClient(self.src_internal or self.src)
         except Exception as e:
-            Cluster.log(f"Error: Failed to connect to source MongoDB URI: {e}")
+            self.last_error = f"Failed to connect to source MongoDB URI: {e}"
+            Cluster.log(f"Error: {self.last_error}")
             return False
 
         while time.time() - start_time < timeout:
@@ -341,16 +366,22 @@ class Clustersync:
                 cluster_time = ping_result.get("$clusterTime", {}).get("clusterTime")
 
                 if cluster_time is None:
-                    Cluster.log("Error: Failed to get clusterTime from source")
+                    self.last_error = "Failed to get clusterTime from source"
+                    Cluster.log(f"Error: {self.last_error}")
                     return False
             except Exception as e:
-                Cluster.log(f"Error: Failed to retrieve clusterTime from source: {e}")
+                self.last_error = f"Failed to retrieve clusterTime from source: {e}"
+                Cluster.log(f"Error: {self.last_error}")
                 return False
 
             status_response = self.status()
-            if not status_response.get("success") or not status_response["data"].get("ok"):
-                error_msg = status_response["data"].get("error", "Unknown error")
-                Cluster.log(f"Error: replication failed, error: {error_msg}")
+            if not status_response.get("success"):
+                self.last_error = status_response.get("error", "Failed to retrieve status")
+                Cluster.log(f"Error: {self.last_error}")
+                return False
+            if not status_response["data"].get("ok"):
+                self.last_error = status_response["data"].get("error", "Unknown error")
+                Cluster.log(f"Error: replication failed, error: {self.last_error}")
                 return False
 
             status_data = status_response["data"]
@@ -359,17 +390,20 @@ class Clustersync:
             current_events_applied = status_data.get("eventsApplied")
 
             if last_repl_op is None:
-                Cluster.log("Error: No 'lastReplicatedOpTime' field found in status response")
+                self.last_error = "No 'lastReplicatedOpTime' field found in status response"
+                Cluster.log(f"Error: {self.last_error}")
                 return False
 
             try:
                 parts = str(last_repl_op).split(".")
                 if len(parts) != 2:
-                    Cluster.log("Error: Invalid lastReplicatedOpTime format, expected 'seconds.increment'")
+                    self.last_error = "Invalid lastReplicatedOpTime format, expected 'seconds.increment'"
+                    Cluster.log(f"Error: {self.last_error}")
                     return False
                 last_ts = Timestamp(int(parts[0]), int(parts[1]))
             except Exception as e:
-                Cluster.log(f"Error: Failed to parse lastReplicatedOpTime: {e}")
+                self.last_error = f"Failed to parse lastReplicatedOpTime: {e}"
+                Cluster.log(f"Error: {self.last_error}")
                 return False
 
             events_stable = (last_events_read is not None and last_events_applied is not None and
@@ -391,7 +425,8 @@ class Clustersync:
             last_events_applied = current_events_applied
             time.sleep(interval)
 
-        Cluster.log("Error: Timeout reached while waiting for replication to catch up")
+        self.last_error = "Timeout reached while waiting for replication to catch up"
+        Cluster.log(f"Error: {self.last_error}")
         return False
 
     def wait_for_repl_stage(self, timeout=60, interval=1, stable_duration=2):
@@ -437,6 +472,7 @@ class Clustersync:
         return False
 
     def wait_for_checkpoint(self, timeout=120):
+
         try:
             dst_client = pymongo.MongoClient(self.dst)
         except Exception as e:
@@ -459,3 +495,5 @@ class Clustersync:
                 return False
         Cluster.log(f"Error: Timeout exceeded {timeout} seconds while waiting for checkpoints collection to appear")
         return False
+
+
