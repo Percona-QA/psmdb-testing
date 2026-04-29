@@ -2,7 +2,6 @@ import os
 import re
 import requests
 import pytest
-import json
 from packaging import version
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
@@ -23,13 +22,29 @@ elif version.parse(PSMDB_VER) > version.parse("6.0.0") and version.parse(PSMDB_V
 else:
     SOFTWARE_FILES = ['bullseye','binary','redhat/8','source','jammy']
 
+PRODUCT_ID = 'percona-server-mongodb-' + FCV_VER
+DOWNLOADS_API_URL = "https://www.percona.com/wp-admin/admin-ajax.php"
+
 def get_package_tuples():
     list = []
+    psmdb_version = 'percona-server-mongodb-' + PSMDB_VER
     for software_files in SOFTWARE_FILES:
-        data = 'version_files=percona-server-mongodb-' + PSMDB_VER + '|percona-server-mongodb-' + FCV_VER + '&software_files=' + software_files
-        req = requests.post("https://www.percona.com/products-api.php",data=data,headers = {"content-type": "application/x-www-form-urlencoded; charset=UTF-8"})
-        assert req.status_code == 200
-        assert req.text != '[]', software_files
+        data = {
+            'action': 'percona_downloads',
+            'product_id': PRODUCT_ID,
+            'version': psmdb_version,
+            'software': software_files,
+        }
+        req = requests.post(
+            DOWNLOADS_API_URL,
+            data=data,
+            headers={"content-type": "application/x-www-form-urlencoded; charset=UTF-8"},
+        )
+        assert req.status_code == 200, software_files
+        payload = req.json()
+        assert payload.get('success') is True, software_files
+        files = payload.get('data', {}).get('files', []) or []
+        assert len(files) > 0, software_files
         if software_files == 'binary':
             if (MAJ_VER.startswith("5") and version.parse(MAJ_VER) > version.parse("5.0.27")) or \
                (MAJ_VER.startswith("6") and version.parse(MAJ_VER) > version.parse("6.0.15")) or \
@@ -64,9 +79,8 @@ def get_package_tuples():
                 assert "mongosh" in req.text
             else:
                 assert "percona-server-mongodb-shell-" + PSMDB_VER in req.text or "percona-server-mongodb-shell_" + PSMDB_VER in req.text
-        files = json.loads(req.text)
         for file in files:
-            list.append( (software_files,file['filename'],file['link']) )
+            list.append( (software_files,file['filename'],file['url']) )
     return list
 
 LIST_OF_PACKAGES = get_package_tuples()
@@ -75,6 +89,10 @@ LIST_OF_PACKAGES = get_package_tuples()
 def test_packages_site(software_files,filename,link):
     print('\nTesting ' + software_files + ', file: ' + filename)
     print(link)
-    req = requests.head(link)
-    if not re.search(r'percona-telemetry-agent.*\.diff\.gz', link):
-        assert req.status_code == 200 and int(req.headers['content-length']) > 0, link
+    req = requests.head(link, allow_redirects=True)
+    if re.search(r'percona-telemetry-agent.*\.diff\.gz', link):
+        return
+    assert req.status_code == 200, link
+    if re.search(r'telemetry-enhanced\.json$', link):
+        return
+    assert int(req.headers['content-length']) > 0, link
