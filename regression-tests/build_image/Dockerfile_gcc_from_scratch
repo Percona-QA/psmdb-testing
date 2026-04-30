@@ -155,7 +155,7 @@ CPPPATH = \"/usr/include\"\n\
 LIBPATH = \"/usr/lib /usr/lib64\"\n\
 " > gcc.vars
 ENV MONGO_VERSION=$psm_ver-$psm_release
-ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/resmoke2junit.py .
+ADD https://raw.githubusercontent.com/Percona-QA/psmdb-testing/refs/heads/main/regression-tests/resmoke2junit.py .
 
 FROM base_image AS psmdb_builder
 ARG build_platform=bazel
