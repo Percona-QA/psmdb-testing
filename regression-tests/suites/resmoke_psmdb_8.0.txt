@@ -446,6 +446,8 @@ streams|wiredTiger
 streams_kafka|wiredTiger
 tde_cbc|wiredTiger
 tde_gcm|wiredTiger
+tde_deferred_cleanup_cbc|wiredTiger
+tde_deferred_cleanup_gcm|wiredTiger
 telemetry --jobs=1|wiredTiger
  tenant_migration_causally_consistent_jscore_passthrough|wiredTiger
  tenant_migration_jscore_passthrough|wiredTiger
