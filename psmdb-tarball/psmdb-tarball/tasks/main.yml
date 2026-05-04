@@ -64,21 +64,23 @@
 
 - name: Query latest last-lts version
   uri:
-    url: https://www.percona.com/products-api.php
+    url: https://www.percona.com/wp-admin/admin-ajax.php
     method: POST
     body_format: form-urlencoded
     body:
-      version: percona-server-mongodb-{{ last_lts }}
+      action: percona_downloads
+      product_id: percona-server-mongodb-{{ last_lts }}
+      hydrate: 1
     return_content: true
   register: result
 
 - name: Debug result
   debug:
-    var: result.content
+    var: result.json
 
 - name: Parse latest last-lts version
   set_fact:
-    psmdb_last_lts: "{{ result.content|regex_replace('<option>-- Select version --</option><option value=[^>]*>([^<]*)</option>.*', '\\1')}}"
+    psmdb_last_lts: "{{ result.json.data.versions[0] }}"
 
 #output be like percona-server-mongodb-5.0.29-25
 - debug:
