@@ -738,7 +738,7 @@ json_schema|inMemory
  jstestfuzz_sharded_with_config_transitions|inMemory
  jstestfuzz_sharded_with_replica_set_endpoint|inMemory
 knobs|inMemory
-ldapauthz|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+ldapauthz  --jobs=1|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
  libfuzzer|inMemory
 libunwind|inMemory
  logging_perf|inMemory
