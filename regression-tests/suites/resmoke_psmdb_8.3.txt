@@ -99,7 +99,7 @@ change_streams_whole_db_sharded_collections_passthrough
 client_encrypt
 clustered_collection_passthrough
 concurrency
-concurrency_compute_mode
+ concurrency_compute_mode
 concurrency_replication
 concurrency_replication_causal_consistency
  concurrency_replication_causal_consistency_with_replica_set_endpoint
@@ -156,7 +156,7 @@ fcv_upgrade_downgrade_replica_sets_jscore_passthrough
 fcv_upgrade_downgrade_sharded_collections_jscore_passthrough
 fcv_upgrade_downgrade_sharding_jscore_passthrough
  feature_flag_multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.2
-fle
+ fle
 fle2
 fle2_high_cardinality
  fle2_query_analysis
@@ -172,16 +172,16 @@ integration_tests_standalone_grpc
 json_schema
 knobs
 ldapauthz --jobs=1|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
-libfuzzer
+ libfuzzer
 libunwind
-logging_perf
+ logging_perf
 mongos_test
-mongot_community_e2e_sharded_collections --installDir /usr/bin
-mongot_community_e2e_single_node --installDir /usr/bin
-mongot_e2e_sharded_cluster --installDir /usr/bin
-mongot_e2e_sharded_collections --installDir /usr/bin
-mongot_e2e_single_node --installDir /usr/bin
-mongot_e2e_single_shard --installDir /usr/bin
+mongot_community_e2e_sharded_collections --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+mongot_community_e2e_single_node --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+mongot_e2e_sharded_cluster --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+mongot_e2e_sharded_collections --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+mongot_e2e_single_node --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+mongot_e2e_single_shard --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
 multi_shard_local_read_write_multi_stmt_txn_jscore_passthrough
 multi_shard_multi_stmt_txn_jscore_passthrough
 multi_shard_multi_stmt_txn_jscore_passthrough_rate_limited
@@ -230,7 +230,7 @@ query_stats_mongos_passthrough
 query_stats_passthrough
 query_tester_manual_test
 query_tester_self_test
-queryable_wt
+ queryable_wt
 ratelimit
 read_concern_linearizable_passthrough
 read_concern_majority_passthrough
@@ -395,18 +395,18 @@ unsplittable_collections_on_random_shard_jscore_txns
 v1index_jscore_passthrough
 vector_search --installDir /usr/bin
 vector_search_auth --installDir /usr/bin
-vector_search_extension_disabled --installDir /usr/bin
-vector_search_extension_disabled_sharded_cluster --installDir /usr/bin
-vector_search_extension_disabled_sharded_collections --installDir /usr/bin
-vector_search_extension_disabled_single_shard --installDir /usr/bin
-vector_search_extension_enabled --installDir /usr/bin
-vector_search_extension_enabled_sharded_cluster --installDir /usr/bin
-vector_search_extension_enabled_sharded_collections --installDir /usr/bin
-vector_search_extension_enabled_single_shard --installDir /usr/bin
-vector_search_extension_fully_enabled --installDir /usr/bin
-vector_search_extension_fully_enabled_sharded_cluster --installDir /usr/bin
-vector_search_extension_fully_enabled_sharded_collections --installDir /usr/bin
-vector_search_extension_fully_enabled_single_shard --installDir /usr/bin
+vector_search_extension_disabled --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+vector_search_extension_disabled_sharded_cluster --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+vector_search_extension_disabled_sharded_collections --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+vector_search_extension_disabled_single_shard --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+vector_search_extension_enabled --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+vector_search_extension_enabled_sharded_cluster --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+vector_search_extension_enabled_sharded_collections --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+vector_search_extension_enabled_single_shard --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+vector_search_extension_fully_enabled --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+vector_search_extension_fully_enabled_sharded_cluster --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+vector_search_extension_fully_enabled_sharded_collections --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+vector_search_extension_fully_enabled_single_shard --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
 vector_search_ssl --installDir /usr/bin
 watchdog
  write_concern_majority_passthrough
