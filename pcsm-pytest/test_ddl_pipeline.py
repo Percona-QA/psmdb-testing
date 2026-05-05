@@ -696,9 +696,8 @@ def test_csync_PML_T93(start_cluster, src_cluster, dst_cluster, csync):
     base_array_size = 1500
     new_size = 1000
     indexed_updates = 15
-    iterations = 10
     parallel_workers = 25
-    total_docs = iterations * parallel_workers
+    total_docs = 10 * parallel_workers
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
     db = "pipeline_test_db"
