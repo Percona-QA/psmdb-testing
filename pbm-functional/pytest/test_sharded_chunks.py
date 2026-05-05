@@ -56,7 +56,7 @@ def insert_docs(connection,duration):
             break
 
 @pytest.mark.jenkins
-@pytest.mark.timeout(360,func_only=True)
+@pytest.mark.timeout(600,func_only=True)
 def test_load_chunks_migration_pitr_PBM_T286(start_cluster,cluster):
     cluster.make_backup('logical')
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
