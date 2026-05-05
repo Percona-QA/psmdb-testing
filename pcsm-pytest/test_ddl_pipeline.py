@@ -1,6 +1,7 @@
 import pytest
 import pymongo
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from cluster import Cluster
 from data_integrity_check import compare_data
@@ -510,11 +511,78 @@ def _build_pipeline_update_scenario(scenario_name):
             {"$set": {f"arr.{empty_idx}.items.0": 99, "meta.updated": True}}]
         return {"doc": doc, "update": update}
 
+    if scenario_name == "nested_array_truncation":
+        # PCSM-305: shrink an array that lives inside another array, and in the
+        # same update both rewrite some of its items and change a sibling field
+        # (here: groups[4].items shrunk + last items overwritten + groups[4].count
+        # updated). Before the fix PCSM applied this change to every element of
+        # the outer groups array, so the target ended up with wrong data. This
+        # scenario verifies the target document matches the source exactly.
+        parent_index = 4
+        base_size = 50
+        new_size = 30
+        rewrite_count = 5
+        groups = []
+        for i in range(parent_index + 1):
+            if i == parent_index:
+                groups.append({
+                    "name": f"group_{i}",
+                    "count": base_size,
+                    "items": [f"item_{j}" for j in range(base_size)],
+                })
+            else:
+                groups.append({"name": f"group_{i}", "count": 0, "items": []})
+        doc = {
+            "_id": 1,
+            "meta": embedded,
+            "groups": groups,
+            "signature": "initial",
+        }
+        target_group_expr = {"$arrayElemAt": ["$groups", parent_index]}
+        source_items_expr = {
+            "$ifNull": [
+                {"$getField": {"field": "items", "input": target_group_expr}},
+                [],
+            ]
+        }
+        mutated_items_expr = {"$slice": [source_items_expr, new_size]}
+        for idx in range(new_size - rewrite_count, new_size):
+            mutated_items_expr = {
+                "$concatArrays": [
+                    {"$slice": [mutated_items_expr, idx]},
+                    [f"updated_{idx}"],
+                    {"$slice": [mutated_items_expr, idx + 1, new_size]},
+                ]
+            }
+        updated_group_expr = {
+            "$mergeObjects": [
+                target_group_expr,
+                {"count": new_size, "items": mutated_items_expr},
+            ]
+        }
+        updated_groups_expr = {
+            "$concatArrays": [
+                {"$slice": ["$groups", parent_index]},
+                [updated_group_expr],
+            ]
+        }
+        update = [
+            {
+                "$set": {
+                    "groups": updated_groups_expr,
+                    "signature": "updated",
+                    "meta.updated": True,
+                }
+            }
+        ]
+        return {"doc": doc, "update": update}
+
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
-@pytest.mark.parametrize("scenario_name",["stage_limit", "bufbuilder", "slice_zero"])
+@pytest.mark.parametrize("scenario_name",
+    ["stage_limit", "bufbuilder", "slice_zero", "nested_array_truncation"])
 @pytest.mark.timeout(900, func_only=True)
 def test_csync_PML_T82(start_cluster, src_cluster, dst_cluster, csync, scenario_name):
-    """Pipeline update regression: stage-limit, bufbuilder overflow, and $slice-zero"""
+    """Pipeline update regression: stage-limit, bufbuilder overflow, $slice-zero and nested-array truncation"""
     src = pymongo.MongoClient(src_cluster.connection)
     db = "pipeline_test_db"
     if src_cluster.is_sharded:
@@ -613,3 +681,154 @@ def test_csync_PML_T82(start_cluster, src_cluster, dst_cluster, csync, scenario_
         pytest.xfail("Known limitation: PCSM-303")
     csync_error, error_logs = csync.check_csync_errors()
     assert csync_error is True, f"csync reported errors in logs: {error_logs}"
+
+@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
+@pytest.mark.timeout(900, func_only=True)
+def test_csync_PML_T93(start_cluster, src_cluster, dst_cluster, csync):
+    """PCSM-305: bulk write to target must not exceed MongoDB's 125MB limit.
+    Runs many parallel updates that each shrink a large nested array
+    (groups[4].items), rewrite some of its items and update a sibling field.
+    Before the fix PCSM packed all these updates into a single bulk write to
+    the target, which exceeded MongoDB 125MB limit and crashed replication.
+    This test checks that replication finishes and the target matches the source.
+    """
+    parent_index = 4
+    base_array_size = 1500
+    new_size = 1000
+    indexed_updates = 15
+    iterations = 10
+    parallel_workers = 25
+    total_docs = iterations * parallel_workers
+    src = pymongo.MongoClient(src_cluster.connection)
+    dst = pymongo.MongoClient(dst_cluster.connection)
+    db = "pipeline_test_db"
+    coll = "pipeline_test_collection"
+    if src_cluster.is_sharded:
+        src.admin.command("enableSharding", db)
+    collection = src[db][coll]
+    sharded_collection = None
+    sharded_name = f"sharded_{coll}"
+    if src_cluster.is_sharded:
+        sharded_collection = src[db][sharded_name]
+        src.admin.command("shardCollection", f"{db}.{sharded_name}", key={"_id": "hashed"})
+    def build_seed_doc(doc_id):
+        groups = []
+        for i in range(parent_index + 1):
+            if i == parent_index:
+                groups.append({
+                    "name": f"group_{i}",
+                    "count": base_array_size,
+                    "items": [f"item_{j}" for j in range(base_array_size)]})
+            else:
+                groups.append({"name": f"group_{i}", "count": 0, "items": []})
+        return {
+            "_id": doc_id,
+            "groups": groups,
+            "signature": "initial",
+            "updated_at": "initial"}
+    def build_update_pipeline():
+        start_idx = max(0, new_size - indexed_updates)
+        target_group_expr = {"$arrayElemAt": ["$groups", parent_index]}
+        source_items_expr = {
+            "$ifNull": [
+                {"$getField": {"field": "items", "input": target_group_expr}},
+                [],
+            ]
+        }
+        mutated_items_expr = {"$slice": [source_items_expr, new_size]}
+        for idx in range(start_idx, new_size):
+            mutated_items_expr = {
+                "$concatArrays": [
+                    {"$slice": [mutated_items_expr, idx]},
+                    [f"updated_{idx}"],
+                    {"$slice": [mutated_items_expr, idx + 1, new_size]},
+                ]
+            }
+        updated_group_expr = {
+            "$mergeObjects": [
+                target_group_expr,
+                {"count": new_size, "items": mutated_items_expr},
+            ]
+        }
+        trailing_count_expr = {
+            "$max": [0, {"$subtract": [{"$size": "$groups"}, parent_index + 1]}]
+        }
+        trailing_slice_expr = {
+            "$let": {
+                "vars": {"tailCount": trailing_count_expr},
+                "in": {
+                    "$cond": [
+                        {"$gt": ["$$tailCount", 0]},
+                        {"$slice": ["$groups", parent_index + 1, "$$tailCount"]},
+                        [],
+                    ]
+                },
+            }
+        }
+        updated_groups_expr = {
+            "$concatArrays": [
+                {"$slice": ["$groups", parent_index]},
+                [updated_group_expr],
+                trailing_slice_expr,
+            ]
+        }
+        return [
+            {
+                "$set": {
+                    "groups": updated_groups_expr,
+                    "signature": "updated",
+                    "updated_at": "updated",
+                }
+            }
+        ]
+    seed_docs = [build_seed_doc(i) for i in range(total_docs)]
+    collections_to_update = [collection]
+    collection.insert_many(seed_docs)
+    if sharded_collection is not None:
+        sharded_collection.insert_many(seed_docs)
+        collections_to_update.append(sharded_collection)
+    assert csync.start() and csync.wait_for_repl_stage()
+    update_pipeline = build_update_pipeline()
+    def apply_one(coll_obj, doc_id):
+        coll_obj.update_one({"_id": doc_id}, update_pipeline)
+    for coll_obj in collections_to_update:
+        with ThreadPoolExecutor(max_workers=parallel_workers) as ex:
+            futures = [ex.submit(apply_one, coll_obj, doc_id) for doc_id in range(total_docs)]
+            for fut in as_completed(futures):
+                fut.result()
+    if not csync.wait_for_zero_lag():
+        pytest.fail(f"Replication failed: {csync.last_error}")
+    assert csync.finalize(), "Failed to finalize csync service"
+    collections_to_check = [coll]
+    if sharded_collection is not None:
+        collections_to_check.append(sharded_name)
+    for cn in collections_to_check:
+        src_coll = src[db][cn]
+        dst_coll = dst[db][cn]
+        assert dst_coll.count_documents({}) == total_docs, \
+            f"Document count mismatch in {db}.{cn}"
+        sample_ids = [0, total_docs // 2, total_docs - 1]
+        for doc_id in sample_ids:
+            src_doc = src_coll.find_one({"_id": doc_id})
+            dst_doc = dst_coll.find_one({"_id": doc_id})
+            assert dst_doc is not None, f"Missing _id={doc_id} on target in {cn}"
+            assert dst_doc["signature"] == "updated", \
+                f"signature not replicated for _id={doc_id} in {cn}"
+            assert dst_doc["updated_at"] == "updated", \
+                f"updated_at not replicated for _id={doc_id} in {cn}"
+            target_items = dst_doc["groups"][parent_index]["items"]
+            assert len(target_items) == new_size, \
+                f"items not truncated for _id={doc_id} in {cn}: " \
+                f"got len={len(target_items)}, want {new_size}"
+            assert dst_doc["groups"][parent_index]["count"] == new_size, \
+                f"count not updated for _id={doc_id} in {cn}"
+            for idx in range(new_size - indexed_updates, new_size):
+                assert target_items[idx] == f"updated_{idx}", \
+                    f"items[{idx}] not updated for _id={doc_id} in {cn}: " \
+                    f"got {target_items[idx]!r}"
+            assert dst_doc == src_doc, \
+                f"Document mismatch for _id={doc_id} in {db}.{cn}"
+    result, _ = compare_data(src_cluster, dst_cluster)
+    assert result is True, "Data mismatch after synchronization"
+    csync_error, error_logs = csync.check_csync_errors()
+    assert csync_error is True, f"Csync reported errors in logs: {error_logs}"
