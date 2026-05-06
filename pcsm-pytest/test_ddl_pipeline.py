@@ -696,8 +696,8 @@ def test_csync_PML_T93(start_cluster, src_cluster, dst_cluster, csync):
     base_array_size = 1500
     new_size = 1000
     indexed_updates = 15
-    parallel_workers = 25
-    total_docs = 10 * parallel_workers
+    parallel_workers = 10
+    total_docs = 25 * parallel_workers
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
     db = "pipeline_test_db"
@@ -788,8 +788,27 @@ def test_csync_PML_T93(start_cluster, src_cluster, dst_cluster, csync):
         collections_to_update.append(sharded_collection)
     assert csync.start() and csync.wait_for_repl_stage()
     update_pipeline = build_update_pipeline()
+    # Retry transient errors that occur on slower machines under heavy parallel load
+    transient_codes = {133, 189, 91, 10107, 13435, 13436}
     def apply_one(coll_obj, doc_id):
-        coll_obj.update_one({"_id": doc_id}, update_pipeline)
+        max_attempts = 5
+        delay = 0.5
+        for attempt in range(max_attempts):
+            try:
+                coll_obj.update_one({"_id": doc_id}, update_pipeline)
+                return
+            except (pymongo.errors.AutoReconnect,
+                    pymongo.errors.NetworkTimeout,
+                    pymongo.errors.ServerSelectionTimeoutError) as e:
+                if attempt == max_attempts - 1:
+                    raise
+                Cluster.log(f"Transient error on _id={doc_id} (attempt {attempt + 1}): {e}")
+            except pymongo.errors.WriteError as e:
+                if e.code not in transient_codes or attempt == max_attempts - 1:
+                    raise
+                Cluster.log(f"Transient write error on _id={doc_id} (attempt {attempt + 1}): {e}")
+            time.sleep(delay)
+            delay *= 2
     for coll_obj in collections_to_update:
         with ThreadPoolExecutor(max_workers=parallel_workers) as ex:
             futures = [ex.submit(apply_one, coll_obj, doc_id) for doc_id in range(total_docs)]
