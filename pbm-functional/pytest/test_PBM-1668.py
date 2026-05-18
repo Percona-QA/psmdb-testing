@@ -148,8 +148,9 @@ def test_majority_quorum_PBM_T1668(reset_state, cluster, logical_backup):
         marks=pytest.mark.xfail(reason="PBM bug: integers > 50 not rejected at config validation time"),
     ),
 ])
-def test_invalid_quorum_config_PBM_T1668(cluster, value, expected_error):
+def test_invalid_quorum_config_PBM_T1668(start_cluster, cluster, value, expected_error):
     """Verify restore.indexCommitQuorum config validation for rejected values"""
+    cluster.check_pbm_status()
     result = cluster.exec_pbm_cli(f"config --set restore.indexCommitQuorum={value} --wait")
     assert result.rc != 0, f"Expected failure for {value!r} but rc=0. stdout: {result.stdout}"
     assert expected_error in result.stderr, (
@@ -177,27 +178,21 @@ def test_integer_quorum_config_PBM_T1668(reset_state, cluster, logical_backup):
 
 @pytest.mark.timeout(300, func_only=True)
 def test_quorum_exceeds_node_count_PBM_T1668(reset_state, cluster, logical_backup):
-    """An integer larger than the available voting members fails restore with UnsatisfiableCommitQuorum."""
+    """An integer quorum exceeding voting members falls back to votingMembers and restore succeeds."""
     cluster.check_pbm_status()
 
     result = cluster.exec_pbm_cli("config --set restore.indexCommitQuorum=50 --wait")
     assert result.rc == 0, f"Failed to set indexCommitQuorum=50: {result.stderr}"
 
-    result = cluster.make_restore(logical_backup, expect_failure=True)
-    assert result.rc != 0, f"Expected restore to fail but rc=0. stdout: {result.stdout}"
-    assert "UnsatisfiableCommitQuorum" in result.stdout + result.stderr, (
-        f"Expected UnsatisfiableCommitQuorum error, got stdout: {result.stdout}, stderr: {result.stderr}"
-    )
-
-    cluster.wait_pbm_status()
-
-    result = cluster.exec_pbm_cli("config --set restore.indexCommitQuorum=3 --wait")
-    assert result.rc == 0, f"Failed to set indexCommitQuorum=3: {result.stderr}"
-
     restore_time = datetime.now(timezone.utc)
     cluster.make_restore(logical_backup, check_pbm_status=True)
 
-    _check_mongodb_logs("3", since=restore_time)
+    logs_result = cluster.exec_pbm_cli("logs -sW -t0 -e restore")
+    assert "index commit quorum cannot be satisfied for test.col1, retrying with votingMembers" in logs_result.stdout, (
+        f"Expected fallback warning in PBM logs, got: {logs_result.stdout}"
+    )
+
+    _check_mongodb_logs("votingMembers", since=restore_time)
 
 @pytest.mark.timeout(300, func_only=True)
 def test_valid_integer_quorum_PBM_T1668(reset_state, cluster, logical_backup):
