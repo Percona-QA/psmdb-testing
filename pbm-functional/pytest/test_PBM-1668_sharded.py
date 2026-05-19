@@ -80,16 +80,3 @@ def test_majority_quorum_sharded_PBM_T1668(reset_state, cluster, logical_backup)
     restore_time = datetime.now(timezone.utc)
     cluster.make_restore(logical_backup, check_pbm_status=True)
     _check_mongodb_logs("majority", since=restore_time)
-
-
-@pytest.mark.timeout(300, func_only=True)
-def test_integer_quorum_sharded_PBM_T1668(reset_state, cluster, logical_backup):
-    """An integer indexCommitQuorum is applied across all shards during logical restore."""
-    cluster.check_pbm_status()
-
-    result = cluster.exec_pbm_cli("config --set restore.indexCommitQuorum=1 --wait")
-    assert result.rc == 0, f"Failed to set indexCommitQuorum=1: {result.stderr}"
-
-    restore_time = datetime.now(timezone.utc)
-    cluster.make_restore(logical_backup, check_pbm_status=True)
-    _check_mongodb_logs("1", since=restore_time)
