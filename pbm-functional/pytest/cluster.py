@@ -512,6 +512,12 @@ class Cluster:
             ' pbm restore ' + name + ' ' + confirm_flag + ' '.join(restore_opts) + ' --wait')
         if kwargs.get('expect_failure', False):
             Cluster.log(result.stdout, result.stderr)
+            if self.layout == "sharded":
+                self.start_mongos()
+                client = pymongo.MongoClient(self.connection)
+                res = client.admin.command("balancerStart")
+                Cluster.log("Starting balancer: " + str(res))
+                client.close()
             return result
         if "--fallback-enabled=true" in restore_opts and result.rc == 1 and "fallback is applied" in result.stderr.lower():
             # if fallback is enabled and restore fails, PBM should revert the cluster
