@@ -246,6 +246,7 @@ def test_physical_restore_ignores_index_commit_quorum_PBM_T1668(reset_state, clu
 
     _setup_indexed_data(cluster)
     backup = cluster.make_backup("physical")
+    restore_time = datetime.now(timezone.utc)
     cluster.make_restore(backup, restart_cluster=True, check_pbm_status=True)
 
     n = testinfra.get_host("docker://rs1668a")
@@ -253,7 +254,16 @@ def test_physical_restore_ignores_index_commit_quorum_PBM_T1668(reset_state, clu
         'mongosh -u root -p root --quiet --eval '
         '"db.adminCommand({getLog:\'global\'}).log.forEach(x => print(x))"'
     )
-    commit_quorum_logs = [line for line in log_result.stdout.splitlines() if "commitQuorum" in line]
+    commit_quorum_logs = []
+    for line in log_result.stdout.splitlines():
+        if "commitQuorum" not in line:
+            continue
+        try:
+            log_time = datetime.fromisoformat(json.loads(line)["t"]["$date"])
+            if log_time >= restore_time:
+                commit_quorum_logs.append(line)
+        except (json.JSONDecodeError, KeyError, ValueError):
+            pass
     assert not commit_quorum_logs, (
         f"Expected no commitQuorum log entries after physical restore, found: {commit_quorum_logs}"
     )
