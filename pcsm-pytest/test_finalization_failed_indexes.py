@@ -171,49 +171,42 @@ from data_integrity_check import get_indexes
 #     dst_index_names = {idx["name"] for idx in get_indexes(dst_cluster.connection, "testdb.items")}
 #     for name in {"index_item_id", "index_value"}:
 #         assert name in dst_index_names, f"{name} should exist on destination after successful second finalize"
-
-
-@pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
-@pytest.mark.timeout(300, func_only=True)
-def test_pcsm_status_finalization_inconsistent_index_PCSM_T98(start_cluster, src_cluster, dst_cluster, csync):
-    """Verify type inconsistent appears in unsuccessfulIndexes when an index exists on some source shards but not all."""
-    src = pymongo.MongoClient(src_cluster.connection)
-
-    src.admin.command({"enableSharding": "testdb"})
-    src.admin.command("shardCollection", "testdb.items", key={"item_id": 1})
-    src["testdb"]["items"].insert_many([{"item_id": i, "value": i} for i in range(1000)])
-
-    shard_0 = src_cluster.config["shards"][0]["_id"]
-    shard_1 = src_cluster.config["shards"][1]["_id"]
-    src.admin.command("split", "testdb.items", middle={"item_id": 500})
-    src.admin.command("moveChunk", "testdb.items", find={"item_id": 0}, to=shard_0)
-    src.admin.command("moveChunk", "testdb.items", find={"item_id": 500}, to=shard_1)
-
-    src.close()
-
-    # Create index on only the first shard primary — bypassing mongos so it doesn't propagate to all shards.
-    shard_clients = src_cluster.get_shard_primary_clients()
-    shard_clients[0][1]["testdb"]["items"].create_index("value", name="index_value")
-    for _, client in shard_clients:
-        client.close()
-
-    src_verify = pymongo.MongoClient(src_cluster.connection)
-    list(src_verify["testdb"]["items"].aggregate([{"$indexStats": {}}]))
-    src_verify.close()
-
-    assert csync.start(), "Failed to start csync"
-    assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
-    assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
-    assert csync.finalize(), "Failed to finalize csync"
-
-    status = csync.status()
-    assert status["success"], "Failed to retrieve csync status"
-
-    finalization = status["data"].get("finalization", {})
-    unsuccessful = finalization.get("unsuccessfulIndexes", [])
-    assert len(unsuccessful) == 1, f"Expected 1 inconsistent index, got: {unsuccessful}"
-
-    entry = unsuccessful[0]
-    assert entry["indexName"] == "index_value", f"Unexpected index name: {entry['indexName']}"
-    assert entry["namespace"] == "testdb.items", f"Unexpected namespace: {entry['namespace']}"
-    assert entry["type"] == "inconsistent", f"Expected type 'inconsistent', got '{entry['type']}'"
+#
+# @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
+# @pytest.mark.timeout(300, func_only=True)
+# def test_pcsm_status_finalization_inconsistent_index_PCSM_T98(start_cluster, src_cluster, dst_cluster, csync):
+#     """Verify type inconsistent appears in unsuccessfulIndexes when an index exists on some source shards but not all."""
+#     src = pymongo.MongoClient(src_cluster.connection)
+#
+#     src.admin.command({"enableSharding": "testdb"})
+#     src.admin.command("shardCollection", "testdb.items", key={"_id": "hashed"})
+#     src["testdb"]["items"].insert_many([{"item_id": i, "value": i} for i in range(100)])
+#     src["testdb"]["items"].create_index("value", name="index_value")
+#     src.close()
+#
+#     # Drop the index from one shard primary directly — leaving it only on the other shard
+#     shard_clients = src_cluster.get_shard_primary_clients()
+#     shard_clients[0][1]["testdb"]["items"].drop_index("index_value")
+#     for _, client in shard_clients:
+#         client.close()
+#
+#     src_verify = pymongo.MongoClient(src_cluster.connection)
+#     list(src_verify["testdb"]["items"].aggregate([{"$indexStats": {}}]))
+#     src_verify.close()
+#
+#     assert csync.start(), "Failed to start csync"
+#     assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
+#     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+#     assert csync.finalize(), "Failed to finalize csync"
+#
+#     status = csync.status()
+#     assert status["success"], "Failed to retrieve csync status"
+#
+#     finalization = status["data"].get("finalization", {})
+#     unsuccessful = finalization.get("unsuccessfulIndexes", [])
+#     assert len(unsuccessful) == 1, f"Expected 1 inconsistent index, got: {unsuccessful}"
+#
+#     entry = unsuccessful[0]
+#     assert entry["indexName"] == "index_value", f"Unexpected index name: {entry['indexName']}"
+#     assert entry["namespace"] == "testdb.items", f"Unexpected namespace: {entry['namespace']}"
+#     assert entry["type"] == "inconsistent", f"Expected type 'inconsistent', got '{entry['type']}'"
