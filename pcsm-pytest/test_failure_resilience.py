@@ -253,7 +253,7 @@ def test_csync_PML_T100(start_cluster, src_cluster, dst_cluster, csync, scenario
                        'mode': fp_mode, 'data': fp_data})
     cancel_event = threading.Event()
     def _disable_failpoint_after(delay):
-        # Returns True if cancelled (stop_event set) before delay elapsed,
+        # Returns True if cancelled (cancel_event set) before delay elapsed,
         # so failpoint disabling can be skipped if the test fails early
         if cancel_event.wait(delay):
             return
