@@ -5,11 +5,10 @@ import pymongo
 
 from data_integrity_check import get_indexes
 
-
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
-@pytest.mark.timeout(7200, func_only=True)
-def test_pcsm_status_finalization_section_PCSM_T176(start_cluster, src_cluster, dst_cluster, csync):
+@pytest.mark.timeout(300, func_only=True)
+def test_pcsm_status_finalization_section_PCSM_T95(start_cluster, src_cluster, dst_cluster, csync):
     """Verify finalization section in pcsm status after pcsm finalize."""
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
@@ -50,7 +49,7 @@ def test_pcsm_status_finalization_section_PCSM_T176(start_cluster, src_cluster, 
     assert "finalization" not in status["data"], "finalization should not appear before csync starts"
 
     assert csync.start(), "Failed to start csync"
-    assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
 
     status = csync.status()
@@ -64,7 +63,7 @@ def test_pcsm_status_finalization_section_PCSM_T176(start_cluster, src_cluster, 
     data = status["data"]
 
     finalization = data.get("finalization", {})
-    assert finalization.get("completed") is True, "finalization.completed should be True"
+    assert finalization.get("completed") is True, "Finalization did not complete"
 
     unsuccessful = finalization.get("unsuccessfulIndexes", [])
     assert len(unsuccessful) == 5, f"Expected 5 unsuccessful indexes, got {len(unsuccessful)}: {unsuccessful}"
@@ -91,8 +90,8 @@ def test_pcsm_status_finalization_section_PCSM_T176(start_cluster, src_cluster, 
         assert name in dst_passed_index_names, f"{name} should exist on destination after successful finalization"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
-@pytest.mark.timeout(7200, func_only=True)
-def test_pcsm_status_finalization_no_failed_indexes_PCSM_T176(start_cluster, src_cluster, dst_cluster, csync):
+@pytest.mark.timeout(300, func_only=True)
+def test_pcsm_status_finalization_no_failed_indexes_PCSM_T96(start_cluster, src_cluster, dst_cluster, csync):
     """Verify unsuccessfulIndexes does not appear in finalization status when all indexes succeed."""
     src = pymongo.MongoClient(src_cluster.connection)
     db = src["testdb"]
@@ -108,12 +107,12 @@ def test_pcsm_status_finalization_no_failed_indexes_PCSM_T176(start_cluster, src
     assert "finalization" not in status["data"], "finalization should not appear before csync starts"
 
     assert csync.start(), "Failed to start csync"
-    assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
 
     status = csync.status()
     assert status["success"], "Failed to retrieve csync status before finalize"
-    assert "finalization" not in status["data"], "finalization should not appear before finalize is called"
+    assert "finalization" not in status["data"], "finalization section should not appear before finalize is called"
 
     assert csync.finalize(), "Failed to finalize csync"
 
@@ -122,14 +121,14 @@ def test_pcsm_status_finalization_no_failed_indexes_PCSM_T176(start_cluster, src
     data = status["data"]
 
     finalization = data.get("finalization", {})
-    assert finalization.get("completed") is True, "finalization.completed should be True"
+    assert finalization.get("completed") is True, "Finalization did not complete"
     assert "unsuccessfulIndexes" not in finalization, \
         f"unsuccessfulIndexes should not appear when all indexes succeed: {finalization.get('unsuccessfulIndexes')}"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
-@pytest.mark.timeout(7200, func_only=True)
-def test_pcsm_status_finalization_retry_clears_failed_indexes_PCSM_T176(start_cluster, src_cluster, dst_cluster, csync):
+@pytest.mark.timeout(300, func_only=True)
+def test_pcsm_status_finalization_retry_clears_failed_indexes_PCSM_T97(start_cluster, src_cluster, dst_cluster, csync):
     """Verify that a second finalize after fixing the index issue clears unsuccessfulIndexes."""
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
@@ -152,7 +151,7 @@ def test_pcsm_status_finalization_retry_clears_failed_indexes_PCSM_T176(start_cl
     })
 
     assert csync.start(), "Failed to start csync"
-    assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
     assert csync.finalize(), "Failed to finalize csync on first attempt"
 
@@ -162,9 +161,9 @@ def test_pcsm_status_finalization_retry_clears_failed_indexes_PCSM_T176(start_cl
     assert csync.finalize(), "Failed to finalize csync on second attempt"
 
     status = csync.status()
-    assert status["success"], "Cynsc status was not successful"
+    assert status["success"], "Csync status was not successful"
     second_finalization = status["data"].get("finalization", {})
-    assert second_finalization.get("completed") is True, "finalization.completed should be True after second finalize"
+    assert second_finalization.get("completed") is True, "Finalization did not complete on second attempt"
     assert "unsuccessfulIndexes" not in second_finalization, \
         f"unsuccessfulIndexes should be cleared after successful second finalize: {second_finalization.get('unsuccessfulIndexes')}"
 
