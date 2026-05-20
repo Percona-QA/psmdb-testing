@@ -48,6 +48,8 @@
       VAULT_LICENSE: "{{ vault_license }}"
       VAULT_DISABLE_MLOCK: "true"
       SKIP_SETCAP: "true"
+    capabilities:
+      - "IPC_LOCK"
     volumes:
       - "/etc/vault:/etc/vault"
 
