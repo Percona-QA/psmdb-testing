@@ -193,3 +193,90 @@ def test_csync_PML_T49(start_cluster, src_cluster, dst_cluster, csync, fail_node
     assert csync.finalize(), "Failed to finalize csync service"
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
+
+@pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
+@pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
+@pytest.mark.timeout(500, func_only=True)
+@pytest.mark.parametrize("scenario", [
+    pytest.param(
+        {"fail_command": "find", "skip": 0,
+         "target": "getIDKeyRange ascending"},
+        id="getIDKeyRange_asc",
+        marks=pytest.mark.xfail(strict=True,
+            reason="getIDKeyRange ascending isn't retried, PCSM-328"),
+    ),
+    pytest.param(
+        {"fail_command": "find", "skip": 1,
+         "target": "getIDKeyRange descending"},
+        id="getIDKeyRange_desc",
+        marks=pytest.mark.xfail(strict=True,
+            reason="getIDKeyRange descending isn't retried, PCSM-328"),
+    ),
+    pytest.param(
+        {"fail_command": "find", "skip": 2,
+         "target": "findSegmentMaxKey"},
+        id="findSegmentMaxKey",
+    ),
+    pytest.param(
+        {"fail_command": "find", "skip": 3,
+         "target": "data cursor Find"},
+        id="data_cursor_Find",
+        marks=pytest.mark.xfail(strict=True,
+            reason="data cursor find isn't retried, PCSM-328"),
+    ),
+    pytest.param(
+        {"fail_command": "getMore", "skip": 0,
+         "target": "data cursor getMore"},
+        id="data_cursor_getMore",
+        marks=pytest.mark.xfail(strict=True,
+            reason="data cursor getMore isn't retried, PCSM-328"))])
+def test_csync_PML_T100(start_cluster, src_cluster, dst_cluster, csync, scenario):
+    """
+    Source-side transient-error matrix for clone
+    Each scenario injects a single MaxTimeMSExpired on matching 
+    command targeting the user namespace, then disables the failpoint. 
+    PCSM is expected to recover and complete the clone successfully
+    """
+    namespace_db = "dummy"
+    namespace_coll = "collection_0"
+    namespace = f"{namespace_db}.{namespace_coll}"
+    generate_dummy_data(src_cluster.connection, namespace_db,
+                        num_collections=1, doc_size=25000, batch_size=10000)
+    src = pymongo.MongoClient(src_cluster.connection)
+    fp_data = {
+        'failCommands': [scenario["fail_command"]],
+        'namespace': namespace,
+        'errorCode': 50,}
+    skip = scenario["skip"]
+    fp_mode = {'skip': skip} if skip > 0 else {'times': 1}
+    src.admin.command({'configureFailPoint': 'failCommand',
+                       'mode': fp_mode, 'data': fp_data})
+    cancel_event = threading.Event()
+    def _disable_failpoint_after(delay):
+        # Returns True if cancelled (stop_event set) before delay elapsed,
+        # so failpoint disabling can be skipped if the test fails early
+        if cancel_event.wait(delay):
+            return
+        try:
+            src.admin.command({'configureFailPoint': 'failCommand', 'mode': 'off'})
+        except Exception:
+            pass
+    disable_thread = threading.Thread(target=_disable_failpoint_after, args=(15,), daemon=True)
+    try:
+        assert csync.start(), "Failed to start csync service"
+        disable_thread.start()
+        assert csync.wait_for_repl_stage(), "Failed to start replication"
+        assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+        assert csync.finalize(), "Failed to finalize csync service"
+        result, _ = compare_data(src_cluster, dst_cluster)
+        assert result is True, "Data mismatch after synchronization"
+        csync_error, error_logs = csync.check_csync_errors()
+        expected_errors = ["WRN Transient error"]
+        if not csync_error:
+            unexpected = [line for line in error_logs if all(expected_error not in line for expected_error in expected_errors)]
+            if unexpected:
+                pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
+    finally:
+        cancel_event.set()
+        disable_thread.join()
+        src.admin.command({'configureFailPoint': 'failCommand', 'mode': 'off'})
