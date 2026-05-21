@@ -218,6 +218,7 @@ def test_pcsm_status_finalization_inconsistent_index_PCSM_T98(start_cluster, src
     assert entry["indexName"] == "index_value", f"Unexpected index name: {entry['indexName']}"
     assert entry["namespace"] == "testdb.items", f"Unexpected namespace: {entry['namespace']}"
     assert entry["type"] == "inconsistent", f"Expected type 'inconsistent', got '{entry['type']}'"
+    assert entry["reason"] == "index is missing on one or more source shards", f"Unexpected reason: {entry['reason']}"
 
     # print("SLEEPING")
     # time.sleep(7200)
