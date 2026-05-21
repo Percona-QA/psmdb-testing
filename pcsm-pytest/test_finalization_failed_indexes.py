@@ -229,9 +229,8 @@ def test_pcsm_status_finalization_inconsistent_index_PCSM_T98(start_cluster, src
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
 @pytest.mark.timeout(300, func_only=True)
-def test_pcsm_status_finalization_persists_after_restart_PCSM_T99(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_status_finalization_persists_after_restart_PCSM_T101(start_cluster, src_cluster, dst_cluster, csync):
     """Verify that finalization.completed persists from checkpoint after PCSM restart."""
-
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
     db = src["testdb"]
