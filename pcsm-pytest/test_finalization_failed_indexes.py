@@ -155,6 +155,15 @@ def test_pcsm_status_finalization_retry_clears_failed_indexes_PCSM_T97(start_clu
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
     assert csync.finalize(), "Failed to finalize csync on first attempt"
 
+    first_status = csync.status()
+    assert first_status["success"], "Failed to retrieve csync status after first finalize"
+    first_finalization = first_status["data"].get("finalization", {})
+    first_unsuccessful = first_finalization.get("unsuccessfulIndexes", [])
+    assert len(first_unsuccessful) == 2, \
+        f"Expected 2 unsuccessful indexes after first finalize (failpoint active), got: {first_unsuccessful}"
+    assert {e["indexName"] for e in first_unsuccessful} == {"index_item_id", "index_value"}, \
+        f"Unexpected index names in first unsuccessfulIndexes: {first_unsuccessful}"
+
     dst.admin.command({"configureFailPoint": "failCommand", "mode": "off"})
     dst.close()
 
@@ -207,7 +216,6 @@ def test_pcsm_status_finalization_inconsistent_index_PCSM_T98(start_cluster, src
 
     status = csync.status()
     assert status["success"], "Failed to retrieve csync status"
-
     finalization = status["data"].get("finalization", {})
     unsuccessful = finalization.get("unsuccessfulIndexes", [])
     assert len(unsuccessful) == 1, f"Expected 1 inconsistent index, got: {unsuccessful}"
@@ -258,4 +266,4 @@ def test_pcsm_status_finalization_persists_after_restart_PCSM_T99(start_cluster,
     finalization = status["data"].get("finalization", {})
     assert finalization.get("completed") is True, "finalization.completed not restored after restart"
     assert "unsuccessfulIndexes" not in finalization, \
-        f"unsuccessfulIndexes should not be present after restart — not persisted to checkpoint: {finalization}"
+        f"unsuccessfulIndexes should not be present after restart: {finalization}"
