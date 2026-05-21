@@ -217,3 +217,45 @@ def test_pcsm_status_finalization_inconsistent_index_PCSM_T98(start_cluster, src
     assert entry["namespace"] == "testdb.items", f"Unexpected namespace: {entry['namespace']}"
     assert entry["type"] == "inconsistent", f"Expected type 'inconsistent', got '{entry['type']}'"
     assert entry["reason"] == "index is missing on one or more source shards", f"Unexpected reason: {entry['reason']}"
+
+@pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
+@pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
+@pytest.mark.timeout(300, func_only=True)
+def test_pcsm_status_finalization_persists_after_restart_PCSM_T99(start_cluster, src_cluster, dst_cluster, csync):
+    """Verify that finalization.completed persists from checkpoint after PCSM restart."""
+
+    src = pymongo.MongoClient(src_cluster.connection)
+    dst = pymongo.MongoClient(dst_cluster.connection)
+    db = src["testdb"]
+
+    db["items"].insert_many([{"item_id": i, "value": i} for i in range(100)])
+    db["items"].create_index("item_id", name="index_item_id")
+    db["items"].create_index("value", name="index_value")
+
+    src.close()
+
+    dst.admin.command({
+        "configureFailPoint": "failCommand",
+        "mode": "alwaysOn",
+        "data": {
+            "failCommands": ["createIndexes"],
+            "namespace": "testdb.items",
+            "errorCode": 14031,
+        },
+    })
+    dst.close()
+
+    assert csync.start(), "Failed to start csync"
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+    assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+
+    assert csync.finalize(), "Failed to finalize csync"
+
+    assert csync.restart(), "Failed to restart csync"
+
+    status = csync.status()
+    assert status["success"], "Failed to retrieve csync status after restart"
+    finalization = status["data"].get("finalization", {})
+    assert finalization.get("completed") is True, "finalization.completed not restored after restart"
+    assert "unsuccessfulIndexes" not in finalization, \
+        f"unsuccessfulIndexes should not be present after restart — not persisted to checkpoint: {finalization}"
