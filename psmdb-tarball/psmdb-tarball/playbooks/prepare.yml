@@ -233,11 +233,11 @@
 
   - set_fact:
       python_version: "{{ lookup('env', 'PYTHON_VERSION') | default('3.10.14', true) }}"
-    when: mongodb_version[0] | float >= 6.0
+    when: mongodb_version[0] | float >= 7.0
 
   - set_fact:
       python_version: "{{ lookup('env', 'PYTHON_VERSION') | default('3.8.19', true) }}"
-    when: mongodb_version[0] | float <= 5.0
+    when: mongodb_version[0] | float <= 6.0
 
   - name: Download python
     get_url:

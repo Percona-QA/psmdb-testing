@@ -34,3 +34,11 @@ RUN ./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:nginx-minio --bat
     cp pki/ca.crt /etc/nginx-minio/ && \
     cp pki/issued/nginx-minio.crt /etc/nginx-minio/ && \
     cp pki/private/nginx-minio.key /etc/nginx-minio/
+
+#For keycloak
+RUN ./easyrsa --batch build-server-full keycloak nopass && \
+    mkdir -p /etc/keycloak && \
+    cp pki/ca.crt /etc/keycloak/ && \
+    cat pki/issued/keycloak.crt pki/private/keycloak.key > /etc/keycloak/keycloak.pem && \
+    cp pki/issued/keycloak.crt /etc/keycloak/ && \
+    cp pki/private/keycloak.key /etc/keycloak/
