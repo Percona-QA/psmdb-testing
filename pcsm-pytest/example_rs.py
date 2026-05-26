@@ -8,8 +8,8 @@ from data_generator import generate_dummy_data
 # To destroy setup:
 # docker-compose run --env CLEANUP=true test python example_rs.py
 
-srcRS = Cluster({"_id": "rs1", "members": [{"host": "rs101"}]})
-dstRS = Cluster({"_id": "rs2", "members": [{"host": "rs201"}]})
+srcRS = Cluster({"_id": "rs1", "members": [{"host": "rs101"}]}, mongo_image="mongodb-src/local")
+dstRS = Cluster({"_id": "rs2", "members": [{"host": "rs201"}]}, mongo_image="mongodb-dst/local")
 csync = Clustersync("csync", srcRS.csync_connection, dstRS.csync_connection)
 setup = os.environ.get("SETUP", "").lower() == "true"
 cleanup = os.environ.get("CLEANUP", "").lower() == "true"

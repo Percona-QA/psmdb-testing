@@ -138,7 +138,7 @@ def src_cluster(cluster_configs, request):
     if "mongos" in config:
         mongod_extra_args = f"--setParameter periodicNoopIntervalSecs=1 {mongod_extra_args}".strip()
     Cluster.log(f"src_cluster mongod_extra_args: '{mongod_extra_args}'")
-    return Cluster(config, mongod_extra_args=mongod_extra_args)
+    return Cluster(config, mongod_extra_args=mongod_extra_args, mongo_image="mongodb-src/local")
 
 @pytest.fixture(scope="function")
 def dst_cluster(cluster_configs, request):
@@ -149,7 +149,7 @@ def dst_cluster(cluster_configs, request):
     else:
         mongod_extra_args = ""
     Cluster.log(f"dst_cluster mongod_extra_args: '{mongod_extra_args}'")
-    return Cluster(config, mongod_extra_args=mongod_extra_args)
+    return Cluster(config, mongod_extra_args=mongod_extra_args, mongo_image="mongodb-dst/local")
 
 @pytest.fixture(scope="function")
 def csync(src_cluster, dst_cluster):

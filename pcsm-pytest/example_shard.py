@@ -15,7 +15,7 @@ srcShard = Cluster({
         {"_id": "rs1", "members": [{"host": "rs101"}]},
         {"_id": "rs2", "members": [{"host": "rs201"}]}
     ]
-})
+}, mongo_image="mongodb-src/local")
 dstShard = Cluster({
     "mongos": "mongos2",
     "configserver": {"_id": "rscfg2", "members": [{"host": "rscfg201"}]},
@@ -23,7 +23,7 @@ dstShard = Cluster({
         {"_id": "rs3", "members": [{"host": "rs301"}]},
         {"_id": "rs4", "members": [{"host": "rs401"}]}
     ]
-})
+}, mongo_image="mongodb-dst/local")
 csync = Clustersync("csync", srcShard.csync_connection, dstShard.csync_connection)
 setup = os.environ.get("SETUP", "").lower() == "true"
 cleanup = os.environ.get("CLEANUP", "").lower() == "true"
