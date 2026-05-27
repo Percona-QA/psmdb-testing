@@ -76,7 +76,7 @@ def _check_mongodb_logs(expected_value, since):
         )
 
 @pytest.mark.timeout(300, func_only=True)
-def test_default_quorum_PBM_T1668(reset_state, cluster, logical_backup):
+def test_default_quorum_PBM_T336(reset_state, cluster, logical_backup):
     """Verify default commitQuorum setting is votingMembers."""
     cluster.check_pbm_status()
 
@@ -92,8 +92,8 @@ def test_default_quorum_PBM_T1668(reset_state, cluster, logical_backup):
     _check_mongodb_logs("votingMembers", since=restore_time)
 
 @pytest.mark.timeout(300, func_only=True)
-def test_explicit_voting_members_quorum_PBM_T1668(reset_state, cluster, logical_backup):
-    """indexCommitQuorum=votingMembers applies votingMembers during restore."""
+def test_explicit_voting_members_quorum_PBM_T337(reset_state, cluster, logical_backup):
+    """Verify indexCommitQuorum=votingMembers applies votingMembers during restore."""
     cluster.check_pbm_status()
 
     result = cluster.exec_pbm_cli("config --set restore.indexCommitQuorum=votingMembers --wait")
@@ -111,8 +111,8 @@ def test_explicit_voting_members_quorum_PBM_T1668(reset_state, cluster, logical_
     _check_mongodb_logs("votingMembers", since=restore_time)
 
 @pytest.mark.timeout(300, func_only=True)
-def test_majority_quorum_PBM_T1668(reset_state, cluster, logical_backup):
-    """indexCommitQuorum=majority applies majority during restore."""
+def test_majority_quorum_PBM_T338(reset_state, cluster, logical_backup):
+    """Verify indexCommitQuorum=majority applies majority during restore."""
     cluster.check_pbm_status()
 
     result = cluster.exec_pbm_cli("config --set restore.indexCommitQuorum=majority --wait")
@@ -137,7 +137,7 @@ def test_majority_quorum_PBM_T1668(reset_state, cluster, logical_backup):
     ('"majority "', "must not contain leading or trailing whitespace"),
     ("51",         'invalid restore.indexCommitQuorum "51"')
 ])
-def test_invalid_quorum_config_PBM_T1668(start_cluster, cluster, value, expected_error):
+def test_invalid_quorum_config_PBM_T339(start_cluster, cluster, value, expected_error):
     """Verify restore.indexCommitQuorum config validation for rejected values"""
     cluster.check_pbm_status()
     result = cluster.exec_pbm_cli(f"config --set restore.indexCommitQuorum={value} --wait")
@@ -147,7 +147,7 @@ def test_invalid_quorum_config_PBM_T1668(start_cluster, cluster, value, expected
     )
 
 @pytest.mark.timeout(300, func_only=True)
-def test_integer_quorum_config_PBM_T1668(reset_state, cluster, logical_backup):
+def test_integer_quorum_config_PBM_T340(reset_state, cluster, logical_backup):
     """Verify a positive integer is accepted and applied during restore."""
     cluster.check_pbm_status()
 
@@ -166,8 +166,8 @@ def test_integer_quorum_config_PBM_T1668(reset_state, cluster, logical_backup):
     _check_mongodb_logs("2", since=restore_time)
 
 @pytest.mark.timeout(300, func_only=True)
-def test_quorum_exceeds_node_count_PBM_T1668(reset_state, cluster, logical_backup):
-    """An integer quorum exceeding voting members falls back to votingMembers and restore succeeds."""
+def test_quorum_exceeds_node_count_PBM_T341(reset_state, cluster, logical_backup):
+    """Verify An integer quorum exceeding voting members falls back to votingMembers and restore succeeds."""
     cluster.check_pbm_status()
 
     result = cluster.exec_pbm_cli("config --set restore.indexCommitQuorum=50 --wait")
@@ -184,8 +184,8 @@ def test_quorum_exceeds_node_count_PBM_T1668(reset_state, cluster, logical_backu
     _check_mongodb_logs("votingMembers", since=restore_time)
 
 @pytest.mark.timeout(300, func_only=True)
-def test_cli_flag_valid_values_PBM_T1668(reset_state, cluster, logical_backup):
-    """Valid --index-commit-quorum CLI values are accepted and applied during restore."""
+def test_cli_flag_valid_values_PBM_T342(reset_state, cluster, logical_backup):
+    """Verify valid --index-commit-quorum CLI values are accepted and applied during restore."""
     cluster.check_pbm_status()
 
     restore_time = datetime.now(timezone.utc)
@@ -194,8 +194,8 @@ def test_cli_flag_valid_values_PBM_T1668(reset_state, cluster, logical_backup):
     _check_mongodb_logs("majority", since=restore_time)
 
 @pytest.mark.timeout(300, func_only=True)
-def test_cli_flag_overrides_config_PBM_T1668(reset_state, cluster, logical_backup):
-    """CLI --index-commit-quorum flag takes precedence over config option."""
+def test_cli_flag_overrides_config_PBM_T343(reset_state, cluster, logical_backup):
+    """Verify CLI --index-commit-quorum flag takes precedence over config option."""
     cluster.check_pbm_status()
 
     result = cluster.exec_pbm_cli("config --set restore.indexCommitQuorum=1 --wait")
@@ -207,8 +207,8 @@ def test_cli_flag_overrides_config_PBM_T1668(reset_state, cluster, logical_backu
     _check_mongodb_logs("2", since=restore_time)
 
 @pytest.mark.timeout(600, func_only=True)
-def test_pitr_restore_applies_index_commit_quorum_PBM_T1668(reset_state, cluster):
-    """indexCommitQuorum config is applied during the base snapshot phase of a PITR restore."""
+def test_pitr_restore_applies_index_commit_quorum_PBM_T344(reset_state, cluster):
+    """Verify indexCommitQuorum config is applied during the base snapshot phase of a PITR restore."""
     cluster.check_pbm_status()
 
     result = cluster.exec_pbm_cli("config --set restore.indexCommitQuorum=majority --wait")
@@ -237,8 +237,8 @@ def test_pitr_restore_applies_index_commit_quorum_PBM_T1668(reset_state, cluster
     client.close()
 
 @pytest.mark.timeout(600, func_only=True)
-def test_physical_restore_ignores_index_commit_quorum_PBM_T1668(reset_state, cluster):
-    """indexCommitQuorum config is not applied during a physical restore"""
+def test_physical_restore_ignores_index_commit_quorum_PBM_T345(reset_state, cluster):
+    """Verify indexCommitQuorum config is not applied during a physical restore"""
     cluster.check_pbm_status()
 
     result = cluster.exec_pbm_cli("config --set restore.indexCommitQuorum=majority --wait")

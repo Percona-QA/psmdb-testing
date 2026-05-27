@@ -51,7 +51,6 @@ def reset_state(cluster, logical_backup):
     yield
 
 def _check_mongodb_logs(expected_value, since):
-    """Assert commitQuorum=expected_value in docker logs on every shard primary after `since`."""
     try:
         int(expected_value)
         expected_fragment = f'"commitQuorum":{expected_value}'
@@ -70,8 +69,8 @@ def _check_mongodb_logs(expected_value, since):
             )
 
 @pytest.mark.timeout(300, func_only=True)
-def test_majority_quorum_sharded_PBM_T1668(reset_state, cluster, logical_backup):
-    """indexCommitQuorum=majority is applied across all shards during logical restore."""
+def test_majority_quorum_sharded_PBM_T346(reset_state, cluster, logical_backup):
+    """Verify indexCommitQuorum=majority is applied across all shards during logical restore."""
     cluster.check_pbm_status()
 
     result = cluster.exec_pbm_cli("config --set restore.indexCommitQuorum=majority --wait")
