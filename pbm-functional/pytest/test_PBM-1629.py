@@ -23,7 +23,8 @@ def start_cluster(cluster,request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.timeout(3600,func_only=True)
+@pytest.mark.jenkins
+@pytest.mark.timeout(600,func_only=True)
 def test_logical_PBM_T330(start_cluster,cluster):
     """
     Test the correctness of backup size calculation with no compression
