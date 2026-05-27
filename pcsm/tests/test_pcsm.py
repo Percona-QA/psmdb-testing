@@ -256,3 +256,12 @@ def test_pcsm_transfer(host):
     assert wait_for_repl_stage(host)
     assert "testUser" in pcsm_confirm_db_row(host).stdout
     assert pcsm_finalize(host)
+
+def test_pcsm_sbom(host):
+    """Verify sbom exists, and the format and version are correct"""
+    sbom_file = host.file("/usr/share/doc/percona-clustersync-mongodb/sbom.json")
+    assert sbom_file.exists, "SBOM file not found at /usr/share/doc/percona-clustersync-mongodb/sbom.json"
+
+    sbom = json.loads(sbom_file.content_string)
+    assert sbom.get("bomFormat") == "CycloneDX", f"Unexpected format found: {sbom.get('bomFormat')}"
+    assert sbom.get("specVersion") == "1.6", f"Unexpected version: {sbom.get('specVersion')}"
