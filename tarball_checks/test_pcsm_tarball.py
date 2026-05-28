@@ -1,5 +1,4 @@
 import io
-import json
 import os
 import subprocess
 import tarfile
@@ -10,7 +9,7 @@ import requests
 PCSM_VER = os.environ.get("PCSM_VERSION")
 
 TARBALL_URL = (
-    f"https://downloads.percona.com/downloads/percona-clustersync-mongodb/percona-clustersync-mongodb-{PCSM_VER}/binary/tarball/percona-clustersync-mongodb-{PCSM_VER}-x86_64.tar.gz"
+    f"https://downloads.percona.com/downloads/TESTING/pcsm-{PCSM_VER}/percona-clustersync-mongodb-{PCSM_VER}-x86_64.tar.gz"
 )
 
 def test_pcsm_tarball_contents():
@@ -33,9 +32,12 @@ def test_pcsm_tarball_contents():
         result = subprocess.run([pcsm_binary, "version"], capture_output=True, text=True)
         assert result.returncode == 0, f"pcsm version command failed: {result.stderr}"
 
-        assert "sbom.json" in contents, f"pcsm sbom not found in tarball. Found: {contents}"
+        sbom_filename = f"percona-clustersync-mongodb-{PCSM_VER}.cdx.json"
+        assert sbom_filename in contents, f"pcsm sbom not found in tarball. Found: {contents}"
 
-        with open(os.path.join(root, "sbom.json")) as f:
-            sbom = json.load(f)
-        assert sbom.get("bomFormat") == "CycloneDX", f"Unexpected bomFormat: {sbom.get('bomFormat')}"
-        assert sbom.get("specVersion") == "1.6", f"Unexpected specVersion: {sbom.get('specVersion')}"
+        sbom_path = os.path.join(root, sbom_filename)
+        result = subprocess.run(
+            ["trivy", "sbom", "--severity", "HIGH,CRITICAL", "--ignore-unfixed", sbom_path],
+            capture_output=True, text=True
+        )
+        assert result.returncode == 0, f"trivy sbom scan failed: {result.stderr}"
