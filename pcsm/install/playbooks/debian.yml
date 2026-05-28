@@ -78,6 +78,11 @@
           - containerd.io
       when: ansible_os_family == "Debian"
 
+    - name: Install Trivy
+      shell: curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      args:
+        creates: /usr/local/bin/trivy
+
     - name: Install Percona Release
       include_tasks: ../../../tasks/install_percona_release.yml
 

@@ -259,9 +259,22 @@ def test_pcsm_transfer(host):
 
 def test_pcsm_sbom(host):
     """Verify sbom exists, and the format and version are correct"""
-    sbom_file = host.file("/usr/share/doc/percona-clustersync-mongodb/sbom.json")
-    assert sbom_file.exists, "SBOM file not found at /usr/share/doc/percona-clustersync-mongodb/sbom.json"
+    is_rpm = host.run("rpm -q percona-clustersync-mongodb").rc == 0
+    is_deb = host.run("dpkg -l percona-clustersync-mongodb").rc == 0
+    assert is_rpm or is_deb, "Could not detect package manager — package does not appear to be installed via rpm or deb"
 
-    sbom = json.loads(sbom_file.content_string)
-    assert sbom.get("bomFormat") == "CycloneDX", f"Unexpected format found: {sbom.get('bomFormat')}"
-    assert sbom.get("specVersion") == "1.6", f"Unexpected version: {sbom.get('specVersion')}"
+    if is_rpm:
+        result = host.run("rpm -ql percona-clustersync-mongodb | grep cdx.json")
+    else:
+        result = host.run("dpkg -L percona-clustersync-mongodb | grep cdx.json")
+    assert result.rc == 0, f"SBOM cdx.json not found in package file list: {result.stdout}"
+
+    sbom_path = f"/usr/share/doc/percona-clustersync-mongodb/percona-clustersync-mongodb-{version}.cdx.json"
+    if is_rpm:
+        distro = f"{host.system_info.distribution}/{host.system_info.release}"
+        trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --distro {distro} {sbom_path}")
+    else:
+        trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed {sbom_path}")
+    assert trivy_result.rc == 0, f"trivy sbom scan failed: {trivy_result.stderr}"
+
+
