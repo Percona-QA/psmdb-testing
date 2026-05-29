@@ -80,7 +80,7 @@
 
     - name: Install PCSM
       yum:
-        name: "percona-clustersync-mongodb{{ '-' + pcsm_version if pcsm_version != '' else '' }}"
+        name: "percona-clustersync-mongodb{{ '-' + pcsm_version + '*' if pcsm_version != '' else '' }}"
         state: "{{ 'present' if pcsm_version != '' else 'latest' }}"
 
     - name: Enable and start Docker service
