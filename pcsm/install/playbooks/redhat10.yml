@@ -38,6 +38,12 @@
       args:
         creates: /usr/local/bin/trivy
 
+    - name: Install CycloneDX CLI
+      get_url:
+        url: "https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-{{ 'arm64' if ansible_architecture == 'aarch64' else 'x64' }}"
+        dest: /usr/local/bin/cyclonedx
+        mode: '0755'
+
     - name: Install Percona Release
       include_tasks: ../../../tasks/install_percona_release.yml
 
