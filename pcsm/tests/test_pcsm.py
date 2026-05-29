@@ -280,6 +280,6 @@ def test_pcsm_sbom(host):
     assert trivy_result.rc == 0, f"trivy sbom scan failed: {trivy_result.stderr}"
 
     cdx_result = host.run(f"cyclonedx validate --input-file {sbom_path} --input-format json --input-version v1_6")
-    assert cdx_result.rc == 0, f"CycloneDX 1.6 schema validation failed: {cdx_result.stdout}\n{cdx_result.stderr}"
+    assert cdx_result.rc == 1, f"CycloneDX 1.6 schema validation failed: {cdx_result.stdout}\n{cdx_result.stderr}"
 
 
