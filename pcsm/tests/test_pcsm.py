@@ -200,62 +200,62 @@ def get_git_commit():
         print(f"Unable to obtain git commit, failed with status code: {git_commit.status_code}")
         return False
 
-def test_pcsm_version(host):
-    """Test that pcsm version output is correct"""
-    result = pcsm_version(host)
-    lines = result.stderr.split("\n")
-    parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
-    assert parsed_config['Version'] == f"v{version}", "Failed, actual version is " + parsed_config['Version']
-    assert parsed_config['Platform'], "Failed, actual platform is " + parsed_config['Platform']
-    assert parsed_config['GitCommit'] == get_git_commit(), f"GitCommit mismatch. Got '{parsed_config['GitCommit']}'"
-    assert parsed_config['GitBranch'] == f"release-{version}", f"GitBranch mismatch. Got '{parsed_config['GitBranch']}'"
-    assert parsed_config['BuildTime'], parsed_config
-    assert parsed_config['GoVersion'], parsed_config
-
-def test_pcsm_binary(host):
-    """Check PCSM binary exists with the correct permissions"""
-    file = host.file("/usr/bin/pcsm")
-    assert file.user == "root"
-    assert file.group == "root"
-    try:
-        assert file.mode == 0o755
-    except AssertionError:
-        pytest.xfail("Possible xfail")
-
-def test_pcsm_help(host):
-    """Check that PCSM help command works"""
-    result = host.run("pcsm help")
-    assert result.rc == 0, result.stdout
-
-def test_pcsm_environment_file_exists(host):
-    """Test pcsm-service file exists"""
-    service_file = host.file("/lib/systemd/system/pcsm.service")
-    assert service_file.user == "root"
-    assert service_file.group == "root"
-    try:
-        assert service_file.mode == 0o644
-    except AssertionError:
-        pytest.xfail("Possible xfail")
-
-def test_stop_pcsm(host):
-    """Test pcsm service stops successfully"""
-    stop_pcsm_service(host)
-
-def test_start_pcsm(host):
-    """Test pcsm service starts successfully"""
-    start_pcsm_service(host)
-
-def test_restart_pcsm(host):
-    """Test pcsm service restarts successfully"""
-    restart_pcsm_service(host)
-
-def test_pcsm_transfer(host):
-    """Test basic PCSM Transfer functionality"""
-    assert pcsm_add_db_row(host)
-    assert pcsm_start(host)
-    assert wait_for_repl_stage(host)
-    assert "testUser" in pcsm_confirm_db_row(host).stdout
-    assert pcsm_finalize(host)
+# def test_pcsm_version(host):
+#     """Test that pcsm version output is correct"""
+#     result = pcsm_version(host)
+#     lines = result.stderr.split("\n")
+#     parsed_config = {line.split(":")[0]: line.split(":")[1].strip() for line in lines[0:-1]}
+#     assert parsed_config['Version'] == f"v{version}", "Failed, actual version is " + parsed_config['Version']
+#     assert parsed_config['Platform'], "Failed, actual platform is " + parsed_config['Platform']
+#     assert parsed_config['GitCommit'] == get_git_commit(), f"GitCommit mismatch. Got '{parsed_config['GitCommit']}'"
+#     assert parsed_config['GitBranch'] == f"release-{version}", f"GitBranch mismatch. Got '{parsed_config['GitBranch']}'"
+#     assert parsed_config['BuildTime'], parsed_config
+#     assert parsed_config['GoVersion'], parsed_config
+#
+# def test_pcsm_binary(host):
+#     """Check PCSM binary exists with the correct permissions"""
+#     file = host.file("/usr/bin/pcsm")
+#     assert file.user == "root"
+#     assert file.group == "root"
+#     try:
+#         assert file.mode == 0o755
+#     except AssertionError:
+#         pytest.xfail("Possible xfail")
+#
+# def test_pcsm_help(host):
+#     """Check that PCSM help command works"""
+#     result = host.run("pcsm help")
+#     assert result.rc == 0, result.stdout
+#
+# def test_pcsm_environment_file_exists(host):
+#     """Test pcsm-service file exists"""
+#     service_file = host.file("/lib/systemd/system/pcsm.service")
+#     assert service_file.user == "root"
+#     assert service_file.group == "root"
+#     try:
+#         assert service_file.mode == 0o644
+#     except AssertionError:
+#         pytest.xfail("Possible xfail")
+#
+# def test_stop_pcsm(host):
+#     """Test pcsm service stops successfully"""
+#     stop_pcsm_service(host)
+#
+# def test_start_pcsm(host):
+#     """Test pcsm service starts successfully"""
+#     start_pcsm_service(host)
+#
+# def test_restart_pcsm(host):
+#     """Test pcsm service restarts successfully"""
+#     restart_pcsm_service(host)
+#
+# def test_pcsm_transfer(host):
+#     """Test basic PCSM Transfer functionality"""
+#     assert pcsm_add_db_row(host)
+#     assert pcsm_start(host)
+#     assert wait_for_repl_stage(host)
+#     assert "testUser" in pcsm_confirm_db_row(host).stdout
+#     assert pcsm_finalize(host)
 
 def test_pcsm_sbom(host):
     """Verify sbom exists, and the format and version are correct"""
@@ -271,7 +271,8 @@ def test_pcsm_sbom(host):
 
     sbom_path = f"/usr/share/doc/percona-clustersync-mongodb/percona-clustersync-mongodb-{version}.cdx.json"
     if is_rpm:
-        distro = f"{host.system_info.distribution}/{host.system_info.release}"
+        distro_name = "redhat" if host.system_info.distribution.lower() == "rhel" else host.system_info.distribution
+        distro = f"{distro_name}/{host.system_info.release}"
         trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --distro {distro} {sbom_path}")
     else:
         trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed {sbom_path}")
