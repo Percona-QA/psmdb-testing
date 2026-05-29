@@ -271,7 +271,8 @@ def test_pcsm_sbom(host):
 
     sbom_path = f"/usr/share/doc/percona-clustersync-mongodb/percona-clustersync-mongodb-{version}.cdx.json"
     if is_rpm:
-        distro_name = "redhat" if host.system_info.distribution.lower() == "rhel" else host.system_info.distribution
+        distro_map = {"rhel": "redhat", "amzn": "amazon"}
+        distro_name = distro_map.get(host.system_info.distribution.lower(), host.system_info.distribution)
         distro = f"{distro_name}/{host.system_info.release}"
         trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --distro {distro} {sbom_path}")
     else:
