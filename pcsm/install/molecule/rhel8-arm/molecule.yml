@@ -20,7 +20,7 @@ provisioner:
   playbooks:
     create: ../../../../playbooks/create.yml
     prepare: ../../playbooks/prepare.yml
-#    destroy: ../../../../playbooks/destroy.yml
+    destroy: ../../../../playbooks/destroy.yml
     converge: ../../playbooks/redhat.yml
 verifier:
   name: testinfra
@@ -31,12 +31,12 @@ verifier:
     junitxml: report.xml
 scenario:
   name: rhel8-arm
-#  destroy_sequence:
-#    - destroy
+  destroy_sequence:
+    - destroy
   test_sequence:
-#    - destroy
+    - destroy
     - create
     - converge
     - verify
     - cleanup
-#    - destroy
+    - destroy
