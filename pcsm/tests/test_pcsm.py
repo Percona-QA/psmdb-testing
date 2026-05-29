@@ -279,7 +279,8 @@ def test_pcsm_sbom(host):
         trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed {sbom_path}")
     assert trivy_result.rc == 0, f"trivy sbom scan failed: {trivy_result.stderr}"
 
-    cdx_result = host.run(f"cyclonedx validate --input-file {sbom_path} --input-format json --input-version v1_6")
+    cdx_cmd = "cyclonedx" if is_rpm else "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /usr/local/bin/cyclonedx"
+    cdx_result = host.run(f"{cdx_cmd} validate --input-file {sbom_path} --input-format json --input-version v1_6")
     assert cdx_result.rc == 0, f"CycloneDX 1.6 schema validation failed: {cdx_result.stdout}\n{cdx_result.stderr}"
 
 
