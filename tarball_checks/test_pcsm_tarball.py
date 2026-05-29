@@ -41,3 +41,10 @@ def test_pcsm_tarball_contents():
             capture_output=True, text=True
         )
         assert result.returncode == 0, f"trivy sbom scan failed: {result.stderr}"
+
+        cdx_result = subprocess.run(
+            ["/usr/local/bin/cyclonedx", "validate", "--input-file", sbom_path, "--input-format", "json", "--input-version", "v1_6"],
+            capture_output=True, text=True,
+            env={**os.environ, "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"}
+        )
+        assert cdx_result.returncode == 0, f"CycloneDX 1.6 schema validation failed: {cdx_result.stdout}\n{cdx_result.stderr}"
