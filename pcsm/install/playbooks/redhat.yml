@@ -110,6 +110,11 @@
         mode: '0755'
         force: yes
 
+    - name: Restart Docker to pick up new runc
+      service:
+        name: docker
+        state: restarted
+
     - name: Ensure docker group exists
       group:
         name: docker
