@@ -97,6 +97,16 @@
       when:
         - ansible_os_family == "Debian"
 
+    - name: Disable Docker time namespaces (Fix for Docker 29.5+ that breaks runc)
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "features": {
+              "time-namespaces": false
+            }
+          }
+
     - name: Enable and start Docker service
       service:
         name: docker

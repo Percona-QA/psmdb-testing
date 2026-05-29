@@ -98,6 +98,16 @@
         name: "percona-clustersync-mongodb{{ '=' + pcsm_version + '*' if pcsm_version != '' else '' }}"
         state: "{{ 'present' if pcsm_version != '' else 'latest' }}"
 
+    - name: Disable Docker time namespaces (Fix for Docker 29.5+ that breaks runc)
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "features": {
+              "time-namespaces": false
+            }
+          }
+
     - name: Enable and start Docker service
       service:
         name: docker
