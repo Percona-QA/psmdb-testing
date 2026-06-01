@@ -7,13 +7,14 @@ import tempfile
 import requests
 
 PCSM_VER = os.environ.get("PCSM_VERSION")
+assert PCSM_VER, "PCSM_VERSION environment variable must be set"
 
 TARBALL_URL = (
     f"https://downloads.percona.com/downloads/TESTING/pcsm-{PCSM_VER}/percona-clustersync-mongodb-{PCSM_VER}-x86_64.tar.gz"
 )
 
 def test_pcsm_tarball_contents():
-    resp = requests.get(TARBALL_URL, stream=True)
+    resp = requests.get(TARBALL_URL, stream=True, timeout=60)
     assert resp.status_code == 200, f"Failed to download tarball: {TARBALL_URL}"
 
     with tempfile.TemporaryDirectory() as tmpdir:
