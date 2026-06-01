@@ -68,15 +68,16 @@
       yum_repository:
         name: trivy
         description: Trivy repository
-        baseurl: https://aquasecurity.github.io/trivy-repo/rpm/releases/$releasever/$basearch/
+        baseurl: https://aquasecurity.github.io/trivy-repo/rpm/releases/$basearch/
         gpgcheck: yes
         gpgkey: https://aquasecurity.github.io/trivy-repo/rpm/public.key
         enabled: yes
 
     - name: Install Trivy
       yum:
-        name: trivy-0.70.0
+        name: trivy
         state: present
+        update_cache: yes
 
     - name: Install CycloneDX CLI
       get_url:

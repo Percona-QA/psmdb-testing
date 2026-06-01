@@ -73,20 +73,19 @@
       when: ansible_os_family == "Debian"
 
     - name: Add Trivy apt repository key
-      get_url:
-        url: https://aquasecurity.github.io/trivy-repo/deb/public.key
-        dest: /usr/share/keyrings/trivy.asc
-        mode: '0644'
+      shell: wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | tee /usr/share/keyrings/trivy.gpg > /dev/null
+      args:
+        creates: /usr/share/keyrings/trivy.gpg
 
     - name: Add Trivy apt repository
       apt_repository:
-        repo: "deb [signed-by=/usr/share/keyrings/trivy.asc] https://aquasecurity.github.io/trivy-repo/deb {{ ansible_distribution_release }} main"
+        repo: "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main"
         state: present
         filename: trivy
 
     - name: Install Trivy
       apt:
-        name: trivy=0.70.0
+        name: trivy
         state: present
         update_cache: yes
 
