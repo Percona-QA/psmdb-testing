@@ -11,11 +11,11 @@ from clustersync import Clustersync
 
 @pytest.fixture(scope="module")
 def dstRS():
-    return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]},mongod_extra_args='--setParameter enableTestCommands=1')
+    return Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]},mongod_extra_args='--setParameter enableTestCommands=1', mongo_image="mongodb-dst/local")
 
 @pytest.fixture(scope="module")
 def srcRS():
-    return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]},mongod_extra_args='--setParameter enableTestCommands=1 --oplogSize 20')
+    return Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]},mongod_extra_args='--setParameter enableTestCommands=1 --oplogSize 20', mongo_image="mongodb-src/local")
 
 @pytest.fixture(scope="module")
 def csync(srcRS,dstRS):

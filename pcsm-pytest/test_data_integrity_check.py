@@ -34,6 +34,8 @@ def test_data_integrity_check_PML_T1(start_cluster, src_cluster, dst_cluster):
         ("test_db1", "test_coll10"),
         ("test_db1", "test_coll11"),
         ("test_db1", "test_coll12"),
+        ("test_db1", "test_coll13"),
+        ("test_db1", "test_coll14"),
     ]
 
     # Test 1: Capped collection options mismatch
@@ -57,6 +59,23 @@ def test_data_integrity_check_PML_T1(start_cluster, src_cluster, dst_cluster):
     # Test 6: Record count mismatch
     dst["test_db1"]["test_coll7"].delete_one({"key": 9})
 
+    # Test 7: Capped collection with matching options/count but a mutated doc.
+    # Covers the record-by-record BSON compare path that the options-mismatch
+    # case in Test 1 cannot reach.
+    capped_docs = [{"_id": i, "payload": f"value-{i}"} for i in range(20)]
+    src["test_db1"].create_collection("test_coll13", capped=True, size=1024 * 1024, max=100)
+    dst["test_db1"].create_collection("test_coll13", capped=True, size=1024 * 1024, max=100)
+    src["test_db1"]["test_coll13"].insert_many([dict(d) for d in capped_docs])
+    dst["test_db1"]["test_coll13"].insert_many([dict(d) for d in capped_docs])
+    dst["test_db1"]["test_coll13"].update_one({"_id": 7}, {"$set": {"payload": "tampered"}})
+
+    # Test 8: Capped collection with identical content (negative control for
+    # Test 7 - must NOT show up in the mismatch summary).
+    src["test_db1"].create_collection("test_coll14", capped=True, size=1024 * 1024, max=100)
+    dst["test_db1"].create_collection("test_coll14", capped=True, size=1024 * 1024, max=100)
+    src["test_db1"]["test_coll14"].insert_many([dict(d) for d in capped_docs])
+    dst["test_db1"]["test_coll14"].insert_many([dict(d) for d in capped_docs])
+
     expected_mismatches = [
         ("test_db1.test_coll7", "record count mismatch"),
         ("test_db1.test_coll8", "options mismatch"),
@@ -64,6 +83,7 @@ def test_data_integrity_check_PML_T1(start_cluster, src_cluster, dst_cluster):
         ("test_db1.test_coll10", "options mismatch"),
         ("test_db1.test_coll11", "missing in dst DB"),
         ("test_db1.test_coll12", "missing in src DB"),
+        ("test_db1.test_coll13", "1 document(s) differ"),
     ]
 
     # Hash mismatch is only checked for replica sets, not sharded clusters
@@ -77,6 +97,10 @@ def test_data_integrity_check_PML_T1(start_cluster, src_cluster, dst_cluster):
         assert collection in summary, \
             f"Mismatch for collection {collection} isn't detected"
 
+    # Negative control: identical-content capped collection must not be flagged
+    assert not any(name == "test_db1.test_coll14" for name, _ in summary), \
+        f"Untampered capped collection 'test_coll14' wrongly flagged: {summary}"
+
     # Fix mismatches
     for db_name, coll_name in collections_new:
         dst[db_name][coll_name].drop_indexes()
@@ -87,6 +111,8 @@ def test_data_integrity_check_PML_T1(start_cluster, src_cluster, dst_cluster):
     dst["test_db1"].create_collection("test_coll10", changeStreamPreAndPostImages={"enabled": True})
     src["test_db1"]["test_coll7"].delete_one({"key": 9})
     src["test_db1"].drop_collection("test_coll11")
+    src["test_db1"].drop_collection("test_coll13")
+    src["test_db1"].drop_collection("test_coll14")
 
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data should match again after reverting modifications"

@@ -14,8 +14,8 @@ There is the way not to close the connection but return known or unknown error t
 See the examples in jstests/core/failcommand_failpoint.js
 """
 
-dstRS = Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]},mongod_extra_args='--setParameter enableTestCommands=1')
-srcRS = Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]},mongod_extra_args='--setParameter enableTestCommands=1')
+dstRS = Cluster({ "_id": "rs2", "members": [{"host":"rs201"}]},mongod_extra_args='--setParameter enableTestCommands=1', mongo_image="mongodb-dst/local")
+srcRS = Cluster({ "_id": "rs1", "members": [{"host":"rs101"}]},mongod_extra_args='--setParameter enableTestCommands=1', mongo_image="mongodb-src/local")
 csync = Clustersync('csync',srcRS.csync_connection + '&appName=pcsm', dstRS.csync_connection + '&appName=pcsm')
 
 def configure_failpoint_failcommand(connection,commands,mode):

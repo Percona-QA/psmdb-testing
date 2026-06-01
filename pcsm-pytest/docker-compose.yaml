@@ -24,6 +24,28 @@ services:
     depends_on:
       - easyrsa
 
+  mongodb-src:
+    image: mongodb-src/local
+    build:
+      dockerfile: ./Dockerfile-mongodb
+      context: .
+      args:
+        - MONGODB_IMAGE=${MONGODB_SRC_IMAGE:-${MONGODB_IMAGE:-percona/percona-server-mongodb}}
+    command: /bin/bash
+    depends_on:
+      - easyrsa
+
+  mongodb-dst:
+    image: mongodb-dst/local
+    build:
+      dockerfile: ./Dockerfile-mongodb
+      context: .
+      args:
+        - MONGODB_IMAGE=${MONGODB_DST_IMAGE:-${MONGODB_IMAGE:-percona/percona-server-mongodb}}
+    command: /bin/bash
+    depends_on:
+      - easyrsa
+
   csync:
     image: csync/local
     build:

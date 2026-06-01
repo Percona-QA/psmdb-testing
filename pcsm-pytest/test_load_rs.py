@@ -29,8 +29,8 @@ def csync(cluster_manager):
 def cluster_manager():
     setup = os.environ.get("SETUP", "").lower() == "true"
     cleanup = os.environ.get("CLEANUP", "").lower() == "true"
-    srcRS = Cluster({"_id": "rs1", "members": [{"host": "rs101"}]})
-    dstRS = Cluster({"_id": "rs2", "members": [{"host": "rs201"}]})
+    srcRS = Cluster({"_id": "rs1", "members": [{"host": "rs101"}]}, mongo_image="mongodb-src/local")
+    dstRS = Cluster({"_id": "rs2", "members": [{"host": "rs201"}]}, mongo_image="mongodb-dst/local")
     if setup:
         srcRS.create()
         dstRS.create()

@@ -13,7 +13,7 @@ from data_generator import create_all_types_db
 def src_cluster():
     """Create src cluster once per module"""
     config = get_cluster_config("replicaset")
-    cluster = Cluster(config['src_config'])
+    cluster = Cluster(config['src_config'], mongo_image="mongodb-src/local")
     cluster.create()
     yield cluster
     cluster.destroy()
@@ -22,7 +22,7 @@ def src_cluster():
 def dst_cluster():
     """Create dst cluster once per module"""
     config = get_cluster_config("replicaset")
-    cluster = Cluster(config['dst_config'])
+    cluster = Cluster(config['dst_config'], mongo_image="mongodb-dst/local")
     cluster.create()
     yield cluster
     cluster.destroy()

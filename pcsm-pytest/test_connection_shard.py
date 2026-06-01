@@ -31,7 +31,7 @@ def srcCluster(mongod_extra_args, mongos_extra_args):
             {"_id": "rs2", "members": [{"host": "rs201"}]}
         ]
     }
-    return Cluster(config, mongod_extra_args=mongod_extra_args, mongos_extra_args=mongos_extra_args)
+    return Cluster(config, mongod_extra_args=mongod_extra_args, mongos_extra_args=mongos_extra_args, mongo_image="mongodb-src/local")
 
 @pytest.fixture(scope="module")
 def dstCluster(mongod_extra_args, mongos_extra_args):
@@ -43,7 +43,7 @@ def dstCluster(mongod_extra_args, mongos_extra_args):
             {"_id": "rs4", "members": [{"host": "rs401"}]}
         ]
     }
-    return Cluster(config, mongod_extra_args=mongod_extra_args, mongos_extra_args=mongos_extra_args)
+    return Cluster(config, mongod_extra_args=mongod_extra_args, mongos_extra_args=mongos_extra_args, mongo_image="mongodb-dst/local")
 
 # Test case 1: check SCRAM authentication with TLS connection and tlsInsecure
 # Test case 2: check SCRAM authentication with TLS connection and tlsCAFile

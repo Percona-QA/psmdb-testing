@@ -30,20 +30,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        psmdb: ["6.0", "7.0", "8.0"]
+        psmdb_pair: ["6.0-6.0", "6.0-8.0", "7.0-7.0", "8.0-8.0"]
         shard: [0, 1, 2, 3, 4]
     env:
       PCSM_BRANCH: ${{ github.event.inputs.pcsm_branch || 'main' }}
       GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
     steps:
     - uses: actions/checkout@v4
-    - name: Setup environment with PSMDB ${{ matrix.psmdb }} and PCSM branch ${{ env.PCSM_BRANCH }}
+    - name: Setup environment with PSMDB ${{ matrix.psmdb_pair }} and PCSM branch ${{ env.PCSM_BRANCH }}
       run: |
-        MONGODB_IMAGE=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build easyrsa
-        MONGODB_IMAGE=perconalab/percona-server-mongodb:${{ matrix.psmdb }} docker compose build
+        SRC_PSMDB="${{ matrix.psmdb_pair }}"; SRC_PSMDB="${SRC_PSMDB%-*}"
+        TGT_PSMDB="${{ matrix.psmdb_pair }}"; TGT_PSMDB="${TGT_PSMDB#*-}"
+        export MONGODB_SRC_IMAGE="perconalab/percona-server-mongodb:${SRC_PSMDB}"
+        export MONGODB_DST_IMAGE="perconalab/percona-server-mongodb:${TGT_PSMDB}"
+        echo "SRC=${MONGODB_SRC_IMAGE}  DST=${MONGODB_DST_IMAGE}"
+        docker compose build easyrsa
+        docker compose build
         docker compose up -d
       working-directory: ./pcsm-pytest
-    - name: Run pytest shard ${{ matrix.shard }} on PSMDB ${{ matrix.psmdb }} and PCSM branch ${{ env.PCSM_BRANCH }}
+    - name: Run pytest shard ${{ matrix.shard }} on PSMDB ${{ matrix.psmdb_pair }} and PCSM branch ${{ env.PCSM_BRANCH }}
       run: |
         docker compose run --rm test pytest -s -v --junitxml=junit.xml --shard-id=${{ matrix.shard }} --num-shards=5 -m 'not jenkins'
       working-directory: ./pcsm-pytest

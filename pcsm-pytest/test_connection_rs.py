@@ -23,12 +23,12 @@ def _make_config(rs_name, host):
 @pytest.fixture(scope="module")
 def srcRS(mongod_extra_args):
     config = _make_config("rs1", "rs101")
-    return Cluster(config, mongod_extra_args=mongod_extra_args)
+    return Cluster(config, mongod_extra_args=mongod_extra_args, mongo_image="mongodb-src/local")
 
 @pytest.fixture(scope="module")
 def dstRS(mongod_extra_args):
     config = _make_config("rs2", "rs201")
-    return Cluster(config, mongod_extra_args=mongod_extra_args)
+    return Cluster(config, mongod_extra_args=mongod_extra_args, mongo_image="mongodb-dst/local")
 
 # Test case 1: check SCRAM authentication with TLS connection and tlsInsecure
 # Test case 2: check SCRAM authentication with TLS connection and tlsCAFile
