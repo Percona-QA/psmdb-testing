@@ -72,6 +72,7 @@
           - ca-certificates
           - curl
           - gnupg
+          - jq
           - lsb-release
           - docker-ce
           - docker-ce-cli

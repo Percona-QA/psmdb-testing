@@ -69,6 +69,7 @@
           - docker-ce
           - docker-ce-cli
           - containerd.io
+          - jq
       when: ansible_os_family == "Debian"
 
     - name: Add Trivy apt repository key
