@@ -37,10 +37,10 @@ def test_pcsm_tarball_contents():
 
         sbom_path = os.path.join(root, sbom_filename)
         result = subprocess.run(
-            ["trivy", "sbom", "--severity", "HIGH,CRITICAL", "--ignore-unfixed", sbom_path],
+            ["trivy", "sbom", "--severity", "HIGH,CRITICAL", "--ignore-unfixed", "--exit-code", "1", sbom_path],
             capture_output=True, text=True
         )
-        assert result.returncode == 0, f"trivy sbom scan failed: {result.stderr}"
+        assert result.returncode == 0, f"trivy sbom scan found HIGH/CRITICAL vulnerabilities:\n{result.stdout}\n{result.stderr}"
 
         cdx_result = subprocess.run(
             ["/usr/local/bin/cyclonedx", "validate", "--input-file", sbom_path, "--input-format", "json", "--input-version", "v1_6"],
