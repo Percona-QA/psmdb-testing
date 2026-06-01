@@ -78,10 +78,23 @@
           - containerd.io
       when: ansible_os_family == "Debian"
 
+    - name: Add Trivy apt repository key
+      get_url:
+        url: https://aquasecurity.github.io/trivy-repo/deb/public.key
+        dest: /usr/share/keyrings/trivy.asc
+        mode: '0644'
+
+    - name: Add Trivy apt repository
+      apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/trivy.asc] https://aquasecurity.github.io/trivy-repo/deb {{ ansible_distribution_release }} main"
+        state: present
+        filename: trivy
+
     - name: Install Trivy
-      shell: curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-      args:
-        creates: /usr/local/bin/trivy
+      apt:
+        name: trivy=0.70.0
+        state: present
+        update_cache: yes
 
     - name: Install CycloneDX CLI
       get_url:
@@ -102,14 +115,11 @@
         update_cache: yes
 
     - name: Disable Docker time namespaces (Fix for Docker 29.5+ that breaks runc)
-      copy:
-        dest: /etc/docker/daemon.json
-        content: |
-          {
-            "features": {
-              "time-namespaces": false
-            }
-          }
+      shell: |
+        existing=$(cat /etc/docker/daemon.json 2>/dev/null || echo '{}')
+        echo "$existing" | jq '.features["time-namespaces"] = false' > /etc/docker/daemon.json
+      args:
+        executable: /bin/bash
 
     - name: Enable and start Docker service
       service:

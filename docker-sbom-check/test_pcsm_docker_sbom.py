@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 
 PCSM_VER = os.environ.get("PCSM_VERSION")
+assert PCSM_VER, "PCSM_VERSION environment variable must be set"
 IMAGE_REPO = os.environ.get("IMAGE_REPO", "perconalab")
 PCSM_IMAGE = f"docker.io/{IMAGE_REPO}/percona-clustersync-mongodb:{PCSM_VER}"
 

@@ -33,10 +33,19 @@
           - wget
       when: ansible_os_family == "RedHat"
 
+    - name: Add Trivy yum repository
+      yum_repository:
+        name: trivy
+        description: Trivy repository
+        baseurl: https://aquasecurity.github.io/trivy-repo/rpm/releases/$releasever/$basearch/
+        gpgcheck: yes
+        gpgkey: https://aquasecurity.github.io/trivy-repo/rpm/public.key
+        enabled: yes
+
     - name: Install Trivy
-      shell: curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-      args:
-        creates: /usr/local/bin/trivy
+      yum:
+        name: trivy-0.70.0
+        state: present
 
     - name: Install CycloneDX CLI
       get_url:

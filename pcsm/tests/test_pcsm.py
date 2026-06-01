@@ -274,10 +274,10 @@ def test_pcsm_sbom(host):
         distro_map = {"rhel": "redhat", "amzn": "amazon"}
         distro_name = distro_map.get(host.system_info.distribution.lower(), host.system_info.distribution)
         distro = f"{distro_name}/{host.system_info.release}"
-        trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --distro {distro} {sbom_path}")
+        trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --distro {distro} {sbom_path}")
     else:
-        trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed {sbom_path}")
-    assert trivy_result.rc == 0, f"trivy sbom scan failed: {trivy_result.stderr}"
+        trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 {sbom_path}")
+    assert trivy_result.rc == 0, f"trivy sbom scan found HIGH/CRITICAL vulnerabilities:\n{trivy_result.stdout}\n{trivy_result.stderr}"
 
     cdx_cmd = "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /usr/local/bin/cyclonedx"
     cdx_result = host.run(f"{cdx_cmd} validate --input-file {sbom_path} --input-format json --input-version v1_6")

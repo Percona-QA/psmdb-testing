@@ -18,7 +18,7 @@ def test_pcsm_tarball_contents():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         with tarfile.open(fileobj=io.BytesIO(resp.content), mode="r:gz") as tar:
-            tar.extractall(tmpdir)
+            tar.extractall(tmpdir, filter='data')
 
         extracted = os.listdir(tmpdir)
         assert len(extracted) > 0, "Tarball extracted to an empty directory"
