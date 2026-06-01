@@ -7,6 +7,7 @@ import tempfile
 import requests
 
 PCSM_VER = os.environ.get("PCSM_VERSION")
+assert PCSM_VER, "PCSM_VERSION environment variable must be set"
 
 TARBALL_URL = (
     f"https://downloads.percona.com/downloads/TESTING/pcsm-{PCSM_VER}/percona-clustersync-mongodb-{PCSM_VER}-x86_64.tar.gz"
