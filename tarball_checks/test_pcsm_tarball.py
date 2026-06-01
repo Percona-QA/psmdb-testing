@@ -9,9 +9,16 @@ import requests
 PCSM_VER = os.environ.get("PCSM_VERSION")
 assert PCSM_VER, "PCSM_VERSION environment variable must be set"
 
-TARBALL_URL = (
-    f"https://downloads.percona.com/downloads/TESTING/pcsm-{PCSM_VER}/percona-clustersync-mongodb-{PCSM_VER}-x86_64.tar.gz"
-)
+INSTALL_REPO = os.environ.get("install_repo", "testing")
+
+_TARBALL_FILENAME = f"percona-clustersync-mongodb-{PCSM_VER}-x86_64.tar.gz"
+_TARBALL_URLS = {
+    "release":      f"https://downloads.percona.com/downloads/percona-clustersync-mongodb/percona-clustersync-mongodb-{PCSM_VER}/binary/tarball/{_TARBALL_FILENAME}",
+    "testing":      f"https://downloads.percona.com/downloads/TESTING/pcsm-{PCSM_VER}/{_TARBALL_FILENAME}",
+    "experimental": f"https://downloads.percona.com/downloads/EXPERIMENTAL/pcsm-{PCSM_VER}/{_TARBALL_FILENAME}",
+}
+assert INSTALL_REPO in _TARBALL_URLS, f"install_repo must be release, testing, or experimental"
+TARBALL_URL = _TARBALL_URLS[INSTALL_REPO]
 
 def test_pcsm_tarball_contents():
     resp = requests.get(TARBALL_URL, stream=True, timeout=60)
