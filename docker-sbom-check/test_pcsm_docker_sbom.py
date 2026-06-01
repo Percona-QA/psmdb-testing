@@ -8,39 +8,38 @@ IMAGE_REPO = os.environ.get("IMAGE_REPO", "perconalab")
 PCSM_IMAGE = f"docker.io/{IMAGE_REPO}/percona-clustersync-mongodb:{PCSM_VER}"
 
 
-# def test_pcsm_docker_embedded_sbom():
-#     """Verify the SBOM embedded inside the Docker image exists and is CycloneDX 1.6 compliant"""
-#     sbom_filename = f"percona-clustersync-mongodb-{PCSM_VER}.cdx.json"
-#     sbom_path_in_image = f"/usr/share/doc/percona-clustersync-mongodb/{sbom_filename}"
-#
-#     result = subprocess.run(
-#         ["docker", "run", "--rm", PCSM_IMAGE, "cat", sbom_path_in_image],
-#         capture_output=True,
-#     )
-#     assert result.returncode == 0, f"Embedded SBOM not found inside Docker image at {sbom_path_in_image}: {result.stderr.decode()}"
-#
-#     with tempfile.TemporaryDirectory() as tmpdir:
-#         sbom_local = os.path.join(tmpdir, sbom_filename)
-#         with open(sbom_local, "wb") as f:
-#             f.write(result.stdout)
-#         trivy_result = subprocess.run(
-#             ["trivy", "sbom", "--severity", "HIGH,CRITICAL", "--ignore-unfixed", "--exit-code", "1", sbom_local],
-#             capture_output=True, text=True,
-#         )
-#         assert trivy_result.returncode == 0, (
-#             f"trivy sbom scan found HIGH/CRITICAL vulnerabilities:\n{trivy_result.stdout}\n{trivy_result.stderr}"
-#         )
-#
-#         cdx_result = subprocess.run(
-#             ["/usr/local/bin/cyclonedx", "validate", "--input-file", sbom_local,
-#              "--input-format", "json", "--input-version", "v1_6"],
-#             capture_output=True, text=True,
-#             env={**os.environ, "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"},
-#         )
-#         assert cdx_result.returncode == 0, (
-#             f"Embedded SBOM CycloneDX 1.6 validation failed: {cdx_result.stdout}\n{cdx_result.stderr}"
-#         )
+def test_pcsm_docker_embedded_sbom():
+    """Verify the SBOM embedded inside the Docker image exists and is CycloneDX 1.6 compliant"""
+    sbom_filename = f"percona-clustersync-mongodb-{PCSM_VER}.cdx.json"
+    sbom_path_in_image = f"/usr/share/doc/percona-clustersync-mongodb/{sbom_filename}"
 
+    result = subprocess.run(
+        ["docker", "run", "--rm", PCSM_IMAGE, "cat", sbom_path_in_image],
+        capture_output=True,
+    )
+    assert result.returncode == 0, f"Embedded SBOM not found inside Docker image at {sbom_path_in_image}: {result.stderr.decode()}"
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sbom_local = os.path.join(tmpdir, sbom_filename)
+        with open(sbom_local, "wb") as f:
+            f.write(result.stdout)
+        trivy_result = subprocess.run(
+            ["trivy", "sbom", "--severity", "HIGH,CRITICAL", "--ignore-unfixed", "--exit-code", "1", sbom_local],
+            capture_output=True, text=True,
+        )
+        assert trivy_result.returncode == 0, (
+            f"trivy sbom scan found HIGH/CRITICAL vulnerabilities:\n{trivy_result.stdout}\n{trivy_result.stderr}"
+        )
+
+        cdx_result = subprocess.run(
+            ["/usr/local/bin/cyclonedx", "validate", "--input-file", sbom_local,
+             "--input-format", "json", "--input-version", "v1_6"],
+            capture_output=True, text=True,
+            env={**os.environ, "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"},
+        )
+        assert cdx_result.returncode == 0, (
+            f"Embedded SBOM CycloneDX 1.6 validation failed: {cdx_result.stdout}\n{cdx_result.stderr}"
+        )
 
 def test_pcsm_docker_oci_sbom():
     """Verify the OCI-attached SBOM exists and is CycloneDX 1.6 compliant"""
