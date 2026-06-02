@@ -19,35 +19,7 @@
         pcsm_version: "{{ lookup('env', 'pcsm_version') | default('', true) }}"
 
     - set_fact:
-        mongodb_image: "{{ 'mongodb/mongodb-community-server' if mongodb_community | bool else 'percona/percona-server-mongodb' }}:{{ MONGODB_VERSION }}"
-
-    - name: Remove podman-docker if present
-      yum:
-        name: podman-docker
-        state: absent
-      when: ansible_os_family == "RedHat"
-
-    - name: Install dnf plugins
-      yum:
-        name: dnf-plugins-core
-        state: present
-      when: ansible_os_family == "RedHat"
-
-    - name: Add Docker CE repository
-      get_url:
-        url: https://download.docker.com/linux/centos/docker-ce.repo
-        dest: /etc/yum.repos.d/docker-ce.repo
-        mode: '0644'
-      when:
-        - ansible_os_family == "RedHat"
-
-    - name: Force release server to use 9 in Docker repo for AL2023 compatibility
-      replace:
-        path: /etc/yum.repos.d/docker-ce.repo
-        regexp: '\$releasever'
-        replace: '9'
-      when:
-        - ansible_distribution == "Amazon"
+        mongodb_image: "{{ 'docker.io/mongodb/mongodb-community-server' if mongodb_community | bool else 'docker.io/percona/percona-server-mongodb' }}:{{ MONGODB_VERSION }}"
 
     - name: Install dependencies
       yum:
@@ -59,10 +31,28 @@
           - git
           - python3-pip
           - wget
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
       when: ansible_os_family == "RedHat"
+
+    - name: Add Trivy yum repository
+      yum_repository:
+        name: trivy
+        description: Trivy repository
+        baseurl: https://aquasecurity.github.io/trivy-repo/rpm/releases/$basearch/
+        gpgcheck: yes
+        gpgkey: https://aquasecurity.github.io/trivy-repo/rpm/public.key
+        enabled: yes
+
+    - name: Install Trivy
+      yum:
+        name: trivy
+        state: present
+        update_cache: yes
+
+    - name: Install CycloneDX CLI
+      get_url:
+        url: "https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-{{ 'arm64' if ansible_architecture == 'aarch64' else 'x64' }}"
+        dest: /usr/local/bin/cyclonedx
+        mode: '0755'
 
     - name: Install Percona Release
       include_tasks: ../../../tasks/install_percona_release.yml
@@ -72,57 +62,12 @@
 
     - name: Install PCSM
       yum:
-        name: "percona-clustersync-mongodb{{ '-' + pcsm_version if pcsm_version != '' else '' }}"
-        update_cache: yes
+        name: "percona-clustersync-mongodb{{ '-' + pcsm_version + '*' if pcsm_version != '' else '' }}"
         state: "{{ 'present' if pcsm_version != '' else 'latest' }}"
-
-    - name: Enable and start Docker service
-      service:
-        name: docker
-        state: started
-        enabled: true
-
-    - name: Set runc binary URL based on architecture
-      set_fact:
-        runc_url: >-
-          https://github.com/opencontainers/runc/releases/download/v1.1.12/{{
-            'runc.arm64' if ansible_architecture == 'aarch64' else 'runc.amd64'
-          }}
-
-    - name: Download correct runc binary
-      get_url:
-        url: "{{ runc_url }}"
-        dest: /usr/local/bin/runc
-        mode: '0755'
-
-    - name: Move runc to /usr/bin
-      copy:
-        src: /usr/local/bin/runc
-        dest: /usr/bin/runc
-        remote_src: yes
-        mode: '0755'
-        force: yes
-
-    - name: Ensure docker group exists
-      group:
-        name: docker
-        state: present
-
-    - name: Add user ssh-user to docker group
-      user:
-        name: "{{ ssh_user }}"
-        groups: docker
-        append: yes
-
-    - name: Ensure pip is installed on Amazon Linux
-      package:
-        name: python3-pip
-        state: present
-      when:
-        - ansible_distribution == "Amazon"
+        update_cache: yes
 
     - name: Create Source PSMDB container
-      community.docker.docker_container:
+      containers.podman.podman_container:
         name: source
         image: "{{ mongodb_image }}"
         state: started
@@ -132,7 +77,7 @@
         command: "--port=27017 --replSet rs0 --bind_ip_all"
 
     - name: Create Destination PSMDB container
-      community.docker.docker_container:
+      containers.podman.podman_container:
         name: destination
         image: "{{ mongodb_image }}"
         state: started
@@ -141,63 +86,63 @@
           - "28017:27017"
         command: "--port=27017 --replSet rs1 --bind_ip_all"
 
-    - name: Wait for mongodb to be ready on source container
-      community.docker.docker_container_exec:
-        container: source
+    - name: Wait for MongoDB to be ready on source container
+      containers.podman.podman_container_exec:
+        name: source
         command: >
           bash -c "until mongosh --quiet --eval 'db.runCommand({ ping: 1 })' > /dev/null 2>&1; do sleep 2; done"
+      register: wait_mongo
       retries: 10
       delay: 3
-      register: wait_mongo
-      until: wait_mongo.rc == 0
+      until: wait_mongo is succeeded
 
-    - name: Wait for mongodb to be ready on destination container
-      community.docker.docker_container_exec:
-        container: destination
+    - name: Wait for MongoDB to be ready on destination container
+      containers.podman.podman_container_exec:
+        name: destination
         command: >
           bash -c "until mongosh --quiet --eval 'db.runCommand({ ping: 1 })' > /dev/null 2>&1; do sleep 2; done"
+      register: wait_mongo
       retries: 10
       delay: 3
-      register: wait_mongo
-      until: wait_mongo.rc == 0
+      until: wait_mongo is succeeded
 
     - name: Get info about the Source container
-      community.docker.docker_container_info:
+      containers.podman.podman_container_info:
         name: source
       register: source_container
 
     - name: Get info about the Destination container
-      community.docker.docker_container_info:
+      containers.podman.podman_container_info:
         name: destination
       register: destination_container
 
     - name: Store the Source Container IP
       set_fact:
-        source_ip: "{{ source_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
+        source_ip: "{{ source_container.containers[0].NetworkSettings.IPAddress }}"
 
     - name: Store the Destination Container IP
       set_fact:
-        destination_ip: "{{ destination_container.container.NetworkSettings.Networks.bridge.IPAddress }}"
+        destination_ip: "{{ destination_container.containers[0].NetworkSettings.IPAddress }}"
 
     - name: Initiate source replicaset
-      community.docker.docker_container_exec:
-        container: source
+      containers.podman.podman_container_exec:
+        name: source
         command: >
           mongosh --quiet --eval 'try { rs.initiate({_id: "rs0", members: [{ _id: 0, host: "{{ source_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
       register: rs_source_result
-      retries: 2
-      delay: 5
-      until: rs_source_result.rc == 0
+      retries: 10
+      delay: 3
+      until: rs_source_result is succeeded
 
     - name: Initiate destination replicaset
-      community.docker.docker_container_exec:
-        container: destination
+      containers.podman.podman_container_exec:
+        name: destination
         command: >
           mongosh --quiet --eval 'try { rs.initiate({_id: "rs1", members: [{ _id: 0, host: "{{ destination_ip }}:27017" }]}); } catch (e) { print(e); quit(1); }'
       register: rs_dest_result
-      retries: 2
-      delay: 5
-      until: rs_dest_result.rc == 0
+      retries: 10
+      delay: 3
+      until: rs_dest_result is succeeded
 
     - name: Add container IPs to /etc/hosts
       lineinfile:

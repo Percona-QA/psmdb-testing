@@ -21,44 +21,36 @@
     - set_fact:
         mongodb_image: "{{ 'mongodb/mongodb-community-server' if mongodb_community | bool else 'percona/percona-server-mongodb' }}:{{ MONGODB_VERSION }}"
 
-    - name: Create keyrings directory
-      file:
-        path: /etc/apt/keyrings
-        state: directory
-        mode: '0755'
-      when:
-        - ansible_os_family == "Debian"
+    - name: Remove podman-docker if present
+      yum:
+        name: podman-docker
+        state: absent
+      when: ansible_os_family == "RedHat"
 
-    - name: Download Docker GPG key to keyring
+    - name: Install dnf plugins
+      yum:
+        name: dnf-plugins-core
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Add Docker CE repository
       get_url:
-        url: https://download.docker.com/linux/debian/gpg
-        dest: /etc/apt/keyrings/docker.asc
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
         mode: '0644'
       when:
-        - ansible_os_family == "Debian"
+        - ansible_os_family == "RedHat"
 
-    - name: Map architecture for Docker APT repo
-      set_fact:
-        docker_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else
-                      'arm64' if ansible_architecture == 'aarch64' }}"
-
-    - name: Add Docker APT repository
-      copy:
-        content: |
-          deb [arch={{ docker_arch }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
-        dest: /etc/apt/sources.list.d/docker.list
-        mode: '0644'
+    - name: Force release server to use 9 in Docker repo for AL2023 compatibility
+      replace:
+        path: /etc/yum.repos.d/docker-ce.repo
+        regexp: '\$releasever'
+        replace: '9'
       when:
-        - ansible_os_family == "Debian"
-
-    - name: Update apt cache
-      apt:
-        update_cache: yes
-      when:
-        - ansible_os_family == "Debian"
+        - ansible_distribution == "Amazon"
 
     - name: Install dependencies
-      apt:
+      yum:
         name: "{{ packages }}"
         state: present
         update_cache: yes
@@ -67,31 +59,22 @@
           - git
           - python3-pip
           - wget
-          - iputils-ping
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - gnupg
-          - jq
-          - lsb-release
           - docker-ce
           - docker-ce-cli
           - containerd.io
-      when: ansible_os_family == "Debian"
+      when: ansible_os_family == "RedHat"
 
-    - name: Add Trivy apt repository key
-      shell: wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | tee /usr/share/keyrings/trivy.gpg > /dev/null
-      args:
-        creates: /usr/share/keyrings/trivy.gpg
-
-    - name: Add Trivy apt repository
-      apt_repository:
-        repo: "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main"
-        state: present
-        filename: trivy
+    - name: Add Trivy yum repository
+      yum_repository:
+        name: trivy
+        description: Trivy repository
+        baseurl: https://aquasecurity.github.io/trivy-repo/rpm/releases/$basearch/
+        gpgcheck: yes
+        gpgkey: https://aquasecurity.github.io/trivy-repo/rpm/public.key
+        enabled: yes
 
     - name: Install Trivy
-      apt:
+      yum:
         name: trivy
         state: present
         update_cache: yes
@@ -109,17 +92,20 @@
       command: percona-release enable pcsm {{ lookup('env', 'install_repo') }}
 
     - name: Install PCSM
-      apt:
-        name: "percona-clustersync-mongodb{{ '=' + pcsm_version + '*' if pcsm_version != '' else '' }}"
+      yum:
+        name: "percona-clustersync-mongodb{{ '-' + pcsm_version + '*' if pcsm_version != '' else '' }}"
         state: "{{ 'present' if pcsm_version != '' else 'latest' }}"
         update_cache: yes
 
     - name: Disable Docker time namespaces (Fix for Docker 29.5+ that breaks runc)
-      shell: |
-        existing=$(cat /etc/docker/daemon.json 2>/dev/null || echo '{}')
-        echo "$existing" | jq '.features["time-namespaces"] = false' > /etc/docker/daemon.json
-      args:
-        executable: /bin/bash
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "features": {
+              "time-namespaces": false
+            }
+          }
 
     - name: Enable and start Docker service
       service:
@@ -134,7 +120,7 @@
             'runc.arm64' if ansible_architecture == 'aarch64' else 'runc.amd64'
           }}
 
-    - name: Download correct Runc binary
+    - name: Download correct runc binary
       get_url:
         url: "{{ runc_url }}"
         dest: /usr/local/bin/runc
@@ -164,20 +150,12 @@
         groups: docker
         append: yes
 
-    - name: Upgrade pip on Debian 11
-      pip:
-        name: pip
-        state: latest
-        executable: pip3
+    - name: Ensure pip is installed on Amazon Linux
+      package:
+        name: python3-pip
+        state: present
       when:
-        - ansible_distribution == "Debian"
-        - ansible_distribution_major_version == "11"
-
-    - name: Upgrade pip on Debian 12
-      command: python3 -m pip install --upgrade pip --break-system-packages
-      when:
-        - ansible_distribution == "Debian"
-        - ansible_distribution_major_version == "12"
+        - ansible_distribution == "Amazon"
 
     - name: Create Source PSMDB container
       community.docker.docker_container:
@@ -270,14 +248,14 @@
 
     - name: Update PCSM_SOURCE_URI
       lineinfile:
-        path: /etc/default/pcsm
+        path: /etc/sysconfig/pcsm
         regexp: '^PCSM_SOURCE_URI='
         line: 'PCSM_SOURCE_URI="mongodb://{{ source_ip }}:27017"'
         backrefs: yes
 
     - name: Update PCSM_TARGET_URI
       lineinfile:
-        path: /etc/default/pcsm
+        path: /etc/sysconfig/pcsm
         regexp: '^PCSM_TARGET_URI='
         line: 'PCSM_TARGET_URI="mongodb://{{ destination_ip }}:27017"'
         backrefs: yes

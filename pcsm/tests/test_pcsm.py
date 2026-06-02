@@ -107,7 +107,7 @@ def determine_release(host):
     distro = host.system_info.distribution.lower()
     release = host.system_info.release.split('.')[0]
 
-    if distro == "rhel" and release == "10":
+    if distro == "rhel" and (release == "10" or release == "9"):
         return "podman"
     else:
         return "docker"
@@ -256,3 +256,31 @@ def test_pcsm_transfer(host):
     assert wait_for_repl_stage(host)
     assert "testUser" in pcsm_confirm_db_row(host).stdout
     assert pcsm_finalize(host)
+
+def test_pcsm_sbom(host):
+    """Verify sbom exists, and the format and version are correct"""
+    is_rpm = host.run("rpm -q percona-clustersync-mongodb").rc == 0
+    is_deb = host.run("dpkg -l percona-clustersync-mongodb").rc == 0
+    assert is_rpm or is_deb, "Could not detect package manager — package does not appear to be installed via rpm or deb"
+
+    if is_rpm:
+        result = host.run("rpm -ql percona-clustersync-mongodb | grep cdx.json")
+    else:
+        result = host.run("dpkg -L percona-clustersync-mongodb | grep cdx.json")
+    assert result.rc == 0, f"SBOM cdx.json not found in package file list: {result.stdout}"
+
+    sbom_path = f"/usr/share/doc/percona-clustersync-mongodb/percona-clustersync-mongodb-{version}.cdx.json"
+    if is_rpm:
+        distro_map = {"rhel": "redhat", "amzn": "amazon"}
+        distro_name = distro_map.get(host.system_info.distribution.lower(), host.system_info.distribution)
+        distro = f"{distro_name}/{host.system_info.release}"
+        trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --distro {distro} {sbom_path}")
+    else:
+        trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 {sbom_path}")
+    assert trivy_result.rc == 0, f"trivy sbom scan found HIGH/CRITICAL vulnerabilities:\n{trivy_result.stdout}\n{trivy_result.stderr}"
+
+    cdx_cmd = "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /usr/local/bin/cyclonedx"
+    cdx_result = host.run(f"{cdx_cmd} validate --input-file {sbom_path} --input-format json --input-version v1_6")
+    assert cdx_result.rc == 0, f"CycloneDX 1.6 schema validation failed: {cdx_result.stdout}\n{cdx_result.stderr}"
+
+
