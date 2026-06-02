@@ -104,10 +104,13 @@ def pcsm_version(host):
     return result
 
 def determine_release(host):
-    result = host.run("docker inspect source 2>/dev/null")
-    if result.rc == 0:
+    distro = host.system_info.distribution.lower()
+    release = host.system_info.release.split('.')[0]
+
+    if distro == "rhel" and (release == "10" or release == "9"):
+        return "podman"
+    else:
         return "docker"
-    return "podman"
 
 def pcsm_add_db_row(host):
     """Adds a test row to source database"""
