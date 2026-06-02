@@ -91,7 +91,7 @@ def test_pcsm_docker_oci_sbom():
 
     referrers_data = json.loads(discover_result.stdout)
     sbom_referrers = [
-        r for r in referrers_data.get("referrers", [])
+        r for r in referrers_data.get("manifests", referrers_data.get("referrers", []))
         if r.get("artifactType") == "application/vnd.cyclonedx+json"
     ]
     assert len(sbom_referrers) > 0, (
