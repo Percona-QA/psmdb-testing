@@ -1,9 +1,28 @@
 ## Setup ##
 
+`docker-compose build` produces three MongoDB images so single-version and cross-version layouts can coexist:
+
+| Image               | When it is used                                       | Base image (build arg)                             |
+| ------------------- | ----------------------------------------------------- | -------------------------------------------------- |
+| `mongodb/local`     | Same MongoDB version on source and target             | `MONGODB_IMAGE`                                    |
+| `mongodb-src/local` | Source cluster when source and target versions differ | `MONGODB_SRC_IMAGE`, falls back to `MONGODB_IMAGE` |
+| `mongodb-dst/local` | Target cluster when source and target versions differ | `MONGODB_DST_IMAGE`, falls back to `MONGODB_IMAGE` |
+
 Environment variables for the setup:
-1) **MONGODB_IMAGE** (default `percona/percona-server-mongodb:latest`) - base image for the tests
-2) **PCSM_BRANCH** (default `main`) - branch, tag, or commit hash to build PCSM from
-3) **GO_VER** (default `latest`) - golang version
+1) **MONGODB_IMAGE** (default `percona/percona-server-mongodb:latest`) - base image used everywhere when no per-side override is set
+2) **MONGODB_SRC_IMAGE** (optional, falls back to `MONGODB_IMAGE`) - base image for the source cluster, used to build the `mongodb-src/local` image
+3) **MONGODB_DST_IMAGE** (optional, falls back to `MONGODB_IMAGE`) - base image for the target cluster, used to build the `mongodb-dst/local` image
+4) **PCSM_BRANCH** (default `main`) - branch, tag, or commit hash to build PCSM from
+5) **GO_VER** (default `latest`) - golang version
+
+To run the suite with different MongoDB versions on source and target (cross-version replication), export both `MONGODB_SRC_IMAGE` and `MONGODB_DST_IMAGE` before building:
+
+```bash
+export MONGODB_SRC_IMAGE=perconalab/percona-server-mongodb:6.0
+export MONGODB_DST_IMAGE=perconalab/percona-server-mongodb:7.0
+docker-compose build
+docker-compose up -d
+```
 
 ```bash
 docker-compose build                          # Build docker images

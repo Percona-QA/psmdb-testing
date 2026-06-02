@@ -1,10 +1,17 @@
 import json
 import time
 from contextlib import contextmanager
+import bson
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError, ServerSelectionTimeoutError, NetworkTimeout, AutoReconnect, ExecutionTimeout
 
 from cluster import Cluster
+
+# Fixed codec so doc equality compares raw BSON bytes (Python NaN != NaN)
+_BSON_COMPARE_CODEC = bson.CodecOptions(document_class=dict)
+def _bson_doc_eq(d1, d2):
+    return bson.encode(d1, codec_options=_BSON_COMPARE_CODEC) == \
+           bson.encode(d2, codec_options=_BSON_COMPARE_CODEC)
 
 # Connection error types that should trigger retry
 _CONNECTION_ERRORS = (ServerSelectionTimeoutError, NetworkTimeout, AutoReconnect, ConnectionError)
@@ -85,13 +92,19 @@ def compare_data(db1, db2):
         is_sharded = True
 
     mismatch_summary = []
-    # Hash mismatch is only checked for replica sets, not sharded clusters
+    # Hash mismatch is only checked for replica sets, not sharded clusters.
+    # dbHash on capped collections is skipped; they are validated separately
+    # via record-by-record comparison below
     if not is_sharded:
         all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1_container, db2_container)
         if mismatch_dbs_hash:
             mismatch_summary.extend(mismatch_dbs_hash)
         if mismatch_coll_hash:
             mismatch_summary.extend(mismatch_coll_hash)
+
+    _, capped_mismatches = compare_capped_collections(db1_container, db2_container)
+    if capped_mismatches:
+        mismatch_summary.extend(capped_mismatches)
 
     all_collections, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1_container, db2_container)
     mismatch_metadata = compare_collection_metadata(db1_container, db2_container)
@@ -118,6 +131,130 @@ def compare_data(db1, db2):
     Cluster.log(f"Mismatched databases, collections, or indexes found: {mismatch_summary}")
     return False, mismatch_summary
 
+def compare_capped_collections(db1, db2, databases=None):
+    """
+    Record-by-record comparison of capped collections, sorted by _id.
+    Why this exists: dbHash hashes capped collections in natural (insertion) order
+    rather than by _id, which is not portable across independent MongoDB instances
+    (PCSM source vs target) and changed behavior between 6.0 and 7.0.26+
+    (SERVER-82180 / SERVER-86692). So for capped collections we validate
+    correctness via count + per-document equality instead of dbHash.
+    """
+    def resolve_uri(db):
+        if hasattr(db, "connection"):
+            return db.connection
+        if isinstance(db, str) and (db.startswith("mongodb://") or db.startswith("mongodb+srv://")):
+            return db
+        raise ValueError("Invalid database argument: must be cluster object or connection string")
+
+    src_uri = resolve_uri(db1)
+    dst_uri = resolve_uri(db2)
+
+    def list_capped(uri):
+        result = {}
+        with _mongo_client_with_retry(uri) as client:
+            for db_name in client.list_database_names():
+                if db_name in ["admin", "local", "config", "percona_clustersync_mongodb"]:
+                    continue
+                if databases is not None and db_name not in databases:
+                    continue
+                db = client[db_name]
+                try:
+                    capped = [coll["name"] for coll in db.list_collections(filter={"options.capped": True})]
+                except PyMongoError as e:
+                    Cluster.log(f"Warning: could not list capped collections in '{db_name}': {e}")
+                    continue
+                if capped:
+                    result[db_name] = capped
+        return result
+
+    Cluster.log("Comparing capped collections record-by-record (sorted by _id)...")
+    src_capped = list_capped(src_uri)
+    dst_capped = list_capped(dst_uri)
+
+    all_capped = set()
+    for db_name, colls in src_capped.items():
+        for c in colls:
+            all_capped.add(f"{db_name}.{c}")
+    for db_name, colls in dst_capped.items():
+        for c in colls:
+            all_capped.add(f"{db_name}.{c}")
+
+    if not all_capped:
+        Cluster.log("No capped collections found to compare")
+        return True, []
+
+    mismatches = []
+    with _mongo_client_with_retry(src_uri) as src_client, \
+         _mongo_client_with_retry(dst_uri) as dst_client:
+        for full_name in sorted(all_capped):
+            db_name, coll_name = full_name.split(".", 1)
+            src_present = coll_name in src_capped.get(db_name, [])
+            dst_present = coll_name in dst_capped.get(db_name, [])
+            if not src_present:
+                mismatches.append((full_name, "missing in src DB"))
+                Cluster.log(f"Capped '{full_name}' exists in destination_DB but not in source_DB")
+                continue
+            if not dst_present:
+                mismatches.append((full_name, "missing in dst DB"))
+                Cluster.log(f"Capped '{full_name}' exists in source_DB but not in destination_DB")
+                continue
+
+            src_coll = src_client[db_name][coll_name]
+            dst_coll = dst_client[db_name][coll_name]
+            try:
+                src_count = src_coll.count_documents({})
+                dst_count = dst_coll.count_documents({})
+            except PyMongoError as e:
+                Cluster.log(f"Capped '{full_name}': count failed: {e}")
+                mismatches.append((full_name, f"count error: {e}"))
+                continue
+
+            if src_count != dst_count:
+                mismatches.append((full_name, f"record count mismatch: src={src_count}, dst={dst_count}"))
+                Cluster.log(f"Capped '{full_name}': record count mismatch {src_count} != {dst_count}")
+                continue
+
+            # Stream both cursors in lockstep instead of materializing them
+            src_cursor = src_coll.find({}, sort=[("_id", 1)])
+            dst_cursor = dst_coll.find({}, sort=[("_id", 1)])
+            differing = 0
+            try:
+                for i, (s_doc, d_doc) in enumerate(zip(src_cursor, dst_cursor)):
+                    # Byte-level BSON compare so NaN, Decimal128(NaN), binary
+                    # subtypes etc. are not flagged as different just because
+                    # Python's value-level equality says so (NaN != NaN)
+                    if _bson_doc_eq(s_doc, d_doc):
+                        continue
+                    differing += 1
+                    if differing <= 3:
+                        try:
+                            s_hex = bson.encode(s_doc, codec_options=_BSON_COMPARE_CODEC).hex()
+                            d_hex = bson.encode(d_doc, codec_options=_BSON_COMPARE_CODEC).hex()
+                        except Exception:
+                            s_hex = d_hex = "<unencodable>"
+                        Cluster.log(
+                            f"Capped '{full_name}' doc[{i}] mismatch:\n"
+                            f"  src: {s_doc}\n"
+                            f"  dst: {d_doc}\n"
+                            f"  src bson: {s_hex}\n"
+                            f"  dst bson: {d_hex}")
+            except PyMongoError as e:
+                Cluster.log(f"Capped '{full_name}': find failed: {e}")
+                mismatches.append((full_name, f"find error: {e}"))
+                continue
+            finally:
+                src_cursor.close()
+                dst_cursor.close()
+
+            if differing:
+                mismatches.append((full_name, f"{differing} document(s) differ"))
+                Cluster.log(f"Capped '{full_name}': {differing} of {src_count} docs differ")
+            else:
+                Cluster.log(f"Capped '{full_name}': {src_count} docs match")
+
+    return len(mismatches) == 0, mismatches
+
 def compare_database_hashes(db1_container, db2_container):
     def get_db_hashes_and_collections(uri):
         with _mongo_client_with_retry(uri) as client:
@@ -128,12 +265,23 @@ def compare_database_hashes(db1_container, db2_container):
                 if db_name in ["admin", "local", "config", "percona_clustersync_mongodb"]:
                     continue
                 db = client[db_name]
-                collections = [name for name in db.list_collection_names()]
+                # Exclude capped collections - dbHash hashes them in natural
+                # (insertion) order which is not portable across independent
+                # clusters or MongoDB versions (SERVER-82180 / SERVER-86692).
+                # Capped collections are validated via record-by-record
+                # comparison in compare_capped_collections()
                 try:
-                    if collections:
-                        result = db.command("dbHash", collections=collections)
-                    else:
-                        result = db.command("dbHash")
+                    non_capped = [
+                        coll["name"] for coll in db.list_collections()
+                        if not coll.get("options", {}).get("capped")
+                    ]
+                except PyMongoError as e:
+                    Cluster.log(f"Warning: could not list collections in {db_name}: {e}")
+                    continue
+                if not non_capped:
+                    continue
+                try:
+                    result = db.command("dbHash", collections=non_capped)
                     db_hashes[db_name] = result.get("md5")
                     for coll, coll_hash in result.get("collections", {}).items():
                         collection_hashes[f"{db_name}.{coll}"] = coll_hash
