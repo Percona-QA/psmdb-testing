@@ -274,11 +274,11 @@ multi_stmt_txn_jscore_passthrough_with_migration|wiredTiger
 multitenancy_with_atlas_proxy_jscore_passthrough|wiredTiger
 multitenancy_with_mongoq_jscore_passthrough|wiredTiger
 multitenancy_with_mongoq_unsigned_token_jscore_passthrough|wiredTiger
-multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
-multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
+multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4 5.0 6.0 6.3 7.0 7.3
+multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4 5.0 6.0 6.3 7.0 7.3
  multiversion_auth_future_git_tag|wiredTiger
  multiversion_future_git_tag|wiredTiger
-multiversion_sanity_check|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
+multiversion_sanity_check|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4 5.0 6.0 6.3 7.0 7.3
  multiversion_sanity_check_last_continuous_new_new_old|wiredTiger
  multiversion_sanity_check_last_continuous_new_old_new|wiredTiger
  multiversion_sanity_check_last_continuous_old_new_new|wiredTiger
