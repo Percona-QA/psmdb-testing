@@ -9,7 +9,6 @@ from cluster import Cluster
 CONFIGSERVER_URI = "mongodb://pbm:pbmpass@rscfg01:27017/?authSource=admin"
 MONGOS_URI = "mongodb://pbm:pbmpass@mongos:27017/?authSource=admin"
 
-
 @pytest.fixture(scope="package")
 def config():
     return {
@@ -50,7 +49,8 @@ def _find_snapshot(status_json, backup_name):
     return None
 
 @pytest.mark.timeout(300, func_only=True)
-def test_backup_status_consistent_across_uris_PBM_1675(start_cluster, cluster):
+def test_backup_status_consistent_across_uris_PBM_T347(start_cluster, cluster):
+    """Verify a backup taken via mongos shows 'done' in the pbm status using mongos and config server URIs."""
     n = testinfra.get_host("docker://rscfg01")
 
     backup_result = n.run(f'pbm backup --mongodb-uri="{MONGOS_URI}" --wait --out=json')
@@ -58,6 +58,7 @@ def test_backup_status_consistent_across_uris_PBM_1675(start_cluster, cluster):
     backup_name = json.loads(backup_result.stdout).get("name")
     assert backup_name, f"Could not parse backup name from: {backup_result.stdout}"
 
+    # Get backup status via mongos
     status_mongos = n.run(f'pbm status --mongodb-uri="{MONGOS_URI}" --out=json')
     assert status_mongos.rc == 0, f"pbm status via mongos failed: {status_mongos.stderr}"
     mongos_snapshot = _find_snapshot(status_mongos.stdout, backup_name)
@@ -66,6 +67,7 @@ def test_backup_status_consistent_across_uris_PBM_1675(start_cluster, cluster):
         f"'done' status via mongos not found, got '{mongos_snapshot.get('status')}'"
     )
 
+    # Get backup status via config server
     status_configserver = n.run(f'pbm status --mongodb-uri="{CONFIGSERVER_URI}" --out=json')
     assert status_configserver.rc == 0, f"pbm status via config server failed: {status_configserver.stderr}"
     configserver_snapshot = _find_snapshot(status_configserver.stdout, backup_name)
