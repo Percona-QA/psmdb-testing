@@ -7,6 +7,7 @@ FROM golang:$GO_VER AS builder
 ARG PBM_BRANCH=dev
 ARG PR_NUMBER
 ARG MAKE_TARGET=build
+ENV GOTOOLCHAIN=auto
 WORKDIR /
 RUN mkdir -p /pbm-old && mkdir -p /pbm-new && \
     echo 'Acquire::Retries "20";' > /etc/apt/apt.conf.d/80-retries && \
@@ -54,6 +55,7 @@ COPY conf/pbm/gcs.yaml /etc/gcs.conf
 COPY conf/pbm/gcs_hmac.yaml /etc/gcs_hmac.conf
 COPY conf/pbm/gcs-work-iden.yaml /etc/pbm-gcs-work-iden.conf
 COPY conf/pbm/azure.yaml /etc/azure.conf
+COPY conf/pbm/oci.yaml /etc/oci.conf
 COPY conf/krb5.conf /etc/krb5.conf
 COPY keyfile /etc/keyfile
 COPY mongodb-keyfile /etc/mongodb-keyfile

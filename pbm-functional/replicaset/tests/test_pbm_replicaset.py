@@ -129,7 +129,7 @@ def make_restore(node,port,name):
     for i in range(TIMEOUT):
         running = check_status(node,port)
         if not running:
-            output = node.check_output('pbm restore --mongodb-uri=mongodb://localhost:' + port + '/ ' + name + ' --wait')
+            output = node.check_output('pbm restore --mongodb-uri=mongodb://localhost:' + port + '/ -y ' + name + ' --wait')
             print(output)
             break
         else:
@@ -165,7 +165,7 @@ def make_pitr_restore(node,port,name,timestamp):
     for i in range(TIMEOUT):
         running = check_status(node,port)
         if not running:
-            output = node.check_output('pbm restore --mongodb-uri=mongodb://localhost:' + port + '/ --time=' + timestamp + ' --base-snapshot=' + name + ' --wait')
+            output = node.check_output('pbm restore --mongodb-uri=mongodb://localhost:' + port + '/ -y --time=' + timestamp + ' --base-snapshot=' + name + ' --wait')
             print(output)
             break
         else:

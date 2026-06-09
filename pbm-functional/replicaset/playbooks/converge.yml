@@ -48,11 +48,17 @@
         dest: /tmp/percona-backup-mongodb
         version: "{{ branch }}"
 
-    - name: Install build-depth 
+    - name: Disable SBOM tools install in build script
+      replace:
+        path: /tmp/percona-backup-mongodb/packaging/scripts/mongodb-backup_builder.sh
+        regexp: '^(\s+)install_sbom_tools\s*$'
+        replace: '\1: # install_sbom_tools disabled by ansible playbook'
+
+    - name: Install build-depth
       shell: |
         chmod +x /tmp/percona-backup-mongodb/packaging/scripts/mongodb-backup_builder.sh
         mkdir -p /tmp/builddir
-        /tmp/percona-backup-mongodb/packaging/scripts/mongodb-backup_builder.sh --builddir=/tmp/builddir --install_deps=1     
+        /tmp/percona-backup-mongodb/packaging/scripts/mongodb-backup_builder.sh --builddir=/tmp/builddir --install_deps=1
 
     - name: Build PBM
       command: make build
@@ -320,6 +326,12 @@
       copy:
         src: /tmp/pbm-agent-storage-oss.yaml
         dest: /etc/pbm-agent-storage-oss.conf
+        mode: '0666'
+
+    - name: add OCI storage for pbm-agent
+      copy:
+        src: /tmp/pbm-agent-storage-oci.yaml
+        dest: /etc/pbm-agent-storage-oci.conf
         mode: '0666'
 
     - name: Download and install mc
