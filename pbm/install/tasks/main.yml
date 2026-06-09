@@ -30,18 +30,38 @@
   shell: wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | tee /usr/share/keyrings/trivy.gpg > /dev/null
   args:
     creates: /usr/share/keyrings/trivy.gpg
+  when: ansible_os_family == "Debian"
 
 - name: Add Trivy apt repository
   apt_repository:
     repo: "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main"
     state: present
     filename: trivy
+  when: ansible_os_family == "Debian"
 
 - name: Install Trivy
   apt:
     name: trivy
     state: present
     update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Add Trivy yum repository
+  yum_repository:
+    name: trivy
+    description: Trivy repository
+    baseurl: https://aquasecurity.github.io/trivy-repo/rpm/releases/$basearch/
+    gpgcheck: yes
+    gpgkey: https://aquasecurity.github.io/trivy-repo/rpm/public.key
+    enabled: yes
+  when: ansible_os_family == "RedHat"
+
+- name: Install Trivy
+  yum:
+    name: trivy
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "RedHat"
 
 - name: Install CycloneDX CLI
   get_url:
