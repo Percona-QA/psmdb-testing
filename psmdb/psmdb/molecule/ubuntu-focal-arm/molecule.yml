@@ -7,7 +7,7 @@ platforms:
   - name: ufocal-arm-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
     image: "${MOLECULE_UFOCAL_ARM_AMI:-ami-0aca42cb579fcb3ba}"
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-07f71e1a3117a32f9
     instance_type: c6g.large
     ssh_user: ubuntu
     root_device_name: /dev/sda1
