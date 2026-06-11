@@ -1,10 +1,10 @@
+import re
 import subprocess
 import time
 
 import pytest
 
 from cluster import Cluster
-
 
 @pytest.fixture(scope="function")
 def config():
@@ -26,8 +26,7 @@ def start_cluster(cluster, request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-
-@pytest.mark.timeout(400, func_only=True)
+@pytest.mark.timeout(600, func_only=True)
 def test_pitr_simultaneous_backups(start_cluster, cluster):
     """
     Verify simultaneous backup commands issued approximately 1 second apart should not leave an agent stuck, blocking PITR from resuming after the backup completes.
@@ -35,20 +34,25 @@ def test_pitr_simultaneous_backups(start_cluster, cluster):
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
 
-    print("SLEEPING")
-    time.sleep(30)
-
-    print("GO!")
-    time.sleep(3600)
-
     host1, host2 = cluster.pbm_hosts[0], cluster.pbm_hosts[1]
 
-    # cluster.wait_pitr(wait=60)
+    race_triggered = False
+    for delay in ["1", "0.9", "0.8"]:
+        cluster.wait_pitr(wait=60)
+        cmd = f"docker exec {host1} pbm backup & sleep {delay} && docker exec {host2} pbm backup & wait"
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=120)
+        output = result.stdout + result.stderr
+        Cluster.log(f"delay={delay} output: {output.strip()}")
+        backup_names = re.findall(r'Starting backup "([^"]+)"', output)
+        if "another operation in progress" not in output and len(set(backup_names)) > 1:
+            Cluster.log(f"Race condition triggered at delay={delay}")
+            race_triggered = True
+            break
+        Cluster.log(f"Race not triggered at delay={delay}, retrying with shorter delay")
+        timeout = time.time() + 60
+        while cluster.get_status()["running"]:
+            assert time.time() < timeout, "Backup did not complete within timeout"
+            time.sleep(2)
 
-    p1 = subprocess.Popen(["docker", "exec", host1, "pbm", "backup"])
-    time.sleep(0.2)
-    p2 = subprocess.Popen(["docker", "exec", host2, "pbm", "backup"])
-    p1.wait()
-    p2.wait()
-
+    assert race_triggered, "Could not trigger race condition across all delays"
     cluster.wait_pitr(wait=60)
