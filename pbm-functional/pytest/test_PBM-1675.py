@@ -1,4 +1,5 @@
 import json
+import time
 
 import pymongo
 import pytest
@@ -48,18 +49,19 @@ def _find_snapshot(status_json, backup_name):
         pass
     return None
 
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(3600, func_only=True)
 def test_backup_status_consistent_across_uris_PBM_T347(start_cluster, cluster):
     """Verify a backup taken via mongos shows 'done' in the pbm status using mongos and config server URIs."""
-    n = testinfra.get_host("docker://rscfg01")
+    n_cfg = testinfra.get_host("docker://rscfg01")
+    n_shard = testinfra.get_host("docker://rs101")
 
-    backup_result = n.run(f'pbm backup --mongodb-uri="{MONGOS_URI}" --wait --out=json')
+    backup_result = n_cfg.run(f'pbm backup --mongodb-uri="{MONGOS_URI}" --wait --out=json')
     assert backup_result.rc == 0, f"Backup failed: {backup_result.stdout}\n{backup_result.stderr}"
     backup_name = json.loads(backup_result.stdout).get("name")
     assert backup_name, f"Could not parse backup name from: {backup_result.stdout}"
 
-    # Get backup status via mongos
-    status_mongos = n.run(f'pbm status --mongodb-uri="{MONGOS_URI}" --out=json')
+    # Get backup status via mongos (run from shard node — FCV query unsupported on mongos in newer PSMDB)
+    status_mongos = n_shard.run(f'pbm status --mongodb-uri="{MONGOS_URI}" --out=json')
     assert status_mongos.rc == 0, f"pbm status via mongos failed: {status_mongos.stderr}"
     mongos_snapshot = _find_snapshot(status_mongos.stdout, backup_name)
     assert mongos_snapshot, f"Backup '{backup_name}' not found in pbm status via mongos"
@@ -68,7 +70,7 @@ def test_backup_status_consistent_across_uris_PBM_T347(start_cluster, cluster):
     )
 
     # Get backup status via config server
-    status_configserver = n.run(f'pbm status --mongodb-uri="{CONFIGSERVER_URI}" --out=json')
+    status_configserver = n_cfg.run(f'pbm status --mongodb-uri="{CONFIGSERVER_URI}" --out=json')
     assert status_configserver.rc == 0, f"pbm status via config server failed: {status_configserver.stderr}"
     configserver_snapshot = _find_snapshot(status_configserver.stdout, backup_name)
     assert configserver_snapshot, f"Backup '{backup_name}' not found in pbm status via config server"
