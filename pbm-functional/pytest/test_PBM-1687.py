@@ -37,7 +37,7 @@ def test_pitr_simultaneous_backups(start_cluster, cluster):
     host1, host2 = cluster.pbm_hosts[0], cluster.pbm_hosts[1]
 
     race_triggered = False
-    for delay in ["1", "0.9", "0.8"]:
+    for delay in ["0.8", "0.5", "0.3"]:
         cluster.wait_pitr(wait=60)
         cmd = f"docker exec {host1} pbm backup & sleep {delay} && docker exec {host2} pbm backup & wait"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=120)
