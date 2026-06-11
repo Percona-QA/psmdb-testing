@@ -265,3 +265,30 @@ def test_show_store(show_store):
     assert show_store['storage']['s3']
     assert show_store['storage']['s3']['region'] == 'us-east-1'
     assert show_store['storage']['s3']['bucket'] == 'operator-testing'
+
+
+def test_pbm_sbom(host):
+    """Verify SBOM exists and passes format validation and vulnerability scan"""
+    is_rpm = host.run("rpm -q percona-backup-mongodb").rc == 0
+    is_deb = host.run("dpkg -l percona-backup-mongodb").rc == 0
+    assert is_rpm or is_deb, "Could not detect package manager — package does not appear to be installed via rpm or deb"
+
+    if is_rpm:
+        result = host.run("rpm -ql percona-backup-mongodb | grep cdx.json")
+    else:
+        result = host.run("dpkg -L percona-backup-mongodb | grep cdx.json")
+    assert result.rc == 0, f"SBOM cdx.json not found in package file list: {result.stdout}"
+
+    sbom_path = f"/usr/share/doc/percona-backup-mongodb/percona-backup-mongodb-{VERSION}.cdx.json"
+    if is_rpm:
+        distro_map = {"rhel": "redhat", "amzn": "amazon"}
+        distro_name = distro_map.get(host.system_info.distribution.lower(), host.system_info.distribution)
+        distro = f"{distro_name}/{host.system_info.release}"
+        trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --distro {distro} {sbom_path}")
+    else:
+        trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 {sbom_path}")
+    assert trivy_result.rc == 0, f"trivy sbom scan found HIGH/CRITICAL vulnerabilities:\n{trivy_result.stdout}\n{trivy_result.stderr}"
+
+    cdx_cmd = "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /usr/local/bin/cyclonedx"
+    cdx_result = host.run(f"{cdx_cmd} validate --input-file {sbom_path} --input-format json --input-version v1_6")
+    assert cdx_result.rc == 0, f"CycloneDX 1.6 schema validation failed: {cdx_result.stdout}\n{cdx_result.stderr}"
