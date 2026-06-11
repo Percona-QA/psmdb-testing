@@ -1,5 +1,4 @@
 import json
-import time
 
 import pymongo
 import pytest
