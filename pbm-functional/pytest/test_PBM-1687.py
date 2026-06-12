@@ -27,9 +27,9 @@ def start_cluster(cluster, request):
         cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(600, func_only=True)
-def test_pitr_simultaneous_backups(start_cluster, cluster):
+def test_pitr_simultaneous_backups_PBM348(start_cluster, cluster):
     """
-    Verify simultaneous backup commands issued approximately 1 second apart should not leave an agent stuck, blocking PITR from resuming after the backup completes.
+    Verify simultaneous backup commands does not leave PITR blocked from resuming after the backup completes
     """
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
