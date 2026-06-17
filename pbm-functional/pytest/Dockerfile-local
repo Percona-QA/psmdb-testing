@@ -1,4 +1,5 @@
 FROM golang:bookworm AS builder
+ENV GOTOOLCHAIN=auto
 WORKDIR /
 RUN mkdir -p /percona-backup-mongodb && \
     apt update && apt -y install gcc libgssapi-krb5-2 libkrb5-dev libsasl2-modules-gssapi-mit

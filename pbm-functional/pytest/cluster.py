@@ -427,7 +427,7 @@ class Cluster:
                 time.sleep(1)
             else:
                 raise RuntimeError(f"Setup PBM command failed after {retries} attempts")
-        self.wait_pbm_status()
+        self.wait_pbm_status(wait=60)
 
     # pbm --force-resync
     def make_resync(self):
@@ -892,7 +892,7 @@ class Cluster:
             for host in replicaset['nodes']:
                 if host['role'] != "A":
                     hosts.append(host)
-                    assert host['ok']
+                    assert host['ok'], f"pbm agent not ok: {host} in rs {replicaset.get('rs')}"
         assert len(hosts) == len(self.pbm_hosts)
 
     def wait_pbm_status(self,wait=10):
