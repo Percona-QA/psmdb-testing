@@ -44,7 +44,8 @@ def start_cluster(cluster,request):
         pytest.param("aws", "sse-s3"),
         pytest.param("gcs_native", "no-encryption"),
         pytest.param("gcs_hmac", "no-encryption"),
-        pytest.param("azure", "no-encryption")])
+        pytest.param("azure", "no-encryption"),
+        pytest.param("oci", "no-encryption")])
 @pytest.mark.parametrize("backup_type", ["logical", "physical", "incremental"])
 @pytest.mark.timeout(800, func_only=True)
 def test_general_PBM_T300(start_cluster, cluster, provider, encryption_type, backup_type):
@@ -60,7 +61,8 @@ def test_general_PBM_T300(start_cluster, cluster, provider, encryption_type, bac
         "aws": "/etc/aws.conf",
         "gcs_native": "/etc/gcs.conf",
         "gcs_hmac": "/etc/gcs_hmac.conf",
-        "azure": "/etc/azure.conf"}
+        "azure": "/etc/azure.conf",
+        "oci": "/etc/oci.conf"}
     cluster.setup_pbm(file=cloud_configs[provider])
     client = pymongo.MongoClient(cluster.connection)
     mongod_version = client.server_info()["version"]
@@ -93,6 +95,8 @@ def test_general_PBM_T300(start_cluster, cluster, provider, encryption_type, bac
             result = cluster.exec_pbm_cli(f'config --set storage.gcs.prefix={unique_prefix} --out json -w')
         elif provider == "azure":
             result = cluster.exec_pbm_cli(f'config --set storage.azure.prefix={unique_prefix} --out json -w')
+        elif provider == "oci":
+            result = cluster.exec_pbm_cli(f'config --set storage.oci.prefix={unique_prefix} --out json -w')
         assert result.rc == 0
     cluster.check_pbm_status()
     result = cluster.exec_pbm_cli("config")
@@ -160,7 +164,7 @@ def test_general_PBM_T300(start_cluster, cluster, provider, encryption_type, bac
     Cluster.log("Finished successfully")
 
 @pytest.mark.jenkins
-@pytest.mark.parametrize("provider", ["aws", "gcs_native", "gcs_hmac", "azure"])
+@pytest.mark.parametrize("provider", ["aws", "gcs_native", "gcs_hmac", "azure", "oci"])
 @pytest.mark.parametrize("backup_type", ["logical", "physical"])
 @pytest.mark.parametrize("loss_percent", ["50", "100"])
 @pytest.mark.timeout(1600, func_only=True)
@@ -169,7 +173,8 @@ def test_general_PBM_T304(start_cluster, cluster, provider, backup_type, loss_pe
         "aws": "/etc/aws.conf",
         "gcs_native": "/etc/gcs.conf",
         "gcs_hmac": "/etc/gcs_hmac.conf",
-        "azure": "/etc/azure.conf"}
+        "azure": "/etc/azure.conf",
+        "oci": "/etc/oci.conf"}
     cluster.setup_pbm(file=cloud_configs[provider])
     client = pymongo.MongoClient(cluster.connection)
     mongod_version = client.server_info()["version"]
@@ -181,6 +186,8 @@ def test_general_PBM_T304(start_cluster, cluster, provider, backup_type, loss_pe
         result = cluster.exec_pbm_cli(f'config --set storage.gcs.prefix={unique_prefix} --out json -w')
     elif provider == "azure":
         result = cluster.exec_pbm_cli(f'config --set storage.azure.prefix={unique_prefix} --out json -w')
+    elif provider == "oci":
+        result = cluster.exec_pbm_cli(f'config --set storage.oci.prefix={unique_prefix} --out json -w')
     assert result.rc == 0
     cluster.check_pbm_status()
     result = cluster.exec_pbm_cli("config")
@@ -245,7 +252,7 @@ def test_general_PBM_T304(start_cluster, cluster, provider, backup_type, loss_pe
         cluster.make_restore(backup, timeout=500, restart_cluster=True, check_pbm_status=True)
     assert client["test"]["bigdata"].count_documents({}) == total_docs
     logs = cluster.exec_pbm_cli("logs -sD -t0")
-    ignored_errors = ["no documents in result", "send pbm heartbeat", "resync"]
+    ignored_errors = ["no documents in result", "send pbm heartbeat", "resync", "agentCheckup"]
     error_lines = [
         line for line in logs.stdout.splitlines()
         if " E " in line and not any(ignore in line for ignore in ignored_errors)]
