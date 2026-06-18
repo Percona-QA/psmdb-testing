@@ -244,22 +244,24 @@ def test_oplog_replay_replset_remapping_PBM_T354():
     source.create()
     source.setup_pbm()
 
-    client = pymongo.MongoClient(source.connection)
-    for i in range(100):
-        client["test"]["test"].insert_one({"phase": "pre", "i": i})
+    try:
+        client = pymongo.MongoClient(source.connection)
+        for i in range(100):
+            client["test"]["test"].insert_one({"phase": "pre", "i": i})
 
-    backup = source.make_backup("logical")
-    source.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
-    source.wait_pitr_chunk()
-    start = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+        backup = source.make_backup("logical")
+        source.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
+        source.wait_pitr_chunk()
+        start = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
 
-    for i in range(100):
-        client["test"]["test"].insert_one({"phase": "post", "i": i})
+        for i in range(100):
+            client["test"]["test"].insert_one({"phase": "post", "i": i})
 
-    time.sleep(1)
-    end = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
-    source.disable_pitr(end)
-    source.destroy()
+        time.sleep(1)
+        end = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+        source.disable_pitr(end)
+    finally:
+        source.destroy()
 
     try:
         target.create()
