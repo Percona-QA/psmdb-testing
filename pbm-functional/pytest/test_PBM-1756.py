@@ -2,13 +2,11 @@ import json
 import time
 
 import boto3
-import docker
 import pymongo
 import pytest
 from botocore.config import Config
 
 from cluster import Cluster
-
 
 def s3_client():
     return boto3.client(
@@ -20,16 +18,13 @@ def s3_client():
         region_name="us-east-1",
     )
 
-
 @pytest.fixture(scope="function")
 def config():
     return {"_id": "rs1", "members": [{"host": "rs101"}, {"host": "rs102"}, {"host": "rs103"}]}
 
-
 @pytest.fixture(scope="function")
 def cluster(config):
     return Cluster(config)
-
 
 @pytest.fixture(scope="function")
 def start_cluster(cluster, request):
@@ -43,7 +38,6 @@ def start_cluster(cluster, request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-
 @pytest.mark.timeout(600, func_only=True)
 def test_cancel_backup_PBM_T(start_cluster, cluster):
     """
@@ -54,34 +48,21 @@ def test_cancel_backup_PBM_T(start_cluster, cluster):
     for start in range(0, 20000, 1000):
         col.insert_many([{"x": i, "pad": "x" * 500} for i in range(start, start + 1000)])
 
-    # Throttle all nodes to 1 Mbit/s so the backup takes long enough to cancel
-    docker_client = docker.from_env()
-    nodes = [docker_client.containers.get(h) for h in ["rs101", "rs102", "rs103"]]
-    for node in nodes:
-        node.exec_run("tc qdisc add dev eth0 root tbf rate 1mbit burst 32kbit latency 400ms", privileged=True)
-    Cluster.log("Network throttled to 1 Mbit/s on all nodes")
+    result = cluster.exec_pbm_cli("backup --out=json")
+    assert result.rc == 0, f"Failed to start backup: {result.stdout} {result.stderr}"
+    backup_name = json.loads(result.stdout)["name"]
 
-    try:
-        result = cluster.exec_pbm_cli("backup --out=json")
-        assert result.rc == 0, f"Failed to start backup: {result.stdout} {result.stderr}"
-        backup_name = json.loads(result.stdout)["name"]
-        Cluster.log(f"Started backup: {backup_name}")
+    timeout = time.time() + 60
+    while True:
+        status = cluster.get_status()
+        if status.get("running", {}).get("type") == "backup":
+            break
+        assert time.time() < timeout, "Timed out waiting for backup to start running"
+        time.sleep(1)
 
-        timeout = time.time() + 60
-        while True:
-            status = cluster.get_status()
-            if status.get("running", {}).get("type") == "backup":
-                break
-            assert time.time() < timeout, "Timed out waiting for backup to start running"
-            time.sleep(1)
-
-        Cluster.log("Cancelling backup")
-        cancel = cluster.exec_pbm_cli("cancel-backup")
-        assert cancel.rc == 0, f"Failed to cancel backup: {cancel.stdout} {cancel.stderr}"
-    finally:
-        for node in nodes:
-            node.exec_run("tc qdisc del dev eth0 root", privileged=True)
-        Cluster.log("Network throttle removed from all nodes")
+    Cluster.log("Cancelling backup")
+    cancel = cluster.exec_pbm_cli("cancel-backup")
+    assert cancel.rc == 0, f"Failed to cancel backup: {cancel.stdout} {cancel.stderr}"
 
     timeout = time.time() + 60
     while True:
@@ -89,7 +70,7 @@ def test_cancel_backup_PBM_T(start_cluster, cluster):
         snapshots = status.get("backups", {}).get("snapshot", [])
         matching = [s for s in snapshots if s["name"] == backup_name]
         if matching and matching[0]["status"] == "canceled":
-            Cluster.log("Backup status confirmed as cancelled")
+            Cluster.log("Backup cancelled successfully")
             break
         assert time.time() < timeout, "Timed out waiting for backup to show canceled status"
         time.sleep(2)
@@ -102,4 +83,44 @@ def test_cancel_backup_PBM_T(start_cluster, cluster):
         for obj in page.get("Contents", [])
     ]
     leftover = [k for k in keys if backup_name in k]
-    assert not leftover, f"Leftover artifacts found on storage for {backup_name}: {leftover}"
+    assert not leftover, f"Leftover artifacts found on storage"
+
+@pytest.mark.timeout(300, func_only=True)
+def test_cannot_delete_during_backup_PBM_T(start_cluster, cluster):
+    """
+    Verify that attempting to delete a backup while one is in progress returns the appropriate error.
+    """
+    client = pymongo.MongoClient(cluster.connection)
+    col = client["test"]["data"]
+    for start in range(0, 20000, 1000):
+        col.insert_many([{"x": i, "pad": "x" * 500} for i in range(start, start + 1000)])
+
+    result = cluster.exec_pbm_cli("backup --out=json")
+    assert result.rc == 0, f"Failed to start backup: {result.stdout} {result.stderr}"
+    backup_name = json.loads(result.stdout)["name"]
+    Cluster.log(f"Started backup: {backup_name}")
+
+    timeout = time.time() + 60
+    while True:
+        status = cluster.get_status()
+        if status.get("running", {}).get("type") == "backup":
+            break
+        assert time.time() < timeout, "Timed out waiting for backup to start running"
+        time.sleep(1)
+
+    delete = cluster.exec_pbm_cli(f"delete-backup -y {backup_name}")
+    Cluster.log(f"Delete attempt stdout: {delete.stdout} stderr: {delete.stderr}")
+    assert delete.rc != 0, "Expected delete-backup to fail while backup is in progress"
+    assert "another operation in progress" in (delete.stdout + delete.stderr).lower(), \
+        f"Expected 'another operation in progress' in output, got: {delete.stdout} {delete.stderr}"
+
+    timeout = time.time() + 120
+    while True:
+        status = cluster.get_status()
+        snapshots = status.get("backups", {}).get("snapshot", [])
+        matching = [s for s in snapshots if s["name"] == backup_name]
+        if matching and matching[0]["status"] == "done":
+            Cluster.log("Backup completed successfully after failed delete attempt")
+            break
+        assert time.time() < timeout, "Timed out waiting for backup to complete"
+        time.sleep(2)
