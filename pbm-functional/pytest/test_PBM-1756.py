@@ -38,7 +38,7 @@ def start_cluster(cluster, request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
-@pytest.mark.timeout(600, func_only=True)
+@pytest.mark.timeout(300, func_only=True)
 def test_cancel_backup_PBM_T(start_cluster, cluster):
     """
     Verify that cancelling a backup mid-operation marks it as cancelled and removes all artifacts from storage.
