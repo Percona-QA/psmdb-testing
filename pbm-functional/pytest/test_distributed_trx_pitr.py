@@ -151,3 +151,68 @@ def test_distributed_trx_pitr(start_cluster, cluster):
     assert client["trx"].command("collstats", "test").get("sharded", False), "collection should still be sharded after restore"
 
     Cluster.log("Finished successfully")
+
+@pytest.mark.timeout(600, func_only=True)
+def test_distributed_trx_physical(start_cluster, cluster):
+    """
+    Verifies that a physical backup correctly handles cross-shard distributed
+    transactions relative to the backup window.
+
+    trx1 commits fully before the backup starts → all changes must be visible after restore.
+    trx2 commits after the backup ends → changes must be absent after restore.
+    """
+    client = pymongo.MongoClient(cluster.connection)
+    col = client["trx"]["test"]
+
+    for host in ["rs101", "rs201", "rscfg01"]:
+        pymongo.MongoClient(f"mongodb://root:root@{host}/?authSource=admin").admin.command(
+            "setParameter", 1, transactionLifetimeLimitSeconds=300
+        )
+
+    _seed_ballast(col)
+
+    Cluster.log("Setting up chunk placement: idx 0-499 → rs1, idx 500-99999 → rs2")
+    client.admin.command("split", "trx.test", middle={"idx": 500})
+    client.admin.command("moveChunk", "trx.test", find={"idx": 100}, to="rs1")
+    client.admin.command("moveChunk", "trx.test", find={"idx": 600}, to="rs2")
+
+    # trx1: cross-shard transaction that commits before the backup starts.
+    Cluster.log("Running trx1 (cross-shard): commits before backup starts")
+    with client.start_session() as session:
+        with session.start_transaction():
+            col.update_one({"idx": 100}, {"$set": {"changed": 1}}, session=session)
+            col.update_one({"idx": 600}, {"$set": {"changed": 1}}, session=session)
+            col.update_one({"idx": 110}, {"$set": {"changed": 1}}, session=session)
+            col.update_one({"idx": 610}, {"$set": {"changed": 1}}, session=session)
+    Cluster.log("trx1 committed")
+
+    backup = cluster.make_backup("physical")
+
+    # trx2: cross-shard transaction that commits after the backup ends.
+    Cluster.log("Running trx2 (cross-shard): commits after backup ends")
+    with client.start_session() as session:
+        with session.start_transaction():
+            col.update_one({"idx": 200}, {"$set": {"changed": 1}}, session=session)
+            col.update_one({"idx": 700}, {"$set": {"changed": 1}}, session=session)
+    Cluster.log("trx2 committed")
+
+    cluster.make_restore(backup, restart_cluster=True, check_pbm_status=True)
+
+    client = pymongo.MongoClient(cluster.connection)
+    col = client["trx"]["test"]
+
+    Cluster.log("Checking trx1 (committed before backup, expect changed=1)")
+    for idx in [100, 110, 600, 610]:
+        assert col.find_one({"idx": idx})["changed"] == 1, f"idx={idx}: trx1 should be visible after restore"
+
+    Cluster.log("Checking trx2 (committed after backup, expect changed=0)")
+    for idx in [200, 700]:
+        assert col.find_one({"idx": idx})["changed"] == 0, f"idx={idx}: trx2 should not be visible after restore"
+
+    Cluster.log("Checking untouched docs on each shard (expect changed=0)")
+    for idx in [50, 800]:
+        assert col.find_one({"idx": idx})["changed"] == 0, f"idx={idx}: untouched doc should be unchanged after restore"
+
+    assert client["trx"].command("collstats", "test").get("sharded", False), "collection should still be sharded after restore"
+
+    Cluster.log("Finished successfully")
