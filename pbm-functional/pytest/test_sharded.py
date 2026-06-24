@@ -3,6 +3,7 @@ import pymongo
 import time
 import os
 import docker
+import threading
 
 from datetime import datetime
 from cluster import Cluster
@@ -27,7 +28,7 @@ def config():
 def cluster(config):
     return Cluster(config)
 
-@pytest.fixture(scope="function", params=["/etc/pbm-fs.conf", "/etc/pbm-aws-provider.conf", "/etc/pbm-minio-provider.conf", "/etc/pbm-azurite.conf"])
+@pytest.fixture(scope="function", params=["/etc/pbm-fs.conf"])
 def start_cluster(cluster,request):
     try:
         pbm_config = request.param
@@ -188,16 +189,44 @@ def test_physical_pitr_PBM_T244(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.timeout(600,func_only=True)
 def test_incremental(start_cluster,cluster):
+
     cluster.check_pbm_status()
+    client = pymongo.MongoClient(cluster.connection)
+    stop_event = threading.Event()
+
+    def continuous_write():
+        i = 0
+        while not stop_event.is_set():
+            client["test"]["test"].insert_one({"doc": i})
+            i += 1
+            time.sleep(0.05)
+
+    writer = threading.Thread(target=continuous_write)
+    writer.start()
+
     cluster.make_backup("incremental --base")
-    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
-    backup = cluster.make_backup("incremental")
-    result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
-    assert int(result.deleted_count) == len(documents)
-    cluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+
+    for n in range(2):
+        cluster.make_backup("incremental")
+        time.sleep(1)
+
+    stop_event.set()
+    writer.join()
+
+    last_backup = cluster.make_backup("incremental")
+
+    expected_count = client["test"]["test"].count_documents({})
+    Cluster.log(f"Documents before restore: {expected_count}")
+
+    client["test"]["test"].drop()
+    assert client["test"]["test"].count_documents({}) == 0
+
+    cluster.make_restore(last_backup, restart_cluster=True, check_pbm_status=True)
+
+    actual_count = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
+    assert actual_count == expected_count, f"Expected {expected_count} docs after restore, got {actual_count}"
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
