@@ -51,7 +51,7 @@ def _setup_indexed_data(cluster):
 def _check_mongodb_logs(expected_value, since):
     n = testinfra.get_host("docker://rs1668a")
     log_result = n.run(
-        'mongosh -u root -p root --quiet --eval '
+        'mongo -u root -p root --quiet --eval '
         '"db.adminCommand({getLog:\'global\'}).log.forEach(x => print(x))"'
     )
     commit_quorum_logs = []
@@ -251,7 +251,7 @@ def test_physical_restore_ignores_index_commit_quorum_PBM_T345(reset_state, clus
 
     n = testinfra.get_host("docker://rs1668a")
     log_result = n.run(
-        'mongosh -u root -p root --quiet --eval '
+        'mongo -u root -p root --quiet --eval '
         '"db.adminCommand({getLog:\'global\'}).log.forEach(x => print(x))"'
     )
     commit_quorum_logs = []
