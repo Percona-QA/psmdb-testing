@@ -41,7 +41,7 @@ def start_cluster(cluster, request):
         cluster.destroy(cleanup_backups=True)
 
 
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(600, func_only=True)
 def test_wait_returns_error_on_agent_crash_PBM_T320(start_cluster, cluster):
     """Verify pbm backup --wait exits after 30 seconds when the CSRS agent crashes mid-backup"""
     client = pymongo.MongoClient(cluster.connection)
@@ -83,3 +83,15 @@ def test_wait_returns_error_on_agent_crash_PBM_T320(start_cluster, cluster):
         pytest.fail("PBM backup is hanging after 60 seconds despite PBM Agent being down")
 
     assert backup_result.get("rc") != 0, "Expected pbm backup --wait to exit with non-zero when agent crashes"
+
+    timeout = time.time() + 60
+    while True:
+        if not cluster.get_status().get("running"):
+            break
+        assert time.time() < timeout, "Timed out waiting for cluster to become idle"
+        time.sleep(2)
+
+    new_backup = cluster.make_backup("logical")
+    pymongo.MongoClient(cluster.connection).drop_database("test")
+    cluster.make_restore(new_backup, check_pbm_status=True)
+    assert pymongo.MongoClient(cluster.connection)["test"]["data"].count_documents({}) == 20000
