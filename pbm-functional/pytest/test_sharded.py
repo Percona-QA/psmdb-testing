@@ -1,9 +1,11 @@
+import json
 import pytest
 import pymongo
 import time
 import os
 import docker
 import threading
+import testinfra
 
 from datetime import datetime
 from cluster import Cluster
@@ -229,4 +231,67 @@ def test_incremental(start_cluster,cluster):
     assert actual_count == expected_count, f"Expected {expected_count} docs after restore, got {actual_count}"
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
+
+@pytest.fixture(scope="function")
+def start_cluster_fs(cluster, request):
+    try:
+        cluster.destroy()
+        os.chmod("/backups", 0o777)
+        os.system("rm -rf /backups/*")
+        cluster.create()
+        cluster.setup_pbm("/etc/pbm-fs.conf")
+        client = pymongo.MongoClient(cluster.connection)
+        client.admin.command("enableSharding", "test")
+        client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
+        yield True
+    finally:
+        if request.config.getoption("--verbose"):
+            cluster.get_logs()
+        cluster.destroy(cleanup_backups=True)
+
+@pytest.mark.timeout(300, func_only=True)
+def test_backup_fails_on_lost_shard(start_cluster_fs, cluster):
+    """Verify backup is marked as error when a shard agent becomes unreachable mid-backup"""
+    client = pymongo.MongoClient(cluster.connection)
+
+    for start in range(0, 20000, 1000):
+        client["test"]["test"].insert_many([{"x": i, "pad": "x" * 500} for i in range(start, start + 1000)])
+
+    result = cluster.exec_pbm_cli("backup --type=logical --out=json")
+    backup_name = json.loads(result.stdout)["name"]
+
+    shard_hosts = ["rs101", "rs102", "rs103"]
+    shard_nodes = [testinfra.get_host(f"docker://{h}") for h in shard_hosts]
+    matching = []
+    try:
+        timeout = time.time() + 120
+        while True:
+            status = cluster.get_status()
+            if status.get("running", {}).get("type") == "backup":
+                break
+            assert time.time() < timeout, "Timed out waiting for backup to start"
+            time.sleep(1)
+
+        time.sleep(3)
+        for node in shard_nodes:
+            node.check_output("kill -STOP $(pgrep pbm-agent)")
+
+        timeout = time.time() + 90
+        while True:
+            status = cluster.get_status()
+            snapshots = status.get("backups", {}).get("snapshot", [])
+            matching = [s for s in snapshots if s["name"] == backup_name]
+            if matching and matching[0]["status"] == "error":
+                break
+            assert time.time() < timeout, "Timed out waiting for backup to be marked as error"
+            time.sleep(2)
+    finally:
+        for node in shard_nodes:
+            try:
+                node.check_output("kill -CONT $(pgrep pbm-agent)")
+            except Exception:
+                pass
+
+    error_msg = matching[0].get("error", "")
+    assert "lost shard" in error_msg or "some of pbm-agents were lost during the backup" in error_msg, (f"Expected lost shard/agent error, got: {error_msg}")
 
