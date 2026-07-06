@@ -6,6 +6,13 @@
   gather_facts: true
   tasks:
 
+  - name: Prepare rocky9 arm AMI
+    include_tasks: tasks/prepare-rocky9-arm.yml
+    when:
+      - ansible_distribution == "Rocky"
+      - ansible_distribution_major_version == "9"
+      - ansible_architecture in ['aarch64', 'arm64']
+
   - name: Execute storage expansion tasks for RHEL8
     block:
       - name: Dynamically find physical volume backing rootvg

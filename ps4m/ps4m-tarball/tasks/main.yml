@@ -85,7 +85,7 @@
   lineinfile:
     path: /percona-server-mongodb/buildscripts/resmokeconfig/suites/mongot_community_fixture_e2e_single_node.yml
     insertafter: '- jstests/with_mongot/e2e/hybridSearch/score_fusion_on_search_view.js'
-    line: ' - jstests/with_mongot/e2e/hybridSearch/ranked_fusion_on_search_view.js'
+    line: '    - jstests/with_mongot/e2e/hybridSearch/ranked_fusion_on_search_view.js'
 
 - name: Add mongo version for resmoke
   lineinfile:

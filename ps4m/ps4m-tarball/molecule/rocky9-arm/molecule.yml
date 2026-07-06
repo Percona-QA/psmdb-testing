@@ -20,9 +20,11 @@ provisioner:
   playbooks:
     create: ../../../../playbooks/create.yml
     destroy: ../../../../playbooks/destroy.yml
-    prepare: ../../../../playbooks/prepare-rocky9-arm.yml
+    prepare: ../../playbooks/prepare.yml
     cleanup: ../../playbooks/cleanup.yml
     converge: ../../playbooks/playbook.yml
+  env:
+    ANSIBLE_SSH_TRANSFER_METHOD: piped
 verifier:
   name: testinfra
   directory: ../../tests/
@@ -32,9 +34,6 @@ verifier:
     junitxml: rocky9-arm-report.xml
 scenario:
   name: rocky9-arm
-  converge_sequence:
-    - prepare
-    - converge
   destroy_sequence:
     - destroy
   cleanup_sequence:
