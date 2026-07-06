@@ -1,0 +1,88 @@
+---
+- set_fact:
+    psmdb_repo: "{{ lookup('env', 'PSMDB_REPO') | default('psmdb-83', true) }}"
+    repo: "{{ lookup('env', 'REPO') | default('testing', true) }}"
+    psmdb_branch: "{{ lookup('env', 'PSMDB_BRANCH') | default('v8.3', true) }}"
+    mongot_tarball_url: "{{ lookup('env', 'MONGOT_TARBALL_URL') | default('https://downloads.percona.com/downloads/TESTING/mongot-0.51.0/percona-server-mongodb-mongot-0.51.0-linux_x86_64.tar.gz', true) }}"
+
+- name: Select mongot tarball URL for host architecture
+  set_fact:
+    mongot_url: "{{ mongot_tarball_url | regex_replace('x86_64', 'aarch64') if ansible_architecture in ['aarch64', 'arm64'] else mongot_tarball_url }}"
+
+- name: Install percona release package
+  include_tasks: ../../../tasks/install_percona_release.yml
+
+- name: Enable psmdb repo
+  command: percona-release enable {{ psmdb_repo }} {{ repo }}
+
+- name: Install PSMDB packages
+  block:
+    - name: include tasks for PSMDB install
+      include_tasks: install_psmdb_latest.yml
+  environment:
+    PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
+
+- name: Get installed mongod version
+  command: mongod --version
+  register: mongod_version_output
+  changed_when: false
+
+- name: Parse installed mongodb version
+  set_fact:
+    mongodb_ver: "{{ mongod_version_output.stdout | regex_search('v?([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+
+- name: Download mongot tarball
+  get_url:
+    url: "{{ mongot_url }}"
+    dest: /tmp/percona-server-mongodb-mongot.tar.gz
+    mode: '0644'
+
+- name: Install mongot binaries
+  unarchive:
+    src: /tmp/percona-server-mongodb-mongot.tar.gz
+    dest: /usr/bin
+    remote_src: yes
+
+- name: Clone PSMDB repo
+  git:
+    repo: 'https://github.com/percona/percona-server-mongodb.git'
+    dest: /percona-server-mongodb
+    version: "{{ psmdb_branch }}"
+    single_branch: yes
+
+- name: Install poetry
+  pip:
+    name:
+      - poetry==2.0.0
+    state: present
+    virtualenv: /opt/venv
+
+- name: Install Python utilities for resmoke
+  shell: /opt/venv/bin/poetry install --sync --no-root
+  retries: 5
+  delay: 1
+  register: result
+  until: result.rc == 0
+  args:
+    chdir: /percona-server-mongodb
+  environment:
+    POETRY_VIRTUALENVS_CREATE: false
+    VIRTUAL_ENV: /opt/venv
+
+- name: Fix files permissions
+  shell: "find /percona-server-mongodb/jstests -type f | xargs chmod 400"
+
+- name: Erase .git folder
+  shell: rm -rf /percona-server-mongodb/.git
+
+- name: Create resmoke data directory
+  file:
+    path: /data/db
+    state: directory
+    mode: '0755'
+
+- name: Add mongo version for resmoke
+  lineinfile:
+    path: /percona-server-mongodb/.resmoke_mongo_version.yml
+    line: "mongo_version: {{ mongodb_ver[0] }}"
+    create: yes
