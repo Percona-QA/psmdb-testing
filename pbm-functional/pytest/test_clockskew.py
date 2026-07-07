@@ -10,8 +10,6 @@ import testinfra
 from cluster import Cluster
 
 
-CLOCK_SHIFTS = ["+90m", "-195m", "+2d", "-7h", "+11m", "+42d", "-13h"]
-
 @pytest.fixture(scope="package")
 def config():
     return {
@@ -63,6 +61,8 @@ def apply_clock_skew(hosts, shift):
         n.check_output("supervisorctl update pbm-agent")
 
 def run_clock_skew_test(cluster, backup_type, restore_timeout):
+    CLOCK_SHIFTS = ["+90m", "-195m", "+2d", "-7h", "+11m", "+42d", "-13h"]
+
     for shard in cluster.config["shards"]:
         shift = random.choice(CLOCK_SHIFTS)
         shard_hosts = [m["host"] for m in shard["members"]]
@@ -130,9 +130,6 @@ def run_clock_skew_test(cluster, backup_type, restore_timeout):
 
         Cluster.log(f"{rs_id}: {len(restored)}/{total_inserted} docs restored")
 
-        # Backup must restore a contiguous prefix of the inserts — no gaps.
-        # Since inserts are sequential and each acknowledged before the next begins,
-        # a snapshot-consistent backup will always capture exactly docs 0..K for some K.
         assert restored == list(range(len(restored))), (
             f"{rs_id}: gap in restored sequence; got {restored[:20]}..."
         )
