@@ -1,0 +1,94 @@
+---
+- name: Install curl for readiness checks
+  package:
+    name: curl
+    state: present
+
+- name: Generate mongot user password
+  shell: openssl rand -base64 32 | tr -d '\n'
+  register: mongot_password
+  changed_when: false
+  no_log: true
+
+- name: Create mongot secrets directory
+  file:
+    path: /etc/mongot/secrets
+    state: directory
+    owner: root
+    group: mongod
+    mode: '0750'
+
+- name: Install mongot password file
+  copy:
+    dest: /etc/mongot/secrets/passwordFile
+    content: "{{ mongot_password.stdout }}"
+    owner: mongod
+    group: mongod
+    mode: '0400'
+  no_log: true
+
+- name: stop mongod service
+  service:
+    name: mongod
+    state: stopped
+
+- name: add replica set name into mongod config
+  replace:
+    path: /etc/mongod.conf
+    regexp: '^#replication:'
+    replace: 'replication:\n  replSetName: "rs1"'
+
+- name: start mongod service
+  service:
+    name: mongod
+    state: started
+    enabled: yes
+
+- name: wait for mongod to be ready
+  shell: mongosh --quiet --eval 'printjson(db.hello().ok)'
+  register: mongodbready
+  until: mongodbready.stdout | trim == '1'
+  retries: 30
+  delay: 2
+  changed_when: false
+
+- name: initiate mongod replica set
+  shell: mongosh --quiet --eval 'try { rs.status(); } catch (e) { rs.initiate(); }'
+  changed_when: false
+
+- name: wait for mongod primary
+  shell: mongosh --quiet --eval 'rs.status().members.some(m => m.stateStr === "PRIMARY")'
+  register: mongod_primary
+  until: mongod_primary.stdout | trim == 'true'
+  retries: 30
+  delay: 2
+  changed_when: false
+
+- name: create mongot user on mongod
+  shell: >-
+    mongosh --quiet --eval
+    "const admin = db.getSiblingDB('admin');
+    if (!admin.getUser('mongotUser')) {
+      admin.createUser({
+        user: 'mongotUser',
+        pwd: '{{ mongot_password.stdout }}',
+        roles: [{ role: 'searchCoordinator', db: 'admin' }]
+      });
+    }"
+  no_log: true
+
+- name: start mongot service
+  service:
+    name: mongot
+    state: started
+    enabled: yes
+
+- name: wait for mongot readiness endpoint
+  shell: curl -s http://localhost:8080/ready
+  register: mongot_readiness
+  until: >
+    mongot_readiness.rc == 0 and
+    (mongot_readiness.stdout | default('{}', true) | from_json).status == "SERVING"
+  retries: 30
+  delay: 5
+  changed_when: false

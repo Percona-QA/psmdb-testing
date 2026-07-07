@@ -1,0 +1,42 @@
+---
+- set_fact:
+    psmdb_repo: "{{ lookup('env', 'PSMDB_REPO') | default('psmdb-83', true) }}"
+    repo: "{{ lookup('env', 'REPO') | default('testing', true) }}"
+    mongot_version: "{{ lookup('env', 'MONGOT_VERSION') | default('0.51.0', true) }}"
+
+- name: Install percona release package
+  include_tasks: ../../../tasks/install_percona_release.yml
+
+- name: Enable psmdb repo
+  command: percona-release enable {{ psmdb_repo }} {{ repo }}
+
+- name: Install latest PSMDB packages
+  block:
+    - name: include tasks for PSMDB install
+      include_tasks: install_psmdb_latest.yml
+  environment:
+    PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
+
+- name: install mongot deb package
+  apt:
+    name: "percona-server-mongodb-mongot={{ mongot_version }}*"
+    update_cache: yes
+    state: present
+  register: result
+  retries: 10
+  until: result is succeeded
+  delay: 5
+  when: ansible_os_family == "Debian"
+
+- name: install mongot rpm package
+  yum:
+    name: "percona-server-mongodb-mongot-{{ mongot_version }}*"
+    state: present
+  register: result
+  retries: 10
+  until: result is succeeded
+  delay: 5
+  when: ansible_os_family == "RedHat"
+
+- name: Configure mongot and mongod for search
+  include_tasks: configure_mongot.yml
