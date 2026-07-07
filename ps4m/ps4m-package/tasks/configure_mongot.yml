@@ -3,6 +3,7 @@
   package:
     name: curl
     state: present
+  when: ansible_distribution != "Amazon"
 
 - name: Generate mongot user password
   shell: openssl rand -base64 32 | tr -d '\n'
