@@ -178,6 +178,8 @@ libunwind
 mongos_test
 mongot_community_e2e_sharded_collections --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
 mongot_community_e2e_single_node --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
+mongot_community_fixture_e2e_sharded_collections --installDir /usr/bin|wiredTiger|wget https://downloads.percona.com/downloads/TESTING/mongot-0.51.0/percona-server-mongodb-mongot-0.51.0-linux_x86_64.tar.gz -O /tmp/percona-server-mongodb-mongot.tar.gz && tar -xf /tmp/percona-server-mongodb-mongot.tar.gz -C /usr/bin
+mongot_community_fixture_e2e_single_node --installDir /usr/bin|wiredTiger|wget https://downloads.percona.com/downloads/TESTING/mongot-0.51.0/percona-server-mongodb-mongot-0.51.0-linux_x86_64.tar.gz -O /tmp/percona-server-mongodb-mongot.tar.gz && tar -xf /tmp/percona-server-mongodb-mongot.tar.gz -C /usr/bin
 mongot_e2e_sharded_cluster --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
 mongot_e2e_sharded_collections --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
 mongot_e2e_single_node --installDir /usr/bin --skipExtensionsSignatureVerification|wiredTiger|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0

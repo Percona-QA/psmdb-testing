@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  role_name: ps4m_package
+  namespace: ps4m
+  author: Percona QA
+  description: Package install tests for Percona Search for MongoDB (mongot)
+  license: license (GPLv2, CC-BY, etc)
+  min_ansible_version: 1.2
+  galaxy_tags: []
+
+dependencies: []
