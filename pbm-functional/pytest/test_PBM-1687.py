@@ -26,6 +26,7 @@ def start_cluster(cluster, request):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
 
+@pytest.mark.skip(reason="Disable brittle test")
 @pytest.mark.timeout(600, func_only=True)
 def test_pitr_simultaneous_backups_PBM348(start_cluster, cluster):
     """

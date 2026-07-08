@@ -1,0 +1,68 @@
+---
+- name: Check partitions
+  shell: lsblk
+  register: partitions
+  changed_when: false
+
+- name: Debug partitions
+  debug:
+    msg: "{{ partitions }}"
+
+- name: Extend partition /dev/nvme0n1p3
+  shell: growpart /dev/nvme0n1 3
+  register: growpart_out
+  failed_when:
+    - growpart_out.rc != 0
+    - "'NOCHANGE' not in growpart_out.stdout"
+  changed_when: "'CHANGED' in growpart_out.stdout"
+
+- name: Check partitions
+  shell: lsblk
+  register: partitions
+  changed_when: false
+
+- name: Debug partitions
+  debug:
+    msg: "{{ partitions }}"
+
+- name: Check filesystem
+  shell: df -hT
+  register: filesystem
+  changed_when: false
+
+- name: Debug filesystem
+  debug:
+    msg: "{{ filesystem }}"
+
+- name: Extend the logical volume to take all remaining space and resize the underlying XFS filesystem
+  lvol:
+    vg: rocky
+    lv: lvroot
+    size: "+100%FREE"
+    resizefs: true
+    force: true
+
+- name: Check filesystem
+  shell: df -hT
+  register: filesystem
+  changed_when: false
+
+- name: Debug filesystem
+  debug:
+    msg: "{{ filesystem }}"
+
+- name: setup ca-certificates release
+  yum:
+    name: ca-certificates
+    update_cache: yes
+    state: present
+
+- name: install needed packages for running tests with yum on RHEL
+  yum:
+    name: "{{ packages }}"
+    state: latest
+  vars:
+    packages:
+    - unzip
+    - git
+    - wget
