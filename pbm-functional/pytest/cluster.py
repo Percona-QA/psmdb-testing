@@ -676,6 +676,18 @@ class Cluster:
         Cluster.log("Disabling PITR: " + result)
         self.wait_pitr(enabled=False)
 
+    # returns the end timestamp (epoch seconds) of the latest closed PITR chunk
+    def get_last_pitr_chunk_end(self):
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        result = n.check_output("pbm s -s backups -o json")
+        backups = json.loads(result)
+        chunks = (backups.get('backups', {})
+                         .get('pitrChunks', {})
+                         .get('pitrChunks', []))
+        ends = [c.get('range', {}).get('end') for c in chunks if c.get('range', {}).get('end') is not None]
+        assert ends, "No PITR chunks found"
+        return max(ends)
+
     def oplog_replay(self, start, end, allow_fail=False, **kwargs):
         n = testinfra.get_host("docker://" + self.pbm_cli)
         cmd = f'pbm oplog-replay --start="{start}" --end="{end}"'
