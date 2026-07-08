@@ -58,14 +58,6 @@ def test_distributed_trx_pitr(start_cluster, cluster):
     Verifies that PITR correctly handles cross-shard distributed transactions
     across three boundaries: before the snapshot, spanning the backup window,
     and after the restore point.
-
-    trx0 commits before the base backup starts → visible (in snapshot).
-    trx1 is open during the second backup:
-      - phase 1 writes happen before the backup starts
-      - phase 2 writes happen while the backup is running
-      - phase 3 writes happen after the backup completes
-      trx1 commits before the PITR restore point → visible (in oplog).
-    trx2 commits after the PITR restore point → not visible.
     """
     client = pymongo.MongoClient(cluster.connection)
     col = client["trx"]["test"]
@@ -82,8 +74,6 @@ def test_distributed_trx_pitr(start_cluster, cluster):
     client.admin.command("moveChunk", "trx.test", find={"idx": 100}, to="rs1")
     client.admin.command("moveChunk", "trx.test", find={"idx": 600}, to="rs2")
 
-    # trx0: cross-shard transaction that commits before the base backup starts.
-    # Must be visible after restore — data comes from the snapshot itself.
     Cluster.log("Running trx0 (cross-shard): commits before base backup")
     with client.start_session() as session:
         with session.start_transaction():
@@ -133,7 +123,6 @@ def test_distributed_trx_pitr(start_cluster, cluster):
     Cluster.log("Restore point: " + restore_point)
     time.sleep(5)
 
-    # trx2: cross-shard transaction that commits after the restore point.
     Cluster.log("Running trx2 (cross-shard): commits after restore point")
     with client.start_session() as session:
         with session.start_transaction():
@@ -164,16 +153,11 @@ def test_distributed_trx_pitr(start_cluster, cluster):
 
     assert client["trx"].command("collstats", "test").get("sharded", False), "collection should still be sharded after restore"
 
-    Cluster.log("Finished successfully")
-
 @pytest.mark.timeout(600, func_only=True)
 def test_distributed_trx_physical(start_cluster, cluster):
     """
     Verifies that a physical backup correctly handles cross-shard distributed
     transactions relative to the backup window.
-
-    trx1 commits fully before the backup starts → all changes must be visible after restore.
-    trx2 commits after the backup ends → changes must be absent after restore.
     """
     client = pymongo.MongoClient(cluster.connection)
     col = client["trx"]["test"]
@@ -190,7 +174,6 @@ def test_distributed_trx_physical(start_cluster, cluster):
     client.admin.command("moveChunk", "trx.test", find={"idx": 100}, to="rs1")
     client.admin.command("moveChunk", "trx.test", find={"idx": 600}, to="rs2")
 
-    # trx1: cross-shard transaction that commits before the backup starts.
     Cluster.log("Running trx1 (cross-shard): commits before backup starts")
     with client.start_session() as session:
         with session.start_transaction():
@@ -202,7 +185,6 @@ def test_distributed_trx_physical(start_cluster, cluster):
 
     backup = cluster.make_backup("physical")
 
-    # trx2: cross-shard transaction that commits after the backup ends.
     Cluster.log("Running trx2 (cross-shard): commits after backup ends")
     with client.start_session() as session:
         with session.start_transaction():
@@ -228,5 +210,3 @@ def test_distributed_trx_physical(start_cluster, cluster):
         assert col.find_one({"idx": idx})["changed"] == 0, f"idx={idx}: untouched doc should be unchanged after restore"
 
     assert client["trx"].command("collstats", "test").get("sharded", False), "collection should still be sharded after restore"
-
-    Cluster.log("Finished successfully")

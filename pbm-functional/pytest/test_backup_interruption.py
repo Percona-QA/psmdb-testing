@@ -83,7 +83,7 @@ def test_cancel_backup_PBM_T(start_cluster, cluster):
         for obj in page.get("Contents", [])
     ]
     leftover = [k for k in keys if backup_name in k]
-    assert not leftover, f"Leftover artifacts found on storage"
+    assert not leftover, "Leftover artifacts found on storage"
 
 @pytest.mark.timeout(300, func_only=True)
 def test_cannot_delete_during_backup_PBM_T(start_cluster, cluster):
