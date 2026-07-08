@@ -626,12 +626,12 @@ replica_sets_with_priority_ports|inMemory
 retryable_writes_downgrade|inMemory
 retryable_writes_jscore_passthrough|inMemory
 retryable_writes_jscore_stepdown_passthrough|inMemory
-search|inMemory
-search_auth|inMemory
-search_community|inMemory
-search_community_ssl|inMemory
-search_no_pinned_connections_auth|inMemory
-search_ssl|inMemory
+ search|inMemory
+ search_auth|inMemory
+ search_community|inMemory
+ search_community_ssl|inMemory
+ search_no_pinned_connections_auth|inMemory
+ search_ssl|inMemory
 secondary_reads_passthrough|inMemory
 serial_run|inMemory
 serverless|inMemory
@@ -701,9 +701,9 @@ transitioning_replica_sets_jscore_passthrough|inMemory
 unsplittable_collections_created_on_any_shard_jscore_passthrough|inMemory
 unsplittable_collections_on_random_shard_jscore_txns|inMemory
 v1index_jscore_passthrough|inMemory
-vector_search --installDir /usr/bin|inMemory
-vector_search_auth --installDir /usr/bin|inMemory
-vector_search_ssl --installDir /usr/bin|inMemory
+ vector_search --installDir /usr/bin|inMemory
+ vector_search_auth --installDir /usr/bin|inMemory
+ vector_search_ssl --installDir /usr/bin|inMemory
 auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 auth_audit|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 core_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
@@ -719,11 +719,11 @@ mongot_e2e_single_shard --installDir /usr/bin --skipExtensionsSignatureVerificat
  multiversion_sanity_check|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.2 && buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions-stripped --define=MONGO_VERSION=8.3.0 && mkdir /opt/lib && cp -RL bazel-bin/install-extensions-stripped/lib/* /opt/lib/
 no_passthrough|inMemory|export TZ=Europe/London
 no_passthrough_execution_control_with_prioritization|inMemory|export TZ=Europe/London
-replica_sets_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+ replica_sets_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
  replica_sets_last_lts --excludeWithAnyTags=requires_fcv_81,requires_fcv_82,requires_fcv_83|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
  retryable_writes_downgrade_last_lts --excludeWithAnyTags=requires_fcv_81,requires_fcv_82,requires_fcv_83|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
-sharding_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
-sharding_auth_audit|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+ sharding_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+ sharding_auth_audit|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
  sharding_last_lts --excludeWithAnyTags=requires_fcv_81,requires_fcv_82,requires_fcv_83|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0
 vector_search_extension_disabled --installDir /usr/bin --skipExtensionsSignatureVerification|inMemory|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
 vector_search_extension_disabled_sharded_cluster --installDir /usr/bin --skipExtensionsSignatureVerification|inMemory|buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=8.3.0
