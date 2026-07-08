@@ -56,15 +56,16 @@ def start_cluster(cluster, request):
 def test_distributed_trx_pitr(start_cluster, cluster):
     """
     Verifies that PITR correctly handles cross-shard distributed transactions
-    whose writes span the backup window.
+    across three boundaries: before the snapshot, spanning the backup window,
+    and after the restore point.
 
-    trx1 is open during the backup:
+    trx0 commits before the base backup starts → visible (in snapshot).
+    trx1 is open during the second backup:
       - phase 1 writes happen before the backup starts
       - phase 2 writes happen while the backup is running
       - phase 3 writes happen after the backup completes
-      trx1 commits before the PITR restore point → all changes must be visible.
-
-    trx2 commits after the PITR restore point → changes must be absent.
+      trx1 commits before the PITR restore point → visible (in oplog).
+    trx2 commits after the PITR restore point → not visible.
     """
     client = pymongo.MongoClient(cluster.connection)
     col = client["trx"]["test"]
@@ -80,6 +81,15 @@ def test_distributed_trx_pitr(start_cluster, cluster):
     client.admin.command("split", "trx.test", middle={"idx": 500})
     client.admin.command("moveChunk", "trx.test", find={"idx": 100}, to="rs1")
     client.admin.command("moveChunk", "trx.test", find={"idx": 600}, to="rs2")
+
+    # trx0: cross-shard transaction that commits before the base backup starts.
+    # Must be visible after restore — data comes from the snapshot itself.
+    Cluster.log("Running trx0 (cross-shard): commits before base backup")
+    with client.start_session() as session:
+        with session.start_transaction():
+            col.update_one({"idx": 10}, {"$set": {"changed": 1}}, session=session)
+            col.update_one({"idx": 510}, {"$set": {"changed": 1}}, session=session)
+    Cluster.log("trx0 committed")
 
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.5")
@@ -124,7 +134,7 @@ def test_distributed_trx_pitr(start_cluster, cluster):
     time.sleep(5)
 
     # trx2: cross-shard transaction that commits after the restore point.
-    Cluster.log("Running trx2 (cross-shard): idx=200 (rs1) and idx=700 (rs2)")
+    Cluster.log("Running trx2 (cross-shard): commits after restore point")
     with client.start_session() as session:
         with session.start_transaction():
             col.update_one({"idx": 200}, {"$set": {"changed": 1}}, session=session)
@@ -135,6 +145,10 @@ def test_distributed_trx_pitr(start_cluster, cluster):
 
     client = pymongo.MongoClient(cluster.connection)
     col = client["trx"]["test"]
+
+    Cluster.log("Checking trx0 (committed before base backup, expect changed=1)")
+    for idx in [10, 510]:
+        assert col.find_one({"idx": idx})["changed"] == 1, f"idx={idx}: trx0 should be visible after restore"
 
     Cluster.log("Checking trx1 (all phases, expect changed=1)")
     for idx in [100, 110, 120, 600, 610, 620]:
