@@ -1,0 +1,23 @@
+---
+- name: Cleanup
+  hosts: all
+  become: true
+  become_method: sudo
+  tasks:
+    - name: stop mongot service
+      service:
+        name: mongot
+        state: stopped
+      failed_when: false
+
+    - name: remove mongot deb package
+      apt:
+        name: percona-server-mongodb-mongot
+        state: absent
+      when: ansible_os_family == "Debian"
+
+    - name: remove mongot rpm package
+      yum:
+        name: percona-server-mongodb-mongot
+        state: absent
+      when: ansible_os_family == "RedHat"
