@@ -30,10 +30,10 @@ def config():
 def cluster(config):
     return Cluster(config)
 
-@pytest.fixture(scope="function", params=["/etc/pbm-fs.conf"])
+@pytest.fixture(scope="function")
 def start_cluster(cluster,request):
     try:
-        pbm_config = request.param
+        pbm_config = "/etc/pbm-fs.conf"
         cluster.destroy()
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
@@ -263,6 +263,7 @@ def test_backup_fails_on_lost_shard_PBM_T365(start_cluster_fs, cluster):
     client["test"]["test"].create_index([("x", 1), ("pad", 1)])
 
     result = cluster.exec_pbm_cli("backup --type=logical --out=json")
+    assert result.rc == 0, f"Failed to start backup: {result.stdout} {result.stderr}"
     backup_name = json.loads(result.stdout)["name"]
 
     shard_hosts = ["rs101", "rs102", "rs103"]
