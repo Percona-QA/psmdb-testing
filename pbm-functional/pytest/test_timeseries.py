@@ -8,7 +8,6 @@ import random
 
 from datetime import datetime
 from cluster import Cluster
-from packaging import version
 
 @pytest.fixture(scope="package")
 def config():
