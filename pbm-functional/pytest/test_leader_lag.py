@@ -43,8 +43,8 @@ def start_cluster(cluster, request):
 
 
 @pytest.mark.timeout(600, func_only=True)
-def test_csrs_agent_picks_up_backup_after_late_start(start_cluster, cluster):
-    """Verify a CSRS agent paused before backup is issued can pick up and complete the backup on resume (PBM-635 LeaderLag)"""
+def test_csrs_agent_picks_up_backup_after_late_start_PBM_T363(start_cluster, cluster):
+    """Verify a CSRS agent paused before backup is issued can pick up and complete the backup on resume"""
     client = pymongo.MongoClient(cluster.connection)
 
     for start in range(0, 20000, 1000):

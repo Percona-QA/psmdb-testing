@@ -144,10 +144,12 @@ def run_clock_skew_test(cluster, backup_type, restore_timeout):
 
 
 @pytest.mark.timeout(600, func_only=True)
-def test_clock_skew_logical_PBM_T354(start_cluster, cluster):
+def test_clock_skew_logical_PBM_T359(start_cluster, cluster):
+    """Verify logical backup and restore succeed correctly when shard clocks are skewed."""
     run_clock_skew_test(cluster, "logical", restore_timeout=240)
 
 
-@pytest.mark.timeout(3600, func_only=True)
-def test_clock_skew_physical_PBM_T355(start_cluster, cluster):
+@pytest.mark.timeout(1500, func_only=True)
+def test_clock_skew_physical_PBM_T360(start_cluster, cluster):
+    """Verify physical backup and restore succeed correctly when shard clocks are skewed."""
     run_clock_skew_test(cluster, "physical", restore_timeout=1200)

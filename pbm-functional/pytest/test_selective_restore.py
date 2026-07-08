@@ -46,7 +46,7 @@ def insert_data(client, batch=1):
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(600, func_only=True)
-def test_selective_backup_sharded(start_cluster, cluster):
+def test_selective_backup_sharded_T364(start_cluster, cluster):
     """
     Verify the correct collections are restored after a selective restore.
     """

@@ -132,8 +132,8 @@ def start_cluster_unsharded_ts(cluster,request):
 
 # NOTE: PBM does not support the backing up of sharded timeseries collections
 @pytest.mark.timeout(600,func_only=True)
-def test_logical_pitr_unsharded_timeseries(start_cluster_unsharded_ts,cluster):
-    """Continuous writes to unsharded timeseries collections across a logical backup + PITR window, restored without data loss."""
+def test_logical_pitr_unsharded_timeseries_PBM_366(start_cluster_unsharded_ts,cluster):
+    """Verify continuous writes to unsharded timeseries collections will be restored without data loss."""
     client = pymongo.MongoClient(cluster.connection)
     client["test"].create_collection('ts1', timeseries={'timeField': 'timestamp'})
 

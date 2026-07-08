@@ -53,9 +53,9 @@ def start_cluster(cluster, request):
         cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(600, func_only=True)
-def test_distributed_trx_pitr(start_cluster, cluster):
+def test_distributed_trx_pitr_PBM_T361(start_cluster, cluster):
     """
-    Verifies that PITR correctly handles cross-shard distributed transactions
+    Verify that PITR correctly handles cross-shard distributed transactions
     across three boundaries: before the snapshot, spanning the backup window,
     and after the restore point.
     """
@@ -154,10 +154,9 @@ def test_distributed_trx_pitr(start_cluster, cluster):
     assert client["trx"].command("collstats", "test").get("sharded", False), "collection should still be sharded after restore"
 
 @pytest.mark.timeout(600, func_only=True)
-def test_distributed_trx_physical(start_cluster, cluster):
+def test_distributed_trx_physical_PBM_T362(start_cluster, cluster):
     """
-    Verifies that a physical backup correctly handles cross-shard distributed
-    transactions relative to the backup window.
+    Verify that a physical backup correctly handles cross-shard distributed transactions.
     """
     client = pymongo.MongoClient(cluster.connection)
     col = client["trx"]["test"]

@@ -39,7 +39,7 @@ def start_cluster(cluster, request):
         cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(300, func_only=True)
-def test_cancel_backup_PBM_T(start_cluster, cluster):
+def test_cancel_backup_PBM_T356(start_cluster, cluster):
     """
     Verify that cancelling a backup mid-operation marks it as cancelled and removes all artifacts from storage.
     """
@@ -86,7 +86,7 @@ def test_cancel_backup_PBM_T(start_cluster, cluster):
     assert not leftover, "Leftover artifacts found on storage"
 
 @pytest.mark.timeout(300, func_only=True)
-def test_cannot_delete_during_backup_PBM_T(start_cluster, cluster):
+def test_cannot_delete_during_backup_PBM_T357(start_cluster, cluster):
     """
     Verify that attempting to delete a backup while one is in progress returns the appropriate error.
     """

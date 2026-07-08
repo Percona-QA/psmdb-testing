@@ -48,7 +48,7 @@ def get_chunk_distribution(client, namespace):
 
 
 @pytest.mark.timeout(300, func_only=True)
-def test_cleanup_full_restore(start_cluster, cluster):
+def test_cleanup_full_restore_PBM_T358(start_cluster, cluster):
     """
     Verifies that a restore correctly cleans up chunk routing metadata that changed after the backup was taken.
     """
