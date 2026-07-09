@@ -66,7 +66,7 @@ def test_mongos_uri_rejected_PBM_T347(start_cluster, cluster):
     )
 
 @pytest.mark.timeout(300, func_only=True)
-def test_backup_status_via_configserver_uri_PBM_T347(start_cluster, cluster):
+def test_backup_status_via_configserver_uri_PBM_T360(start_cluster, cluster):
     """Verify a backup taken and checked via the config server URI shows 'done', with no incompatible status."""
     n_cfg = testinfra.get_host("docker://rscfg01")
 
