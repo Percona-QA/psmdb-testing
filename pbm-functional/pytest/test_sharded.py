@@ -285,7 +285,7 @@ def test_backup_fails_on_lost_shard_PBM_T365(start_cluster_fs, cluster):
             if rs1_status == "running":
                 break
             assert rs1_status not in ("done", "error", "canceled"), (
-                f"rs1 backup already reached terminal status '{rs1_status}' before agents could be frozen"
+                f"rs1 backup already completed before agents could be frozen"
             )
             assert time.time() < timeout, "Timed out waiting for rs1 backup status to be 'running'"
             time.sleep(0.5)
