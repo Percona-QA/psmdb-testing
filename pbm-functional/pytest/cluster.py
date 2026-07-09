@@ -676,8 +676,8 @@ class Cluster:
         Cluster.log("Disabling PITR: " + result)
         self.wait_pitr(enabled=False)
 
-    # returns the end timestamp (epoch seconds) of the latest closed PITR chunk
     def get_last_pitr_chunk_end(self):
+        """Returns the end timestamp (epoch seconds) of the latest closed PITR chunk"""
         n = testinfra.get_host("docker://" + self.pbm_cli)
         result = n.check_output("pbm s -s backups -o json")
         backups = json.loads(result)

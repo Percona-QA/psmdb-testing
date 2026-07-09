@@ -60,7 +60,12 @@ def apply_clock_skew(hosts, shift):
         n.check_output("supervisorctl reread")
         n.check_output("supervisorctl update pbm-agent")
 
-def run_clock_skew_test(cluster, backup_type, restore_timeout):
+@pytest.mark.parametrize("backup_type, restore_timeout", [
+    pytest.param("logical", 240, marks=pytest.mark.timeout(600, func_only=True), id="logical_PBM_T359"),
+    pytest.param("physical", 1200, marks=pytest.mark.timeout(1500, func_only=True), id="physical_PBM_T360"),
+])
+def test_clock_skew_PBM_T359(start_cluster, cluster, backup_type, restore_timeout):
+    """Verify backup and restore succeed correctly when shard clocks are skewed."""
     CLOCK_SHIFTS = ["+90m", "-195m", "+2d", "-7h", "+11m", "+42d", "-13h"]
 
     for shard in cluster.config["shards"]:
@@ -139,17 +144,3 @@ def run_clock_skew_test(cluster, backup_type, restore_timeout):
             assert seq not in restored_set, (
                 f"{rs_id}: seq={seq} should be absent (inserted after backup cutoff) but is present"
             )
-
-    Cluster.log("Finished successfully\n")
-
-
-@pytest.mark.timeout(600, func_only=True)
-def test_clock_skew_logical_PBM_T359(start_cluster, cluster):
-    """Verify logical backup and restore succeed correctly when shard clocks are skewed."""
-    run_clock_skew_test(cluster, "logical", restore_timeout=240)
-
-
-@pytest.mark.timeout(1500, func_only=True)
-def test_clock_skew_physical_PBM_T360(start_cluster, cluster):
-    """Verify physical backup and restore succeed correctly when shard clocks are skewed."""
-    run_clock_skew_test(cluster, "physical", restore_timeout=1200)

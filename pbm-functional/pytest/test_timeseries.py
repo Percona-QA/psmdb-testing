@@ -8,6 +8,7 @@ import random
 
 from datetime import datetime
 from cluster import Cluster
+from packaging import version
 
 @pytest.fixture(scope="package")
 def config():
@@ -32,6 +33,9 @@ def start_cluster(cluster,request):
         cluster.create()
         cluster.setup_pbm()
         client=pymongo.MongoClient(cluster.connection)
+        mongod_version=client.server_info()["version"]
+        if version.parse(mongod_version) < version.parse("6.0.0"):
+            pytest.skip("Unsupported version for sharded timeseries")
         client.admin.command("enableSharding", "test")
         client.test.create_collection('test1',timeseries={'timeField':'timestamp','metaField': 'data'})
         client.test.create_collection('test2',timeseries={'timeField':'timestamp','metaField': 'data'})
@@ -114,6 +118,10 @@ def start_cluster_unsharded_ts(cluster,request):
         os.system("rm -rf /backups/*")
         cluster.create()
         cluster.setup_pbm()
+        client=pymongo.MongoClient(cluster.connection)
+        mongod_version=client.server_info()["version"]
+        if version.parse(mongod_version) < version.parse("6.0.0"):
+            pytest.skip("Unsupported version for sharded timeseries")
         yield True
 
     finally:

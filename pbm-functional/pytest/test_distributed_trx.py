@@ -93,7 +93,6 @@ def test_distributed_trx_pitr_PBM_T361(start_cluster, cluster):
 
             background_backup = concurrent.futures.ThreadPoolExecutor().submit(cluster.make_backup, "logical")
 
-            # Wait until the backup is confirmed actively running
             timeout = time.time() + 60
             while True:
                 if cluster.get_status().get("running", {}).get("type") == "backup":
@@ -102,7 +101,6 @@ def test_distributed_trx_pitr_PBM_T361(start_cluster, cluster):
                 time.sleep(1)
             Cluster.log("trx1 phase 2: backup is running")
 
-            # Phase 2: writes while the backup is in progress
             col.update_one({"idx": 110}, {"$set": {"changed": 1}}, session=session)
             col.update_one({"idx": 610}, {"$set": {"changed": 1}}, session=session)
 
@@ -111,7 +109,6 @@ def test_distributed_trx_pitr_PBM_T361(start_cluster, cluster):
             background_backup.result()  # block until backup completes
             Cluster.log("trx1 phase 3: backup has completed")
 
-            # Phase 3: writes after the backup completes, before trx1 commits
             col.update_one({"idx": 120}, {"$set": {"changed": 1}}, session=session)
             col.update_one({"idx": 620}, {"$set": {"changed": 1}}, session=session)
 
