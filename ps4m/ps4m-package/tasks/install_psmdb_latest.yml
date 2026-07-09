@@ -1,0 +1,33 @@
+---
+- name: install psmdb deb packages
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+    state: latest
+  vars:
+    packages:
+    - percona-server-mongodb
+    - percona-server-mongodb-server
+    - percona-server-mongodb-mongos
+    - percona-mongodb-mongosh
+  register: result
+  retries: 10
+  until: result is succeeded
+  delay: 5
+  when: ansible_os_family == "Debian"
+
+- name: install psmdb rpm packages
+  yum:
+    name: "{{ packages }}"
+    state: latest
+  vars:
+    packages:
+    - percona-server-mongodb
+    - percona-server-mongodb-server
+    - percona-server-mongodb-mongos
+    - percona-mongodb-mongosh
+  register: result
+  retries: 10
+  until: result is succeeded
+  delay: 5
+  when: ansible_os_family == "RedHat"

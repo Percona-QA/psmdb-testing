@@ -7,7 +7,7 @@ platforms:
   - name: ufocal-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
     image: "${MOLECULE_UFOCAL_AMI:-ami-09dd2e08d601bff67}"
-    vpc_subnet_id: subnet-0dc7518100473f19d
+    vpc_subnet_id: subnet-07f71e1a3117a32f9
     instance_type: t2.micro
     ssh_user: ubuntu
     root_device_name: /dev/sda1

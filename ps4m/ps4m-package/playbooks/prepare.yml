@@ -1,0 +1,41 @@
+---
+- name: Prepare node for running tests
+  hosts: all
+  become: true
+  become_method: sudo
+  gather_facts: true
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install basic deb packages
+      apt:
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+          - curl
+          - ca-certificates
+          - gnupg
+      when: ansible_os_family == "Debian"
+
+    - name: Install basic rpm packages
+      yum:
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+          - curl
+          - ca-certificates
+      when: ansible_os_family == "RedHat" and ansible_distribution != "Amazon"
+
+    - name: Install basic rpm packages on Amazon Linux
+      yum:
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+          - ca-certificates
+      when: ansible_distribution == "Amazon"

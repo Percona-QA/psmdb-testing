@@ -1,0 +1,50 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: ps4m-tarball-${MOLECULE_OS:-ubuntu-jammy}
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2204-ansible:latest}"
+    cgroupns_mode: host
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    privileged: true
+    pre_build_image: true
+provisioner:
+  name: ansible
+  log: true
+  env:
+    PSMDB_REPO: "${PSMDB_REPO:-psmdb-83}"
+    REPO: "${REPO:-testing}"
+    PSMDB_BRANCH: "${PSMDB_BRANCH:-v8.3}"
+    PYTHON_VERSION: "${PYTHON_VERSION:-3.13.11}"
+    MONGOT_TARBALL_URL: "${MONGOT_TARBALL_URL:-https://downloads.percona.com/downloads/TESTING/mongot-0.51.0/percona-server-mongodb-mongot-0.51.0-linux_x86_64.tar.gz}"
+  playbooks:
+    prepare: ../../playbooks/prepare.yml
+    converge: ../../playbooks/playbook.yml
+    cleanup: ../../playbooks/cleanup.yml
+verifier:
+  name: testinfra
+  directory: ../../tests/
+  options:
+    verbose: true
+    s: true
+    capture: sys
+    o: junit_logging=system-out
+    junitxml: docker-report.xml
+scenario:
+  name: docker
+  destroy_sequence:
+    - destroy
+  cleanup_sequence:
+    - cleanup
+  test_sequence:
+    - dependency
+    - create
+    - prepare
+    - converge
+    - verify
+    - cleanup
+    - destroy

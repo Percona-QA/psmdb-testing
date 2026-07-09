@@ -12,7 +12,7 @@ platforms:
       - rs0-primary
     region: us-west-2
     image: ami-01ed306a12b7d1c96
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-07f71e1a3117a32f9
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: centos
     root_device_name: /dev/sda1
@@ -26,7 +26,7 @@ platforms:
       - rs0-secondary
     region: us-west-2
     image: ami-01ed306a12b7d1c96
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-07f71e1a3117a32f9
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: centos
     root_device_name: /dev/sda1
@@ -40,7 +40,7 @@ platforms:
       - rs0-secondary
     region: us-west-2
     image: ami-01ed306a12b7d1c96
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-07f71e1a3117a32f9
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: centos
     root_device_name: /dev/sda1
@@ -54,7 +54,7 @@ platforms:
       - rs1-primary
     region: us-west-2
     image: ami-01ed306a12b7d1c96
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-07f71e1a3117a32f9
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: centos
     root_device_name: /dev/sda1
@@ -68,7 +68,7 @@ platforms:
       - rs1-secondary
     region: us-west-2
     image: ami-01ed306a12b7d1c96
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-07f71e1a3117a32f9
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: centos
     root_device_name: /dev/sda1
@@ -82,7 +82,7 @@ platforms:
       - rs1-secondary
     region: us-west-2
     image: ami-01ed306a12b7d1c96
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-07f71e1a3117a32f9
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: centos
     root_device_name: /dev/sda1
@@ -96,7 +96,7 @@ platforms:
       - cfg-primary
     region: us-west-2
     image: ami-01ed306a12b7d1c96
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-07f71e1a3117a32f9
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: centos
     root_device_name: /dev/sda1
@@ -110,7 +110,7 @@ platforms:
       - cfg-secondary
     region: us-west-2
     image: ami-01ed306a12b7d1c96
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-07f71e1a3117a32f9
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: centos
     root_device_name: /dev/sda1
@@ -124,7 +124,7 @@ platforms:
       - cfg-secondary
     region: us-west-2
     image: ami-01ed306a12b7d1c96
-    vpc_subnet_id: subnet-03136d8c244f56036
+    vpc_subnet_id: subnet-07f71e1a3117a32f9
     instance_type: ${INSTANCE_TYPE:-i3.large}
     ssh_user: centos
     root_device_name: /dev/sda1

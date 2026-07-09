@@ -427,7 +427,7 @@ class Cluster:
                 time.sleep(1)
             else:
                 raise RuntimeError(f"Setup PBM command failed after {retries} attempts")
-        self.wait_pbm_status()
+        self.wait_pbm_status(wait=60)
 
     # pbm --force-resync
     def make_resync(self):
@@ -676,6 +676,24 @@ class Cluster:
         Cluster.log("Disabling PITR: " + result)
         self.wait_pitr(enabled=False)
 
+    def oplog_replay(self, start, end, allow_fail=False, **kwargs):
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        cmd = f'pbm oplog-replay --start="{start}" --end="{end}"'
+        for flag, value in kwargs.items():
+            cmd += f' --{flag}={value}'
+        cmd += ' --wait'
+        Cluster.log(f"Starting oplog replay: {cmd}")
+        result = n.run(cmd)
+        self.cmd_stdout = result.stdout
+        self.cmd_stderr = result.stderr
+        if result.rc != 0:
+            if allow_fail:
+                return result
+            logs = n.check_output("pbm logs -sD -t0")
+            assert False, f"Oplog replay failed: STDOUT={result.stdout} STDERR={result.stderr}\n{logs}"
+        Cluster.log("Oplog replay finished successfully")
+        return result
+
     # executes any pbm command e.g. cluster.exec_pbm_cli("status"), doesn't raise any errors, output from
     # https://testinfra.readthedocs.io/en/latest/modules.html#testinfra.host.Host.run
     def exec_pbm_cli(self, params):
@@ -854,6 +872,19 @@ class Cluster:
                 time.sleep(1)
         assert self.check_pitr() == enabled, self.get_status()['pitr']
 
+    def wait_pitr_chunk(self, wait=30):
+        n = testinfra.get_host("docker://" + self.pbm_cli)
+        for _ in range(wait):
+            result = n.check_output("pbm s -s backups -o json")
+            backups = json.loads(result)
+            chunks = (backups.get('backups', {})
+                             .get('pitrChunks', {})
+                             .get('pitrChunks', []))
+            if chunks:
+                return
+            time.sleep(1)
+        assert False, "No PITR chunk appeared within {}s".format(wait)
+
     def check_pbm_status(self):
         parsed_result = self.get_status()
         hosts = []
@@ -861,7 +892,7 @@ class Cluster:
             for host in replicaset['nodes']:
                 if host['role'] != "A":
                     hosts.append(host)
-                    assert host['ok']
+                    assert host['ok'], f"pbm agent not ok: {host} in rs {replicaset.get('rs')}"
         assert len(hosts) == len(self.pbm_hosts)
 
     def wait_pbm_status(self,wait=10):
