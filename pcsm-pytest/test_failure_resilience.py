@@ -202,15 +202,11 @@ def test_csync_PML_T49(start_cluster, src_cluster, dst_cluster, csync, fail_node
         {"fail_command": "find", "skip": 0,
          "target": "getIDKeyRange ascending"},
         id="getIDKeyRange_asc",
-        marks=pytest.mark.xfail(strict=True,
-            reason="getIDKeyRange ascending isn't retried, PCSM-328"),
     ),
     pytest.param(
         {"fail_command": "find", "skip": 1,
          "target": "getIDKeyRange descending"},
         id="getIDKeyRange_desc",
-        marks=pytest.mark.xfail(strict=True,
-            reason="getIDKeyRange descending isn't retried, PCSM-328"),
     ),
     pytest.param(
         {"fail_command": "find", "skip": 2,
@@ -221,8 +217,6 @@ def test_csync_PML_T49(start_cluster, src_cluster, dst_cluster, csync, fail_node
         {"fail_command": "find", "skip": 3,
          "target": "data cursor Find"},
         id="data_cursor_Find",
-        marks=pytest.mark.xfail(strict=True,
-            reason="data cursor find isn't retried, PCSM-328"),
     ),
     pytest.param(
         {"fail_command": "getMore", "skip": 0,
