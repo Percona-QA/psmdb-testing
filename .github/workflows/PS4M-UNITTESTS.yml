@@ -1,0 +1,66 @@
+name: PS4M-UNITTESTS
+
+on:
+  workflow_dispatch:
+    inputs:
+      mongot_branch:
+        description: "percona-mongot branch"
+        required: false
+
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    branches:
+      - main
+    paths:
+      - '.github/workflows/PS4M-UNITTESTS.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      MONGOT_BRANCH: ${{ github.event.inputs.mongot_branch || 'main' }}
+    steps:
+      - name: Cleanup unnecessary software
+        run: |
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          df -h
+
+      - name: Checkout percona-mongot (${{ env.MONGOT_BRANCH }})
+        uses: actions/checkout@v4
+        with:
+          repository: percona/percona-mongot
+          ref: ${{ env.MONGOT_BRANCH }}
+          path: percona-mongot
+          fetch-depth: 0
+
+      - name: Run unit tests for branch ${{ env.MONGOT_BRANCH }}
+        working-directory: percona-mongot
+        run: make test.unit
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: success() || failure()
+        with:
+          report_paths: 'percona-mongot/bazel-testlogs/**/test.xml'
+#          include_passed: True
+#          detailed_summary: True
+#          include_time_in_summary: True
+          follow_symlink: True
+
+      - name: Upload logs as artifact
+        uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: ps4m-unittests-logs
+          path: percona-mongot/bazel-testlogs/
+          if-no-files-found: ignore
