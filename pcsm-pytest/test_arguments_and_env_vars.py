@@ -109,7 +109,7 @@ def test_clone_collections_num_PML_T70(csync, src_cluster, dst_cluster):
             assert check_command_output(expected_cmd_return, csync), \
                 f"Expected command output '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=None), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log), f"Expected '{expected_log}' does not appear in logs"
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         except AssertionError as e:
@@ -144,7 +144,7 @@ def test_clone_num_read_workers_PML_T71(csync, src_cluster, dst_cluster):
             assert check_command_output(expected_cmd_return, csync), \
                 f"Expected command output '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=None), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log), f"Expected '{expected_log}' does not appear in logs"
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         except AssertionError as e:
@@ -178,7 +178,7 @@ def test_clone_num_insert_workers_PML_T72(csync, src_cluster, dst_cluster):
             assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
             assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=None), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log), f"Expected '{expected_log}' does not appear in logs"
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         except AssertionError as e:
@@ -210,7 +210,7 @@ def test_clone_segment_size_PML_T73(csync, src_cluster, dst_cluster):
             assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
             assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=None), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log), f"Expected '{expected_log}' does not appear in logs"
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         except AssertionError as e:
@@ -242,7 +242,7 @@ def test_clone_read_batch_size_PML_T74(csync, src_cluster, dst_cluster):
             assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
             assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=None), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log), f"Expected '{expected_log}' does not appear in logs"
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         except AssertionError as e:

@@ -327,6 +327,22 @@ class Clustersync:
         except Exception as e:
             return f"Error fetching logs: {e}"
 
+    def wait_for_log(self, expected, timeout=30, interval=0.5):
+        """Poll the container logs until `expected` appears, or timeout.
+
+        Config lines such as clone worker counts are emitted asynchronously
+        after /start returns (the clone runs on a background goroutine and logs
+        its config once it reaches the copy stage). A single immediate logs()
+        read after start races that goroutine, so callers that assert on such a
+        line must wait for it rather than read once.
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if expected in self.logs(tail=None):
+                return True
+            time.sleep(interval)
+        return expected in self.logs(tail=None)
+
     def check_csync_errors(self):
         try:
             logs = self.container.logs().decode("utf-8")
