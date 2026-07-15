@@ -1,0 +1,102 @@
+name: PS4M-local
+
+services:
+  mongod:
+    image: perconalab/percona-server-mongodb:8.3.4-1
+    user: "0"
+    hostname: mongod
+    command:
+      - bash
+      - -ec
+      - |
+        install -d -m 0750 -o mongodb -g root /etc/mongodb
+        install -m 0400 -o mongodb -g root /mnt/keyfile /etc/mongodb/keyfile
+        chown -R mongodb:0 /var/lib/mongo
+        if [ ! -f /var/lib/mongo/.replset-init ]; then
+          gosu mongodb:1001 /entrypoint.sh mongod --config /etc/mongod.conf &
+          pid=$$!
+          until mongosh --quiet --eval 'db.adminCommand({ ping: 1 })' >/dev/null 2>&1; do sleep 1; done
+          mongosh --quiet --eval 'rs.initiate({_id:"rs", members:[{_id:0, host:"mongod:27017"}]})'
+          until mongosh --quiet --eval 'db.hello().isWritablePrimary' >/dev/null 2>&1; do sleep 1; done
+          mongosh --quiet --eval '
+            db.getSiblingDB("admin").createUser({
+              user: "root",
+              pwd: "root",
+              roles: [{ role: "root", db: "admin" }]
+            })
+          '
+          kill -TERM "$$pid"
+          wait "$$pid"
+          touch /var/lib/mongo/.replset-init
+        fi
+        exec gosu mongodb:1001 /entrypoint.sh mongod --config /etc/mongod.conf
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./config/mongod.conf:/etc/mongod.conf:ro
+      - ./config/keyfile:/mnt/keyfile:ro
+      - mongod_data:/var/lib/mongo
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "-u",
+          "root",
+          "-p",
+          "root",
+          "--authenticationDatabase",
+          "admin",
+          "--quiet",
+          "--eval",
+          "db.hello().isWritablePrimary",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    networks:
+      - ps4m-local
+
+  mongot:
+    image: perconalab/percona-server-mongodb-mongot:0.51.0-1
+    user: "0"
+    hostname: mongot
+    entrypoint:
+      - bash
+      - -ec
+      - |
+        install -d -m 0750 -o mongodb -g root /etc/mongot/secrets
+        install -m 0400 -o mongodb -g root /mnt/keyfile /etc/mongot/secrets/passwordFile
+        chown -R mongodb:0 /var/lib/mongot
+        exec setpriv --reuid=1001 --regid=0 --init-groups /entrypoint.sh mongot --config /etc/mongot/mongot.yml
+    ports:
+      - "27028:27028"
+      - "8080:8080"
+    volumes:
+      - ./config/mongot.yml:/etc/mongot/mongot.yml:ro
+      - ./config/keyfile:/mnt/keyfile:ro
+      - mongot_data:/var/lib/mongot
+    depends_on:
+      mongod:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://127.0.0.1:8080/ready >/dev/null || exit 1",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    networks:
+      - ps4m-local
+
+volumes:
+  mongod_data:
+  mongot_data:
+
+networks:
+  ps4m-local:
+    driver: bridge
