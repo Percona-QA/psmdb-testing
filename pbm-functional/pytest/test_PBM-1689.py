@@ -79,6 +79,7 @@ def start_cluster(cluster, request):
 @pytest.mark.timeout(300, func_only=True)
 def test_restore_does_not_hang_on_kms_access_denied_PBM_1689(start_cluster, cluster):
     """Restore must release its lock instead of hanging if kms: decrypt access is removed from KMS key policy"""
+    cluster.setup_pbm(file="/etc/aws.conf")
     result = cluster.exec_pbm_cli(
         f"config --set storage.s3.bucket=pbm-keith-test-2 "
         f"--set storage.s3.region={KMS_REGION} "
