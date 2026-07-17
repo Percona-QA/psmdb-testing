@@ -1,5 +1,4 @@
 import json
-import time
 import boto3
 import pymongo
 import pytest
@@ -102,11 +101,8 @@ def test_backup_and_restore_do_not_hang_on_kms_access_denied_PBM_367(start_clust
     backup = start_cluster
     host = testinfra.get_host("docker://" + cluster.pbm_cli)
 
-    # Testing restore
-    start = time.time()
-    restore_result = host.run(f"pbm restore -y {backup} --wait")
-    elapsed = time.time() - start
-    assert elapsed < 120, "Restore never returned within 120 seconds -- this is the PBM-1689 hang."
+    restore_result = host.run(f"timeout 120 pbm restore -y {backup} --wait")
+    assert restore_result.rc != 124, "Restore never returned within 120 seconds -- this is the PBM-1689 hang."
 
     restore_output = restore_result.stdout + restore_result.stderr
     if restore_result.rc != 0:
@@ -114,10 +110,8 @@ def test_backup_and_restore_do_not_hang_on_kms_access_denied_PBM_367(start_clust
             f"Restore failed for an unexpected reason: {restore_output}")
 
     # Testing backup
-    start = time.time()
-    backup_result = host.run("pbm backup --out=json --wait")
-    elapsed = time.time() - start
-    assert elapsed < 120, "Backup never returned within 120 seconds -- this is the PBM-1689 hang."
+    backup_result = host.run("timeout 120 pbm backup --out=json --wait")
+    assert backup_result.rc != 124, "Backup never returned within 120 seconds -- this is the PBM-1689 hang."
 
     backup_output = backup_result.stdout + backup_result.stderr
     if backup_result.rc != 0:
