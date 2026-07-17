@@ -1,6 +1,4 @@
-import json
 import time
-
 import boto3
 import pymongo
 import pytest
@@ -36,25 +34,6 @@ def sts_client():
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_key,
     )
-
-def _deny_decrypt(kms, key_id, principal_arn):
-    """Add an explicit Deny statement for kms:Decrypt.
-    Returns the original policy JSON string so it can be restored afterward.
-    """
-    original_policy = kms.get_key_policy(KeyId=key_id, PolicyName="default")["Policy"]
-    policy = json.loads(original_policy)
-    policy["Statement"].append({
-        "Sid": "PBM1689DenyDecrypt",
-        "Effect": "Deny",
-        "Principal": {"AWS": principal_arn},
-        "Action": "kms:Decrypt",
-        "Resource": "*",
-    })
-    kms.put_key_policy(KeyId=key_id, PolicyName="default", Policy=json.dumps(policy))
-    return original_policy
-
-def _restore_key_policy(kms, key_id, original_policy):
-    kms.put_key_policy(KeyId=key_id, PolicyName="default", Policy=original_policy)
 
 @pytest.fixture(scope="function")
 def config():
@@ -99,7 +78,7 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_367(start_cluster, clust
     original_policy = None
     try:
         # Needed to reset the key back to default
-        original_policy = _deny_decrypt(kms, key_id, caller_arn)
+        original_policy = Cluster.deny_kms_decrypt(kms, key_id, caller_arn)
 
         host.run(f"pbm restore -y {backup}")
 
@@ -122,13 +101,13 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_367(start_cluster, clust
     finally:
         # Reset Key Policy
         if original_policy is not None:
-            _restore_key_policy(kms, key_id, original_policy)
+            Cluster.restore_kms_key_policy(kms, key_id, original_policy)
 
     # Testing backup
     original_policy = None
     try:
         # Needed to reset the key back to default
-        original_policy = _deny_decrypt(kms, key_id, caller_arn)
+        original_policy = Cluster.deny_kms_decrypt(kms, key_id, caller_arn)
 
         host.run("pbm backup --out=json")
 
@@ -148,4 +127,4 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_367(start_cluster, clust
             "Expected a kms:Decrypt AccessDenied error in PBM logs")
     finally:
         if original_policy is not None:
-            _restore_key_policy(kms, key_id, original_policy)
+            Cluster.restore_kms_key_policy(kms, key_id, original_policy)
