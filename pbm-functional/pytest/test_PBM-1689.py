@@ -85,6 +85,7 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_1689(start_cluster, clus
     cluster.setup_pbm(file="/etc/aws.conf")
     result = cluster.exec_pbm_cli(
         f"config --set storage.s3.bucket={S3_BUCKET} "
+        f"--set storage.s3.region={KMS_REGION} "
         "--set storage.s3.serverSideEncryption.sseAlgorithm=aws:kms "
         f"--set storage.s3.serverSideEncryption.kmsKeyID={KMS_KEY_ID} --out json -w"
     )
