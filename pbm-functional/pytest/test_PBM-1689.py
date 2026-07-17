@@ -120,6 +120,8 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_1689(start_cluster, clus
     host = testinfra.get_host("docker://" + cluster.pbm_cli)
     kms = kms_client()
     caller_arn = sts_client().get_caller_identity()["Arn"]
+    # GetKeyPolicy/PutKeyPolicy don't accept a key alias, unlike the S3 SSE config above.
+    key_id = kms.describe_key(KeyId=KMS_KEY_ID)["KeyMetadata"]["KeyId"]
 
     original_policy = None
     try:
@@ -127,7 +129,7 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_1689(start_cluster, clus
         # deny kms:Decrypt for the identity PBM uses, rather than swapping S3
         # credentials or disabling the whole key. It only blocks Decrypt for this one
         # caller, not every operation for every principal.
-        original_policy = _deny_decrypt(kms, KMS_KEY_ID, caller_arn)
+        original_policy = _deny_decrypt(kms, key_id, caller_arn)
 
         start_result = host.run(f"pbm restore -y {backup}")
         match = re.search(r"Starting restore (\S+) from", start_result.stdout)
@@ -143,7 +145,7 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_1689(start_cluster, clus
         deadline = time.time() + RESTORE_STUCK_TIMEOUT
         probe_result = None
         while time.time() < deadline:
-            _restore_key_policy(kms, KMS_KEY_ID, original_policy)
+            _restore_key_policy(kms, key_id, original_policy)
             probe_result = host.run("pbm config --set storage.s3.prefix=pbm-1689-kms-probe --wait")
             if probe_result.rc == 0:
                 break
@@ -163,4 +165,4 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_1689(start_cluster, clus
         # Always put the original key policy back, even if an assertion above failed,
         # so teardown (which talks to storage) and the next test run aren't left broken.
         if original_policy is not None:
-            _restore_key_policy(kms, KMS_KEY_ID, original_policy)
+            _restore_key_policy(kms, key_id, original_policy)
