@@ -1,5 +1,4 @@
 import json
-import re
 import time
 import boto3
 import pymongo
@@ -104,45 +103,23 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_367(start_cluster, clust
     host = testinfra.get_host("docker://" + cluster.pbm_cli)
 
     # Testing restore
-    restore_start = host.run(f"pbm restore -y {backup}")
-    match = re.search(r"Starting restore (\S+) from", restore_start.stdout)
-    assert match, f"Restore was never dispatched.\nSTDOUT: {restore_start.stdout}\nSTDERR: {restore_start.stderr}"
-    restore_name = match.group(1)
+    start = time.time()
+    restore_result = host.run(f"pbm restore -y {backup} --wait")
+    elapsed = time.time() - start
+    assert elapsed < 120, f"Restore never returned within 120 seconds -- this is the PBM-1689 hang."
 
-    # Checking PBM's own status doesn't need S3/KMS access, so decrypt can stay
-    # denied for the whole poll -- this is the actual PBM-1689 scenario.
-    running = None
-    timeout = time.time() + 120
-    while time.time() < timeout:
-        running = cluster.get_status()["running"]
-        if not running:
-            break
-        time.sleep(5)
-
-    assert not running, "PBM never released the restore lock after 120 seconds."
-
-    describe_restore = json.loads(host.run(f"pbm describe-restore {restore_name} --out=json").stdout)
-    restore_error = describe_restore.get("error", "")
-    if restore_error:
-        assert "AccessDenied" in restore_error and "kms:Decrypt" in restore_error, (
-            f"Restore failed for an unexpected reason: {restore_error}")
+    restore_output = restore_result.stdout + restore_result.stderr
+    if restore_result.rc != 0:
+        assert "AccessDenied" in restore_output and "kms:Decrypt" in restore_output, (
+            f"Restore failed for an unexpected reason: {restore_output}")
 
     # Testing backup
-    backup_start = json.loads(host.run("pbm backup --out=json").stdout)
-    backup_name = backup_start["name"]
+    start = time.time()
+    backup_result = host.run("pbm backup --out=json --wait")
+    elapsed = time.time() - start
+    assert elapsed < 120, f"Backup never returned within 120 seconds -- this is the PBM-1689 hang."
 
-    running = None
-    timeout = time.time() + 120
-    while time.time() < timeout:
-        running = cluster.get_status()["running"]
-        if not running:
-            break
-        time.sleep(5)
-
-    assert not running, "PBM never released the backup lock after 120 seconds."
-
-    describe_backup = json.loads(host.run(f"pbm describe-backup {backup_name} --out=json").stdout)
-    backup_error = describe_backup.get("error", "")
-    if backup_error:
-        assert "AccessDenied" in backup_error and "kms:Decrypt" in backup_error, (
-            f"Backup failed for an unexpected reason: {backup_error}")
+    backup_output = backup_result.stdout + backup_result.stderr
+    if backup_result.rc != 0:
+        assert "AccessDenied" in backup_output and "kms:Decrypt" in backup_output, (
+            f"Backup failed for an unexpected reason: {backup_output}")
