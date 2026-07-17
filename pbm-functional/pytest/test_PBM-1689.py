@@ -6,6 +6,7 @@ import boto3
 import pymongo
 import pytest
 import testinfra
+import yaml
 
 from cluster import Cluster
 
@@ -15,6 +16,10 @@ KMS_KEY_ID = "alias/keith-test-pbm-1689"
 KMS_REGION = "us-east-1"
 S3_BUCKET = "pbm-keith-test-2"
 
+# Jenkins populates this file with real AWS credentials at build time (see
+# conf/pbm/aws.yaml / /etc/aws.conf); boto3 has no other way to pick them up here.
+AWS_CONF_FILE = "conf/pbm/aws.yaml"
+
 # Generous bound on how long we let the restore sit "running" before calling it stuck.
 # Real-world PBM-1689 hangs were multi-hour; this just needs to comfortably clear PBM's
 # own internal ~120s PITR-slicer-stop wait plus retryChunk's backoff (45s worst case).
@@ -22,12 +27,30 @@ RESTORE_STUCK_TIMEOUT = 300
 RESTORE_POLL_INTERVAL = 5
 
 
+def _aws_credentials():
+    with open(AWS_CONF_FILE) as f:
+        creds = yaml.safe_load(f)["storage"]["s3"]["credentials"]
+    return creds["access-key-id"], creds["secret-access-key"]
+
+
 def kms_client():
-    return boto3.client("kms", region_name=KMS_REGION)
+    access_key, secret_key = _aws_credentials()
+    return boto3.client(
+        "kms",
+        region_name=KMS_REGION,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+    )
 
 
 def sts_client():
-    return boto3.client("sts", region_name=KMS_REGION)
+    access_key, secret_key = _aws_credentials()
+    return boto3.client(
+        "sts",
+        region_name=KMS_REGION,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+    )
 
 
 def _deny_decrypt(kms, key_id, principal_arn):
