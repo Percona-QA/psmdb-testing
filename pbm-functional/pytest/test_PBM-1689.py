@@ -11,9 +11,9 @@ from cluster import Cluster
 
 documents = [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
 
-KMS_KEY_ID = "aws/s3"
-KMS_REGION = "us-west-2"
-S3_BUCKET = "pbm-e2e-tests"
+KMS_KEY_ID = "keith-test-pbm-1689"
+KMS_REGION = "us-east-1"
+S3_BUCKET = "pbm-keith-test-2"
 
 # Generous bound on how long we let the restore sit "running" before calling it stuck.
 # Real-world PBM-1689 hangs were multi-hour; this just needs to comfortably clear PBM's
