@@ -11,7 +11,7 @@ from cluster import Cluster
 
 documents = [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
 
-KMS_KEY_ID = "keith-test-pbm-1689"
+KMS_KEY_ID = "alias/keith-test-pbm-1689"
 KMS_REGION = "us-east-1"
 S3_BUCKET = "pbm-keith-test-2"
 
