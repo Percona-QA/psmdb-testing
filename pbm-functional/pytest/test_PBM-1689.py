@@ -11,8 +11,8 @@ from cluster import Cluster
 
 documents = [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
 
-KMS_KEY_ID = "alias/keith-test-pbm-1689"
-KMS_REGION = "us-east-1"
+KMS_KEY_ID = "alias/test-pbm-1689"
+KMS_REGION = "eu-central-1"
 
 def _aws_credentials():
     with open("conf/pbm/aws.yaml") as f:
@@ -81,9 +81,7 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_1689(start_cluster, clus
     """Restore must release its lock instead of hanging if kms: decrypt access is removed from KMS key policy"""
     cluster.setup_pbm(file="/etc/aws.conf")
     result = cluster.exec_pbm_cli(
-        f"config --set storage.s3.bucket=pbm-keith-test-2 "
-        f"--set storage.s3.region={KMS_REGION} "
-        "--set storage.s3.serverSideEncryption.sseAlgorithm=aws:kms "
+        "config --set storage.s3.serverSideEncryption.sseAlgorithm=aws:kms "
         f"--set storage.s3.serverSideEncryption.kmsKeyID={KMS_KEY_ID} --out json -w"
     )
     assert result.rc == 0, result.stdout + result.stderr
