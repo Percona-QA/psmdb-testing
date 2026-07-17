@@ -103,20 +103,17 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_367(start_cluster, clust
 
         host.run(f"pbm restore -y {backup}")
 
-        probe_result = None
+        # Checking PBM's own status doesn't need S3/KMS access, so decrypt can stay
+        # denied for the whole poll -- this is the actual PBM-1689 scenario.
+        running = None
         timeout = time.time() + 120
         while time.time() < timeout:
-            _restore_key_policy(kms, key_id, original_policy)
-            probe_result = host.run("pbm config --set storage.s3.prefix=pbm-1689-kms-probe --wait")
-            if probe_result.rc == 0:
-                break
-            if "another operation in progress" not in (probe_result.stderr or "").lower():
+            running = cluster.get_status()["running"]
+            if not running:
                 break
             time.sleep(5)
 
-        assert probe_result is not None and probe_result.rc == 0, (
-            "PBM never released the restore lock after 120 seconds."
-        )
+        assert not running, "PBM never released the restore lock after 120 seconds."
     finally:
         # Reset Key Policy
         if original_policy is not None:
@@ -130,20 +127,15 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_367(start_cluster, clust
 
         host.run("pbm backup --out=json")
 
-        backup_probe_result = None
-        backup_timeout = time.time() + 120
-        while time.time() < backup_timeout:
-            _restore_key_policy(kms, key_id, original_policy)
-            backup_probe_result = host.run("pbm config --set storage.s3.prefix=pbm-1689-kms-probe-backup --wait")
-            if backup_probe_result.rc == 0:
-                break
-            if "another operation in progress" not in (backup_probe_result.stderr or "").lower():
+        running = None
+        timeout = time.time() + 120
+        while time.time() < timeout:
+            running = cluster.get_status()["running"]
+            if not running:
                 break
             time.sleep(5)
 
-        assert backup_probe_result is not None and backup_probe_result.rc == 0, (
-            "PBM never released the backup lock after 120 seconds."
-        )
+        assert not running, "PBM never released the backup lock after 120 seconds."
     finally:
         if original_policy is not None:
             _restore_key_policy(kms, key_id, original_policy)
