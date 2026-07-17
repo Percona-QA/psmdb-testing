@@ -77,8 +77,8 @@ def start_cluster(cluster, request):
 
 @pytest.mark.jenkins
 @pytest.mark.timeout(300, func_only=True)
-def test_restore_does_not_hang_on_kms_access_denied_PBM_1689(start_cluster, cluster):
-    """Restore must release its lock instead of hanging if kms: decrypt access is removed from KMS key policy"""
+def test_restore_does_not_hang_on_kms_access_denied_PBM_367(start_cluster, cluster):
+    """Verify restore and backup does not hang if kms: decrypt access is removed from KMS key policy"""
     cluster.setup_pbm(file="/etc/aws.conf")
     result = cluster.exec_pbm_cli(
         "config --set storage.s3.serverSideEncryption.sseAlgorithm=aws:kms "
@@ -95,6 +95,7 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_1689(start_cluster, clus
 
     key_id = kms.describe_key(KeyId=KMS_KEY_ID)["KeyMetadata"]["KeyId"]
 
+    # Testing restore
     original_policy = None
     try:
         # Needed to reset the key back to default
@@ -113,13 +114,36 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_1689(start_cluster, clus
                 break
             time.sleep(5)
 
-        pbm_logs = host.run("pbm logs -sD -t0")
-        Cluster.log("PBM agent logs after restore attempt:\n" + pbm_logs.stdout + pbm_logs.stderr)
-
         assert probe_result is not None and probe_result.rc == 0, (
             "PBM never released the restore lock after 120 seconds."
         )
     finally:
         # Reset Key Policy
+        if original_policy is not None:
+            _restore_key_policy(kms, key_id, original_policy)
+
+    # Testing backup
+    original_policy = None
+    try:
+        # Needed to reset the key back to default
+        original_policy = _deny_decrypt(kms, key_id, caller_arn)
+
+        host.run("pbm backup --out=json")
+
+        backup_probe_result = None
+        backup_timeout = time.time() + 120
+        while time.time() < backup_timeout:
+            _restore_key_policy(kms, key_id, original_policy)
+            backup_probe_result = host.run("pbm config --set storage.s3.prefix=pbm-1689-kms-probe-backup --wait")
+            if backup_probe_result.rc == 0:
+                break
+            if "another operation in progress" not in (backup_probe_result.stderr or "").lower():
+                break
+            time.sleep(5)
+
+        assert backup_probe_result is not None and backup_probe_result.rc == 0, (
+            "PBM never released the backup lock after 120 seconds."
+        )
+    finally:
         if original_policy is not None:
             _restore_key_policy(kms, key_id, original_policy)
