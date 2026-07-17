@@ -41,13 +41,20 @@ def _deny_decrypt(kms, key_id, principal_arn):
     """
     original_policy = kms.get_key_policy(KeyId=key_id, PolicyName="default")["Policy"]
     policy = json.loads(original_policy)
-    policy["Statement"].append({
+
+    statements = policy["Statement"]
+    if isinstance(statements, dict):
+        statements = [statements]
+    statements = [s for s in statements if s.get("Sid") != "PBM1689DenyDecrypt"]
+
+    statements.append({
         "Sid": "PBM1689DenyDecrypt",
         "Effect": "Deny",
         "Principal": {"AWS": principal_arn},
         "Action": "kms:Decrypt",
         "Resource": "*",
     })
+    policy["Statement"] = statements
     kms.put_key_policy(KeyId=key_id, PolicyName="default", Policy=json.dumps(policy))
     return original_policy
 
@@ -96,7 +103,7 @@ def start_cluster(cluster, request):
 
 @pytest.mark.jenkins
 @pytest.mark.timeout(300, func_only=True)
-def test_backup_and_restore_do_not_hang_on_kms_access_denied_PBM_367(start_cluster, cluster):
+def test_backup_and_restore_do_not_hang_on_kms_access_denied_PBM_T367(start_cluster, cluster):
     """Verify restore and backup does not hang if kms: decrypt access is removed from KMS key policy"""
     backup = start_cluster
     host = testinfra.get_host("docker://" + cluster.pbm_cli)
