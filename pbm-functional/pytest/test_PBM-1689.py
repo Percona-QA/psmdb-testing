@@ -116,7 +116,7 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_367(start_cluster, clust
         assert not running, "PBM never released the restore lock after 120 seconds."
 
         pbm_logs = host.run("pbm logs -sD -t0")
-        assert "accessdenied" in (pbm_logs.stdout + pbm_logs.stderr).lower(), (
+        assert "AccessDenied" in pbm_logs and "kms:Decrypt" in pbm_logs, (
             "Expected a kms:Decrypt AccessDenied error in PBM logs")
     finally:
         # Reset Key Policy
@@ -142,7 +142,7 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_367(start_cluster, clust
         assert not running, "PBM never released the backup lock after 120 seconds."
 
         pbm_logs = host.run("pbm logs -sD -t0")
-        assert "accessdenied" in (pbm_logs.stdout + pbm_logs.stderr).lower(), (
+        assert "AccessDenied" in pbm_logs and "kms:Decrypt" in pbm_logs, (
             "Expected a kms:Decrypt AccessDenied error in PBM logs")
     finally:
         if original_policy is not None:
