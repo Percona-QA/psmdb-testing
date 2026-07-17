@@ -106,7 +106,7 @@ def test_backup_and_restore_do_not_hang_on_kms_access_denied_PBM_367(start_clust
     start = time.time()
     restore_result = host.run(f"pbm restore -y {backup} --wait")
     elapsed = time.time() - start
-    assert elapsed < 120, f"Restore never returned within 120 seconds -- this is the PBM-1689 hang."
+    assert elapsed < 120, "Restore never returned within 120 seconds -- this is the PBM-1689 hang."
 
     restore_output = restore_result.stdout + restore_result.stderr
     if restore_result.rc != 0:
@@ -117,7 +117,7 @@ def test_backup_and_restore_do_not_hang_on_kms_access_denied_PBM_367(start_clust
     start = time.time()
     backup_result = host.run("pbm backup --out=json --wait")
     elapsed = time.time() - start
-    assert elapsed < 120, f"Backup never returned within 120 seconds -- this is the PBM-1689 hang."
+    assert elapsed < 120, "Backup never returned within 120 seconds -- this is the PBM-1689 hang."
 
     backup_output = backup_result.stdout + backup_result.stderr
     if backup_result.rc != 0:
