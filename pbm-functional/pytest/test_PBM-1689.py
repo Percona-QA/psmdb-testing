@@ -80,7 +80,7 @@ def start_cluster(cluster, request):
 def test_restore_does_not_hang_on_kms_access_denied_PBM_1689(start_cluster, cluster):
     """Restore must release its lock instead of hanging if kms: decrypt access is removed from KMS key policy"""
     result = cluster.exec_pbm_cli(
-        f"config --set storage.s3.bucket={"pbm-keith-test-2"} "
+        f"config --set storage.s3.bucket=pbm-keith-test-2 "
         f"--set storage.s3.region={KMS_REGION} "
         "--set storage.s3.serverSideEncryption.sseAlgorithm=aws:kms "
         f"--set storage.s3.serverSideEncryption.kmsKeyID={KMS_KEY_ID} --out json -w"
@@ -104,7 +104,8 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_1689(start_cluster, clus
         host.run(f"pbm restore -y {backup}")
 
         probe_result = None
-        while time.time() < 120:
+        timeout = time.time() + 120
+        while time.time() < timeout:
             _restore_key_policy(kms, key_id, original_policy)
             probe_result = host.run("pbm config --set storage.s3.prefix=pbm-1689-kms-probe --wait")
             if probe_result.rc == 0:
