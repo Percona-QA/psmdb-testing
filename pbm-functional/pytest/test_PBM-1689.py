@@ -137,5 +137,6 @@ def test_restore_does_not_hang_on_kms_access_denied_PBM_367(start_cluster, clust
 
     pbm_logs_result = host.run("pbm logs -sD -t0 --event=backup")
     pbm_logs = pbm_logs_result.stdout + pbm_logs_result.stderr
+    Cluster.log("DEBUG full backup event log:\n" + pbm_logs)
     assert "AccessDenied" in pbm_logs and "kms:Decrypt" in pbm_logs, (
         "Expected a kms:Decrypt AccessDenied error in PBM logs")
