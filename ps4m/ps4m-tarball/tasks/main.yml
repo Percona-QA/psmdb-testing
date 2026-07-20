@@ -3,7 +3,7 @@
     psmdb_repo: "{{ lookup('env', 'PSMDB_REPO') | default('psmdb-83', true) }}"
     repo: "{{ lookup('env', 'REPO') | default('testing', true) }}"
     psmdb_branch: "{{ lookup('env', 'PSMDB_BRANCH') | default('v8.3', true) }}"
-    mongot_tarball_url: "{{ lookup('env', 'MONGOT_TARBALL_URL') | default('https://downloads.percona.com/downloads/TESTING/mongot-0.51.0/percona-server-mongodb-mongot-0.51.0-linux_x86_64.tar.gz', true) }}"
+    mongot_tarball_url: "{{ lookup('env', 'MONGOT_TARBALL_URL') | default('https://downloads.percona.com/downloads/TESTING/ps4m-1.70.1/percona-search-mongodb-1.70.1-linux_x86_64.tar.gz', true) }}"
 
 - name: Select mongot tarball URL for host architecture
   set_fact:
@@ -34,12 +34,12 @@
 - name: Download mongot tarball
   get_url:
     url: "{{ mongot_url }}"
-    dest: /tmp/percona-server-mongodb-mongot.tar.gz
+    dest: /tmp/percona-search-mongodb.tar.gz
     mode: '0644'
 
 - name: Install mongot binaries
   unarchive:
-    src: /tmp/percona-server-mongodb-mongot.tar.gz
+    src: /tmp/percona-search-mongodb.tar.gz
     dest: /usr/bin
     remote_src: yes
 

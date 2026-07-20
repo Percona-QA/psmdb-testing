@@ -12,12 +12,12 @@
 
     - name: remove mongot deb package
       apt:
-        name: percona-server-mongodb-mongot
+        name: percona-search-mongodb
         state: absent
       when: ansible_os_family == "Debian"
 
     - name: remove mongot rpm package
       yum:
-        name: percona-server-mongodb-mongot
+        name: percona-search-mongodb
         state: absent
       when: ansible_os_family == "RedHat"
