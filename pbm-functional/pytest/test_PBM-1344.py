@@ -3,8 +3,21 @@ import pymongo
 import time
 import os
 
+import boto3
+from botocore.config import Config
 from datetime import datetime
 from cluster import Cluster
+
+
+def s3_client():
+    return boto3.client(
+        "s3",
+        endpoint_url="http://minio:9000",
+        aws_access_key_id="minio1234",
+        aws_secret_access_key="minio1234",
+        config=Config(s3={"addressing_style": "path"}, signature_version="s3v4"),
+        region_name="us-east-1",
+    )
 
 @pytest.fixture(scope="package")
 def config():
@@ -70,6 +83,18 @@ def test_logical_PBM_T280(start_cluster, cluster):
     cluster.disable_pitr()
     time.sleep(10)
     cluster.delete_backup(backup)
+
+    s3 = s3_client()
+    paginator = s3.get_paginator("list_objects_v2")
+    keys = [
+        obj["Key"]
+        for page in paginator.paginate(Bucket="bcp", Prefix="pbme2etest/")
+        for obj in page.get("Contents", [])
+    ]
+    leftover = [k for k in keys if backup in k]
+    assert not leftover, f"Leftover artifacts found on storage after delete for {backup}: {leftover}"
+    Cluster.log("Storage confirmed clean after backup delete")
+
     cluster.destroy()
 
     cluster.create()

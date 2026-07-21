@@ -1,8 +1,11 @@
+import json
 import pytest
 import pymongo
 import time
 import os
 import docker
+import threading
+import testinfra
 
 from datetime import datetime
 from cluster import Cluster
@@ -188,16 +191,141 @@ def test_physical_pitr_PBM_T244(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
 
-@pytest.mark.timeout(300,func_only=True)
+@pytest.mark.timeout(600,func_only=True)
 def test_incremental(start_cluster,cluster):
+
     cluster.check_pbm_status()
+    client = pymongo.MongoClient(cluster.connection)
+    stop_event = threading.Event()
+
+    def continuous_write():
+        i = 0
+        while not stop_event.is_set():
+            client["test"]["test"].insert_one({"doc": i})
+            i += 1
+            time.sleep(0.05)
+
+    writer = threading.Thread(target=continuous_write)
+    writer.start()
+
     cluster.make_backup("incremental --base")
-    pymongo.MongoClient(cluster.connection)["test"]["test"].insert_many(documents)
-    backup = cluster.make_backup("incremental")
-    result=pymongo.MongoClient(cluster.connection)["test"]["test"].delete_many({})
-    assert int(result.deleted_count) == len(documents)
-    cluster.make_restore(backup,restart_cluster=True, check_pbm_status=True)
-    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == len(documents)
+
+    for n in range(2):
+        cluster.make_backup("incremental")
+        time.sleep(1)
+
+    stop_event.set()
+    writer.join()
+
+    last_backup = cluster.make_backup("incremental")
+
+    expected_count = client["test"]["test"].count_documents({})
+    Cluster.log(f"Documents before restore: {expected_count}")
+
+    client["test"]["test"].drop()
+    assert client["test"]["test"].count_documents({}) == 0
+
+    cluster.make_restore(last_backup, restart_cluster=True, check_pbm_status=True)
+
+    actual_count = pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({})
+    assert actual_count == expected_count, f"Expected {expected_count} docs after restore, got {actual_count}"
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test").get("sharded", False)
     Cluster.log("Finished successfully")
+
+@pytest.fixture(scope="function")
+def start_cluster_fs(cluster, request):
+    try:
+        cluster.destroy()
+        os.chmod("/backups", 0o777)
+        os.system("rm -rf /backups/*")
+        cluster.create()
+        cluster.setup_pbm("/etc/pbm-fs.conf")
+        client = pymongo.MongoClient(cluster.connection)
+        client.admin.command("enableSharding", "test")
+        client.admin.command("shardCollection", "test.test", key={"_id": "hashed"})
+        yield True
+    finally:
+        if request.config.getoption("--verbose"):
+            cluster.get_logs()
+        cluster.destroy(cleanup_backups=True)
+
+@pytest.mark.timeout(600, func_only=True)
+def test_backup_fails_on_lost_shard_PBM_T365(start_cluster_fs, cluster):
+    """Verify backup is marked as error when a shard agent becomes unreachable mid-backup
+    and verifies the backup is successful once the pbm-agent comes back up"""
+    client = pymongo.MongoClient(cluster.connection)
+
+    for start in range(0, 20000, 1000):
+        client["test"]["test"].insert_many([{"x": i, "pad": "x" * 5000} for i in range(start, start + 1000)])
+
+    client["test"]["test"].create_index("x")
+    client["test"]["test"].create_index("pad")
+    client["test"]["test"].create_index([("x", 1), ("pad", 1)])
+
+    result = cluster.exec_pbm_cli("backup --type=logical --out=json")
+    assert result.rc == 0, f"Failed to start backup: {result.stdout} {result.stderr}"
+    backup_name = json.loads(result.stdout)["name"]
+
+    shard_hosts = ["rs101", "rs102", "rs103"]
+    shard_nodes = [testinfra.get_host(f"docker://{h}") for h in shard_hosts]
+    matching = []
+    try:
+        timeout = time.time() + 120
+        while True:
+            status = cluster.get_status()
+            if status.get("running", {}).get("type") == "backup":
+                break
+            assert time.time() < timeout, "Timed out waiting for backup to start"
+            time.sleep(1)
+
+        timeout = time.time() + 60
+        while True:
+            desc = json.loads(cluster.exec_pbm_cli(f"describe-backup {backup_name} -o json").stdout)
+            rs1_status = next((rs["status"] for rs in desc.get("replsets", []) if rs["name"] == "rs1"), None)
+            if rs1_status == "running":
+                break
+            assert rs1_status not in ("done", "error", "canceled"), (
+                "rs1 backup already completed before agents could be frozen"
+            )
+            assert time.time() < timeout, "Timed out waiting for rs1 backup status to be 'running'"
+            time.sleep(0.5)
+
+        for node in shard_nodes:
+            node.check_output("kill -STOP $(pgrep pbm-agent)")
+
+        timeout = time.time() + 120
+        while True:
+            status = cluster.get_status()
+            snapshots = status.get("backups", {}).get("snapshot", [])
+            matching = [s for s in snapshots if s["name"] == backup_name]
+            if matching and matching[0]["status"] == "error":
+                break
+            assert time.time() < timeout, "Timed out waiting for backup to be marked as error"
+            time.sleep(2)
+    finally:
+        for node in shard_nodes:
+            try:
+                node.check_output("kill -CONT $(pgrep pbm-agent)")
+            except Exception:
+                pass
+
+    error_msg = matching[0].get("error", "")
+    assert "lost shard" in error_msg or "some of pbm-agents were lost during the backup" in error_msg, (
+        f"Expected lost shard/agent error, got: {error_msg}"
+    )
+
+    Cluster.log("Waiting for agents to rejoin and become ready")
+    timeout = time.time() + 60
+    while True:
+        status = cluster.get_status()
+        if not status.get("running"):
+            break
+        assert time.time() < timeout, "Timed out waiting for cluster to become idle after agent recovery"
+        time.sleep(2)
+
+    Cluster.log("Verifying cluster recovers by running a new backup and restore")
+    new_backup = cluster.make_backup("logical")
+    client.drop_database("test")
+    cluster.make_restore(new_backup, check_pbm_status=True)
+    assert pymongo.MongoClient(cluster.connection)["test"]["test"].count_documents({}) == 20000
 
