@@ -8,8 +8,8 @@ import testinfra.utils.ansible_runner
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
-MONGOT_VERSION = os.getenv('MONGOT_VERSION', '0.51.0').split('-')[0]
-PACKAGE_NAME = 'percona-server-mongodb-mongot'
+MONGOT_VERSION = os.getenv('MONGOT_VERSION', '1.70.1').split('-')[0]
+PACKAGE_NAME = 'percona-search-mongodb'
 SERVICE_NAME = 'mongot'
 READINESS_URL = 'http://localhost:8080/ready'
 READINESS_RETRIES = 30

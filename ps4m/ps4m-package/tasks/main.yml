@@ -2,13 +2,16 @@
 - set_fact:
     psmdb_repo: "{{ lookup('env', 'PSMDB_REPO') | default('psmdb-83', true) }}"
     repo: "{{ lookup('env', 'REPO') | default('testing', true) }}"
-    mongot_version: "{{ lookup('env', 'MONGOT_VERSION') | default('0.51.0', true) }}"
+    mongot_version: "{{ lookup('env', 'MONGOT_VERSION') | default('1.70.1', true) }}"
 
 - name: Install percona release package
   include_tasks: ../../../tasks/install_percona_release.yml
 
 - name: Enable psmdb repo
   command: percona-release enable {{ psmdb_repo }} {{ repo }}
+
+- name: Enable ps4m repo
+  command: percona-release enable ps4m {{ repo }}
 
 - name: Install latest PSMDB packages
   block:
@@ -19,7 +22,7 @@
 
 - name: install mongot deb package
   apt:
-    name: "percona-server-mongodb-mongot={{ mongot_version }}*"
+    name: "percona-search-mongodb={{ mongot_version }}*"
     update_cache: yes
     state: present
   register: result
@@ -30,7 +33,7 @@
 
 - name: install mongot rpm package
   yum:
-    name: "percona-server-mongodb-mongot-{{ mongot_version }}*"
+    name: "percona-search-mongodb-{{ mongot_version }}*"
     state: present
   register: result
   retries: 10
