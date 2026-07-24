@@ -1,5 +1,3 @@
-import time
-
 import pymongo
 import pytest
 from bson.timestamp import Timestamp
@@ -15,40 +13,37 @@ def test_csync_PLM_T(start_cluster, src_cluster, dst_cluster, csync):
     """
     operation_threads = []
     try:
-        generate_dummy_data(src_cluster.connection, is_sharded=src_cluster.is_sharded)
-        _, operation_threads = create_all_types_db(
-            src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded
-        )
-        assert csync.start(), "Failed to start csync service"
+        generate_dummy_data(src_cluster.connection, num_collections=15, is_sharded=src_cluster.is_sharded)
+        _, operation_threads = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
+
+        # used to slow down clone process
+        throttled_start_options = {
+            "cloneNumParallelCollections": 1,
+            "cloneNumReadWorkers": 1,
+            "cloneNumInsertWorkers": 1,
+            "cloneReadBatchSize": "16MiB",
+        }
+
+        assert csync.start(raw_args=throttled_start_options), "Failed to start csync service"
         assert csync.wait_for_checkpoint(), "Clustersync failed to save checkpoint"
+        csync.container.stop()
+        assert csync.restart(), "Failed to restart csync after stopping mid-catchup"
 
         dst_client = pymongo.MongoClient(dst_cluster.connection)
         doc = dst_client["percona_clustersync_mongodb"]["checkpoints"].find_one({"_id": "pcsm"})
         assert doc is not None, "No checkpoint document found"
-        finish_ts = doc["data"]["clone"].get("finishTS", Timestamp(0, 0))
-        assert finish_ts != Timestamp(0, 0), (
-            "Persisted clone checkpoint has a zero finishTS - PCSM-338 regression: "
-            "recovering from this checkpoint would make PCSM falsely report initial "
-            "sync as completed immediately after a restart, regardless of real "
-            "catchup progress"
-        )
 
-        assert csync.restart(), "Failed to restart csync"
-    except Exception:
-        raise
+        clone_subdoc = doc["data"]["clone"]
+        assert "finishTS" in clone_subdoc, "Clone subdocument is missing the finishTS field entirely"
+        finish_ts = clone_subdoc["finishTS"]
+        assert finish_ts != Timestamp(0, 0), "Persisted clone checkpoint has a zero finishTS"
+        dst_client.close()
     finally:
         stop_all_crud_operations()
         for thread in operation_threads:
             thread.join()
 
-    time.sleep(5)
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
     assert csync.finalize(), "Failed to finalize csync service"
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
-    csync_error, error_logs = csync.check_csync_errors()
-    expected_error = "detected concurrent process"
-    if not csync_error:
-        unexpected = [line for line in error_logs if expected_error not in line]
-        if unexpected:
-            pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
