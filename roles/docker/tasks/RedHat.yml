@@ -8,6 +8,19 @@
     state: absent
   when: ansible_os_family == "RedHat"
 
+# Workaround EL9 ASN1 TLS bug in python3/openssl (ansible#87251)
+- name: Update python3 and openssl on EL9
+  yum:
+    name:
+      - python3
+      - openssl
+      - openssl-libs
+      - ca-certificates
+    state: latest
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version | int == 9
+
 - name: Add Docker CE repository
   get_url:
     url: https://download.docker.com/linux/centos/docker-ce.repo

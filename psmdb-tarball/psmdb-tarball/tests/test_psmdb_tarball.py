@@ -1,8 +1,8 @@
 import os
-import pytest
-from packaging import version
 
+import pytest
 import testinfra.utils.ansible_runner
+from packaging import version
 
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
@@ -21,11 +21,7 @@ FIPS = ['ssl jstests/ssl/ssl_fips.js']
 
 def is_ubuntu_pro(host):
     proStatus = host.run("sudo pro status")
-
-    if "This machine is not attached to an Ubuntu Pro subscription." in proStatus.stdout:
-        return False
-    else:
-        return True
+    return "This machine is not attached to an Ubuntu Pro subscription." not in proStatus.stdout
 
 @pytest.mark.parametrize("binary", BINARIES)
 def test_binary_version(host, binary):
@@ -52,6 +48,8 @@ def test_suites(host, suites):
 def test_fips(host, fips):
     if host.system_info.distribution == "debian" or (host.system_info.distribution == "ubuntu" and not (is_ubuntu_pro(host) and "22.04" in host.system_info.release)):
         pytest.skip("Skip debian12 as no openssl with FIPS available")
+    if version.parse(psmdb_version) >= version.parse("8.3.0"):
+        pytest.skip("PSMDB 8.3+ requires additional ssl certs setup")
     cmd = f"cd /percona-server-mongodb && /opt/venv/bin/python buildscripts/resmoke.py run --suite {fips}"
     with host.sudo():
         result = host.run(cmd)
