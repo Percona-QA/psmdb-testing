@@ -1,8 +1,8 @@
 import os
-import pytest
-from packaging import version
 
+import pytest
 import testinfra.utils.ansible_runner
+from packaging import version
 
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
@@ -21,11 +21,7 @@ FIPS = ['ssl jstests/ssl/ssl_fips.js']
 
 def is_ubuntu_pro(host):
     proStatus = host.run("sudo pro status")
-
-    if "This machine is not attached to an Ubuntu Pro subscription." in proStatus.stdout:
-        return False
-    else:
-        return True
+    return "This machine is not attached to an Ubuntu Pro subscription." not in proStatus.stdout
 
 @pytest.mark.parametrize("binary", BINARIES)
 def test_binary_version(host, binary):
