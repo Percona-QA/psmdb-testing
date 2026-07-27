@@ -22,6 +22,7 @@
     - "8.0"
   when:
     - ( repo_branch[0] == "9.0" and item == "8.0" ) or
+      ( repo_branch[0] == "8.3" and item == "8.0" ) or
       ( repo_branch[0] == "8.0" and item == "7.0" ) or
       ( repo_branch[0] == "7.0" and item == "6.0" ) or
       ( repo_branch[0] == "6.0" and item == "5.0" ) or
