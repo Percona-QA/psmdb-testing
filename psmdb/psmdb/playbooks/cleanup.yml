@@ -2,7 +2,7 @@
 - name: Cleanup
   hosts: all
   become: true
-  become_method: sudo
+  become_method: "{{ ansible_become_method | default('sudo') }}"
   tasks:
     - name: remove PBM deb packages
       apt:
