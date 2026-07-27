@@ -265,3 +265,14 @@
 - name: Copy suites
   shell: cp -rp /package-testing/suites/* /percona-server-mongodb/buildscripts/resmokeconfig/suites/
   ignore_errors: true
+
+- name: Disable OTEL tracing in multiversion suites for PSMDB 8.3+
+  lineinfile:
+    path: "/percona-server-mongodb/buildscripts/resmokeconfig/suites/{{ item }}"
+    regexp: '^\s*enableOTELTracing:'
+    insertafter: '^\s+encryptionCipherMode:'
+    line: '          enableOTELTracing: false'
+  loop:
+    - multiversion_kmip.yml
+    - multiversion_vault.yml
+  when: repo_branch[0] | float >= 8.3
