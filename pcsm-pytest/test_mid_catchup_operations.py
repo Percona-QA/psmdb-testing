@@ -3,7 +3,6 @@ import time
 import pymongo
 import pytest
 from bson.timestamp import Timestamp
-
 from data_generator import create_all_types_db, generate_dummy_data, stop_all_crud_operations
 from data_integrity_check import compare_data
 

@@ -1,3 +1,5 @@
+# ruff: noqa: BLE001
+
 import docker
 import json
 import re
@@ -66,7 +68,7 @@ class Clustersync:
                 if result.exit_code == 0:
                     return True
             except Exception:
-                pass
+                pass  # noqa: S110 -- no log here, would spam during startup polling
             time.sleep(0.1)
         Cluster.log(f"HTTP server not ready after {timeout} seconds")
         return False
