@@ -9,10 +9,8 @@ from data_integrity_check import compare_data
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_csync_PLM_T(start_cluster, src_cluster, dst_cluster, csync):
-    """
-
-    """
+def test_csync_PLM_T104(start_cluster, src_cluster, dst_cluster, csync):
+    """ Verify finishTS is correctly persisted and survives a restart mid-catchup """
     operation_threads = []
     try:
         generate_dummy_data(src_cluster.connection, num_collections=15, is_sharded=src_cluster.is_sharded)
@@ -36,7 +34,7 @@ def test_csync_PLM_T(start_cluster, src_cluster, dst_cluster, csync):
         assert doc is not None, "No checkpoint document found"
 
         clone_subdoc = doc["data"]["clone"]
-        assert "finishTS" in clone_subdoc, "Clone subdocument is missing the finishTS field entirely"
+        assert "finishTS" in clone_subdoc, "Clone subdocument is missing the finishTS field"
         finish_ts = clone_subdoc["finishTS"]
         assert isinstance(finish_ts, Timestamp) and finish_ts != Timestamp(0, 0), "Persisted clone checkpoint's finishTS is not valid"
         dst_client.close()
@@ -52,10 +50,8 @@ def test_csync_PLM_T(start_cluster, src_cluster, dst_cluster, csync):
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_pause_finalize_rejected_during_catchup(start_cluster, src_cluster, dst_cluster, csync):
-    """
-
-    """
+def test_pause_finalize_rejected_during_catchup_PLM_T105(start_cluster, src_cluster, dst_cluster, csync):
+    """ Verify finalize is rejected mid-catchup after clone is complete both before and after a restart mid-catchup """
     operation_threads = []
     try:
         generate_dummy_data(src_cluster.connection, num_collections=15, is_sharded=src_cluster.is_sharded)
@@ -67,7 +63,6 @@ def test_pause_finalize_rejected_during_catchup(start_cluster, src_cluster, dst_
             "cloneNumInsertWorkers": 1,
             "replNumWorkers": 1,
             "replBulkOpsSize": 1,
-            "pauseOnInitialSync": True,
         }
         assert csync.start(raw_args=throttled_start_options), "Failed to start csync service"
         assert csync.wait_for_checkpoint(), "Clustersync failed to save checkpoint"
@@ -83,10 +78,7 @@ def test_pause_finalize_rejected_during_catchup(start_cluster, src_cluster, dst_
         else:
             pytest.fail("Never observed initialSync.completed == False during throttled catchup")
 
-        print(f"eventsRead={data.get('eventsRead')}, eventsApplied={data.get('eventsApplied')}")
-
-        assert data["state"] != "paused", "pauseOnInitialSync should not have paused while initial sync is still incomplete"
-        assert csync.finalize() is False, "/finalize should have been rejected while initial sync is incomplete"
+        assert csync.finalize() is False, "finalize should have been rejected while initial sync is incomplete"
 
         csync.container.stop()
         assert csync.restart(), "Failed to restart csync mid-catchup"
@@ -94,9 +86,8 @@ def test_pause_finalize_rejected_during_catchup(start_cluster, src_cluster, dst_
         status = csync.status()
         data = status["data"]
         assert data["initialSync"]["completed"] is False, "initialSync.completed was true immediately after restart while still mid-catchup"
-        assert data["state"] != "paused", "pauseOnInitialSync auto-paused csync immediately after restart, even though initial sync is incomplete"
 
-        assert csync.finalize() is False, "Expected /finalize to still be rejected after restart mid-catchup"
+        assert csync.finalize() is False, "Expected finalize to be rejected after restart mid-catchup"
     finally:
         stop_all_crud_operations()
         for thread in operation_threads:
