@@ -52,6 +52,8 @@ def test_suites(host, suites):
 def test_fips(host, fips):
     if host.system_info.distribution == "debian" or (host.system_info.distribution == "ubuntu" and not (is_ubuntu_pro(host) and "22.04" in host.system_info.release)):
         pytest.skip("Skip debian12 as no openssl with FIPS available")
+    if version.parse(psmdb_version) >= version.parse("8.3.0"):
+        pytest.skip("PSMDB 8.3+ requires additional ssl certs setup")
     cmd = f"cd /percona-server-mongodb && /opt/venv/bin/python buildscripts/resmoke.py run --suite {fips}"
     with host.sudo():
         result = host.run(cmd)
