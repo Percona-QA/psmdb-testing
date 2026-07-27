@@ -1,12 +1,14 @@
 # ruff: noqa: BLE001
 
-import docker
 import json
 import re
-import pymongo
 import time
+
+import pymongo
 from bson.timestamp import Timestamp
 from cluster import Cluster
+
+import docker
 
 # class Clustersync for creating/manipulating with single clustersync instance
 # name = the name of the container
@@ -67,8 +69,8 @@ class Clustersync:
                 result = self.container.exec_run("curl -s -m 2 http://localhost:2242/status -d '{}'")
                 if result.exit_code == 0:
                     return True
-            except Exception:
-                pass  # noqa: S110 -- no log here, would spam during startup polling
+            except Exception:  # noqa: S110 -- no log here, would spam during startup polling
+                pass
             time.sleep(0.1)
         Cluster.log(f"HTTP server not ready after {timeout} seconds")
         return False
@@ -495,5 +497,3 @@ class Clustersync:
                 return False
         Cluster.log(f"Error: Timeout exceeded {timeout} seconds while waiting for checkpoints collection to appear")
         return False
-
-
