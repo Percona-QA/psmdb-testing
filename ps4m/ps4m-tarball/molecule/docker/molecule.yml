@@ -20,7 +20,7 @@ provisioner:
     REPO: "${REPO:-testing}"
     PSMDB_BRANCH: "${PSMDB_BRANCH:-v8.3}"
     PYTHON_VERSION: "${PYTHON_VERSION:-3.13.11}"
-    MONGOT_TARBALL_URL: "${MONGOT_TARBALL_URL:-https://downloads.percona.com/downloads/TESTING/mongot-0.51.0/percona-server-mongodb-mongot-0.51.0-linux_x86_64.tar.gz}"
+    MONGOT_TARBALL_URL: "${MONGOT_TARBALL_URL:-https://downloads.percona.com/downloads/TESTING/ps4m-1.70.1/percona-search-mongodb-1.70.1-linux_x86_64.tar.gz}"
   playbooks:
     prepare: ../../playbooks/prepare.yml
     converge: ../../playbooks/playbook.yml
