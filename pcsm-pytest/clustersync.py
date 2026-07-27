@@ -360,20 +360,19 @@ class Clustersync:
             Cluster.log(f"Error: {self.last_error}")
             return False
 
-        while time.time() - start_time < timeout:
-            try:
-                ping_result = src_client.admin.command("ping")
-                cluster_time = ping_result.get("$clusterTime", {}).get("clusterTime")
-
-                if cluster_time is None:
-                    self.last_error = "Failed to get clusterTime from source"
-                    Cluster.log(f"Error: {self.last_error}")
-                    return False
-            except Exception as e:
-                self.last_error = f"Failed to retrieve clusterTime from source: {e}"
+        try:
+            ping_result = src_client.admin.command("ping")
+            target_cluster_time = ping_result.get("$clusterTime", {}).get("clusterTime")
+            if target_cluster_time is None:
+                self.last_error = "Failed to get clusterTime from source"
                 Cluster.log(f"Error: {self.last_error}")
                 return False
+        except Exception as e:
+            self.last_error = f"Failed to retrieve clusterTime from source: {e}"
+            Cluster.log(f"Error: {self.last_error}")
+            return False
 
+        while time.time() - start_time < timeout:
             status_response = self.status()
             if not status_response.get("success"):
                 self.last_error = status_response.get("error", "Failed to retrieve status")
@@ -413,13 +412,12 @@ class Clustersync:
                 stability_counter += 1
             else:
                 stability_counter = 0
-            is_caught_up = cluster_time.time <= last_ts.time + 2
+            reached_target = last_ts >= target_cluster_time
 
-            if is_caught_up and events_stable and stability_counter >= 5:
-                lag_info = "0 lag" if last_ts >= cluster_time else "1-2s lag"
-                Cluster.log(f"Src and dst are in sync ({lag_info}): last repl TS {last_ts} >= cluster time {cluster_time}, "
-                          f"eventsRead={current_events_read}, eventsApplied={current_events_applied}, "
-                          f"stability={stability_counter} checks")
+            if reached_target and events_stable and stability_counter >= 5:
+                Cluster.log(f"Src and dst are in sync: last repl TS {last_ts} >= target cluster time "
+                          f"{target_cluster_time}, eventsRead={current_events_read}, "
+                          f"eventsApplied={current_events_applied}, stability={stability_counter} checks")
                 return True
             last_events_read = current_events_read
             last_events_applied = current_events_applied

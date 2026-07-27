@@ -29,15 +29,14 @@ def test_csync_PLM_T104(start_cluster, src_cluster, dst_cluster, csync):
         csync.container.stop()
         assert csync.restart(), "Failed to restart csync after stopping mid-catchup"
 
-        dst_client = pymongo.MongoClient(dst_cluster.connection)
-        doc = dst_client["percona_clustersync_mongodb"]["checkpoints"].find_one({"_id": "pcsm"})
-        assert doc is not None, "No checkpoint document found"
+        with pymongo.MongoClient(dst_cluster.connection) as dst_client:
+            doc = dst_client["percona_clustersync_mongodb"]["checkpoints"].find_one({"_id": "pcsm"})
+            assert doc is not None, "No checkpoint document found"
 
-        clone_subdoc = doc["data"]["clone"]
-        assert "finishTS" in clone_subdoc, "Clone subdocument is missing the finishTS field"
-        finish_ts = clone_subdoc["finishTS"]
-        assert isinstance(finish_ts, Timestamp) and finish_ts != Timestamp(0, 0), "Persisted clone checkpoint's finishTS is not valid"
-        dst_client.close()
+            clone_subdoc = doc["data"]["clone"]
+            assert "finishTS" in clone_subdoc, "Clone subdocument is missing the finishTS field"
+            finish_ts = clone_subdoc["finishTS"]
+            assert isinstance(finish_ts, Timestamp) and finish_ts != Timestamp(0, 0), "Persisted clone checkpoint's finishTS is not valid"
     finally:
         stop_all_crud_operations()
         for thread in operation_threads:
