@@ -430,10 +430,20 @@ class Cluster:
         self.wait_pbm_status(wait=60)
 
     # pbm --force-resync
-    def make_resync(self):
+    def make_resync(self, timeout=60):
+        # wait for a just-finished operation to release its lock before resync
         n = testinfra.get_host("docker://" + self.pbm_cli)
-        result = n.check_output('pbm config --force-resync --wait')
-        Cluster.log("Resync storage:\n" + result)
+        end = time.time() + timeout
+        result = None
+        while time.time() < end:
+            result = n.run('pbm config --force-resync --wait')
+            if result.rc == 0:
+                Cluster.log("Resync storage:\n" + result.stdout)
+                return
+            output = (result.stdout + result.stderr).lower()
+            assert "another operation in progress" in output, result.stdout + result.stderr
+            time.sleep(1)
+        assert False, f"Timeout waiting to start resync: STDOUT={result.stdout} STDERR={result.stderr}"
 
     # creates backup based on type (no checking input - it's hack for situation like 'incremental --base')
     def make_backup(self, type=None, allow_fail=False, **kwargs):

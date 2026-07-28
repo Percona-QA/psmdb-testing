@@ -57,6 +57,8 @@ def start_cluster(cluster,request):
         host = testinfra.get_host("docker://rs101")
         host.check_output(f"mkdir -p {token_dir}")
         host.check_output(f"printf %s {token} > {token_path}")
+        # restart agents so they authenticate with the now-written OIDC token
+        cluster.restart_pbm_agents()
         cluster.setup_pbm()
         yield True
     finally:
