@@ -1,9 +1,10 @@
 import os
-import pytest
 import re
+
+import pytest
 import requests
-from packaging import version
 import testinfra.utils.ansible_runner
+from packaging import version
 
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
@@ -105,3 +106,21 @@ def test_cli_version(host):
     else:
         assert PSMDB_VER in result
 
+def test_psmdb_sbom(host):
+    """Verify SBOM exists and is valid CycloneDX 1.6; report vulnerability scan (non-fatal)"""
+    is_rpm = host.system_info.distribution.lower() in ["redhat", "centos", "rhel", "rocky", "almalinux", "ol", "amzn"]
+
+    if is_rpm:
+        result = host.run("rpm -ql percona-server-mongodb-server | grep cdx.json")
+    else:
+        result = host.run("dpkg -L percona-server-mongodb-server | grep cdx.json")
+    assert result.rc == 0 and result.stdout.strip(), f"SBOM cdx.json not found in package file list: {result.stdout}"
+    sbom_path = result.stdout.strip().split("\n")[0]
+
+    # Report vulnerabilities only; do not fail the test if any are found
+    grype_result = host.run(f"grype sbom:{sbom_path} --only-fixed")
+    print(f"grype scan result:\n{grype_result.stdout}\n{grype_result.stderr}")
+
+    cdx_cmd = "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /usr/local/bin/cyclonedx"
+    cdx_result = host.run(f"{cdx_cmd} validate --input-file {sbom_path} --input-format json --input-version v1_6")
+    assert cdx_result.rc == 0, f"CycloneDX 1.6 schema validation failed: {cdx_result.stdout}\n{cdx_result.stderr}"

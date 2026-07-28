@@ -155,6 +155,31 @@
     - rm -f main.zip
     - mv psmdb-testing-main /package-testing
 
+- name: Check whether curl is available
+  shell: command -v curl
+  register: curl_check
+  changed_when: false
+  failed_when: false
+
+- name: Install curl for grype installer
+  package:
+    name: curl
+    state: present
+  when: curl_check.rc != 0
+
+- name: Install grype
+  shell: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+  args:
+    creates: /usr/local/bin/grype
+
+- name: Install CycloneDX CLI
+  shell: >
+    curl -sSfL --retry 5 --retry-delay 10
+    "https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-{{ 'arm64' if ansible_architecture == 'aarch64' else 'x64' }}"
+    -o /usr/local/bin/cyclonedx && chmod 0755 /usr/local/bin/cyclonedx
+  args:
+    creates: /usr/local/bin/cyclonedx
+
 - name: setup tools repo with percona-release
   command: percona-release enable tools
   when: toolkit != false
