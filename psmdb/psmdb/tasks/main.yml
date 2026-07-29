@@ -168,7 +168,7 @@
   when: curl_check.rc != 0
 
 - name: Install grype
-  shell: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+  shell: curl -sSfL --retry 5 --retry-delay 10 https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
   args:
     creates: /usr/local/bin/grype
 
