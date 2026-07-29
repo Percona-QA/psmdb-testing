@@ -118,7 +118,8 @@ def test_psmdb_sbom(host):
     sbom_path = result.stdout.strip().split("\n")[0]
 
     # Report vulnerabilities only; do not fail the test if any are found
-    grype_result = host.run(f"grype sbom:{sbom_path} --only-fixed")
+    grype_result = host.run(f'grype sbom:"{sbom_path}" --only-fixed')
+    assert grype_result.rc == 0, f"grype scan failed: {grype_result.stdout}\n{grype_result.stderr}"
     print(f"grype scan result:\n{grype_result.stdout}\n{grype_result.stderr}")
 
     cdx_cmd = "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /usr/local/bin/cyclonedx"
