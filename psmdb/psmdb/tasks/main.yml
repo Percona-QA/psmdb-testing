@@ -3,7 +3,7 @@
 - set_fact:
     toolkit: "{{ lookup('env', 'ENABLE_TOOLKIT') | default('false', true) }}"
 
-- name: Install Readelf for RHEL 8
+- name: Install binutils (readelf) and file for RHEL 8+
   yum:
     name: "{{ packages }}"
     state: present
@@ -11,7 +11,8 @@
   vars:
     packages:
       - binutils
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+      - file
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version | int >= 8
 
 - name: remove the Percona apt main repository
   apt_repository: repo='deb http://repo.percona.com/apt {{ ansible_distribution_release }} main' state=absent update_cache=yes

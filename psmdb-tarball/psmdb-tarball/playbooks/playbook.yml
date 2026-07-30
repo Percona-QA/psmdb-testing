@@ -25,6 +25,7 @@
         - ol7
         - ol8
         - ol9
+        - ol10
         - ol2023
         - jammy
         - focal
@@ -32,6 +33,7 @@
         - buster
         - bookworm
         - bullseye
+        - trixie
       ignore_errors: yes
 
 - name: Converge
