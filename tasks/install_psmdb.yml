@@ -108,7 +108,7 @@
   retries: 10
   until: result is succeeded
   delay: 5
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8" and psmdb_mongosh >= "6" and (dbg_packages | default(true) | bool)
+  when: ansible_os_family == "RedHat" and ansible_distribution != "Amazon" and ansible_distribution_major_version | int >= 8 and psmdb_mongosh >= "6" and (dbg_packages | default(true) | bool)
 
 - name: install psmdb debug rpm packages
   yum:
@@ -162,7 +162,7 @@
   retries: 10
   until: result is succeeded
   delay: 5
-  when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8" and psmdb_mongosh < "6"
+  when: ansible_os_family == "RedHat" and ansible_distribution != "Amazon" and ansible_distribution_major_version | int >= 8 and psmdb_mongosh < "6"
 
 - name: install mongosh rpm package
   yum:

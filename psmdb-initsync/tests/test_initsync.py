@@ -1,7 +1,8 @@
-import os
-import testinfra
 import json
+import os
 import time
+
+import testinfra
 import testinfra.utils.ansible_runner
 
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -16,13 +17,13 @@ secondary1 = testinfra.utils.ansible_runner.AnsibleRunner(
 secondary2 = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('secondary2-rs-initsync')
 
-DOC_SIZE = int(os.getenv("DOC_SIZE",1024))
-FILE_SIZE = os.getenv("FILE_SIZE",1024)
-IDX_COUNT = int(os.getenv("IDX_COUNT",2))
-DOC_COUNT = int(os.getenv("DOC_COUNT",1000 * 1000))
-DB_COUNT = int(os.getenv("DB_COUNT",10))
-TIMEOUT = int(os.getenv("TIMEOUT",3600))
-GENERATOR = os.getenv("GENERATOR",'mongofiles')
+DOC_SIZE = int(os.getenv("DOC_SIZE", "1024"))
+FILE_SIZE = os.getenv("FILE_SIZE", "1024")
+IDX_COUNT = int(os.getenv("IDX_COUNT", "2"))
+DOC_COUNT = int(os.getenv("DOC_COUNT", str(1000 * 1000)))
+DB_COUNT = int(os.getenv("DB_COUNT", "10"))
+TIMEOUT = int(os.getenv("TIMEOUT", "3600"))
+GENERATOR = os.getenv("GENERATOR", "mongofiles")
 
 def check_mongod_service(node):
     with node.sudo():
@@ -36,12 +37,12 @@ def restart_mongod(node):
 
 def stop_mongod(node):
     with node.sudo():
-        result = node.check_output('systemctl stop mongod')
+        node.check_output('systemctl stop mongod')
     print('Stop mongod')
 
 def start_mongod(node):
     with node.sudo():
-        result = node.check_output('systemctl start mongod')
+        node.check_output('systemctl start mongod')
     print('Start mongod')
 
 def cleanup_data(node):
