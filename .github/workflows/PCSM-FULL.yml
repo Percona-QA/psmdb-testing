@@ -9,6 +9,12 @@ on:
       go_ver:
         description: "golang version"
         required: false
+      test_filter:
+        description: "pytest -k filter expression to run a single test/subset (disables sharding)"
+        required: false
+      psmdb_pair:
+        description: "single src-dst pair to run, e.g. 8.0-8.0 (default: all pairs)"
+        required: false
 
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
@@ -24,17 +30,18 @@ concurrency:
 jobs:
   test:
     # Will not run if item is a draft
-    if: github.event.pull_request.draft == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
-        psmdb_pair: ["6.0-6.0", "6.0-8.0", "7.0-7.0", "8.0-8.0"]
-        shard: [0, 1, 2, 3, 4]
+        psmdb_pair: ${{ github.event.inputs.psmdb_pair != '' && fromJSON(format('["{0}"]', github.event.inputs.psmdb_pair)) || fromJSON('["6.0-6.0","6.0-8.0","7.0-7.0","8.0-8.0"]') }}
+        shard: ${{ github.event.inputs.test_filter != '' && fromJSON('[0]') || fromJSON('[0, 1, 2, 3, 4]') }}
     env:
       PCSM_BRANCH: ${{ github.event.inputs.pcsm_branch || 'main' }}
       GO_VER: ${{ github.event.inputs.go_ver || 'bullseye' }}
+      TEST_FILTER: ${{ github.event.inputs.test_filter || '' }}
     steps:
     - uses: actions/checkout@v4
     - name: Setup environment with PSMDB ${{ matrix.psmdb_pair }} and PCSM branch ${{ env.PCSM_BRANCH }}
@@ -50,7 +57,12 @@ jobs:
       working-directory: ./pcsm-pytest
     - name: Run pytest shard ${{ matrix.shard }} on PSMDB ${{ matrix.psmdb_pair }} and PCSM branch ${{ env.PCSM_BRANCH }}
       run: |
-        docker compose run --rm test pytest -s -v --junitxml=junit.xml --shard-id=${{ matrix.shard }} --num-shards=5 -m 'not jenkins'
+        if [ -n "${TEST_FILTER}" ]; then
+          echo "Running with -k filter: ${TEST_FILTER} (sharding disabled)"
+          docker compose run --rm test pytest -s -v --junitxml=junit.xml --num-shards=1 --shard-id=0 -m 'not jenkins' -k "${TEST_FILTER}"
+        else
+          docker compose run --rm test pytest -s -v --junitxml=junit.xml --shard-id=${{ matrix.shard }} --num-shards=5 -m 'not jenkins'
+        fi
       working-directory: ./pcsm-pytest
     - name: Publish Test Report
       uses: mikepenz/action-junit-report@v5
