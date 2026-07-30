@@ -390,9 +390,16 @@ class Clustersync:
             current_events_applied = status_data.get("eventsApplied")
 
             if last_repl_op is None:
-                self.last_error = "No 'lastReplicatedOpTime' field found in status response"
-                Cluster.log(f"Error: {self.last_error}")
-                return False
+                # After a (re)start, replication may still be catching up and has
+                # not applied anything yet, so PCSM omits lastReplicatedOpTime from
+                # the status (it is zero). This is not an error - keep waiting until
+                # it appears or the timeout is reached.
+                Cluster.log("Waiting for 'lastReplicatedOpTime' to appear (replication catching up)...")
+                stability_counter = 0
+                last_events_read = current_events_read
+                last_events_applied = current_events_applied
+                time.sleep(interval)
+                continue
 
             try:
                 parts = str(last_repl_op).split(".")
