@@ -44,6 +44,7 @@ def test_csync_PLM_T104(start_cluster, src_cluster, dst_cluster, csync):
             thread.join()
 
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+    time.sleep(60)
     assert csync.finalize(), "Failed to finalize csync service"
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
