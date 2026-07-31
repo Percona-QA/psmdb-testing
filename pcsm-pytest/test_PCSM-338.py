@@ -26,7 +26,7 @@ def test_csync_PLM_T104(start_cluster, src_cluster, dst_cluster, csync):
 
         assert csync.start(raw_args=throttled_start_options), "Failed to start csync service"
         assert csync.wait_for_checkpoint(), "Clustersync failed to save checkpoint"
-        csync.container.stop()
+        csync.container.stop(timeout=90)
         assert csync.restart(), "Failed to restart csync after stopping mid-catchup"
         print("SLEEPING TEST")
         time.sleep(30)
@@ -82,7 +82,7 @@ def test_pause_finalize_rejected_during_catchup_PLM_T105(start_cluster, src_clus
 
         assert csync.finalize() is False, "finalize should have been rejected while initial sync is incomplete"
 
-        csync.container.stop()
+        csync.container.stop(timeout=90)
         assert csync.restart(), "Failed to restart csync mid-catchup"
 
         status = csync.status()
