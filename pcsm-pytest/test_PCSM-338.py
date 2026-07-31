@@ -28,6 +28,7 @@ def test_csync_PLM_T104(start_cluster, src_cluster, dst_cluster, csync):
         assert csync.wait_for_checkpoint(), "Clustersync failed to save checkpoint"
         csync.container.stop()
         assert csync.restart(), "Failed to restart csync after stopping mid-catchup"
+        assert csync.resume(from_failure=True), "Failed to resume csync from failure after restart"
 
         dst_client = pymongo.MongoClient(dst_cluster.connection)
         doc = dst_client["percona_clustersync_mongodb"]["checkpoints"].find_one({"_id": "pcsm"})
