@@ -1,0 +1,67 @@
+# On-disk embedding model catalog for PS4M-local auto-embedding.
+# Referenced from config/mongot.yml via `embedding.modelConfigFile`. mongot
+# re-reads it on startup, so edit and restart mongot to add/override models.
+#
+# `modelName` is what you put in the index definition's `model` field.
+# `outputDimensions` MUST equal the model's native embedding dimension.
+#
+# Schema note: queryPrefix/documentPrefix live under `config.modelConfig`, and
+# `credentials` lives under `config` (mongot parses this strictly; misplaced
+# fields make the whole catalog fail to load -> "supported models are: []").
+configs:
+  - modelName: bge-small
+    embeddingProvider: OPENAI_COMPATIBLE
+    config:
+      providerEndpoint: http://tei:80/v1/embeddings
+      modelConfig:
+        batchSize: 96
+        batchTokenLimit: 120000
+        outputDimensions: 384
+        quantization: float
+        # bge-*-en-v1.5 retrieval quality improves when the QUERY is prefixed
+        # with this instruction; documents are embedded as-is. Trailing space is
+        # part of the value. Local engine serves a fixed dimension, so no
+        # forwardDimensions.
+        queryPrefix: "Represent this sentence for searching relevant passages: "
+      errorHandlingConfig:
+        maxRetries: 10
+        initialRetryWaitMs: 200
+        maxRetryWaitMs: 10000
+        jitter: 0.1
+      credentials: {}
+
+  - modelName: nomic-embed-text
+    embeddingProvider: OPENAI_COMPATIBLE
+    config:
+      providerEndpoint: http://ollama:11434/v1/embeddings
+      modelConfig:
+        batchSize: 96
+        batchTokenLimit: 120000
+        outputDimensions: 768
+        quantization: float
+        # nomic-embed-text is asymmetric: query and document text use different
+        # task-instruction prefixes. The trailing ": " is part of the value.
+        queryPrefix: "search_query: "
+        documentPrefix: "search_document: "
+      errorHandlingConfig:
+        maxRetries: 10
+        initialRetryWaitMs: 200
+        maxRetryWaitMs: 10000
+        jitter: 0.1
+      credentials: {}
+
+  - modelName: bge-m3
+    embeddingProvider: OPENAI_COMPATIBLE
+    config:
+      providerEndpoint: http://ollama:11434/v1/embeddings
+      modelConfig:
+        batchSize: 96
+        batchTokenLimit: 120000
+        outputDimensions: 1024
+        quantization: float
+      errorHandlingConfig:
+        maxRetries: 10
+        initialRetryWaitMs: 200
+        maxRetryWaitMs: 10000
+        jitter: 0.1
+      credentials: {}

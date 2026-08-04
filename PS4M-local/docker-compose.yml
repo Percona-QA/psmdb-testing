@@ -2,7 +2,7 @@ name: PS4M-local
 
 services:
   mongod:
-    image: perconalab/percona-server-mongodb:8.3.4-1
+    image: ${MONGOD_IMAGE:-perconalab/percona-server-mongodb:8.3.4-1}
     user: "0"
     hostname: mongod
     command:
@@ -58,8 +58,49 @@ services:
     networks:
       - ps4m-local
 
+  # OpenAI-compatible embedding backend for mongot auto-embedding: Hugging Face
+  # Text Embeddings Inference (TEI). Serves /v1/embeddings on container port 80
+  # (published on host :8085), keyless. The model is fixed at startup via
+  # --model-id and downloaded once into the tei_data volume
+  tei:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
+    hostname: tei
+    command: ["--model-id", "BAAI/bge-small-en-v1.5"]
+    ports:
+      - "8085:80"
+    volumes:
+      - tei_data:/data
+    networks:
+      - ps4m-local
+
+  # Second OpenAI-compatible backend. Lets you create indexes with Ollama-served models
+  ollama:
+    image: ollama/ollama:latest
+    hostname: ollama
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        /bin/ollama serve &
+        pid=$$!
+        until /bin/ollama list >/dev/null 2>&1; do sleep 1; done
+        /bin/ollama pull nomic-embed-text
+        wait $$pid
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q nomic-embed-text || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 60
+      start_period: 120s
+    networks:
+      - ps4m-local
+
   mongot:
-    image: perconalab/percona-server-mongodb-mongot:0.51.0-1
+    image: ${MONGOT_IMAGE:-perconalab/percona-server-mongodb-mongot:0.51.0-1}
     user: "0"
     hostname: mongot
     entrypoint:
@@ -75,11 +116,19 @@ services:
       - "8080:8080"
     volumes:
       - ./config/mongot.yml:/etc/mongot/mongot.yml:ro
+      - ./config/embedding-service-configs.yml:/etc/mongot/embedding-service-configs.yml:ro
       - ./config/keyfile:/mnt/keyfile:ro
       - mongot_data:/var/lib/mongot
     depends_on:
       mongod:
         condition: service_healthy
+      # mongot embeds lazily (only at index/query time), so start order is
+      # enough; the catalog's errorHandlingConfig retries while a backend
+      # finishes downloading its model on first run.
+      tei:
+        condition: service_started
+      ollama:
+        condition: service_started
     healthcheck:
       test:
         [
@@ -96,6 +145,8 @@ services:
 volumes:
   mongod_data:
   mongot_data:
+  tei_data:
+  ollama_data:
 
 networks:
   ps4m-local:

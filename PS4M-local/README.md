@@ -2,12 +2,37 @@
 
 Local Docker Compose stack for **Percona Search for MongoDB (PS4M)**: a single-node PSMDB replica set with `mongot` for MongoDB Search.
 
-| Service | Image | Host ports |
-|---------|-------|------------|
-| `mongod` | `perconalab/percona-server-mongodb:8.3.4-1` | `27017` |
-| `mongot` | `perconalab/percona-server-mongodb-mongot:0.51.0-1` | `27028` (gRPC), `8080` (readiness) |
+| Service | Image (default) | Override | Host ports |
+|---------|-----------------|----------|------------|
+| `mongod` | `perconalab/percona-server-mongodb:8.3.4-1` | `MONGOD_IMAGE` | `27017` |
+| `mongot` | `perconalab/percona-server-mongodb-mongot:0.51.0-1` | `MONGOT_IMAGE` | `27028` (gRPC), `8080` (readiness) |
+| `tei` | `ghcr.io/huggingface/text-embeddings-inference:cpu-1.9` | — | `8085` → `80` (OpenAI-compatible embeddings) |
+| `ollama` | `ollama/ollama:latest` | — | `11434` (OpenAI-compatible embeddings) |
+
+`tei` (Hugging Face Text Embeddings Inference) and `ollama` are two
+OpenAI-compatible embedding backends used for **auto-embedding** (see below).
+Both run at once, so you can create different indexes against different models:
+
+- **`tei`** (default): loads the model given by `--model-id`
+  (default `BAAI/bge-small-en-v1.5`, 384-dim), cached in `tei_data`. On arm64
+  hosts change the image tag to `cpu-arm64-1.9`.
+- **`ollama`**: pulls `nomic-embed-text` (768-dim) on start, cached in
+  `ollama_data`; `bge-m3` (1024-dim) is also in the catalog if you pull it.
 
 Replica set name: `rs`. Config lives under `config/` (`mongod.conf`, `mongot.yml`, shared `keyfile`).
+
+### Overriding images (e.g. a dev mongot build)
+
+Both images can be overridden with env vars, which is useful for testing a
+`mongot` image built from source. For example, to run against a mongot image
+produced as a GitHub artifact by the `percona-mongot` `dev-docker-image`
+workflow:
+
+```bash
+# download the artifact tarball, then:
+docker load -i percona-search-mongodb-pr-123.tar.gz   # prints "Loaded image: <image>"
+MONGOT_IMAGE=perconalab/percona-search-mongodb:pr-123 docker compose up -d
+```
 
 On first start, mongod creates an admin user for client access:
 
@@ -261,11 +286,139 @@ db.items.dropSearchIndex("vector_index")
 
 ---
 
+## Example: auto-embedding (`$vectorSearch` with text)
+
+With **auto-embedding**, you store plain text and mongot generates the vectors
+for you at index and query time by calling an embedding model — you never send
+`queryVector` yourself. This stack wires mongot to two local, keyless
+OpenAI-compatible engines (`tei` and `ollama`) via the on-disk model catalog
+`config/embedding-service-configs.yml`, enabled by the `embedding:` section in
+`config/mongot.yml`.
+
+The catalog defines several models; pick one per index via the `model` field in
+the index definition (you can even override it per query with a compatible,
+same-dimension model). Available out of the box:
+
+| `model` | Backend | Dimensions | Notes |
+|---------|---------|-----------|-------|
+| `bge-small` | `tei` | 384 | Default (`BAAI/bge-small-en-v1.5`), loaded by TEI at startup |
+| `nomic-embed-text` | `ollama` | 768 | Pulled by Ollama at startup |
+| `bge-m3` | `ollama` | 1024 | Needs `docker compose exec ollama ollama pull bge-m3` first |
+
+> **Requires a mongot image with the OpenAI-compatible embedding provider**
+> (PSMDB-2143). The default `perconalab/percona-server-mongodb-mongot:0.51.0-1`
+> predates this feature and does not understand the `OPENAI_COMPATIBLE` provider.
+> Set `MONGOT_IMAGE` to a build that includes it — e.g. a dev image produced by
+> the `percona-mongot` `dev-docker-image` workflow (see "Overriding images"):
+>
+> ```bash
+> MONGOT_IMAGE=perconalab/percona-search-mongodb:pr-17 docker compose up -d
+> ```
+
+The example below uses the default `bge-small` (TEI). To use an Ollama
+model instead, just change the `model` in the index definition to
+`nomic-embed-text` (or `bge-m3` after pulling it) — no other change needed.
+Confirm the backends are up:
+
+```bash
+curl -fsS http://127.0.0.1:8085/health          # TEI
+docker compose exec ollama ollama list           # Ollama models
+```
+
+### 1. Create an auto-embed vector index
+
+Note the field `type: "autoEmbed"` with a `model` and `modality: "text"`. The
+`path` points at the **text** field to embed; `numDimensions`/`similarity` are
+resolved from the model catalog when omitted.
+
+```javascript
+db = db.getSiblingDB("autoembed_demo")
+db.movies.drop()
+db.createCollection("movies")
+
+db.movies.createSearchIndex(
+  "auto_index",
+  "vectorSearch",
+  {
+    fields: [
+      {
+        type: "autoEmbed",
+        path: "plot",
+        model: "bge-small",
+        modality: "text"
+      }
+    ]
+  }
+)
+
+while (true) {
+  const idxs = db.movies.getSearchIndexes("auto_index")
+  if (idxs.length && idxs.every(i => i.status === "READY")) break
+  print("index status:", JSON.stringify(idxs))
+  sleep(2000)
+}
+```
+
+### 2. Upload data (plain text, no vectors)
+
+```javascript
+db = db.getSiblingDB("autoembed_demo")
+
+db.movies.insertMany([
+  { title: "The Matrix", plot: "A computer hacker learns about the true nature of reality" },
+  { title: "Inception", plot: "A thief enters people's dreams to steal secrets" },
+  { title: "The Martian", plot: "An astronaut is stranded alone on Mars and must survive" }
+])
+```
+
+### 3. Query with text
+
+Pass `query` (a string) instead of `queryVector`; mongot embeds it with the same
+model and runs the vector search.
+
+```javascript
+db = db.getSiblingDB("autoembed_demo")
+
+db.movies.aggregate([
+  {
+    $vectorSearch: {
+      index: "auto_index",
+      path: "plot",
+      query: "someone breaks into computer systems",
+      numCandidates: 50,
+      limit: 3
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      title: 1,
+      plot: 1,
+      score: { $meta: "vectorSearchScore" }
+    }
+  }
+])
+```
+
+Expected top hit is *The Matrix*. To override the model per query (must be
+compatible/same dimensions), add `model: "<name>"` alongside `query`.
+
+### Drop the index
+
+```javascript
+db = db.getSiblingDB("autoembed_demo")
+db.movies.dropSearchIndex("auto_index")
+```
+
+---
+
 ## Logs and troubleshooting
 
 ```bash
 docker compose logs -f mongod
 docker compose logs -f mongot
+docker compose logs -f tei
+docker compose logs -f ollama
 ```
 
 | Check | Command |
@@ -273,9 +426,14 @@ docker compose logs -f mongot
 | Replica set | `mongosh "mongodb://root:root@127.0.0.1:27017/?authSource=admin&directConnection=true" --quiet --eval 'rs.status().ok'` |
 | mongod → mongot | Confirm `mongotHost` / `searchIndexManagementHostAndPort` in `config/mongod.conf` |
 | Keyfile perms | Host file `config/keyfile` should be mode `400`; compose copies it into each container |
+| Auto-embedding inactive | Check `mongot` logs for the loaded catalog; ensure `embedding.modelConfigFile` in `config/mongot.yml` resolves and `config/embedding-service-configs.yml` is valid (mongot fails closed, not silently) |
+| Embedding backend down | TEI: `curl -fsS http://127.0.0.1:8085/health`; Ollama: `docker compose exec ollama ollama list`. First run downloads models. |
+| Dimension mismatch | `outputDimensions` in the catalog must equal the model's native dimension (bge-small → 384, nomic-embed-text → 768, bge-m3 → 1024) |
 | Reset stack | `docker compose down -v && docker compose up -d` |
 
-`mongot` starts only after `mongod` reports healthy (writable primary). First startup initializes the replica set, creates the `root` user, and may take ~30s.
+`mongot` starts after `mongod` is healthy and `tei` has started. TEI downloads
+its model on first run, so the first auto-embed index build or query may retry
+briefly until the model is ready (mongot retries per the catalog config).
 
 ## Layout
 
@@ -286,5 +444,6 @@ PS4M-local/
 └── config/
     ├── keyfile
     ├── mongod.conf
-    └── mongot.yml
+    ├── mongot.yml
+    └── embedding-service-configs.yml
 ```

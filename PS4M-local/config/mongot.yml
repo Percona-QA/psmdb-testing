@@ -1,5 +1,3 @@
-# Matches MongoTCommunityFixture._generate_mongot_community_config().
-
 syncSource:
   replicaSet:
     hostAndPort: mongod:27017
@@ -25,3 +23,11 @@ healthCheck:
 
 logging:
   verbosity: INFO
+
+# Auto-embedding: enabled by the presence of this section
+embedding:
+  modelConfigFile: /etc/mongot/embedding-service-configs.yml
+  # Single-node local stack: this mongot must be the materialized-view writer
+  # (leader) that embeds documents. Without this it stays a follower, no lease
+  # is created, and auto-embed indexes never leave PENDING/NOT_STARTED.
+  isAutoEmbeddingViewWriter: true
