@@ -1,7 +1,8 @@
 import os
 import re
-import requests
+
 import pytest
+import requests
 from packaging import version
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
@@ -9,6 +10,8 @@ MAJ_VER = PSMDB_VER.split("-")[0]
 FCV_VER = MAJ_VER.split(".")[0] + "." + MAJ_VER.split(".")[1]
 if version.parse(PSMDB_VER) > version.parse("8.0.0"):
     SOFTWARE_FILES = ['bookworm','binary','redhat/9','redhat/8','source','jammy','noble','redhat/2023']
+    if version.parse(PSMDB_VER) < version.parse("8.3.0"):
+        SOFTWARE_FILES += ['trixie','redhat/10']
 elif version.parse(PSMDB_VER) > version.parse("7.0.0") and version.parse(PSMDB_VER) < version.parse("8.0.0"):
     SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','source','jammy','redhat/2023']
 elif version.parse(PSMDB_VER) > version.parse("6.0.0") and version.parse(PSMDB_VER) < version.parse("7.0.0"):
@@ -50,8 +53,8 @@ def get_package_tuples():
                (MAJ_VER.startswith("6") and version.parse(MAJ_VER) > version.parse("6.0.15")) or \
                (MAJ_VER.startswith("7") and version.parse(MAJ_VER) > version.parse("7.0.12")) or \
                (MAJ_VER.startswith("8") and version.parse(MAJ_VER) > version.parse("8.0.0")) :
-                replacement_map = {'redhat/9': 'ol9','redhat/8': 'ol8','redhat/7': 'ol7','redhat/2023': 'ol2023'}
-                tar_os = [replacement_map[os] if os in replacement_map else os for os in SOFTWARE_FILES if os not in ['source', 'binary']]
+                replacement_map = {'redhat/10': 'ol10','redhat/9': 'ol9','redhat/8': 'ol8','redhat/7': 'ol7','redhat/2023': 'ol2023'}
+                tar_os = [replacement_map.get(os, os) for os in SOFTWARE_FILES if os not in ['source', 'binary']]
                 for os in tar_os:
                   assert "percona-server-mongodb-" + PSMDB_VER + "-x86_64." + os + "-minimal.tar.gz" in req.text
                   assert "percona-server-mongodb-" + PSMDB_VER + "-x86_64." + os + "-minimal.tar.gz.sha256sum" in req.text
