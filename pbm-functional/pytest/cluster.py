@@ -731,7 +731,7 @@ class Cluster:
         for id, data in enumerate(rs['members']):
             rs['members'][id]['_id'] = id
             rs['members'][id]['host'] = rs['members'][id]['host'] + ":27017"
-        rs['settings'] = {'electionTimeoutMillis': 2000}
+        rs['settings'] = {'electionTimeoutMillis': 3000}
         init_rs = ('\'config =' +
                    json.dumps(rs) +
                    ';rs.initiate(config);\'')
