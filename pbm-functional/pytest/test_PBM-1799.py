@@ -32,16 +32,15 @@ def start_cluster(cluster,request):
         cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.jenkins
-@pytest.mark.timeout(1800, func_only=True)
-def test_PBM_1799(start_cluster, cluster):
-    """
-
-    """
+@pytest.mark.parametrize("backup_type", ["logical", "physical"])
+@pytest.mark.timeout(300, func_only=True)
+def test_PBM_1799(start_cluster, cluster, backup_type):
+    """Verify restore from a prefixed GCS SDK-client backup with a split part-object succeeds without archive corruption."""
     cluster.setup_pbm(file="/etc/gcs.conf")
     client = pymongo.MongoClient(cluster.connection)
     mongod_version = client.server_info()["version"]
     major_ver = "".join(mongod_version.split(".")[:2])
-    unique_prefix = f"pbm1799/{major_ver}"
+    unique_prefix = f"pbm1799/{major_ver}-{backup_type}"
 
     result = cluster.exec_pbm_cli(
         f'config --set storage.gcs.prefix={unique_prefix} '
@@ -59,11 +58,14 @@ def test_PBM_1799(start_cluster, cluster):
         client["test"]["bigdata"].insert_many(batch)
     Cluster.log(f"Inserted {total_docs} documents (~1.2GB) into test.bigdata")
 
-    backup = cluster.make_backup("logical")
+    backup = cluster.make_backup(backup_type)
 
     client.drop_database("test")
 
-    cluster.make_restore(backup, timeout=900, check_pbm_status=True)
+    if backup_type == "logical":
+        cluster.make_restore(backup, timeout=900, check_pbm_status=True)
+    else:
+        cluster.make_restore(backup, timeout=900, restart_cluster=True, check_pbm_status=True)
 
     assert client["test"]["bigdata"].count_documents({}) == total_docs
     for i in (0, total_docs // 2, total_docs - 1):
