@@ -1,12 +1,9 @@
 import os
-
 import docker
 import pymongo
 import pytest
 from bson.binary import Binary
-
 from cluster import Cluster
-
 
 @pytest.fixture(scope="package")
 def docker_client():
@@ -34,8 +31,8 @@ def start_cluster(cluster,request):
 @pytest.mark.jenkins
 @pytest.mark.parametrize("backup_type", ["logical", "physical"])
 @pytest.mark.timeout(300, func_only=True)
-def test_PBM_1799(start_cluster, cluster, backup_type):
-    """Verify restore from a prefixed GCS SDK-client backup with a split part-object succeeds without archive corruption."""
+def test_PBM_1799_PBM_T368(start_cluster, cluster, backup_type):
+    """Verify restore from a GCS SDK-client backup with a split part-object succeeds"""
     cluster.setup_pbm(file="/etc/gcs.conf")
     client = pymongo.MongoClient(cluster.connection)
     mongod_version = client.server_info()["version"]
@@ -52,11 +49,10 @@ def test_PBM_1799(start_cluster, cluster, backup_type):
 
     total_docs = (1200 * 1024) // 10
     for i in range(0, total_docs, 1000):
-        batch = [
-            {"_id": i + j, "payload": Binary(os.urandom(10 * 1024))}
-            for j in range(min(1000, total_docs - i))]
-        client["test"]["bigdata"].insert_many(batch)
-    Cluster.log(f"Inserted {total_docs} documents (~1.2GB) into test.bigdata")
+        batch = [{"_id": i + j, "payload": Binary(os.urandom(10 * 1024))}
+                for j in range(min(1000, total_docs - i))]
+        client["test"]["data"].insert_many(batch)
+    Cluster.log(f"Inserted {total_docs} documents (~1.2GB) into test.data")
 
     backup = cluster.make_backup(backup_type)
 
@@ -67,8 +63,6 @@ def test_PBM_1799(start_cluster, cluster, backup_type):
     else:
         cluster.make_restore(backup, timeout=900, restart_cluster=True, check_pbm_status=True)
 
-    assert client["test"]["bigdata"].count_documents({}) == total_docs
+    assert client["test"]["data"].count_documents({}) == total_docs
     for i in (0, total_docs // 2, total_docs - 1):
-        assert client["test"]["bigdata"].find_one({"_id": i})
-
-    Cluster.log("Finished successfully")
+        assert client["test"]["data"].find_one({"_id": i})
