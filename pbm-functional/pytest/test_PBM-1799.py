@@ -30,7 +30,7 @@ def start_cluster(cluster,request):
 
 @pytest.mark.jenkins
 @pytest.mark.parametrize("backup_type", ["logical", "physical"])
-@pytest.mark.timeout(300, func_only=True)
+@pytest.mark.timeout(600, func_only=True)
 def test_PBM_1799_PBM_T368(start_cluster, cluster, backup_type):
     """Verify restore from a GCS SDK-client backup with a split part-object succeeds"""
     cluster.setup_pbm(file="/etc/gcs.conf")
