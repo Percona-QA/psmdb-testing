@@ -22,6 +22,7 @@
     - "8.0"
   when:
     - ( repo_branch[0] == "9.0" and item == "8.0" ) or
+      ( repo_branch[0] == "8.3" and item == "8.0" ) or
       ( repo_branch[0] == "8.0" and item == "7.0" ) or
       ( repo_branch[0] == "7.0" and item == "6.0" ) or
       ( repo_branch[0] == "6.0" and item == "5.0" ) or
@@ -37,6 +38,7 @@
     - ol7
     - ol8
     - ol9
+    - ol10
     - ol2023
     - jammy
     - focal
@@ -44,6 +46,7 @@
     - bookworm
     - bullseye
     - buster
+    - trixie
   when:
     - ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "20" and item == "focal") or
       ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "22" and item == "jammy") or
@@ -51,9 +54,11 @@
       ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" and item == "buster") or
       ( ansible_distribution == "Debian" and ansible_distribution_major_version == "11" and item == "bullseye") or
       ( ansible_distribution == "Debian" and ansible_distribution_major_version == "12" and item == "bookworm") or
+      ( ansible_distribution == "Debian" and ansible_distribution_major_version == "13" and item == "trixie") or
       ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "7" and item == "ol7") or
       ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and item == "ol8") or
       ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "9" and item == "ol9") or
+      ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "10" and item == "ol10") or
       ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "2023" and item == "ol2023")
 
 - name: Copy tarball
@@ -102,6 +107,30 @@
     extra_opts:
     - --transform
     - 's,^/*[^/]*,/usr,S'
+
+- name: Check whether curl is available
+  shell: command -v curl
+  register: curl_check
+  changed_when: false
+  failed_when: false
+
+- name: Install curl for grype installer
+  package:
+    name: curl
+    state: present
+  when: curl_check.rc != 0
+
+- name: Install grype
+  shell: curl -sSfL --retry 5 --retry-delay 10 https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+  args:
+    creates: /usr/local/bin/grype
+- name: Install CycloneDX CLI
+  shell: >
+    curl -sSfL --retry 5 --retry-delay 10
+    "https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-{{ 'arm64' if ansible_architecture == 'aarch64' else 'x64' }}"
+    -o /usr/local/bin/cyclonedx && chmod 0755 /usr/local/bin/cyclonedx
+  args:
+    creates: /usr/local/bin/cyclonedx
 
 - name: Create dirs for multiversion setup
   shell:
@@ -264,3 +293,14 @@
 - name: Copy suites
   shell: cp -rp /package-testing/suites/* /percona-server-mongodb/buildscripts/resmokeconfig/suites/
   ignore_errors: true
+
+- name: Disable OTEL tracing in multiversion suites for PSMDB 8.3+
+  lineinfile:
+    path: "/percona-server-mongodb/buildscripts/resmokeconfig/suites/{{ item }}"
+    regexp: '^\s*enableOTELTracing:'
+    insertafter: '^\s+encryptionCipherMode:'
+    line: '          enableOTELTracing: false'
+  loop:
+    - multiversion_kmip.yml
+    - multiversion_vault.yml
+  when: repo_branch[0] | float >= 8.3

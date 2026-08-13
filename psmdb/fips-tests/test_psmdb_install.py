@@ -1,7 +1,7 @@
 import os
+
 import pytest
 import testinfra
-
 import testinfra.utils.ansible_runner
 
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -34,4 +34,5 @@ def test_fips(host):
         else:
             logs = host.check_output('head -n 50 /var/log/mongo/mongod.log')
         print(logs)
-        assert "FIPS 140-2 mode activated" in logs, "FIPS activation message not found in MongoDB logs"
+        assert ("FIPS 140-2 mode activated" in logs) or ("FIPS 140 mode activated" in logs), \
+            "FIPS activation message not found in MongoDB logs"

@@ -1,0 +1,27 @@
+# Matches MongoTCommunityFixture._generate_mongot_community_config().
+
+syncSource:
+  replicaSet:
+    hostAndPort: mongod:27017
+    scramAuth:
+      username: __system
+      passwordFile: /etc/mongot/secrets/passwordFile
+      authSource: local
+
+storage:
+  dataPath: /var/lib/mongot
+
+server:
+  grpc:
+    address: 0.0.0.0:27028
+    tls:
+      mode: disabled
+
+metrics:
+  enabled: false
+
+healthCheck:
+  address: 0.0.0.0:8080
+
+logging:
+  verbosity: INFO

@@ -17,3 +17,9 @@ docker run --env PSMDB_VERSION=6.0.9-7 --env PBM_VERSION=2.2.1 --rm -v .:/tmp -w
 ```
 docker run --env PBM_VERSION=2.3.0 --rm -v .:/tmp -w /tmp python bash -c "pip3 install requests pytest setuptools && pytest -s --junitxml=junit.xml test_pbm.py"
 ```
+
+## PS4M (Percona Search for MongoDB)
+
+```
+docker run --env PS4M_VERSION=1.70.3 --rm -v .:/tmp -w /tmp python bash -c "pip3 install requests pytest setuptools && pytest -s --junitxml=junit.xml test_ps4m.py"
+```

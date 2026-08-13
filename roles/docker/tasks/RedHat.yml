@@ -8,6 +8,19 @@
     state: absent
   when: ansible_os_family == "RedHat"
 
+# Workaround EL9 ASN1 TLS bug in python3/openssl (ansible#87251)
+- name: Update python3 and openssl on EL9
+  yum:
+    name:
+      - python3
+      - openssl
+      - openssl-libs
+      - ca-certificates
+    state: latest
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version | int == 9
+
 - name: Add Docker CE repository
   get_url:
     url: https://download.docker.com/linux/centos/docker-ce.repo
@@ -40,6 +53,42 @@
       - docker-ce-cli
       - containerd.io
   when: ansible_os_family == "RedHat"
+
+# EL10 defaults to nftables and no longer ships the iptables xtables kernel
+# modules (xt_addrtype) that Docker's iptables-compat backend needs, so dockerd
+# fails to start. Switch Docker to its native nftables firewall backend instead
+# (Docker Engine 29+), and make sure IPv4 forwarding is enabled for containers.
+- name: Configure Docker nftables firewall backend on EL10+
+  block:
+    - name: Ensure /etc/docker exists (EL10+)
+      file:
+        path: /etc/docker
+        state: directory
+        mode: '0755'
+
+    - name: Use the nftables firewall backend for Docker (EL10+)
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "firewall-backend": "nftables"
+          }
+        mode: '0644'
+
+    - name: Enable IPv4 forwarding for Docker networking (EL10+)
+      copy:
+        dest: /etc/sysctl.d/99-docker-forward.conf
+        content: "net.ipv4.ip_forward = 1\n"
+        mode: '0644'
+
+    - name: Apply sysctl settings (EL10+)
+      command: sysctl --system
+      changed_when: false
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution != "Amazon"
+    - ansible_distribution_major_version | int >= 10
+    - ansible_distribution_major_version | int < 100
 
 - name: Enable and start Docker service
   service:
