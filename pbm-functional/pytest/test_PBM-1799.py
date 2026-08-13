@@ -1,9 +1,12 @@
 import os
-import docker
+
 import pymongo
 import pytest
 from bson.binary import Binary
 from cluster import Cluster
+
+import docker
+
 
 @pytest.fixture(scope="package")
 def docker_client():

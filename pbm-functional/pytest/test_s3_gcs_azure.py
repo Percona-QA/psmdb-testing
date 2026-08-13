@@ -1,15 +1,15 @@
-import os
-from datetime import timedelta
-
-import docker
-import pymongo
-import pytest
 import base64
+import os
 import threading
 import time
-from bson.binary import Binary
+from datetime import timedelta
 
+import pymongo
+import pytest
+from bson.binary import Binary
 from cluster import Cluster
+
+import docker
 
 
 @pytest.fixture(scope="package")
@@ -202,7 +202,7 @@ def test_general_PBM_T304(start_cluster, cluster, provider, backup_type, loss_pe
         try:
             backup_result["backup"] = cluster.make_backup(f"{backup_type}")
             Cluster.log("Backup completed successfully")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             backup_result["error"] = e
             Cluster.log(f"Backup failed: {e}")
         finally:
@@ -216,7 +216,7 @@ def test_general_PBM_T304(start_cluster, cluster, provider, backup_type, loss_pe
                 cluster.network_interruption(60, stop_event=network_interrupt_stop, loss_percent=loss_percent)
             else:
                 cluster.network_interruption(360, stop_event=network_interrupt_stop, loss_percent=loss_percent)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             Cluster.log(f"Network interruption failed: {e}")
     try:
         backup_thread = threading.Thread(target=run_backup)
