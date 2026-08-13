@@ -52,7 +52,6 @@ COPY conf/pbm/minio-provider.yaml /etc/pbm-minio-provider.conf
 COPY conf/pbm/azurite.yaml /etc/pbm-azurite.conf
 COPY conf/pbm/aws.yaml /etc/aws.conf
 COPY conf/pbm/gcs.yaml /etc/gcs.conf
-COPY conf/pbm/gcs_hmac.yaml /etc/gcs_hmac.conf
 COPY conf/pbm/gcs-work-iden.yaml /etc/pbm-gcs-work-iden.conf
 COPY conf/pbm/azure.yaml /etc/azure.conf
 COPY conf/pbm/oci.yaml /etc/oci.conf
