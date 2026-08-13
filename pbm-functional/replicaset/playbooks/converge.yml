@@ -31,8 +31,6 @@
         packages:
         - wget
         - git
-        - python3
-        - vim
       when: ansible_os_family == "RedHat"
 
     - name: Install deps
@@ -42,8 +40,6 @@
         packages:
         - wget
         - git
-        - python3
-        - vim
       when: ansible_os_family == "Debian"
 
     - name: Clone PBM repo
