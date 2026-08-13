@@ -29,6 +29,7 @@ def test_csync_PLM_T104(start_cluster, src_cluster, dst_cluster, csync):
         assert csync.wait_for_checkpoint(), "Clustersync failed to save checkpoint"
         csync.container.stop(timeout=90)
         assert csync.restart(), "Failed to restart csync after stopping mid-catchup"
+        assert csync.wait_for_checkpoint(), "Clustersync failed to save checkpoint after restart"
 
         dst_client = pymongo.MongoClient(dst_cluster.connection)
         doc = dst_client["percona_clustersync_mongodb"]["checkpoints"].find_one({"_id": "pcsm"})
@@ -52,7 +53,7 @@ def test_csync_PLM_T104(start_cluster, src_cluster, dst_cluster, csync):
 @pytest.mark.skip(reason="Skipped due to PCSM-339")
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_pause_finalize_rejected_during_catchup_PLM_T105(start_cluster, src_cluster, dst_cluster, csync):
+def test_finalize_rejected_during_catchup_PLM_T105(start_cluster, src_cluster, dst_cluster, csync):
     """ Verify finalize is rejected mid-catchup after clone is complete both before and after a restart mid-catchup """
     operation_threads = []
     try:
