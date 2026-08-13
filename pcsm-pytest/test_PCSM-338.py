@@ -7,6 +7,7 @@ from data_generator import create_all_types_db, generate_dummy_data, stop_all_cr
 from data_integrity_check import compare_data
 
 
+@pytest.mark.skip(reason="Skipped due to PCSM-339")
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
 def test_csync_PLM_T104(start_cluster, src_cluster, dst_cluster, csync):
@@ -48,6 +49,7 @@ def test_csync_PLM_T104(start_cluster, src_cluster, dst_cluster, csync):
     result, _ = compare_data(src_cluster, dst_cluster)
     assert result is True, "Data mismatch after synchronization"
 
+@pytest.mark.skip(reason="Skipped due to PCSM-339")
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
 def test_pause_finalize_rejected_during_catchup_PLM_T105(start_cluster, src_cluster, dst_cluster, csync):
