@@ -130,7 +130,7 @@ def start_cluster_unsharded_ts(cluster,request):
         cluster.destroy(cleanup_backups=True)
 
 
-# NOTE: PBM does not support the backing up of sharded timeseries collections
+@pytest.mark.xfail(reason="Known bug: PBM-1813, replace when fixed", strict=True)
 @pytest.mark.timeout(600,func_only=True)
 def test_logical_pitr_unsharded_timeseries_PBM_366(start_cluster_unsharded_ts,cluster):
     """Verify continuous writes to unsharded timeseries collections will be restored without data loss."""
