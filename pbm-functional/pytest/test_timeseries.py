@@ -132,9 +132,8 @@ def start_cluster_unsharded_ts(cluster,request):
 
 
 # NOTE: PBM does not support the backing up of sharded timeseries collections
-@pytest.mark.xfail(reason="Known bug: PBM-1813, replace when fixed", strict=True)
 @pytest.mark.timeout(600,func_only=True)
-def test_logical_pitr_unsharded_timeseries_PBM_366(start_cluster_unsharded_ts,cluster):
+def test_logical_pitr_unsharded_timeseries_PBM_T366(start_cluster_unsharded_ts,cluster):
     """Verify continuous writes to unsharded timeseries collections will be restored without data loss."""
     client = pymongo.MongoClient(cluster.connection)
     client["test"].create_collection('ts1', timeseries={'timeField': 'timestamp'})
@@ -177,7 +176,12 @@ def test_logical_pitr_unsharded_timeseries_PBM_366(start_cluster_unsharded_ts,cl
     client["test"].drop_collection('ts1')
     client["test"].drop_collection('ts2')
 
-    cluster.make_restore("--time=" + pitr_time, check_pbm_status=True)
+    try:
+        cluster.make_restore("--time=" + pitr_time, check_pbm_status=True)
+    except AssertionError as e:
+        if "Invalid bucket data type. Expected binData, but got 10" in str(e):
+            pytest.xfail(f"PBM-1813: known bug")
+        raise
 
     restored_client = pymongo.MongoClient(cluster.connection)
     assert restored_client["test"]["ts1"].count_documents({}) == counters['ts1']
