@@ -180,7 +180,7 @@ def test_logical_pitr_unsharded_timeseries_PBM_T366(start_cluster_unsharded_ts,c
         cluster.make_restore("--time=" + pitr_time, check_pbm_status=True)
     except AssertionError as e:
         if "Invalid bucket data type. Expected binData, but got 10" in str(e):
-            pytest.xfail(f"PBM-1813: known bug")
+            pytest.xfail("PBM-1813: known bug")
         raise
 
     restored_client = pymongo.MongoClient(cluster.connection)
