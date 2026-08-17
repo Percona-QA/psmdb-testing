@@ -4,7 +4,7 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: primary-rs0
+  - name: keith-primary-rs0
     groups:
       - mongo
       - primary
@@ -19,7 +19,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: secondary1-rs0                        
+  - name: keith-secondary1-rs0
     groups:
       - mongo
       - secondary
@@ -33,7 +33,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: secondary2-rs0
+  - name: keith-secondary2-rs0
     groups:
       - mongo
       - secondary
@@ -47,7 +47,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: primary-rs1
+  - name: keith-primary-rs1
     groups:
       - mongo
       - primary
@@ -61,7 +61,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: secondary1-rs1
+  - name: keith-secondary1-rs1
     groups:
       - mongo
       - secondary
@@ -75,7 +75,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: secondary2-rs1
+  - name: keith-secondary2-rs1
     groups:
       - mongo
       - secondary
@@ -89,7 +89,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: primary-cfg
+  - name: keith-primary-cfg
     groups:
       - mongo
       - primary
@@ -103,7 +103,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: secondary1-cfg
+  - name: keith-secondary1-cfg
     groups:
       - mongo
       - secondary
@@ -117,7 +117,7 @@ platforms:
     root_device_name: /dev/sda1
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
-  - name: secondary2-cfg
+  - name: keith-secondary2-cfg
     groups:
       - mongo
       - secondary
@@ -139,7 +139,7 @@ provisioner:
     prepare: ../../playbooks/prepare.yml
     converge: ../../playbooks/converge.yml
     cleanup: ../../playbooks/cleanup.yml
-    destroy: ../../../../playbooks/destroy.yml
+#    destroy: ../../../../playbooks/destroy.yml
 verifier:
   name: testinfra
   directory: ../../tests/
@@ -156,9 +156,9 @@ scenario:
 #    - prepare
     - converge
     - verify
-    - cleanup
-    - destroy
-  destroy_sequence:
-    - destroy
-  cleanup_sequence:
-    - cleanup
+#    - cleanup
+#    - destroy
+#  destroy_sequence:
+#    - destroy
+#  cleanup_sequence:
+#    - cleanup
