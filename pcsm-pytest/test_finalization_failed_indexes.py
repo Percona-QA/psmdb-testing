@@ -279,7 +279,7 @@ def _hide_index_from_mongos(src_cluster, mongos_client, db_name, coll_name, inde
 
             mongos_indexes = mongos_client[db_name][coll_name].index_information()
             if index_name not in mongos_indexes:
-                Cluster.log(f"_hide_index_from_mongos: routing target found on first try: {shard_id}")
+                Cluster.log(f"_hide_index_from_mongos: routing target found: {shard_id}")
                 return shard_id
 
             Cluster.log(f"_hide_index_from_mongos: {shard_id} was not the routing target, recreating and trying next shard")
