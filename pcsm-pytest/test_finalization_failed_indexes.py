@@ -1,11 +1,10 @@
-import time
 from datetime import datetime
 
-import pytest
 import pymongo
-
+import pytest
 from cluster import Cluster
 from data_integrity_check import get_indexes
+
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
@@ -84,11 +83,11 @@ def test_pcsm_status_finalization_section_PCSM_T95(start_cluster, src_cluster, d
         assert "reason" in entry, f"Missing 'reason' in entry: {entry}"
 
     dst_failed_index_names = {idx["name"] for idx in get_indexes(dst_cluster.connection, "testdb.index_failed")}
-    for name in {"index_unique", "index_compound", "index_sparse", "index_single", "index_ttl"}:
+    for name in ("index_unique", "index_compound", "index_sparse", "index_single", "index_ttl"):
         assert name not in dst_failed_index_names, f"{name} should not exist on destination after failed finalization"
 
     dst_passed_index_names = {idx["name"] for idx in get_indexes(dst_cluster.connection, "testdb.index_passed")}
-    for name in {"index_item_id", "index_value"}:
+    for name in ("index_item_id", "index_value"):
         assert name in dst_passed_index_names, f"{name} should exist on destination after successful finalization"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
@@ -179,7 +178,7 @@ def test_pcsm_status_finalization_retry_clears_failed_indexes_PCSM_T97(start_clu
         f"unsuccessfulIndexes should be cleared after successful second finalize: {second_finalization.get('unsuccessfulIndexes')}"
 
     dst_index_names = {idx["name"] for idx in get_indexes(dst_cluster.connection, "testdb.items")}
-    for name in {"index_item_id", "index_value"}:
+    for name in ("index_item_id", "index_value"):
         assert name in dst_index_names, f"{name} should exist on destination after successful second finalize"
 
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
