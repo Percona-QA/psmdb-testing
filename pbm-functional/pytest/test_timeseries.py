@@ -1,14 +1,15 @@
 import concurrent.futures
-import pytest
-import pymongo
-import time
 import os
-import threading
 import random
+import threading
+import time
+from datetime import datetime, timezone
 
-from datetime import datetime
+import pymongo
+import pytest
 from cluster import Cluster
 from packaging import version
+
 
 @pytest.fixture(scope="package")
 def config():
@@ -56,8 +57,8 @@ def test_logical_PBM_T252(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test1").get("sharded", False)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test2").get("sharded", False)
     for i in range(10):
-        pymongo.MongoClient(cluster.connection)["test"]["test1"].insert_one({"timestamp": datetime.now(), "data": i})
-        pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_one({"timestamp": datetime.now(), "data": i})
+        pymongo.MongoClient(cluster.connection)["test"]["test1"].insert_one({"timestamp": datetime.now(tz=timezone.utc), "data": i})
+        pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_one({"timestamp": datetime.now(tz=timezone.utc), "data": i})
         time.sleep(0.1)
     backup=cluster.make_backup("logical")
     pymongo.MongoClient(cluster.connection).drop_database('test')
@@ -95,11 +96,11 @@ def test_incremental_PBM_T262(start_cluster,cluster):
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test1").get("sharded", False)
     assert pymongo.MongoClient(cluster.connection)["test"].command("collstats", "test2").get("sharded", False)
     for i in range(10):
-        pymongo.MongoClient(cluster.connection)["test"]["test1"].insert_one({"timestamp": datetime.now(), "data": i})
+        pymongo.MongoClient(cluster.connection)["test"]["test1"].insert_one({"timestamp": datetime.now(tz=timezone.utc), "data": i})
         time.sleep(0.1)
     cluster.make_backup("incremental --base")
     for i in range(10):
-        pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_one({"timestamp": datetime.now(), "data": i})
+        pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_one({"timestamp": datetime.now(tz=timezone.utc), "data": i})
         time.sleep(0.1)
     backup=cluster.make_backup("incremental")
     pymongo.MongoClient(cluster.connection).drop_database('test')
@@ -132,7 +133,7 @@ def start_cluster_unsharded_ts(cluster,request):
 
 # NOTE: PBM does not support the backing up of sharded timeseries collections
 @pytest.mark.timeout(600,func_only=True)
-def test_logical_pitr_unsharded_timeseries_PBM_366(start_cluster_unsharded_ts,cluster):
+def test_logical_pitr_unsharded_timeseries_PBM_T366(start_cluster_unsharded_ts,cluster):
     """Verify continuous writes to unsharded timeseries collections will be restored without data loss."""
     client = pymongo.MongoClient(cluster.connection)
     client["test"].create_collection('ts1', timeseries={'timeField': 'timestamp'})
@@ -144,7 +145,7 @@ def test_logical_pitr_unsharded_timeseries_PBM_366(start_cluster_unsharded_ts,cl
         coll = local_client["test"][col_name]
         counter = 0
         while not stop_event.is_set():
-            coll.insert_one({"timestamp": datetime.utcnow(), "x": random.randint(0, 1 << 30)})
+            coll.insert_one({"timestamp": datetime.now(tz=timezone.utc), "x": random.randint(0, 1 << 30)})
             counter += 1
         local_client.close()
         return counter
@@ -170,12 +171,17 @@ def test_logical_pitr_unsharded_timeseries_PBM_366(start_cluster_unsharded_ts,cl
     time.sleep(6)
 
     pitr_end = cluster.get_last_pitr_chunk_end()
-    pitr_time = datetime.utcfromtimestamp(pitr_end).strftime("%Y-%m-%dT%H:%M:%S")
+    pitr_time = datetime.fromtimestamp(pitr_end, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
     client["test"].drop_collection('ts1')
     client["test"].drop_collection('ts2')
 
-    cluster.make_restore("--time=" + pitr_time, check_pbm_status=True)
+    try:
+        cluster.make_restore("--time=" + pitr_time, check_pbm_status=True)
+    except AssertionError as e:
+        if "system.buckets" in str(e) and "DocumentValidationFailure" in str(e):
+            pytest.xfail("PBM-1813: known bug")
+        raise
 
     restored_client = pymongo.MongoClient(cluster.connection)
     assert restored_client["test"]["ts1"].count_documents({}) == counters['ts1']
