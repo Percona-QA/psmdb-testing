@@ -298,7 +298,6 @@ def test_pcsm_status_finalization_inconsistent_index_hidden_from_mongos_PCSM_T10
     """
     Verify an inconsistent index is still reported when it happens to be missing from the specific shard mongos routes listIndexes to
     """
-    test_clone_collections_num_PML_T70
     src = pymongo.MongoClient(src_cluster.connection)
 
     db_name = "testdb"
