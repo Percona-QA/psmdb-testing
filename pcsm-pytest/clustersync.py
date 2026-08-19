@@ -2,11 +2,11 @@ import json
 import re
 import time
 
-import docker
 import pymongo
 from bson.timestamp import Timestamp
-
 from cluster import Cluster
+
+import docker
 
 # class Clustersync for creating/manipulating with single clustersync instance
 # name = the name of the container

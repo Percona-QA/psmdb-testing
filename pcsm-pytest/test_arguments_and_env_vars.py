@@ -3,11 +3,11 @@ import os
 
 import pymongo
 import pytest
-
 from cluster import Cluster
 from clustersync import Clustersync
 from conftest import get_cluster_config
 from data_generator import create_all_types_db
+
 
 @pytest.fixture(scope="module")
 def src_cluster():
