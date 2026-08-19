@@ -327,6 +327,23 @@ class Clustersync:
         except Exception as e:
             return f"Error fetching logs: {e}"
 
+    def wait_for_log(self, expected_log, timeout=10, interval=0.5, tail=None):
+        """
+        Poll the csync container's logs for expected_log to show up.
+
+        start()/status() return as soon as PCSM's HTTP endpoint replies, which
+        can happen before a given stage has finished writing its log lines
+        (e.g. clone config like "NumParallelCollections: 1" is logged a
+        moment later). A single immediate check of logs() races with that
+        and is flaky, so poll for a bit instead of asserting once.
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if expected_log in self.logs(tail=tail):
+                return True
+            time.sleep(interval)
+        return False
+
     def check_csync_errors(self):
         try:
             logs = self.container.logs().decode("utf-8")
