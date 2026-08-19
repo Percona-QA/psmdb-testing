@@ -1,9 +1,11 @@
-import docker
 import json
 import re
-import pymongo
 import time
+
+import docker
+import pymongo
 from bson.timestamp import Timestamp
+
 from cluster import Cluster
 
 # class Clustersync for creating/manipulating with single clustersync instance
@@ -65,8 +67,8 @@ class Clustersync:
                 result = self.container.exec_run("curl -s -m 2 http://localhost:2242/status -d '{}'")
                 if result.exit_code == 0:
                     return True
-            except Exception:
-                pass
+            except (docker.errors.APIError, docker.errors.NotFound) as e:
+                Cluster.log(f"HTTP server check failed, retrying: {e}")
             time.sleep(0.1)
         Cluster.log(f"HTTP server not ready after {timeout} seconds")
         return False
@@ -117,7 +119,7 @@ class Clustersync:
 
             Cluster.log("Failed to start synchronization between src and dst cluster")
             return False
-        except Exception as e:
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
@@ -137,7 +139,7 @@ class Clustersync:
             except json.JSONDecodeError:
                 return {"success": False, "error": "Invalid JSON response"}
 
-        except Exception as e:
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
             return {"success": False, "error": str(e)}
 
     def metrics(self, timeout=45):
@@ -160,7 +162,7 @@ class Clustersync:
                 except ValueError:
                     continue
             return {"success": True, "data": metrics_data}
-        except Exception as e:
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
             return {"success": False, "error": str(e)}
 
     def restart(self, timeout=60, reset=False):
@@ -176,7 +178,7 @@ class Clustersync:
                         result = src_client["percona_clustersync_mongodb"].heartbeats.delete_many({})
                         assert result.acknowledged, "Heartbeat deletion not acknowledged"
                         Cluster.log("Checkpoints and heartbeats deleted successfully")
-                    except Exception as e:
+                    except (pymongo.errors.PyMongoError, AssertionError) as e:
                         Cluster.log(f"Warning: Failed to reset PCSM state: {e}. Continuing with restart anyway.")
                 self.container.start()
                 log_stream = self.container.logs(stream=True, follow=True, since=start_log_time)
@@ -218,7 +220,7 @@ class Clustersync:
                             else:
                                 Cluster.log("Warning: checkpoint state is not 'paused' after 10 seconds")
                                 return False
-                        except Exception as e:
+                        except pymongo.errors.PyMongoError as e:
                             Cluster.log(f"Failed to verify checkpoint state: {e}")
                             return False
                         return True
@@ -230,7 +232,7 @@ class Clustersync:
                     Cluster.log("Received invalid JSON response.")
             Cluster.log("Failed to pause sync")
             return False
-        except Exception as e:
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
@@ -257,7 +259,7 @@ class Clustersync:
                     Cluster.log("Received invalid JSON response.")
             Cluster.log("Failed to resume sync")
             return False
-        except Exception as e:
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
@@ -305,7 +307,7 @@ class Clustersync:
                     return False
             Cluster.log("Failed to finalize sync between src and dst cluster")
             return False
-        except Exception as e:
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
@@ -324,7 +326,7 @@ class Clustersync:
 
         except docker.errors.NotFound:
             return "Error: csync container not found."
-        except Exception as e:
+        except (docker.errors.APIError, UnicodeDecodeError) as e:
             return f"Error fetching logs: {e}"
 
     def wait_for_log(self, expected_log, timeout=10, interval=0.5, tail=None):
@@ -350,7 +352,7 @@ class Clustersync:
 
         except docker.errors.NotFound:
             return False, ["Error: csync container not found."]
-        except Exception as e:
+        except (docker.errors.APIError, UnicodeDecodeError) as e:
             return False, [f"Error fetching logs: {e}"]
 
         ansi_escape_re = re.compile(r"\x1b\[[0-9;]*m")
@@ -372,7 +374,7 @@ class Clustersync:
 
         try:
             src_client = pymongo.MongoClient(self.src_internal or self.src)
-        except Exception as e:
+        except pymongo.errors.PyMongoError as e:
             self.last_error = f"Failed to connect to source MongoDB URI: {e}"
             Cluster.log(f"Error: {self.last_error}")
             return False
@@ -386,7 +388,7 @@ class Clustersync:
                     self.last_error = "Failed to get clusterTime from source"
                     Cluster.log(f"Error: {self.last_error}")
                     return False
-            except Exception as e:
+            except pymongo.errors.PyMongoError as e:
                 self.last_error = f"Failed to retrieve clusterTime from source: {e}"
                 Cluster.log(f"Error: {self.last_error}")
                 return False
@@ -418,7 +420,7 @@ class Clustersync:
                     Cluster.log(f"Error: {self.last_error}")
                     return False
                 last_ts = Timestamp(int(parts[0]), int(parts[1]))
-            except Exception as e:
+            except (ValueError, TypeError) as e:
                 self.last_error = f"Failed to parse lastReplicatedOpTime: {e}"
                 Cluster.log(f"Error: {self.last_error}")
                 return False
@@ -492,7 +494,7 @@ class Clustersync:
 
         try:
             dst_client = pymongo.MongoClient(self.dst)
-        except Exception as e:
+        except pymongo.errors.PyMongoError as e:
             Cluster.log(f"Error: Failed to connect to dst MongoDB URI: {e}")
             return False
         start_time = time.time()
@@ -507,7 +509,7 @@ class Clustersync:
                     if doc:
                         return True
                 time.sleep(1)
-            except Exception as e:
+            except pymongo.errors.PyMongoError as e:
                 Cluster.log(f"Error: Failed while checking for checkpoints collection: {e}")
                 return False
         Cluster.log(f"Error: Timeout exceeded {timeout} seconds while waiting for checkpoints collection to appear")
