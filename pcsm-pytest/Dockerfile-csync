@@ -5,7 +5,7 @@ ARG PCSM_BRANCH=main
 ARG MAKE_TARGET=build
 COPY --from=easyrsa /etc/x509/ca.crt /etc/pykmip/ca.crt
 COPY --from=easyrsa /etc/x509/ /etc/x509/
-RUN apt update && apt -y install curl socat git && \
+RUN apt update && apt -y install curl socat git jq && \
     git clone https://github.com/percona/percona-clustersync-mongodb.git && cd percona-clustersync-mongodb && \
     git checkout $PCSM_BRANCH && \
     n=0; until [ "$n" -ge 5 ]; do \
