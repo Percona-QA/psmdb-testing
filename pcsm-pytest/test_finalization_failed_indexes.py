@@ -270,7 +270,7 @@ def test_pcsm_status_finalization_persists_after_restart_PCSM_T101(start_cluster
 
 def _hide_index_from_mongos(src_cluster, mongos_client, db_name, coll_name, index_name, index_keys):
     """
-    Drop `index_name` on exactly the shard mongos routes listIndexes to.
+    Drop `index_name` on the shard mongos routes listIndexes to.
     """
     shard_clients = src_cluster.get_shard_primary_clients()
     try:
@@ -294,11 +294,11 @@ def _hide_index_from_mongos(src_cluster, mongos_client, db_name, coll_name, inde
 
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.timeout(3600, func_only=True)
-def test_pcsm_status_finalization_inconsistent_index_hidden_from_mongos_PCSM_320(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_status_finalization_inconsistent_index_hidden_from_mongos_PCSM_T106(start_cluster, src_cluster, dst_cluster, csync):
     """
-    Verify an inconsistent index is still reported when it happens to be missing from the specific shard mongos routes listIndexes to.
+    Verify an inconsistent index is still reported when it happens to be missing from the specific shard mongos routes listIndexes to
     """
-
+    test_clone_collections_num_PML_T70
     src = pymongo.MongoClient(src_cluster.connection)
 
     db_name = "testdb"
