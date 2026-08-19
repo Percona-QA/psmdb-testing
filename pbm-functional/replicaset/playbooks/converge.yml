@@ -24,7 +24,7 @@
         update_cache: yes
       when: ansible_distribution == "Debian" and ansible_distribution_major_version >= "11"      
 
-    - name: Install deps    
+    - name: Install deps
       yum:
         name: "{{ packages }}"
       vars:
@@ -308,12 +308,6 @@
       copy:
         src: /tmp/pbm-agent-storage-gcp.conf
         dest: /etc/pbm-agent-storage-gcp.conf
-        mode: '0666'
-
-    - name: add GCP storage for pbm-agent
-      copy:
-        src: /tmp/pbm-agent-storage-gcp-hmac.conf
-        dest: /etc/pbm-agent-storage-gcp-hmac.conf
         mode: '0666'
 
     - name: add AZURE storage for pbm-agent

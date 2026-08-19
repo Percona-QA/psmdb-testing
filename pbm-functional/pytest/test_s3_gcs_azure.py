@@ -1,15 +1,15 @@
-import os
-from datetime import timedelta
-
-import docker
-import pymongo
-import pytest
 import base64
+import os
 import threading
 import time
-from bson.binary import Binary
+from datetime import timedelta
 
+import pymongo
+import pytest
+from bson.binary import Binary
 from cluster import Cluster
+
+import docker
 
 
 @pytest.fixture(scope="package")
@@ -43,7 +43,6 @@ def start_cluster(cluster,request):
         pytest.param("aws", "sse-kms"),
         pytest.param("aws", "sse-s3"),
         pytest.param("gcs_native", "no-encryption"),
-        pytest.param("gcs_hmac", "no-encryption"),
         pytest.param("azure", "no-encryption"),
         pytest.param("oci", "no-encryption")])
 @pytest.mark.parametrize("backup_type", ["logical", "physical", "incremental"])
@@ -60,7 +59,6 @@ def test_general_PBM_T300(start_cluster, cluster, provider, encryption_type, bac
     cloud_configs = {
         "aws": "/etc/aws.conf",
         "gcs_native": "/etc/gcs.conf",
-        "gcs_hmac": "/etc/gcs_hmac.conf",
         "azure": "/etc/azure.conf",
         "oci": "/etc/oci.conf"}
     cluster.setup_pbm(file=cloud_configs[provider])
@@ -91,7 +89,7 @@ def test_general_PBM_T300(start_cluster, cluster, provider, encryption_type, bac
     if encryption_type == "no-encryption":
         if provider == "aws":
             result = cluster.exec_pbm_cli(f'config --set storage.s3.prefix={unique_prefix} --out json -w')
-        elif provider in ["gcs_native", "gcs_hmac"]:
+        elif provider == "gcs_native":
             result = cluster.exec_pbm_cli(f'config --set storage.gcs.prefix={unique_prefix} --out json -w')
         elif provider == "azure":
             result = cluster.exec_pbm_cli(f'config --set storage.azure.prefix={unique_prefix} --out json -w')
@@ -164,7 +162,7 @@ def test_general_PBM_T300(start_cluster, cluster, provider, encryption_type, bac
     Cluster.log("Finished successfully")
 
 @pytest.mark.jenkins
-@pytest.mark.parametrize("provider", ["aws", "gcs_native", "gcs_hmac", "azure", "oci"])
+@pytest.mark.parametrize("provider", ["aws", "gcs_native", "azure", "oci"])
 @pytest.mark.parametrize("backup_type", ["logical", "physical"])
 @pytest.mark.parametrize("loss_percent", ["50", "100"])
 @pytest.mark.timeout(1600, func_only=True)
@@ -172,7 +170,6 @@ def test_general_PBM_T304(start_cluster, cluster, provider, backup_type, loss_pe
     cloud_configs = {
         "aws": "/etc/aws.conf",
         "gcs_native": "/etc/gcs.conf",
-        "gcs_hmac": "/etc/gcs_hmac.conf",
         "azure": "/etc/azure.conf",
         "oci": "/etc/oci.conf"}
     cluster.setup_pbm(file=cloud_configs[provider])
@@ -182,7 +179,7 @@ def test_general_PBM_T304(start_cluster, cluster, provider, backup_type, loss_pe
     unique_prefix = f"no-encryption/{major_ver}-{backup_type}"
     if provider == "aws":
         result = cluster.exec_pbm_cli(f'config --set storage.s3.prefix={unique_prefix} --out json -w')
-    elif provider in ["gcs_native", "gcs_hmac"]:
+    elif provider == "gcs_native":
         result = cluster.exec_pbm_cli(f'config --set storage.gcs.prefix={unique_prefix} --out json -w')
     elif provider == "azure":
         result = cluster.exec_pbm_cli(f'config --set storage.azure.prefix={unique_prefix} --out json -w')
@@ -205,7 +202,7 @@ def test_general_PBM_T304(start_cluster, cluster, provider, backup_type, loss_pe
         try:
             backup_result["backup"] = cluster.make_backup(f"{backup_type}")
             Cluster.log("Backup completed successfully")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             backup_result["error"] = e
             Cluster.log(f"Backup failed: {e}")
         finally:
@@ -219,7 +216,7 @@ def test_general_PBM_T304(start_cluster, cluster, provider, backup_type, loss_pe
                 cluster.network_interruption(60, stop_event=network_interrupt_stop, loss_percent=loss_percent)
             else:
                 cluster.network_interruption(360, stop_event=network_interrupt_stop, loss_percent=loss_percent)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             Cluster.log(f"Network interruption failed: {e}")
     try:
         backup_thread = threading.Thread(target=run_backup)
