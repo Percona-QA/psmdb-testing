@@ -71,10 +71,7 @@ def check_internal_reachability(csync, host, port=2242, timeout=10, interval=0.5
 
 def start_via_host(host, port=2242, ready_timeout=30, timeout=5):
     """
-    Starts replication over HTTP from outside the container, for cases where
-    csync's own helper methods can't be used because they hardcode 'localhost'
-    internally (e.g. --listen-host is bound to a single non-loopback hostname,
-    so 'localhost' is no longer reachable even from inside the container).
+    Starts replication over HTTP from outside the container
     """
     start_time = time.time()
     while time.time() - start_time < ready_timeout:
