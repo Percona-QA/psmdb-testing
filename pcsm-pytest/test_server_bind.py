@@ -1,12 +1,12 @@
 import time
 
-import docker
 import pytest
 import requests
-
 from cluster import Cluster
 from clustersync import Clustersync
 from conftest import get_cluster_config
+
+import docker
 
 
 @pytest.fixture(scope="module")
@@ -49,11 +49,7 @@ CONTROL_ENDPOINTS = [
 
 def check_external_reachability(host, path="/status", method="GET", port=2242, timeout=3):
     """
-    Checks if a given endpoint is reachable externally. Doesn't care about
-    the HTTP status code returned (e.g. /pause may reply with an error if
-    replication isn't in a pausable state) - only whether the request
-    reached the server at all, since all of --listen-host's endpoints
-    share the same underlying listener.
+    Checks if a given endpoint is reachable externally.
     """
     try:
         requests.request(method, f"http://{host}:{port}{path}", timeout=timeout)
@@ -113,9 +109,8 @@ def test_listen_host_PCSM_345(csync, src_cluster, dst_cluster, csync_env, listen
         assert exit_code is not None, "csync did not exit"
         assert exit_code != 0, "csync exited 0"
         expected_log = "listen-host must not include a port"
-        logs = csync.logs(tail=None)
-        assert expected_log in logs, \
-            f"Expected '{expected_log}' does not appear in logs for csync_env={csync_env}, listen_host_args={listen_host_args!r}: {logs}"
+        assert csync.wait_for_log(expected_log), \
+            f"Expected '{expected_log}' does not appear in logs for csync_env={csync_env}, listen_host_args={listen_host_args!r}: {csync.logs(tail=None)}"
         return
 
     assert csync.start(), "Failed to start csync service"
