@@ -59,9 +59,9 @@ def check_external_reachability(host, path="/status", method="GET", port=2242, t
     ({}, "--listen-host=0.0.0.0"),
     ({"PCSM_LISTEN_HOST": "localhost"}, "--listen-host=0.0.0.0"),
 ], indirect=["csync_env"])
-def test_listen_host_PCSM_345(csync, src_cluster, dst_cluster, csync_env, listen_host_args):
+def test_listen_host_PLM_T107(csync, src_cluster, dst_cluster, csync_env, listen_host_args):
     """
-    Test PCSM web-server options --listen-host and PCSM_LISTEN_HOST
+    Verify PCSM server-bind options --listen-host and PCSM_LISTEN_HOST
     """
     if listen_host_args:
         csync.create(extra_args=f"--reset-state {listen_host_args}", env_vars=csync_env)
