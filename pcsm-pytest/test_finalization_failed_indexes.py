@@ -1,9 +1,10 @@
 from datetime import datetime
 
-import pytest
 import pymongo
-
+import pytest
+from cluster import Cluster
 from data_integrity_check import get_indexes
+
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
@@ -82,11 +83,11 @@ def test_pcsm_status_finalization_section_PCSM_T95(start_cluster, src_cluster, d
         assert "reason" in entry, f"Missing 'reason' in entry: {entry}"
 
     dst_failed_index_names = {idx["name"] for idx in get_indexes(dst_cluster.connection, "testdb.index_failed")}
-    for name in {"index_unique", "index_compound", "index_sparse", "index_single", "index_ttl"}:
+    for name in ("index_unique", "index_compound", "index_sparse", "index_single", "index_ttl"):
         assert name not in dst_failed_index_names, f"{name} should not exist on destination after failed finalization"
 
     dst_passed_index_names = {idx["name"] for idx in get_indexes(dst_cluster.connection, "testdb.index_passed")}
-    for name in {"index_item_id", "index_value"}:
+    for name in ("index_item_id", "index_value"):
         assert name in dst_passed_index_names, f"{name} should exist on destination after successful finalization"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
@@ -177,7 +178,7 @@ def test_pcsm_status_finalization_retry_clears_failed_indexes_PCSM_T97(start_clu
         f"unsuccessfulIndexes should be cleared after successful second finalize: {second_finalization.get('unsuccessfulIndexes')}"
 
     dst_index_names = {idx["name"] for idx in get_indexes(dst_cluster.connection, "testdb.items")}
-    for name in {"index_item_id", "index_value"}:
+    for name in ("index_item_id", "index_value"):
         assert name in dst_index_names, f"{name} should exist on destination after successful second finalize"
 
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
@@ -266,3 +267,77 @@ def test_pcsm_status_finalization_persists_after_restart_PCSM_T101(start_cluster
     assert finalization.get("completed") is True, "finalization.completed not restored after restart"
     assert "unsuccessfulIndexes" not in finalization, \
         f"unsuccessfulIndexes should not be present after restart: {finalization}"
+
+def _hide_index_from_mongos(src_cluster, mongos_client, db_name, coll_name, index_name, index_keys):
+    """
+    Drop `index_name` on the shard mongos routes listIndexes to.
+    """
+    shard_clients = src_cluster.get_shard_primary_clients()
+    try:
+        for shard_id, client in shard_clients:
+            client[db_name][coll_name].drop_index(index_name)
+
+            mongos_indexes = mongos_client[db_name][coll_name].index_information()
+            if index_name not in mongos_indexes:
+                Cluster.log(f"_hide_index_from_mongos: routing target found: {shard_id}")
+                return shard_id
+
+            Cluster.log(f"_hide_index_from_mongos: {shard_id} was not the routing target, recreating and trying next shard")
+            client[db_name][coll_name].create_index(index_keys, name=index_name)
+
+        raise AssertionError(
+            f"could not find a shard whose drop hides {index_name} from mongos"
+        )
+    finally:
+        for _, client in shard_clients:
+            client.close()
+
+@pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
+@pytest.mark.timeout(3600, func_only=True)
+def test_pcsm_status_finalization_inconsistent_index_hidden_from_mongos_PCSM_T106(start_cluster, src_cluster, dst_cluster, csync):
+    """
+    Verify an inconsistent index is still reported when it happens to be missing from the specific shard mongos routes listIndexes to
+    """
+    src = pymongo.MongoClient(src_cluster.connection)
+
+    db_name = "testdb"
+    coll_name = "items"
+    index_name = "index_value"
+    ns = f"{db_name}.{coll_name}"
+
+    src.admin.command({"enableSharding": db_name})
+    src.admin.command("shardCollection", f"{db_name}.{coll_name}", key={"item_id": 1})
+    src[db_name][coll_name].insert_many([{"item_id": i, "value": i} for i in range(1000)])
+
+    shard_0 = src_cluster.config["shards"][0]["_id"]
+    shard_1 = src_cluster.config["shards"][1]["_id"]
+    src.admin.command("split", f"{db_name}.{coll_name}", middle={"item_id": 500})
+    src.admin.command("moveChunk", f"{db_name}.{coll_name}", find={"item_id": 0}, to=shard_0)
+    src.admin.command("moveChunk", f"{db_name}.{coll_name}", find={"item_id": 500}, to=shard_1)
+
+    src[db_name][coll_name].create_index("value", name=index_name)
+
+    _hide_index_from_mongos(src_cluster, src, db_name, coll_name, index_name, "value")
+
+    src.close()
+
+    assert csync.start(), "Failed to start csync"
+    assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
+    assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+    assert csync.finalize(), "Failed to finalize csync"
+
+    status = csync.status()
+    assert status["success"], "Failed to retrieve csync status"
+    finalization = status["data"].get("finalization", {})
+    unsuccessful = finalization.get("unsuccessfulIndexes", [])
+    assert len(unsuccessful) == 1, f"Expected 1 inconsistent index, got: {unsuccessful}"
+
+    entry = unsuccessful[0]
+    assert entry["indexName"] == index_name, f"Unexpected index name: {entry['indexName']}"
+    assert entry["namespace"] == ns, f"Unexpected namespace: {entry['namespace']}"
+    assert entry["type"] == "inconsistent", f"Expected type 'inconsistent', got '{entry['type']}'"
+    assert entry["reason"] == "index is missing on one or more source shards", f"Unexpected reason: {entry['reason']}"
+
+    dst_index_names = {idx["name"] for idx in get_indexes(dst_cluster.connection, ns)}
+    assert index_name not in dst_index_names, f"{index_name} appears in destination"
+    assert "_id_" in dst_index_names, f"_id_ should exist on destination: {dst_index_names}"

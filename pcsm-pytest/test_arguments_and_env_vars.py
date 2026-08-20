@@ -1,13 +1,13 @@
 import json
 import os
 
-import pytest
 import pymongo
-
+import pytest
 from cluster import Cluster
 from clustersync import Clustersync
 from conftest import get_cluster_config
 from data_generator import create_all_types_db
+
 
 @pytest.fixture(scope="module")
 def src_cluster():
@@ -52,7 +52,7 @@ def cleanup_test_databases(connection):
     for db_name in ["test_db", "init_test_db"]:
         try:
             client.drop_database(db_name)
-        except Exception:
+        except pymongo.errors.PyMongoError:
             pass
 
 def create_test_collection(connection):
@@ -109,11 +109,12 @@ def test_clone_collections_num_PML_T70(csync, src_cluster, dst_cluster):
             assert check_command_output(expected_cmd_return, csync), \
                 f"Expected command output '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=None), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log), \
+                    f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
         finally:
             csync.create(extra_args="--reset-state")
     if failures:
@@ -144,11 +145,11 @@ def test_clone_num_read_workers_PML_T71(csync, src_cluster, dst_cluster):
             assert check_command_output(expected_cmd_return, csync), \
                 f"Expected command output '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=None), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log), f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
         finally:
             csync.create(extra_args="--reset-state")
     if failures:
@@ -178,11 +179,11 @@ def test_clone_num_insert_workers_PML_T72(csync, src_cluster, dst_cluster):
             assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
             assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=None), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log), f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
         finally:
             csync.create(extra_args="--reset-state")
     if failures:
@@ -210,11 +211,11 @@ def test_clone_segment_size_PML_T73(csync, src_cluster, dst_cluster):
             assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
             assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=None), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log), f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
         finally:
             csync.create(extra_args="--reset-state")
     if failures:
@@ -242,11 +243,11 @@ def test_clone_read_batch_size_PML_T74(csync, src_cluster, dst_cluster):
             assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
             assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=None), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log), f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
         finally:
             csync.create(extra_args="--reset-state")
     if failures:
@@ -276,9 +277,9 @@ def test_use_collection_bulk_write_PML_T77(csync, src_cluster, dst_cluster):
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
             assert check_command_output(expected_cmd_return, csync), f"Expected '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=None), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log), f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
         finally:
             csync.create(extra_args="--reset-state")
     if failures:
@@ -299,7 +300,7 @@ def test_pcsm_log_level_env_var_PML_T75(csync, src_cluster, dst_cluster, csync_e
     Test the PCSM_LOG_LEVEL environment variable
     """
     try:
-        _, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db")
+        _, _operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db")
         assert csync.start(mode=mode)
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
 
@@ -360,7 +361,7 @@ def test_pcsm_use_collection_bulk_write_env_var_PML_T78(src_cluster, dst_cluster
     create_test_collection(src_cluster.connection)
     assert csync.start()
     assert csync.wait_for_repl_stage(), "Failed to start replication stage"
-    assert expected_log in csync.logs(tail=None), f"Expected '{expected_log}' does not appear in logs"
+    assert csync.wait_for_log(expected_log), f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
 
 @pytest.mark.timeout(300, func_only=True)
 def test_repl_num_workers_PML_T83(csync, src_cluster, dst_cluster):
@@ -385,9 +386,9 @@ def test_repl_num_workers_PML_T83(csync, src_cluster, dst_cluster):
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log, tail=3000), f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=3000)}"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
         finally:
             csync.create(extra_args="--reset-state")
     if failures:
@@ -429,9 +430,9 @@ def test_repl_change_stream_batch_size_PML_T85(csync, src_cluster, dst_cluster):
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log, tail=3000), f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=3000)}"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
         finally:
             csync.create(extra_args="--reset-state")
     if failures:
@@ -459,9 +460,9 @@ def test_repl_event_queue_size_PML_T86(csync, src_cluster, dst_cluster):
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log, tail=3000), f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=3000)}"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
         finally:
             csync.create(extra_args="--reset-state")
     if failures:
@@ -489,9 +490,9 @@ def test_repl_worker_queue_size_PML_T87(csync, src_cluster, dst_cluster):
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log, tail=3000), f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=3000)}"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
         finally:
             csync.create(extra_args="--reset-state")
     if failures:
@@ -519,9 +520,9 @@ def test_repl_bulk_ops_size_PML_T88(csync, src_cluster, dst_cluster):
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log, tail=3000), f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=3000)}"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
         finally:
             csync.create(extra_args="--reset-state")
     if failures:
@@ -550,9 +551,9 @@ def test_repl_worker_flush_interval_PML_T89(csync, src_cluster, dst_cluster):
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log, tail=3000), f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=3000)}"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
         finally:
             csync.create(extra_args="--reset-state")
     if failures:
@@ -580,9 +581,9 @@ def test_repl_worker_bulk_queue_size_PML_T90(csync, src_cluster, dst_cluster):
             if should_pass:
                 assert csync.wait_for_repl_stage(), "Failed to start replication stage"
             if expected_log and should_pass:
-                assert expected_log in csync.logs(tail=3000), f"Expected '{expected_log}' does not appear in logs"
+                assert csync.wait_for_log(expected_log, tail=3000), f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=3000)}"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} {raw_args}: {str(e)}")
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
         finally:
             csync.create(extra_args="--reset-state")
     if failures:
@@ -616,7 +617,7 @@ def test_client_compressors_PML_T91(csync, src_cluster, dst_cluster):
             for expected_log in expected_logs:
                 assert expected_log in logs, f"Expected '{expected_log}' does not appear in logs"
         except AssertionError as e:
-            failures.append(f"Case {idx+1} [{extra_args or 'defaults'}]: {str(e)}")
+            failures.append(f"Case {idx+1} [{extra_args or 'defaults'}]: {e!s}")
     if failures:
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
 
