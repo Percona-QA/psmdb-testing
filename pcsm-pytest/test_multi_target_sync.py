@@ -1,10 +1,9 @@
-import time
 
-import pytest
-import pymongo
 import threading
 from datetime import datetime, timezone
 
+import pymongo
+import pytest
 from cluster import Cluster
 from clustersync import Clustersync
 from data_integrity_check import compare_data
@@ -100,7 +99,7 @@ def start_clusters(src_cluster, dst_cluster_a, dst_cluster_b, csync_a, csync_b, 
         def create_cluster(cluster_name, cluster):
             try:
                 cluster.create()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 exceptions[cluster_name] = e
         create_threads = [
             threading.Thread(target=create_cluster, args=("src", src_cluster)),

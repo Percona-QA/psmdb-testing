@@ -1,12 +1,14 @@
-import testinfra
-import time
-import docker
-import pymongo
-import json
-import copy
 import concurrent.futures
-import psutil
+import copy
+import json
+import time
 from datetime import datetime
+
+import psutil
+import pymongo
+import testinfra
+
+import docker
 
 # the structure of the cluster could be one of
 # 1. { _id: "rsname", members: [{host: "host", hidden: boolean, priority: int, arbiterOnly: bool}, ...]} for replicaset
@@ -97,7 +99,7 @@ class Cluster:
                     hosts.append(member['host'])
                 else:
                     assert False
-                if 'arbiterOnly' in member and member['arbiterOnly']:
+                if member.get('arbiterOnly'):
                     if arbiter:
                         assert False
                     arbiter = True
@@ -232,9 +234,9 @@ class Cluster:
             num_containers += sum(len(shard['members']) for shard in config['shards'])
             num_containers += 1  # for mongos
         mem_per_container = mem_pool // num_containers
-        calculated_limit = int((mem_per_container // concurrent_clusters))
+        calculated_limit = int(mem_per_container // concurrent_clusters)
         # set minimum memory limit for systems with low resources
-        min_mem_limit = int(3 * 1024 * 1024 * 1024)
+        min_mem_limit = 3 * 1024 * 1024 * 1024
         return max(calculated_limit, min_mem_limit)
 
     # configures and starts all docker-containers, creates necessary layout, setups athorization
@@ -322,7 +324,7 @@ class Cluster:
                 result = client.admin.command("addShard", shard)
                 Cluster.log("Adding shard \"" + shard + "\":\n" + str(result))
         duration = time.time() - start
-        Cluster.log("The cluster was prepared in {} seconds".format(duration))
+        Cluster.log(f"The cluster was prepared in {duration} seconds")
 
     # destroys cluster
     def destroy(self,**kwargs):
@@ -331,7 +333,7 @@ class Cluster:
             try:
                 container = docker.from_env().containers.get(host)
                 container.remove(v=True,force=True)
-                Cluster.log("Container {} was removed".format(host))
+                Cluster.log(f"Container {host} was removed")
             except docker.errors.NotFound:
                 pass
 
@@ -354,7 +356,7 @@ class Cluster:
                     container_names.append(member["host"])
                     break
             else:
-                raise Exception("Primary node is not found in RS")
+                raise RuntimeError("Primary node is not found in RS")
         elif self.layout == "sharded":
             container_names.append(self.config["mongos"])
         for container_name in container_names:
@@ -392,16 +394,15 @@ class Cluster:
             try:
                 hello = client.admin.command("hello")
                 return hello.get("isWritablePrimary", False)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 Cluster.log(f"Error checking primary status: {e}")
                 return False
         def try_stepdown(uri, name):
             try:
                 with pymongo.MongoClient(uri, serverSelectionTimeoutMS=5000) as client:
-                    if is_primary(client):
-                        if step_down(client, name, stepdown_timeout):
-                            Cluster.log(f"Primary in {name} is stepped down")
-            except Exception as e:
+                    if is_primary(client) and step_down(client, name, stepdown_timeout):
+                        Cluster.log(f"Primary in {name} is stepped down")
+            except Exception as e:  # noqa: BLE001
                 Cluster.log(f"Error handling client for {name}: {e}")
         if self.layout == "replicaset":
             try_stepdown(self.connection, "Replica set")
@@ -432,7 +433,7 @@ class Cluster:
             try:
                 network.disconnect(c, force=True)
                 Cluster.log(f"Disconnected {c.name}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 Cluster.log(f"Failed to disconnect {c.name}: {e}")
         time.sleep(delay)
         Cluster.log("Reconnecting containers to the network...")
@@ -440,7 +441,7 @@ class Cluster:
             try:
                 network.connect(c)
                 Cluster.log(f"Reconnected {c.name}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 Cluster.log(f"Failed to reconnect {c.name}: {e}")
 
     # stops mongos container
@@ -560,4 +561,4 @@ class Cluster:
 
     @staticmethod
     def log(*args, **kwargs):
-        print("[%s]" % (datetime.now()).strftime('%Y-%m-%dT%H:%M:%S'),*args, **kwargs)
+        print(f"[{datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}]", *args, **kwargs)  # noqa: DTZ005 - intentional local time for human-readable test logs
