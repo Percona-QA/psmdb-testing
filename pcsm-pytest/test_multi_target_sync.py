@@ -28,8 +28,7 @@ def _make_sharded_config(mongos, cfg_rs, cfg_host, shard_rs_a, shard_host_a, sha
 
 def _topology_configs(topology):
     """
-    Config sets for a 1-source/2-target topology, keyed by "src"/"dst_a"/"dst_b".
-    Hostnames/rs ids are unique across all three clusters within a topology.
+    Config sets for a 1-source/2-target topology, keyed by "src"/"dst_a"/"dst_b"
     """
     if topology == "replicaset":
         return {
@@ -91,10 +90,6 @@ def start_clusters(src_cluster, dst_cluster_a, dst_cluster_b, csync_a, csync_b, 
         dst_cluster_b.destroy()
         csync_a.destroy()
         csync_b.destroy()
-        # Thread.join() doesn't re-raise exceptions from the thread's target,
-        # so a failed cluster.create() would otherwise be silently ignored and
-        # the fixture would proceed to start csync against a half-built
-        # topology - capture and re-raise instead
         exceptions = {}
         def create_cluster(cluster_name, cluster):
             try:
@@ -151,7 +146,7 @@ def _create_indexes(connection, db_name):
     coll = client[db_name][COLL]
     coll.create_index([("value", 1)])                                  # single-field
     coll.create_index([("value", 1), ("uid", -1)])                     # compound
-    coll.create_index([("uid", 1)], unique=True)                       # unique
+    coll.create_index([("uid", 1)], unique=True)                  # unique
     coll.create_index([("tag", "text")])                               # text
     coll.create_index([("_id", "hashed")])                             # hashed
     coll.create_index([("created_at", 1)], expireAfterSeconds=86400)   # TTL
@@ -159,8 +154,7 @@ def _create_indexes(connection, db_name):
 
 def _create_indexes_live(connection, db_name):
     """
-    Create indexes while the sync is already running, exercising the DDL
-    replication path (change stream) instead of the initial-clone path
+    Create indexes while the sync is already running
     """
     client = pymongo.MongoClient(connection)
     coll = client[db_name][COLL]
