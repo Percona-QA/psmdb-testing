@@ -57,17 +57,20 @@ def topology_configs(request):
 @pytest.fixture(scope="function")
 def src_cluster(topology_configs):
     config = topology_configs["src"]
-    return Cluster(config, mongod_extra_args=_mongod_extra_args(config), mongo_image="mongodb-src/local")
+    return Cluster(config, mongod_extra_args=_mongod_extra_args(config), mongo_image="mongodb-src/local",
+                   concurrent_clusters=3)
 
 @pytest.fixture(scope="function")
 def dst_cluster_a(topology_configs):
     config = topology_configs["dst_a"]
-    return Cluster(config, mongod_extra_args=_mongod_extra_args(config), mongo_image="mongodb-dst/local")
+    return Cluster(config, mongod_extra_args=_mongod_extra_args(config), mongo_image="mongodb-dst/local",
+                   concurrent_clusters=3)
 
 @pytest.fixture(scope="function")
 def dst_cluster_b(topology_configs):
     config = topology_configs["dst_b"]
-    return Cluster(config, mongod_extra_args=_mongod_extra_args(config), mongo_image="mongodb-dst/local")
+    return Cluster(config, mongod_extra_args=_mongod_extra_args(config), mongo_image="mongodb-dst/local",
+                   concurrent_clusters=3)
 
 @pytest.fixture(scope="function")
 def csync_a(src_cluster, dst_cluster_a, request):
@@ -89,15 +92,27 @@ def start_clusters(src_cluster, dst_cluster_a, dst_cluster_b, csync_a, csync_b, 
         dst_cluster_b.destroy()
         csync_a.destroy()
         csync_b.destroy()
+        # Thread.join() doesn't re-raise exceptions from the thread's target,
+        # so a failed cluster.create() would otherwise be silently ignored and
+        # the fixture would proceed to start csync against a half-built
+        # topology - capture and re-raise instead
+        exceptions = {}
+        def create_cluster(cluster_name, cluster):
+            try:
+                cluster.create()
+            except Exception as e:
+                exceptions[cluster_name] = e
         create_threads = [
-            threading.Thread(target=src_cluster.create),
-            threading.Thread(target=dst_cluster_a.create),
-            threading.Thread(target=dst_cluster_b.create),
+            threading.Thread(target=create_cluster, args=("src", src_cluster)),
+            threading.Thread(target=create_cluster, args=("dst_a", dst_cluster_a)),
+            threading.Thread(target=create_cluster, args=("dst_b", dst_cluster_b)),
         ]
         for thread in create_threads:
             thread.start()
         for thread in create_threads:
             thread.join()
+        if exceptions:
+            raise RuntimeError(f"Cluster creation failed: {exceptions}")
         csync_a.create()
         csync_b.create()
         yield True
@@ -167,6 +182,9 @@ def _assert_only_own_subset_synced(src_cluster, dst_cluster, own_db, other_db, l
     assert not unexpected, f"{label}: unexpected mismatch in its own subset ({own_db}): {unexpected}"
     assert any(name.startswith(other_db) for name, _ in mismatches), \
         f"{label}: {other_db} was not reported as missing by compare_data: {mismatches}"
+    with pymongo.MongoClient(dst_cluster.connection) as client:
+        assert other_db not in client.list_database_names(), \
+            f"{label}: unexpected database {other_db} present on destination"
 
 @pytest.mark.parametrize("topology_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(3600, func_only=True)

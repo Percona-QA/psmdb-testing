@@ -25,6 +25,7 @@ class Cluster:
         self.mongos_extra_args = kwargs.get('mongos_extra_args', "")
         self.mongod_datadir = kwargs.get('mongod_datadir', "/data/db")
         self.mongo_image = kwargs.get('mongo_image', "mongodb/local")
+        self.concurrent_clusters = kwargs.get('concurrent_clusters', 2)
 
     @property
     def config(self):
@@ -221,7 +222,7 @@ class Cluster:
             return self.config['mongos']
 
     @staticmethod
-    def calculate_mem_limits(config, layout):
+    def calculate_mem_limits(config, layout, concurrent_clusters=2):
         total_mem = psutil.virtual_memory().total
         mem_pool = int(total_mem * 0.5)
         if layout == "replicaset":
@@ -231,8 +232,7 @@ class Cluster:
             num_containers += sum(len(shard['members']) for shard in config['shards'])
             num_containers += 1  # for mongos
         mem_per_container = mem_pool // num_containers
-        # account for 2 clusters running in parallel
-        calculated_limit = int((mem_per_container // 2))
+        calculated_limit = int((mem_per_container // concurrent_clusters))
         # set minimum memory limit for systems with low resources
         min_mem_limit = int(3 * 1024 * 1024 * 1024)
         return max(calculated_limit, min_mem_limit)
@@ -242,7 +242,7 @@ class Cluster:
         start = time.time()
         Cluster.log("Creating cluster: " + str(self.config))
 
-        mem_limit = self.calculate_mem_limits(self.config, self.layout)
+        mem_limit = self.calculate_mem_limits(self.config, self.layout, self.concurrent_clusters)
         Cluster.log(f"Memory limit per container: {mem_limit // (1024 ** 2)} MB")
 
         if self.layout == "replicaset":
