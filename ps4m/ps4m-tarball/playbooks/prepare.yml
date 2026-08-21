@@ -111,7 +111,13 @@
       - libffi-devel
       - xz-devel
       - unzip
-    when: ansible_os_family == "RedHat" and ansible_distribution_major_version >= "8"
+    when: ansible_os_family == "RedHat" and ansible_distribution != "Amazon" and ansible_distribution_major_version | int >= 8
+
+  - name: install python3-packaging for Ansible pip module on RHEL10+
+    yum:
+      name: python3-packaging
+      state: present
+    when: ansible_os_family == "RedHat" and ansible_distribution != "Amazon" and ansible_distribution_major_version | int >= 10
 
   - name: install necessary rpm packages for AL
     yum:
@@ -164,6 +170,7 @@
       - python3
       - python3-pip
       - python3-dev
+      - python3-packaging
       - unzip
     when: ansible_os_family == "Debian"
 
