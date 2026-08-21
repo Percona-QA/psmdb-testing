@@ -170,7 +170,7 @@ def _assert_only_own_subset_synced(src_cluster, dst_cluster, own_db, other_db, l
 
 @pytest.mark.parametrize("topology_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(3600, func_only=True)
-def test_multi_target_disjoint_sync_PCSM_330(start_clusters, src_cluster, dst_cluster_a, dst_cluster_b, csync_a, csync_b):
+def test_multi_target_disjoint_sync_PLM_T108(start_clusters, src_cluster, dst_cluster_a, dst_cluster_b, csync_a, csync_b):
     """
     Verify sync from one source to two different destinations
     """
