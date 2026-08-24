@@ -418,7 +418,6 @@
           ExecStart=/usr/local/bin/pcsm \
             --source mongodb://{{ private_source_ip }}:27017 \
             --target mongodb://{{ private_destination_ip }}:27017 \
-            --include-namespaces db_0.* \
             --port 2242 \
             --log-level debug \
             --log-json
@@ -449,7 +448,6 @@
           ExecStart=/usr/local/bin/pcsm \
             --source mongodb://{{ private_source_ip }}:27017 \
             --target mongodb://{{ private_destination_b_ip }}:27017 \
-            --include-namespaces db_1.* \
             --port 2243 \
             --log-level debug \
             --log-json

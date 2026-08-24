@@ -72,9 +72,14 @@ def confirm_db_absent(node, dbname):
     except Exception:
         return False
 
-def pcsm_start(port=2242):
+def pcsm_start(port=2242, include_namespaces=None):
     try:
-        output = json.loads(pcsm.check_output(f"curl -s -X POST http://localhost:{port}/start -d '{{}}'"))
+        # includeNamespaces is a start-request body field, not a daemon CLI flag -
+        # the pcsm binary run by the systemd unit only accepts --source/--target/
+        # --port etc.; per-target namespace scoping has to happen here, at start time.
+        body = {"includeNamespaces": include_namespaces} if include_namespaces else {}
+        output = json.loads(pcsm.check_output(
+            f"curl -s -X POST http://localhost:{port}/start -d '{json.dumps(body)}'"))
 
         if output:
             try:
@@ -191,7 +196,8 @@ def test_prepare_data():
 def test_data_transfer_PCSM_330():
     log_step("Starting PCSM syncs for both targets...")
     for name, target in TARGETS.items():
-        assert pcsm_start(port=target["port"]), f"Failed to start sync for target {name}"
+        assert pcsm_start(port=target["port"], include_namespaces=[f"{target['dbname']}.*"]), \
+            f"Failed to start sync for target {name}"
 
     log_step("Waiting for replication to complete on both targets...")
     for name, target in TARGETS.items():
