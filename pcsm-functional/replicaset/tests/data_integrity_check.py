@@ -1,8 +1,16 @@
 import json
 
-def compare_data_rs(db1, db2, port, full_comparison):
+def compare_data_rs(db1, db2, port, full_comparison, only_db=None):
+    """Compare data between two replica sets.
 
-    all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port)
+    only_db: when set, restrict the comparison to a single database name.
+    Needed for multi-target setups (PCSM-330) where db1 (source) legitimately
+    holds more databases than db2 (one of several disjoint targets) -
+    without this, every db not routed to that particular target would be
+    reported as a false "missing in dst DB" mismatch.
+    """
+
+    all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port, only_db)
     mismatch_summary = []
 
     if mismatch_dbs_count:
@@ -11,8 +19,8 @@ def compare_data_rs(db1, db2, port, full_comparison):
         mismatch_summary.extend(mismatch_coll_count)
 
     if full_comparison:
-        all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port)
-        mismatch_metadata = compare_collection_metadata(db1, db2, port)
+        all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1, db2, port, only_db)
+        mismatch_metadata = compare_collection_metadata(db1, db2, port, only_db)
         mismatch_indexes = compare_collection_indexes(db1, db2, all_coll_hash, port)
 
         if mismatch_dbs_hash:
@@ -31,7 +39,7 @@ def compare_data_rs(db1, db2, port, full_comparison):
     print(f"Mismatched databases, collections, or indexes found: {mismatch_summary}")
     return False, mismatch_summary
 
-def compare_database_hashes(db1, db2, port):
+def compare_database_hashes(db1, db2, port, only_db=None):
     query = (
         'db.getMongo().getDBNames().forEach(function(dbName) { '
         '    if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(dbName)) { '
@@ -73,6 +81,12 @@ def compare_database_hashes(db1, db2, port):
     db1_hashes, db1_collections = get_db_hashes_and_collections(db1)
     db2_hashes, db2_collections = get_db_hashes_and_collections(db2)
 
+    if only_db:
+        db1_hashes = {k: v for k, v in db1_hashes.items() if k == only_db}
+        db2_hashes = {k: v for k, v in db2_hashes.items() if k == only_db}
+        db1_collections = {k: v for k, v in db1_collections.items() if k.startswith(f"{only_db}.")}
+        db2_collections = {k: v for k, v in db2_collections.items() if k.startswith(f"{only_db}.")}
+
     print("Comparing database hashes...")
     mismatched_dbs = []
     for db_name in db1_hashes:
@@ -105,7 +119,7 @@ def compare_database_hashes(db1, db2, port):
 
     return db1_collections.keys() | db2_collections.keys(), mismatched_dbs, mismatched_collections
 
-def compare_entries_number(db1, db2, port):
+def compare_entries_number(db1, db2, port, only_db=None):
     query = (
         'db.getMongo().getDBNames().forEach(function(i) { '
         '  if (!["admin", "local", "config", "percona_clustersync_mongodb"].includes(i)) { '
@@ -144,6 +158,10 @@ def compare_entries_number(db1, db2, port):
     db1_counts = get_collection_counts(db1)
     db2_counts = get_collection_counts(db2)
 
+    if only_db:
+        db1_counts = {k: v for k, v in db1_counts.items() if k.startswith(f"{only_db}.")}
+        db2_counts = {k: v for k, v in db2_counts.items() if k.startswith(f"{only_db}.")}
+
     print("Comparing collection record counts...")
     mismatched_dbs = []
     mismatched_collections = []
@@ -163,12 +181,16 @@ def compare_entries_number(db1, db2, port):
 
     return db1_counts.keys() | db2_counts.keys(), mismatched_dbs, mismatched_collections
 
-def compare_collection_metadata(db1, db2, port):
+def compare_collection_metadata(db1, db2, port, only_db=None):
     print("Comparing collection metadata...")
     mismatched_metadata = []
 
     db1_metadata = get_all_collection_metadata(db1, port)
     db2_metadata = get_all_collection_metadata(db2, port)
+
+    if only_db:
+        db1_metadata = [coll for coll in db1_metadata if coll['db'] == only_db]
+        db2_metadata = [coll for coll in db2_metadata if coll['db'] == only_db]
 
     db1_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db1_metadata}
     db2_collections = {f"{coll['db']}.{coll['name']}": coll for coll in db2_metadata}

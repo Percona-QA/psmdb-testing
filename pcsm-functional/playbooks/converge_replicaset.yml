@@ -87,6 +87,11 @@
         name: pcsm-destination
       when: inventory_hostname == "replicaset-pcsm-destination"
 
+    - name: Change Destination B node hostname
+      hostname:
+        name: pcsm-destination-b
+      when: inventory_hostname == "replicaset-pcsm-destination-b"
+
     - name: Change PCSM node hostname
       hostname:
         name: pcsm-clustersync
@@ -244,6 +249,10 @@
       set_fact:
         private_destination_ip: "{{ hostvars['replicaset-pcsm-destination']['ansible_default_ipv4']['address'] }}"
 
+    - name: Get private destination B ip address
+      set_fact:
+        private_destination_b_ip: "{{ hostvars['replicaset-pcsm-destination-b']['ansible_default_ipv4']['address'] }}"
+
     - name: Get private pcsm ip address
       set_fact:
         private_clustersync_ip: "{{ hostvars['replicaset-pcsm-clustersync']['ansible_default_ipv4']['address'] }}"
@@ -258,17 +267,23 @@
         var: private_destination_ip
       when: private_destination_ip is defined and inventory_hostname == "replicaset-pcsm-destination"
 
+    - name: Show destination B IP (Debug)
+      debug:
+        var: private_destination_b_ip
+      when: private_destination_b_ip is defined and inventory_hostname == "replicaset-pcsm-destination-b"
+
     - name: Show Clustersync IP (Debug)
       debug:
         var: private_clustersync_ip
       when: private_clustersync_ip is defined and inventory_hostname == "replicaset-pcsm-clustersync"
 
-    - name: Add source and destination to /etc/hosts in pcsm
+    - name: Add source and destinations to /etc/hosts in pcsm
       blockinfile:
         path: /etc/hosts
         block: |
           {{ private_source_ip }}    source
-          {{ private_clustersync_ip }}    destination
+          {{ private_destination_ip }}    destination
+          {{ private_destination_b_ip }}    destination-b
         create: false
         unsafe_writes: true
       when: inventory_hostname == "replicaset-pcsm-clustersync"
@@ -371,17 +386,27 @@
         validate: no
       when: inventory_hostname == "replicaset-pcsm-destination"
 
+    - name: Create a replicaset rs for Destination B
+      community.mongodb.mongodb_replicaset:
+        replica_set: rs
+        login_host: "{{ private_destination_b_ip }}"
+        members:
+          - host: "{{ private_destination_b_ip }}:27017"
+            priority: 1
+        validate: no
+      when: inventory_hostname == "replicaset-pcsm-destination-b"
+
     - name: Reload systemd
       systemd:
         daemon_reload: yes
       when: inventory_hostname in groups['psmdb']
 
-    - name: Create PCSM system unit file with optional environment variables
+    - name: Create PCSM system unit file for target A (db_0) with optional environment variables
       copy:
-        dest: /etc/systemd/system/pcsm.service
+        dest: /etc/systemd/system/pcsm-a.service
         content: |
           [Unit]
-          Description=Percona Clustersync Service
+          Description=Percona Clustersync Service (target A)
           After=network.target
 
           [Service]
@@ -393,6 +418,8 @@
           ExecStart=/usr/local/bin/pcsm \
             --source mongodb://{{ private_source_ip }}:27017 \
             --target mongodb://{{ private_destination_ip }}:27017 \
+            --include-namespaces db_0.* \
+            --port 2242 \
             --log-level debug \
             --log-json
           Restart=on-failure
@@ -405,11 +432,45 @@
         mode: '0644'
       when: inventory_hostname == "replicaset-pcsm-clustersync"
 
-    - name: Reload systemd and start pcsm service
+    - name: Create PCSM system unit file for target B (db_1) with optional environment variables
+      copy:
+        dest: /etc/systemd/system/pcsm-b.service
+        content: |
+          [Unit]
+          Description=Percona Clustersync Service (target B)
+          After=network.target
+
+          [Service]
+          {% if env_vars_parsed %}
+          {% for item in env_vars_parsed | dict2items %}
+          Environment="{{ item.key }}={{ item.value }}"
+          {% endfor %}
+          {% endif %}
+          ExecStart=/usr/local/bin/pcsm \
+            --source mongodb://{{ private_source_ip }}:27017 \
+            --target mongodb://{{ private_destination_b_ip }}:27017 \
+            --include-namespaces db_1.* \
+            --port 2243 \
+            --log-level debug \
+            --log-json
+          Restart=on-failure
+          User=root
+
+          [Install]
+          WantedBy=multi-user.target
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname == "replicaset-pcsm-clustersync"
+
+    - name: Reload systemd and start pcsm services
       service:
         daemon_reload: yes
-        name: pcsm.service
+        name: "{{ item }}"
         state: started
+      loop:
+        - pcsm-a.service
+        - pcsm-b.service
       when: inventory_hostname == "replicaset-pcsm-clustersync"
 
     - name: Download runc binary

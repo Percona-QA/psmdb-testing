@@ -11,6 +11,9 @@ source = testinfra.utils.ansible_runner.AnsibleRunner(
 destination = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('replicaset-pcsm-destination')
 
+destination_b = testinfra.utils.ansible_runner.AnsibleRunner(
+    os.environ['MOLECULE_INVENTORY_FILE']).get_host('replicaset-pcsm-destination-b')
+
 pcsm = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_host('replicaset-pcsm-clustersync')
 
@@ -21,8 +24,20 @@ doc_template = os.getenv("DOC_TEMPLATE", default = 'random')
 FULL_DATA_COMPARE = os.getenv("FULL_DATA_COMPARE", default="false").lower() == "true"
 TIMEOUT = int(os.getenv("TIMEOUT",default = 3600))
 
-def load_data(node):
-    env_vars = f"COLLECTIONS={collections} DATASIZE={datasize} DISTRIBUTE={distribute} DOC_TEMPLATE={doc_template}"
+# PCSM-330: two independent syncs run off the same source, each carrying a
+# different database to its own target. TARGETS maps each PCSM instance
+# (its own HTTP API port and systemd unit) to the db it owns and the
+# destination host it lands on.
+TARGETS = {
+    "a": {"port": 2242, "dbname": "db_0", "destination": destination},
+    "b": {"port": 2243, "dbname": "db_1", "destination": destination_b},
+}
+
+def load_data(node, dbname):
+    env_vars = (
+        f"COLLECTIONS={collections} DATASIZE={datasize} DISTRIBUTE={distribute} "
+        f"DOC_TEMPLATE={doc_template} DBNAME={dbname}"
+    )
     node.run_test(f"{env_vars} python3 /tmp/load_data.py")
 
 def obtain_pcsm_address(node):
@@ -47,58 +62,68 @@ def confirm_collection_size(node, datasize, dbname="test_db"):
     except Exception:
         return False
 
-def pcsm_start():
+def confirm_db_absent(node, dbname):
+    cmd = (
+        f'mongosh "mongodb://127.0.0.1:27017/" --quiet --eval '
+        f'\'print(db.getSiblingDB("{dbname}").getCollectionNames().length);\'')
     try:
-        output = json.loads(pcsm.check_output("curl -s -X POST http://localhost:2242/start -d '{}'"))
+        result = node.check_output(cmd)
+        return int(result.strip()) == 0
+    except Exception:
+        return False
+
+def pcsm_start(port=2242):
+    try:
+        output = json.loads(pcsm.check_output(f"curl -s -X POST http://localhost:{port}/start -d '{{}}'"))
 
         if output:
             try:
                 if output.get("ok") is True or output.get("error") == "already running":
-                    print("Sync started successfully")
+                    print(f"Sync started successfully on port {port}")
                     return True
 
                 elif output.get("ok") is False and output.get("error") != "already running":
                     error_msg = output.get("error", "Unknown error")
-                    print(f"Failed to start sync between src and dst cluster: {error_msg}")
+                    print(f"Failed to start sync between src and dst cluster on port {port}: {error_msg}")
                     return False
 
             except json.JSONDecodeError:
                 print("Received invalid JSON response.")
 
-        print("Failed to start sync between src and dst cluster")
+        print(f"Failed to start sync between src and dst cluster on port {port}")
         return False
     except Exception as e:
         print(f"Unexpected error: {e}")
         return False
 
-def pcsm_finalize():
+def pcsm_finalize(port=2242):
     try:
-        output = json.loads(pcsm.check_output("curl -s -X POST http://localhost:2242/finalize -d '{}'"))
+        output = json.loads(pcsm.check_output(f"curl -s -X POST http://localhost:{port}/finalize -d '{{}}'"))
 
         if output:
             try:
                 print(output)
                 if output.get("ok") is True:
-                    print("Sync finalized successfully")
+                    print(f"Sync finalized successfully on port {port}")
                     return True
 
                 elif output.get("ok") is False:
                     error_msg = output.get("error", "Unknown error")
-                    print(f"Failed to finalize sync between src and dst cluster: {error_msg}")
+                    print(f"Failed to finalize sync between src and dst cluster on port {port}: {error_msg}")
                     return False
 
             except json.JSONDecodeError:
                 print("Received invalid JSON response.")
 
-        print("Failed to finalize sync between src and dst cluster")
+        print(f"Failed to finalize sync between src and dst cluster on port {port}")
         return False
     except Exception as e:
         print(f"Unexpected error: {e}")
         return False
 
-def status(timeout=45):
+def status(port=2242, timeout=45):
     try:
-        output = pcsm.check_output(f"curl -m {timeout} -s -X GET http://localhost:2242/status -d '{{}}'")
+        output = pcsm.check_output(f"curl -m {timeout} -s -X GET http://localhost:{port}/status -d '{{}}'")
         json_output = json.loads(output)
         print(output)
 
@@ -114,14 +139,14 @@ def status(timeout=45):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-def wait_for_repl_stage(timeout=3600, interval=1, stable_duration=2):
+def wait_for_repl_stage(port=2242, timeout=3600, interval=1, stable_duration=2):
     start_time = time.time()
 
     while time.time() - start_time < timeout:
-        status_response = status()
+        status_response = status(port=port)
 
         if not status_response["success"]:
-            print(f"Error: Impossible to retrieve status, {status_response['error']}")
+            print(f"Error: Impossible to retrieve status on port {port}, {status_response['error']}")
             return False
 
         initial_sync = status_response["data"].get("initialSync")
@@ -134,9 +159,9 @@ def wait_for_repl_stage(timeout=3600, interval=1, stable_duration=2):
         if initial_sync["completed"]:
             stable_start = time.time()
             while time.time() - stable_start < stable_duration:
-                stable_status = status()
+                stable_status = status(port=port)
                 if not stable_status["success"]:
-                    print(f"Error: Impossible to retrieve status, {stable_status['error']}")
+                    print(f"Error: Impossible to retrieve status on port {port}, {stable_status['error']}")
                     return False
 
                 state = stable_status["data"].get("state")
@@ -144,39 +169,60 @@ def wait_for_repl_stage(timeout=3600, interval=1, stable_duration=2):
                     return False
                 time.sleep(0.5)
             elapsed = round(time.time() - start_time, 2)
-            print(f"Initial sync completed in {elapsed} seconds")
+            print(f"Initial sync completed on port {port} in {elapsed} seconds")
             return True
         time.sleep(interval)
 
-    print("Error: Timeout reached while waiting for initial sync to complete")
+    print(f"Error: Timeout reached while waiting for initial sync to complete on port {port}")
     return False
 
 def log_step(message):
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}")
 
 def test_prepare_data():
-    log_step("Starting data generation on source node...")
-    load_data(source)
-    log_step("Data generation completed. Validating size...")
-    assert confirm_collection_size(source, datasize), "Source data size validation failed"
-    log_step("Source data size confirmed")
+    for name, target in TARGETS.items():
+        log_step(f"Starting data generation on source node for target {name} (db {target['dbname']})...")
+        load_data(source, target["dbname"])
+        log_step(f"Data generation completed. Validating size for {target['dbname']}...")
+        assert confirm_collection_size(source, datasize, dbname=target["dbname"]), \
+            f"Source data size validation failed for {target['dbname']}"
+        log_step(f"Source data size confirmed for {target['dbname']}")
 
-def test_data_transfer_PML_T40():
-    log_step("Starting PCSM sync...")
-    assert pcsm_start()
-    log_step("Waiting for replication to complete...")
-    assert wait_for_repl_stage(TIMEOUT)
-    log_step("Finalizing sync...")
-    assert pcsm_finalize(), "PCSM sync did not complete successfully"
-    log_step("PCSM sync completed successfully")
+def test_data_transfer_PCSM_330():
+    log_step("Starting PCSM syncs for both targets...")
+    for name, target in TARGETS.items():
+        assert pcsm_start(port=target["port"]), f"Failed to start sync for target {name}"
 
-def test_datasize_PML_T41():
-    log_step("Validating destination data size...")
-    assert confirm_collection_size(destination, datasize), "Destination data size validation failed"
-    log_step("Destination data size confirmed")
+    log_step("Waiting for replication to complete on both targets...")
+    for name, target in TARGETS.items():
+        assert wait_for_repl_stage(port=target["port"], timeout=TIMEOUT), \
+            f"Replication did not complete for target {name}"
 
-def test_data_integrity_PML_T42():
-    log_step("Comparing data integrity between source and destination...")
-    result, _ = compare_data_rs(source, destination, "27017", FULL_DATA_COMPARE)
-    assert result is True, "Data mismatch after synchronization"
-    log_step("Data integrity check completed successfully")
+    log_step("Finalizing sync on both targets...")
+    for name, target in TARGETS.items():
+        assert pcsm_finalize(port=target["port"]), f"PCSM sync did not complete successfully for target {name}"
+    log_step("Both PCSM syncs completed successfully")
+
+def test_datasize_PCSM_330():
+    for name, target in TARGETS.items():
+        log_step(f"Validating destination data size for target {name} (db {target['dbname']})...")
+        assert confirm_collection_size(target["destination"], datasize, dbname=target["dbname"]), \
+            f"Destination data size validation failed for target {name}"
+        log_step(f"Destination data size confirmed for target {name}")
+
+def test_disjoint_targets_PCSM_330():
+    log_step("Confirming each target only received its own database...")
+    other = {"a": "b", "b": "a"}
+    for name, target in TARGETS.items():
+        other_dbname = TARGETS[other[name]]["dbname"]
+        assert confirm_db_absent(target["destination"], other_dbname), \
+            f"Target {name} unexpectedly contains {other_dbname}, which belongs to the other sync"
+        log_step(f"Confirmed {other_dbname} is absent on target {name}")
+
+def test_data_integrity_PCSM_330():
+    for name, target in TARGETS.items():
+        log_step(f"Comparing data integrity between source and target {name} (db {target['dbname']})...")
+        result, _ = compare_data_rs(source, target["destination"], "27017", FULL_DATA_COMPARE,
+                                     only_db=target["dbname"])
+        assert result is True, f"Data mismatch after synchronization for target {name}"
+        log_step(f"Data integrity check completed successfully for target {name}")
