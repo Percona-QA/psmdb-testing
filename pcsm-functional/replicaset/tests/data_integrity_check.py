@@ -281,8 +281,17 @@ def get_indexes(db, collection_name, port):
     db_name, coll_name = collection_name.split(".", 1)
 
     query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
-    response = db.check_output(
-        "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --json --eval '" + query + "' --quiet")
+    try:
+        # compare_collection_indexes calls this for the union of collections seen on
+        # either side. In a multi-target setup (PCSM-330) that union legitimately
+        # includes namespaces that only exist on one side (e.g. the other sync's db),
+        # so a NamespaceNotFound/non-zero exit here means "zero indexes", not a real
+        # failure - mirrors pcsm-pytest's get_indexes() catching PyMongoError.
+        response = db.check_output(
+            "mongo mongodb://127.0.0.1:" + port + "/test?replicaSet=rs --json --eval '" + query + "' --quiet")
+    except AssertionError:
+        print(f"Warning: Could not retrieve indexes for {collection_name} (namespace likely missing). Skipping...")
+        return []
 
     try:
         indexes = json.loads(response)
