@@ -547,13 +547,21 @@
           - pmm-client
       when: ansible_os_family == "Debian" and inventory_hostname in groups['psmdb']
 
+    - name: Wait for PMM Server to accept connections
+      ansible.builtin.wait_for:
+        host: "{{ private_clustersync_ip }}"
+        port: 443
+        delay: 5
+        timeout: 300
+      when: inventory_hostname in groups['psmdb']
+
     - name: Configure PMM on source psmdb node
       shell: >
         pmm-admin config --server-insecure-tls --server-url=https://admin:admin@{{ private_clustersync_ip }}:443 --force
       register: pmm_config_result
       until: "pmm_config_result.rc == 0"
-      retries: 3
-      delay: 5
+      retries: 10
+      delay: 10
       when: inventory_hostname in groups['psmdb']
 
     - name: Check if pmmMonitor role exists
