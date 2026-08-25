@@ -4,6 +4,7 @@ import time
 import pymongo
 import pytest
 from data_integrity_check import compare_data
+from pymongo.errors import PyMongoError
 
 
 @pytest.mark.parametrize("cluster_configs", ["sharded_rs"], indirect=True)
@@ -105,7 +106,7 @@ def test_pcsm_skips_shard_ops_after_restart_PML_T111(start_cluster, src_cluster,
             try:
                 coll.insert_one({"_id": i, "region": f"r_{i % 3}"})
                 i += 1
-            except Exception:
+            except PyMongoError:
                 pass
             time.sleep(0.05)
         writer_client.close()
