@@ -5,7 +5,7 @@ from data_integrity_check import compare_data
 
 @pytest.mark.parametrize("cluster_configs", ["sharded_rs"], indirect=True)
 @pytest.mark.timeout(3600, func_only=True)
-def test_pcsm_clone_skips_shard_ops_PLM_T(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_clone_skips_shard_ops_PML_T109(start_cluster, src_cluster, dst_cluster, csync):
     """
     Verify sharded collection copies from a sharded cluster to a replicaset cluster
     """
@@ -39,9 +39,9 @@ def test_pcsm_clone_skips_shard_ops_PLM_T(start_cluster, src_cluster, dst_cluste
 
 @pytest.mark.parametrize("cluster_configs", ["sharded_rs"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_pcsm_skips_shard_ops_mid_replication_PLM_T(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_skips_shard_ops_mid_replication_PML_T110(start_cluster, src_cluster, dst_cluster, csync):
     """
-    Verify a collection that has been sharded mid-replication does copy to a replicaset cluster
+    Verify a collection that has been sharded mid-replication copies to a replicaset cluster
     """
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
