@@ -365,11 +365,9 @@ def test_pcsm_status_finalization_inconsistent_index_hidden_from_mongos_PCSM_T10
 
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_pcsm_status_finalization_inconsistent_index_fixed_before_finalize_PCSM_T98(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_status_finalization_inconsistent_index(start_cluster, src_cluster, dst_cluster, csync):
     """
-    Verify that when two indexes are inconsistent across shards and only one is fixed before
-    finalize, the fixed one is recreated silently while the other one is still reported
-    unsuccessful — fixing one index should not affect how the other is reported.
+    Verify that when two indexes are inconsistent across shards and only one is fixed before finalize
     """
     src = pymongo.MongoClient(src_cluster.connection)
 
@@ -383,8 +381,6 @@ def test_pcsm_status_finalization_inconsistent_index_fixed_before_finalize_PCSM_
     src.admin.command("moveChunk", "testdb.items", find={"item_id": 0}, to=shard_0)
     src.admin.command("moveChunk", "testdb.items", find={"item_id": 500}, to=shard_1)
 
-    # Create both indexes on only the first shard primary, bypassing mongos so neither
-    # propagates to the second shard — both start out inconsistent.
     shard_clients = src_cluster.get_shard_primary_clients()
     shard_clients[0][1]["testdb"]["items"].create_index("value", name="index_value")
     shard_clients[0][1]["testdb"]["items"].create_index("value2", name="index_value2")
@@ -395,7 +391,6 @@ def test_pcsm_status_finalization_inconsistent_index_fixed_before_finalize_PCSM_
     assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
 
-    # Fix only index_value2 on the second shard before finalize — index_value stays inconsistent.
     shard_clients = src_cluster.get_shard_primary_clients()
     shard_clients[1][1]["testdb"]["items"].create_index("value2", name="index_value2")
     for _, client in shard_clients:
@@ -464,7 +459,6 @@ def test_pcsm_status_finalization_incomplete_index_fixed_before_finalize(start_c
 
         assert csync.pause(), "Failed to pause csync"
 
-        # Fix the index
         src.admin.command({"configureFailPoint": "hangAfterInitializingIndexBuild", "mode": "off"})
         build_thread.join(timeout=60)
         assert not build_thread.is_alive(), "Index build did not finish after releasing the failpoint"
