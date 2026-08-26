@@ -29,7 +29,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: rhel9-arm-report.xml
 scenario:
   name: rhel9-arm
   converge_sequence:

@@ -31,7 +31,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: rocky10-arm-report.xml
 scenario:
   name: rocky10-arm
   converge_sequence:

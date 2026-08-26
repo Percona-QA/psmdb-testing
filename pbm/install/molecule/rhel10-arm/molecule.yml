@@ -31,7 +31,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: rhel10-arm-report.xml
 scenario:
   name: rhel10-arm
   converge_sequence:

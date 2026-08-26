@@ -28,7 +28,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: uxenial-report.xml
 scenario:
   name: ubuntu-xenial
   destroy_sequence:

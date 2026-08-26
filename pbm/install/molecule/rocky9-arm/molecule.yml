@@ -29,7 +29,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: rocky9-arm-report.xml
 scenario:
   name: rocky9-arm
   converge_sequence:
