@@ -28,7 +28,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: centos6-report.xml
 scenario:
   name: centos-6
   destroy_sequence:

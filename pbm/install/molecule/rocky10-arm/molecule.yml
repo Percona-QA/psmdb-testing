@@ -4,9 +4,9 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: rocky9-arm-${BUILD_NUMBER}-${JOB_NAME}
+  - name: rocky10-arm-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
-    image: "${MOLECULE_ROCKY9_ARM_AMI:-ami-0e1cdd57350503889}"
+    image: "${MOLECULE_ROCKY10_ARM_AMI:-ami-00a501c8f54af6536}"
     vpc_subnet_id: subnet-07f71e1a3117a32f9
     instance_type: c6g.large
     ssh_user: rocky
@@ -23,15 +23,17 @@ provisioner:
     prepare: ../../../../playbooks/prepare.yml
     cleanup: ../../playbooks/cleanup.yml
     converge: ../../playbooks/playbook.yml
+  env:
+    ANSIBLE_SSH_TRANSFER_METHOD: piped
 verifier:
   name: testinfra
   directory: ../../../tests/
   options:
     verbose: true
     s: true
-    junitxml: rocky9-arm-report.xml
+    junitxml: rocky10-arm-report.xml
 scenario:
-  name: rocky9-arm
+  name: rocky10-arm
   converge_sequence:
     - prepare
     - converge
