@@ -1,13 +1,15 @@
-import pytest
-import pymongo
-import time
-import threading
 import datetime
 import re
-from bson import ObjectId
+import threading
+import time
+from contextlib import suppress
 
+import pymongo
+import pytest
+from bson import ObjectId
 from data_generator import create_all_types_db, generate_dummy_data, stop_all_crud_operations
 from data_integrity_check import compare_data
+
 
 def add_data(connection_string, db_name, stop_event=None):
     def worker():
@@ -64,8 +66,6 @@ def test_csync_PML_T46(start_cluster, src_cluster, dst_cluster, csync):
         _, operation_threads_2 = create_all_types_db(src_cluster.connection, "clone_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
         assert csync.wait_for_repl_stage() is True, "Failed to start replication stage after DST primary restart"
         _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
-    except Exception:
-        raise
     finally:
         stop_all_crud_operations()
         all_threads = []
@@ -101,8 +101,6 @@ def test_csync_PML_T47(start_cluster, src_cluster, dst_cluster, csync, fail_node
         target.restart_primary(5, force=False)
         _, operation_threads_5 = create_all_types_db(src_cluster.connection, "repl_test_db3", start_crud=True, is_sharded=src_cluster.is_sharded)
         target.restart_primary(5, force=True)
-    except Exception:
-        raise
     finally:
         stop_all_crud_operations()
         all_threads = []
@@ -146,8 +144,6 @@ def test_csync_PML_T48(start_cluster, src_cluster, dst_cluster, csync, fail_node
         time.sleep(2)
         target.stepdown_primary()
         time.sleep(2)
-    except Exception as e:
-        raise e
     finally:
         stop_all_crud_operations()
         stop_event.set()
@@ -181,8 +177,6 @@ def test_csync_PML_T49(start_cluster, src_cluster, dst_cluster, csync, fail_node
         time.sleep(2)
         target.network_interruption(8)
         time.sleep(2)
-    except Exception as e:
-        raise e
     finally:
         stop_all_crud_operations()
         stop_event.set()
@@ -223,7 +217,48 @@ def test_csync_PML_T49(start_cluster, src_cluster, dst_cluster, csync, fail_node
          "target": "data cursor getMore"},
         id="data_cursor_getMore",
         marks=pytest.mark.xfail(strict=True,
-            reason="data cursor getMore isn't retried, PCSM-328"))])
+            reason="data cursor getMore isn't retried, reported in PCSM-371"),
+    ),
+    pytest.param(
+        {"fail_command": "aggregate", "skip": 0,
+         "target": "GetCollStats"},
+        id="collStats",
+    ),
+    pytest.param(
+        {"fail_command": "listIndexes", "skip": 0,
+         "target": "ListIndexes"},
+        id="listIndexes",
+    ),
+    pytest.param(
+        {"fail_command": "listCollections", "skip": 0,
+         "target": "ListCollectionSpecs",
+         "namespace": None},
+        id="listCollections",
+    ),
+    pytest.param(
+        {"fail_command": "listCollections", "skip": 1,
+         "target": "GetCollectionSpec",
+         "namespace": None},
+        id="getCollectionSpec",
+    ),
+    pytest.param(
+        {"fail_command": "listDatabases", "skip": 0,
+         "target": "ListDatabaseNames",
+         "namespace": None},
+        id="listDatabases",
+    ),
+    pytest.param(
+        {"fail_command": "insert", "skip": 0,
+         "target": "clone InsertMany",
+         "side": "dst"},
+        id="clone_insert",
+    ),
+    pytest.param(
+        {"fail_command": "find", "skip": 0,
+         "target": "CappedSegmenter Find",
+         "capped": True},
+        id="capped_find",
+    )])
 def test_csync_PML_T100(start_cluster, src_cluster, dst_cluster, csync, scenario):
     """
     Source-side transient-error matrix for clone
@@ -234,15 +269,28 @@ def test_csync_PML_T100(start_cluster, src_cluster, dst_cluster, csync, scenario
     namespace_db = "dummy"
     namespace_coll = "collection_0"
     namespace = f"{namespace_db}.{namespace_coll}"
-    generate_dummy_data(src_cluster.connection, namespace_db,
-                        num_collections=1, doc_size=25000, batch_size=10000)
     src = pymongo.MongoClient(src_cluster.connection)
+    dst = pymongo.MongoClient(dst_cluster.connection)
+    if scenario.get("capped"):
+        src.drop_database(namespace_db)
+        capped = src[namespace_db].create_collection(
+            namespace_coll, capped=True, size=100 * 1024 * 1024)
+        for batch_start in range(0, 5000, 1000):
+            capped.insert_many(
+                [{"_id": i, "v": "x" * 100} for i in range(batch_start, batch_start + 1000)])
+    else:
+        generate_dummy_data(src_cluster.connection, namespace_db,
+                            num_collections=1, doc_size=25000, batch_size=10000)
+    fp_ns = scenario.get("namespace", namespace)
     fp_data = {
         'failCommands': [scenario["fail_command"]],
-        'namespace': namespace,
         'errorCode': 50,}
+    if fp_ns is not None:
+        fp_data['namespace'] = fp_ns
     skip = scenario["skip"]
     fp_mode = {'skip': skip} if skip > 0 else {'times': 1}
+    if scenario.get("side") == "dst":
+        src = dst
     src.admin.command({'configureFailPoint': 'failCommand',
                        'mode': fp_mode, 'data': fp_data})
     cancel_event = threading.Event()
@@ -251,11 +299,13 @@ def test_csync_PML_T100(start_cluster, src_cluster, dst_cluster, csync, scenario
         # so failpoint disabling can be skipped if the test fails early
         if cancel_event.wait(delay):
             return
-        try:
+        with suppress(pymongo.errors.PyMongoError):
             src.admin.command({'configureFailPoint': 'failCommand', 'mode': 'off'})
-        except Exception:
-            pass
-    disable_thread = threading.Thread(target=_disable_failpoint_after, args=(15,), daemon=True)
+    # {skip: N} stays alwaysOn after N matches, so retries keep failing until
+    # we turn it off. PCSM's last retry is at 15s (5s+10s backoff); disable
+    # before that. {times: 1} expires on its own; 15s is only a safety net.
+    disable_delay = 8 if skip > 0 else 15
+    disable_thread = threading.Thread(target=_disable_failpoint_after, args=(disable_delay,), daemon=True)
     try:
         assert csync.start(), "Failed to start csync service"
         disable_thread.start()
@@ -266,11 +316,15 @@ def test_csync_PML_T100(start_cluster, src_cluster, dst_cluster, csync, scenario
         assert result is True, "Data mismatch after synchronization"
         csync_error, error_logs = csync.check_csync_errors()
         expected_errors = ["WRN Transient error"]
+        assert any(expected_error in line for line in error_logs for expected_error in expected_errors), (
+            f"Failpoint targeting {scenario['target']} did not produce a retried transient error")
         if not csync_error:
             unexpected = [line for line in error_logs if all(expected_error not in line for expected_error in expected_errors)]
             if unexpected:
                 pytest.fail("Unexpected error(s) in logs:\n" + "\n".join(unexpected))
     finally:
         cancel_event.set()
-        disable_thread.join()
-        src.admin.command({'configureFailPoint': 'failCommand', 'mode': 'off'})
+        if disable_thread.ident is not None:
+            disable_thread.join()
+        with suppress(pymongo.errors.PyMongoError):
+            src.admin.command({'configureFailPoint': 'failCommand', 'mode': 'off'})
