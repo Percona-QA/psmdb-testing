@@ -1,11 +1,11 @@
+import json
 import os
 import time
 
 import pytest
-import json
-
 import requests
 import testinfra.utils.ansible_runner
+
 pcsm = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
@@ -49,7 +49,7 @@ def pcsm_start(host, timeout=60, interval=2):
 
         print("Failed to start sync between src and dst cluster")
         return False
-    except Exception as e:
+    except (json.JSONDecodeError, OSError, AssertionError) as e:
         print(f"Unexpected error: {e}")
         return False
 
@@ -75,7 +75,7 @@ def pcsm_finalize(host):
 
         print("Failed to finalize sync between src and dst cluster")
         return False
-    except Exception as e:
+    except (json.JSONDecodeError, OSError, AssertionError) as e:
         print(f"Unexpected error: {e}")
         return False
 
@@ -94,7 +94,7 @@ def pcsm_status(host, timeout=45):
         except json.JSONDecodeError:
             return {"success": False, "error": "Invalid JSON response"}
 
-    except Exception as e:
+    except (json.JSONDecodeError, OSError, AssertionError) as e:
         return {"success": False, "error": str(e)}
 
 def pcsm_version(host):
@@ -270,6 +270,7 @@ def test_pcsm_sbom(host):
     assert result.rc == 0, f"SBOM cdx.json not found in package file list: {result.stdout}"
 
     sbom_path = f"/usr/share/doc/percona-clustersync-mongodb/percona-clustersync-mongodb-{version}.cdx.json"
+    """
     if is_rpm:
         distro_map = {"rhel": "redhat", "amzn": "amazon"}
         distro_name = distro_map.get(host.system_info.distribution.lower(), host.system_info.distribution)
@@ -277,6 +278,8 @@ def test_pcsm_sbom(host):
         trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --distro {distro} {sbom_path}")
     else:
         trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 {sbom_path}")
+    """
+    trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 {sbom_path}")
     assert trivy_result.rc == 0, f"trivy sbom scan found HIGH/CRITICAL vulnerabilities:\n{trivy_result.stdout}\n{trivy_result.stderr}"
 
     cdx_cmd = "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /usr/local/bin/cyclonedx"

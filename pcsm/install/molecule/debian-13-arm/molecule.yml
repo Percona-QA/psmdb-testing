@@ -4,13 +4,13 @@ dependency:
 driver:
   name: ec2
 platforms:
-  - name: rhel10-arm-${BUILD_NUMBER}-${JOB_NAME}
+  - name: debian13-arm-${BUILD_NUMBER}-${JOB_NAME}
     region: us-west-2
-    image: "${MOLECULE_RHEL10_ARM_AMI:-ami-0697a1da79ebefa36}"
+    image: "${MOLECULE_DEBIAN13_ARM_AMI:-ami-0aed0cf56d6c464bc}"
     vpc_subnet_id: subnet-07f71e1a3117a32f9
     instance_type: c6g.large
-    ssh_user: ec2-user
-    root_device_name: /dev/sda1
+    ssh_user: admin
+    root_device_name: /dev/xvda
     instance_tags:
       iit-billing-tag: jenkins-psmdb-worker
       job-name: ${JOB_NAME}
@@ -20,19 +20,17 @@ provisioner:
   playbooks:
     create: ../../../../playbooks/create.yml
     destroy: ../../../../playbooks/destroy.yml
+    converge: ../../playbooks/debian.yml
     prepare: ../../playbooks/prepare.yml
-    converge: ../../playbooks/redhat_podman.yml
-  env:
-    ANSIBLE_SSH_TRANSFER_METHOD: piped
 verifier:
   name: testinfra
   directory: ../../../tests/
   options:
     verbose: true
     s: true
-    junitxml: rhel10-arm-report.xml
+    junitxml: debian13-arm-report.xml
 scenario:
-  name: rhel10-arm
+  name: debian-13-arm
   destroy_sequence:
     - destroy
   test_sequence:
