@@ -717,7 +717,7 @@
 
     - name: Register PCSM target A (pcsm-a, port 2242) as an external service in PMM
       shell: >
-        pmm-admin add external --listen-port=2242 --metrics-path=/metrics pcsm-a
+        pmm-admin add external --listen-port=2242 --metrics-path=/metrics --service-name=pcsm-a
       register: pcsm_a_external_result
       until: "pcsm_a_external_result.rc == 0"
       retries: 3
@@ -728,7 +728,7 @@
 
     - name: Register PCSM target B (pcsm-b, port 2243) as an external service in PMM
       shell: >
-        pmm-admin add external --listen-port=2243 --metrics-path=/metrics pcsm-b
+        pmm-admin add external --listen-port=2243 --metrics-path=/metrics --service-name=pcsm-b
       register: pcsm_b_external_result
       until: "pcsm_b_external_result.rc == 0"
       retries: 3
