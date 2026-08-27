@@ -183,6 +183,26 @@ def test_pcsm_status_finalization_retry_clears_failed_indexes_PCSM_T97(start_clu
     for name in ("index_item_id", "index_value"):
         assert name in dst_index_names, f"{name} should exist on destination after successful second finalize"
 
+def _wait_for_index_build_hung(src, timeout=60):
+    """
+    Poll currentOp until a createIndexes command shows up idle
+    """
+    def build_is_hung():
+        ops = src.admin.command({
+            "aggregate": 1,
+            "pipeline": [
+                {"$currentOp": {"allUsers": True, "idleConnections": True}},
+                {"$match": {"command.createIndexes": {"$exists": True}, "active": False}},
+            ],
+            "cursor": {},
+        })["cursor"]["firstBatch"]
+        return len(ops) > 0
+
+    start_time = time.time()
+    while not build_is_hung():
+        assert time.time() - start_time < timeout, "Timed out waiting for index build to hang on failpoint"
+        time.sleep(0.5)
+
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
 @pytest.mark.timeout(300, func_only=True)
@@ -202,22 +222,8 @@ def test_pcsm_status_finalization_incomplete_index_still_building_PML_T113(start
     build_thread.start()
 
     try:
-        # Wait for the build to actually be paused on the failpoint before starting csync.
-        def build_is_hung():
-            ops = src.admin.command({
-                "aggregate": 1,
-                "pipeline": [
-                    {"$currentOp": {"allUsers": True, "idleConnections": True}},
-                    {"$match": {"command.createIndexes": {"$exists": True}}},
-                ],
-                "cursor": {},
-            })["cursor"]["firstBatch"]
-            return len(ops) > 0
-
-        start_time = time.time()
-        while not build_is_hung():
-            assert time.time() - start_time < 60, "Timed out waiting for index build to hang on failpoint"
-            time.sleep(0.5)
+        # Wait for the build to actually be paused on the failpoint before starting csync
+        _wait_for_index_build_hung(src)
 
         assert csync.start(), "Failed to start csync"
         assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
@@ -246,6 +252,8 @@ def test_pcsm_status_finalization_incomplete_index_still_building_PML_T113(start
     finally:
         src.admin.command({"configureFailPoint": "hangAfterInitializingIndexBuild", "mode": "off"})
         build_thread.join(timeout=60)
+        if build_thread.is_alive():
+            pytest.fail("Background index build thread did not finish within 60 seconds")
         src.close()
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
@@ -365,7 +373,7 @@ def test_pcsm_status_finalization_inconsistent_index_hidden_from_mongos_PCSM_T10
 
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_pcsm_status_finalization_inconsistent_index_PML_T98(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_status_finalization_two_inconsistent_indexes_one_fixed_before_finalize_PML_T98(start_cluster, src_cluster, dst_cluster, csync):
     """
     Verify when two indexes are inconsistent across shards and only one is fixed before finalize the unfixed will appear in unsuccessfulIndexes
     """
@@ -441,22 +449,8 @@ def test_pcsm_status_finalization_incomplete_index_fixed_before_finalize_PML_T11
     build_thread.start()
 
     try:
-        # Wait for the build to actually be paused on the failpoint before starting csync.
-        def build_is_hung():
-            ops = src.admin.command({
-                "aggregate": 1,
-                "pipeline": [
-                    {"$currentOp": {"allUsers": True, "idleConnections": True}},
-                    {"$match": {"command.createIndexes": {"$exists": True}}},
-                ],
-                "cursor": {},
-            })["cursor"]["firstBatch"]
-            return len(ops) > 0
-
-        start_time = time.time()
-        while not build_is_hung():
-            assert time.time() - start_time < 60, "Timed out waiting for index build to hang on failpoint"
-            time.sleep(0.5)
+        # Wait for the build to actually be paused on the failpoint before starting csync
+        _wait_for_index_build_hung(src)
 
         assert csync.start(), "Failed to start csync"
         assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
@@ -485,4 +479,6 @@ def test_pcsm_status_finalization_incomplete_index_fixed_before_finalize_PML_T11
     finally:
         src.admin.command({"configureFailPoint": "hangAfterInitializingIndexBuild", "mode": "off"})
         build_thread.join(timeout=60)
+        if build_thread.is_alive():
+            pytest.fail("Background index build thread did not finish within 60 seconds")
         src.close()
