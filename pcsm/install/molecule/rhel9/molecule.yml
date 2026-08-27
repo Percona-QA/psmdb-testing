@@ -28,7 +28,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: rhel9-report.xml
 scenario:
   name: rhel9
   destroy_sequence:

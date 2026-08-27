@@ -28,7 +28,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: unoble-arm-report.xml
 scenario:
   name: ubuntu-noble-arm
   destroy_sequence:
