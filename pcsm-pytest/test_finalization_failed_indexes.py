@@ -186,9 +186,9 @@ def test_pcsm_status_finalization_retry_clears_failed_indexes_PCSM_T97(start_clu
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
 @pytest.mark.timeout(300, func_only=True)
-def test_pcsm_status_finalization_incomplete_index_still_building(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_status_finalization_incomplete_index_still_building_PML_T113(start_cluster, src_cluster, dst_cluster, csync):
     """
-    Verify type incomplete indexes appears in unsuccessfulIndexes
+    Verify incomplete indexes appears in unsuccessfulIndexes
     """
     src = pymongo.MongoClient(src_cluster.connection)
     src["testdb"]["items"].insert_many([{"item_id": i, "value": i} for i in range(1000)])
@@ -365,9 +365,9 @@ def test_pcsm_status_finalization_inconsistent_index_hidden_from_mongos_PCSM_T10
 
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_pcsm_status_finalization_inconsistent_index(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_status_finalization_inconsistent_index_PML_T98(start_cluster, src_cluster, dst_cluster, csync):
     """
-    Verify that when two indexes are inconsistent across shards and only one is fixed before finalize
+    Verify when two indexes are inconsistent across shards and only one is fixed before finalize the unfixed will appear in unsuccessfulIndexes
     """
     src = pymongo.MongoClient(src_cluster.connection)
 
@@ -391,6 +391,8 @@ def test_pcsm_status_finalization_inconsistent_index(start_cluster, src_cluster,
     assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
 
+    assert csync.pause(), "Failed to pause csync"
+
     shard_clients = src_cluster.get_shard_primary_clients()
     shard_clients[1][1]["testdb"]["items"].create_index("value2", name="index_value2")
     for _, client in shard_clients:
@@ -399,6 +401,9 @@ def test_pcsm_status_finalization_inconsistent_index(start_cluster, src_cluster,
     src.close()
 
     assert csync.finalize(), "Failed to finalize csync"
+
+    assert csync.wait_for_log("Recreated index index_value2", tail=None), \
+        f"Expected log confirming index_value2 was recreated during finalize, logs:\n{csync.logs(tail=None)}"
 
     status = csync.status()
     assert status["success"], "Failed to retrieve csync status"
@@ -420,7 +425,7 @@ def test_pcsm_status_finalization_inconsistent_index(start_cluster, src_cluster,
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
 @pytest.mark.timeout(300, func_only=True)
-def test_pcsm_status_finalization_incomplete_index_fixed_before_finalize(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_status_finalization_incomplete_index_fixed_before_finalize_PML_T112(start_cluster, src_cluster, dst_cluster, csync):
     """
     Verify that an incomplete index fixed before finalization does not appear in unsuccessfulIndexes.
     """
@@ -464,6 +469,9 @@ def test_pcsm_status_finalization_incomplete_index_fixed_before_finalize(start_c
         assert not build_thread.is_alive(), "Index build did not finish after releasing the failpoint"
 
         assert csync.finalize(), "Failed to finalize csync"
+
+        assert csync.wait_for_log("Recreated index index_value", tail=None), \
+            f"Expected log confirming index_value was recreated during finalize, logs:\n{csync.logs(tail=None)}"
 
         status = csync.status()
         assert status["success"], "Failed to retrieve csync status"
