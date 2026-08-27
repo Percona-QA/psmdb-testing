@@ -1,3 +1,5 @@
+import threading
+import time
 from datetime import datetime
 
 import pymongo
@@ -181,51 +183,78 @@ def test_pcsm_status_finalization_retry_clears_failed_indexes_PCSM_T97(start_clu
     for name in ("index_item_id", "index_value"):
         assert name in dst_index_names, f"{name} should exist on destination after successful second finalize"
 
-@pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
-@pytest.mark.timeout(300, func_only=True)
-def test_pcsm_status_finalization_inconsistent_index_PCSM_T98(start_cluster, src_cluster, dst_cluster, csync):
-    """Verify type inconsistent appears in unsuccessfulIndexes when an index exists on some source shards but not all."""
-    src = pymongo.MongoClient(src_cluster.connection)
+def _wait_for_index_build_hung(src, timeout=60):
+    """
+    Poll currentOp until a createIndexes command shows up idle
+    """
+    def build_is_hung():
+        ops = src.admin.command({
+            "aggregate": 1,
+            "pipeline": [
+                {"$currentOp": {"allUsers": True, "idleConnections": True}},
+                {"$match": {"command.createIndexes": {"$exists": True}, "active": False}},
+            ],
+            "cursor": {},
+        })["cursor"]["firstBatch"]
+        return len(ops) > 0
 
-    src.admin.command({"enableSharding": "testdb"})
-    src.admin.command("shardCollection", "testdb.items", key={"item_id": 1})
+    start_time = time.time()
+    while not build_is_hung():
+        assert time.time() - start_time < timeout, "Timed out waiting for index build to hang on failpoint"
+        time.sleep(0.5)
+
+@pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
+@pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
+@pytest.mark.timeout(300, func_only=True)
+def test_pcsm_status_finalization_incomplete_index_still_building_PML_T113(start_cluster, src_cluster, dst_cluster, csync):
+    """
+    Verify incomplete indexes appears in unsuccessfulIndexes
+    """
+    src = pymongo.MongoClient(src_cluster.connection)
     src["testdb"]["items"].insert_many([{"item_id": i, "value": i} for i in range(1000)])
 
-    shard_0 = src_cluster.config["shards"][0]["_id"]
-    shard_1 = src_cluster.config["shards"][1]["_id"]
-    src.admin.command("split", "testdb.items", middle={"item_id": 500})
-    src.admin.command("moveChunk", "testdb.items", find={"item_id": 0}, to=shard_0)
-    src.admin.command("moveChunk", "testdb.items", find={"item_id": 500}, to=shard_1)
+    # Pause the build right after it starts, so it looks "in progress"
+    src.admin.command({"configureFailPoint": "hangAfterInitializingIndexBuild", "mode": "alwaysOn"})
 
-    src.close()
+    build_thread = threading.Thread(
+        target=lambda: src["testdb"]["items"].create_index("value", name="index_value")
+    )
+    build_thread.start()
 
-    # Create index on only the first shard primary — bypassing mongos so it doesn't propagate to all shards.
-    shard_clients = src_cluster.get_shard_primary_clients()
-    shard_clients[0][1]["testdb"]["items"].create_index("value", name="index_value")
-    for _, client in shard_clients:
-        client.close()
+    try:
+        # Wait for the build to actually be paused on the failpoint before starting csync
+        _wait_for_index_build_hung(src)
 
-    # Verify the index is visible via mongos before PCSM starts
-    src_verify = pymongo.MongoClient(src_cluster.connection)
-    list(src_verify["testdb"]["items"].aggregate([{"$indexStats": {}}]))
-    src_verify.close()
+        assert csync.start(), "Failed to start csync"
+        assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
+        assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
 
-    assert csync.start(), "Failed to start csync"
-    assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
-    assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
-    assert csync.finalize(), "Failed to finalize csync"
+        # Failpoint is still on here — the build is still running on source at finalize time.
+        assert csync.finalize(), "Failed to finalize csync"
 
-    status = csync.status()
-    assert status["success"], "Failed to retrieve csync status"
-    finalization = status["data"].get("finalization", {})
-    unsuccessful = finalization.get("unsuccessfulIndexes", [])
-    assert len(unsuccessful) == 1, f"Expected 1 inconsistent index, got: {unsuccessful}"
+        status = csync.status()
+        assert status["success"], "Failed to retrieve csync status"
+        finalization = status["data"].get("finalization", {})
+        assert finalization.get("completed") is True, "Finalization did not complete"
 
-    entry = unsuccessful[0]
-    assert entry["indexName"] == "index_value", f"Unexpected index name: {entry['indexName']}"
-    assert entry["namespace"] == "testdb.items", f"Unexpected namespace: {entry['namespace']}"
-    assert entry["type"] == "inconsistent", f"Expected type 'inconsistent', got '{entry['type']}'"
-    assert entry["reason"] == "index is missing on one or more source shards", f"Unexpected reason: {entry['reason']}"
+        unsuccessful = finalization.get("unsuccessfulIndexes", [])
+        assert len(unsuccessful) == 1, f"Expected 1 incomplete index, got: {unsuccessful}"
+
+        entry = unsuccessful[0]
+        assert entry["indexName"] == "index_value", f"Unexpected index name: {entry['indexName']}"
+        assert entry["namespace"] == "testdb.items", f"Unexpected namespace: {entry['namespace']}"
+        assert entry["type"] == "incomplete", f"Expected type 'incomplete', got '{entry['type']}'"
+        assert entry["reason"] == "index is still building on one or more source shards", \
+            f"Unexpected reason: {entry['reason']}"
+
+        dst_index_names = {idx["name"] for idx in get_indexes(dst_cluster.connection, "testdb.items")}
+        assert "index_value" not in dst_index_names, "index_value should not exist on destination while still building on source"
+    finally:
+        src.admin.command({"configureFailPoint": "hangAfterInitializingIndexBuild", "mode": "off"})
+        build_thread.join(timeout=60)
+        if build_thread.is_alive():
+            pytest.fail("Background index build thread did not finish within 60 seconds")
+        src.close()
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
@@ -341,3 +370,115 @@ def test_pcsm_status_finalization_inconsistent_index_hidden_from_mongos_PCSM_T10
     dst_index_names = {idx["name"] for idx in get_indexes(dst_cluster.connection, ns)}
     assert index_name not in dst_index_names, f"{index_name} appears in destination"
     assert "_id_" in dst_index_names, f"_id_ should exist on destination: {dst_index_names}"
+
+@pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
+@pytest.mark.timeout(300, func_only=True)
+def test_pcsm_status_finalization_two_inconsistent_indexes_one_fixed_before_finalize_PML_T98(start_cluster, src_cluster, dst_cluster, csync):
+    """
+    Verify when two indexes are inconsistent across shards and only one is fixed before finalize the unfixed will appear in unsuccessfulIndexes
+    """
+    src = pymongo.MongoClient(src_cluster.connection)
+
+    src.admin.command({"enableSharding": "testdb"})
+    src.admin.command("shardCollection", "testdb.items", key={"item_id": 1})
+    src["testdb"]["items"].insert_many([{"item_id": i, "value": i, "value2": i} for i in range(1000)])
+
+    shard_0 = src_cluster.config["shards"][0]["_id"]
+    shard_1 = src_cluster.config["shards"][1]["_id"]
+    src.admin.command("split", "testdb.items", middle={"item_id": 500})
+    src.admin.command("moveChunk", "testdb.items", find={"item_id": 0}, to=shard_0)
+    src.admin.command("moveChunk", "testdb.items", find={"item_id": 500}, to=shard_1)
+
+    shard_clients = src_cluster.get_shard_primary_clients()
+    shard_clients[0][1]["testdb"]["items"].create_index("value", name="index_value")
+    shard_clients[0][1]["testdb"]["items"].create_index("value2", name="index_value2")
+    for _, client in shard_clients:
+        client.close()
+
+    assert csync.start(), "Failed to start csync"
+    assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
+    assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+
+    assert csync.pause(), "Failed to pause csync"
+
+    shard_clients = src_cluster.get_shard_primary_clients()
+    shard_clients[1][1]["testdb"]["items"].create_index("value2", name="index_value2")
+    for _, client in shard_clients:
+        client.close()
+
+    src.close()
+
+    assert csync.finalize(), "Failed to finalize csync"
+
+    assert csync.wait_for_log("Recreated index index_value2", tail=None), \
+        f"Expected log confirming index_value2 was recreated during finalize, logs:\n{csync.logs(tail=None)}"
+
+    status = csync.status()
+    assert status["success"], "Failed to retrieve csync status"
+    finalization = status["data"].get("finalization", {})
+    assert finalization.get("completed") is True, "Finalization did not complete"
+
+    unsuccessful = finalization.get("unsuccessfulIndexes", [])
+    assert len(unsuccessful) == 1, f"Expected only index_value to still be unsuccessful, got: {unsuccessful}"
+
+    entry = unsuccessful[0]
+    assert entry["indexName"] == "index_value", f"Unexpected index name: {entry['indexName']}"
+    assert entry["type"] == "inconsistent", f"Expected type 'inconsistent', got '{entry['type']}'"
+    assert entry["reason"] == "index is missing on one or more source shards", f"Unexpected reason: {entry['reason']}"
+
+    dst_index_names = {idx["name"] for idx in get_indexes(dst_cluster.connection, "testdb.items")}
+    assert "index_value2" in dst_index_names, "index_value2 should be recreated on destination after being fixed on source"
+    assert "index_value" not in dst_index_names, "index_value should not exist on destination while still inconsistent on source"
+
+@pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
+@pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
+@pytest.mark.timeout(300, func_only=True)
+def test_pcsm_status_finalization_incomplete_index_fixed_before_finalize_PML_T112(start_cluster, src_cluster, dst_cluster, csync):
+    """
+    Verify that an incomplete index fixed before finalization does not appear in unsuccessfulIndexes.
+    """
+    src = pymongo.MongoClient(src_cluster.connection)
+    src["testdb"]["items"].insert_many([{"item_id": i, "value": i} for i in range(1000)])
+
+    # Pause the index build right after it starts
+    src.admin.command({"configureFailPoint": "hangAfterInitializingIndexBuild", "mode": "alwaysOn"})
+
+    build_thread = threading.Thread(
+        target=lambda: src["testdb"]["items"].create_index("value", name="index_value")
+    )
+    build_thread.start()
+
+    try:
+        # Wait for the build to actually be paused on the failpoint before starting csync
+        _wait_for_index_build_hung(src)
+
+        assert csync.start(), "Failed to start csync"
+        assert csync.wait_for_repl_stage(), "Failed to reach replication stage"
+        assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+
+        assert csync.pause(), "Failed to pause csync"
+
+        src.admin.command({"configureFailPoint": "hangAfterInitializingIndexBuild", "mode": "off"})
+        build_thread.join(timeout=60)
+        assert not build_thread.is_alive(), "Index build did not finish after releasing the failpoint"
+
+        assert csync.finalize(), "Failed to finalize csync"
+
+        assert csync.wait_for_log("Recreated index index_value", tail=None), \
+            f"Expected log confirming index_value was recreated during finalize, logs:\n{csync.logs(tail=None)}"
+
+        status = csync.status()
+        assert status["success"], "Failed to retrieve csync status"
+        finalization = status["data"].get("finalization", {})
+        assert finalization.get("completed") is True, "Finalization did not complete"
+        assert "unsuccessfulIndexes" not in finalization, \
+            f"index_value finished building before finalize, should not be reported unsuccessful: {finalization.get('unsuccessfulIndexes')}"
+
+        dst_index_names = {idx["name"] for idx in get_indexes(dst_cluster.connection, "testdb.items")}
+        assert "index_value" in dst_index_names, "index_value should be recreated on destination after finishing on source"
+    finally:
+        src.admin.command({"configureFailPoint": "hangAfterInitializingIndexBuild", "mode": "off"})
+        build_thread.join(timeout=60)
+        if build_thread.is_alive():
+            pytest.fail("Background index build thread did not finish within 60 seconds")
+        src.close()
