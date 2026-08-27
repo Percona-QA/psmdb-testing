@@ -1,6 +1,14 @@
+## Prerequisites ##
+
+Image builds use Compose [`additional_contexts`](https://docs.docker.com/compose/compose-file/build/#additional_contexts) so MongoDB and PCSM images can `FROM easyrsa/local`. That requires **Docker Compose v2.17 or later** (the `docker compose` plugin, with BuildKit). The Python `docker-compose` v1 CLI does not support this option and will fail before tests start.
+
+```bash
+docker compose version   # e.g. Docker Compose version v2.29.0
+```
+
 ## Setup ##
 
-`docker-compose build` produces three MongoDB images so single-version and cross-version layouts can coexist:
+`docker compose build` produces three MongoDB images so single-version and cross-version layouts can coexist:
 
 | Image               | When it is used                                       | Base image (build arg)                             |
 | ------------------- | ----------------------------------------------------- | -------------------------------------------------- |
@@ -20,14 +28,14 @@ To run the suite with different MongoDB versions on source and target (cross-ver
 ```bash
 export MONGODB_SRC_IMAGE=perconalab/percona-server-mongodb:6.0
 export MONGODB_DST_IMAGE=perconalab/percona-server-mongodb:7.0
-docker-compose build
-docker-compose up -d
+docker compose build
+docker compose up -d
 ```
 
 ```bash
-docker-compose build                          # Build docker images
-docker-compose up -d                          # Create test network
-docker-compose --profile monitoring up -d     # Create test network + monitoring (Prometheus/Grafana)
+docker compose build                          # Build docker images
+docker compose up -d                          # Create test network
+docker compose --profile monitoring up -d     # Create test network + monitoring (Prometheus/Grafana)
 ```
 
 ## Re-build PCSM image from local repo ##
@@ -39,8 +47,8 @@ docker build --build-context repo=../../percona-clustersync-mongodb . -t csync/l
 ## Run Tests ##
 
 ```bash
-docker-compose run test pytest test_basic_sync_rs.py -v
-docker-compose run test pytest -k test_name --jenkins  # Run specific test or with jenkins flag
+docker compose run test pytest test_basic_sync_rs.py -v
+docker compose run test pytest -k test_name --jenkins  # Run specific test or with jenkins flag
 ```
 
 ## Testing Framework ##
@@ -101,6 +109,6 @@ def test_example(start_cluster, src_cluster, dst_cluster, csync):
 ## Cleanup ##
 
 ```bash
-docker-compose down -v --remove-orphans
-docker-compose --profile monitoring down -v --remove-orphans  # If started with monitoring
+docker compose down -v --remove-orphans
+docker compose --profile monitoring down -v --remove-orphans  # If started with monitoring
 ```
