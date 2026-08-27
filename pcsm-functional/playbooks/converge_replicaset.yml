@@ -656,3 +656,83 @@
       when:
       - "'Connected        : true' in pmm_connection_check.stdout"
       - inventory_hostname in groups['psmdb']
+
+    # The clustersync host isn't in the psmdb group (it's not a MongoDB node), so it
+    # never picks up the pmm-client install/config tasks above - it only got PMM
+    # Server. Install and register pmm-client here too so PCSM's own /metrics
+    # endpoints (pcsm-a on 2242, pcsm-b on 2243) can be scraped as external services.
+    - name: Install percona-release (RedHat) for PMM client on clustersync host
+      command: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+      when:
+        - inventory_hostname == "replicaset-pcsm-clustersync"
+        - ansible_os_family == 'RedHat'
+
+    - name: Install percona-release (Debian) for PMM client on clustersync host
+      apt:
+        deb: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+      when:
+        - inventory_hostname == "replicaset-pcsm-clustersync"
+        - ansible_os_family == 'Debian'
+
+    - name: Enable pmm3-client repository on clustersync host
+      command: percona-release enable pmm3-client
+      when: inventory_hostname == "replicaset-pcsm-clustersync"
+
+    - name: Install pmm-client RHEL on clustersync host
+      yum:
+        name: pmm-client
+        state: present
+      when:
+        - inventory_hostname == "replicaset-pcsm-clustersync"
+        - ansible_os_family == "RedHat"
+
+    - name: Install pmm-client Debian on clustersync host
+      apt:
+        name: pmm-client
+        state: present
+        update_cache: yes
+      when:
+        - inventory_hostname == "replicaset-pcsm-clustersync"
+        - ansible_os_family == "Debian"
+
+    - name: Configure PMM client on clustersync host
+      shell: >
+        pmm-admin config --server-insecure-tls --server-url=https://admin:admin@{{ private_clustersync_ip }}:443 --force
+      register: pmm_clustersync_config_result
+      until: "pmm_clustersync_config_result.rc == 0"
+      retries: 10
+      delay: 10
+      when: inventory_hostname == "replicaset-pcsm-clustersync"
+
+    - name: Restart pmm-agent service on clustersync host
+      service: name=pmm-agent state=started
+      when: inventory_hostname == "replicaset-pcsm-clustersync"
+
+    - name: Check if PCSM external services are already registered in PMM
+      shell: pmm-admin list | grep -E 'pcsm-a|pcsm-b'
+      register: pcsm_service_check
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname == "replicaset-pcsm-clustersync"
+
+    - name: Register PCSM target A (pcsm-a, port 2242) as an external service in PMM
+      shell: >
+        pmm-admin add external --listen-port=2242 --metrics-path=/metrics pcsm-a
+      register: pcsm_a_external_result
+      until: "pcsm_a_external_result.rc == 0"
+      retries: 3
+      delay: 5
+      when:
+        - inventory_hostname == "replicaset-pcsm-clustersync"
+        - "'pcsm-a' not in pcsm_service_check.stdout"
+
+    - name: Register PCSM target B (pcsm-b, port 2243) as an external service in PMM
+      shell: >
+        pmm-admin add external --listen-port=2243 --metrics-path=/metrics pcsm-b
+      register: pcsm_b_external_result
+      until: "pcsm_b_external_result.rc == 0"
+      retries: 3
+      delay: 5
+      when:
+        - inventory_hostname == "replicaset-pcsm-clustersync"
+        - "'pcsm-b' not in pcsm_service_check.stdout"
