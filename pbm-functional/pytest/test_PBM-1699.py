@@ -9,6 +9,7 @@ import pytest
 from cluster import Cluster
 
 DURATION_RE = re.compile(r"^(?:\d+h)?(?:\d+m)?\d+s$")
+TIMING_TOLERANCE_SEC = 5
 
 
 def _parse_rfc3339(value):
@@ -32,20 +33,39 @@ def _wait_backup_done(cluster, backup, timeout=120):
     assert False, f"backup {backup} did not reach done"
 
 
+def _now():
+    return datetime.now(timezone.utc)
+
+
+def _assert_within(reported, observed, label):
+    delta = abs((reported - observed).total_seconds())
+    Cluster.log(
+        f"{label}: reported {reported.isoformat()} vs observed {observed.isoformat()} "
+        f"(delta {delta:.1f}s, tolerance {TIMING_TOLERANCE_SEC}s)"
+    )
+    assert delta <= TIMING_TOLERANCE_SEC, (
+        f"{label}: reported {reported.isoformat()} vs observed {observed.isoformat()} "
+        f"(delta {delta:.1f}s, tolerance {TIMING_TOLERANCE_SEC}s)"
+    )
+
+
 def _take_backup(cluster, backup_type):
     if backup_type == "incremental":
         cluster.make_backup("incremental --base")
-        return cluster.make_backup("incremental")
+    started = _now()
     if backup_type == "external":
         backup = cluster.external_backup_start()
         cluster.external_backup_copy(backup)
         cluster.external_backup_finish(backup)
         _wait_backup_done(cluster, backup)
-        return backup
-    return cluster.make_backup(backup_type)
+    elif backup_type == "incremental":
+        backup = cluster.make_backup("incremental")
+    else:
+        backup = cluster.make_backup(backup_type)
+    return backup, started, _now()
 
 
-def _assert_backup_timing(cluster, backup):
+def _assert_backup_timing(cluster, backup, started, finished):
     result = cluster.exec_pbm_cli(f"describe-backup {backup} --out=json")
     assert result.rc == 0, result.stdout + result.stderr
     desc = json.loads(result.stdout)
@@ -56,6 +76,8 @@ def _assert_backup_timing(cluster, backup):
     start = _parse_rfc3339(desc["start"])
     finish = _parse_rfc3339(desc["finish"])
     assert finish >= start, f"finish {desc['finish']} is before start {desc['start']}"
+    _assert_within(start, started, "start")
+    _assert_within(finish, finished, "finish")
     duration = desc.get("duration", "")
     if finish > start:
         assert DURATION_RE.fullmatch(duration), f"unexpected duration {duration!r}: {desc}"
@@ -133,6 +155,6 @@ def test_backup_timing_visibility_PBM_T369(start_cluster, cluster, backup_type):
     client = pymongo.MongoClient(cluster.connection)
     client["test"]["data"].insert_many([{"x": i, "pad": "x" * 1024} for i in range(20000)])
 
-    backup = _take_backup(cluster, backup_type)
-    _assert_backup_timing(cluster, backup)
+    backup, started, finished = _take_backup(cluster, backup_type)
+    _assert_backup_timing(cluster, backup, started, finished)
     Cluster.log("Finished successfully")
