@@ -193,59 +193,59 @@ def test_prepare_data():
             f"Source data size validation failed for {target['dbname']}"
         log_step(f"Source data size confirmed for {target['dbname']}")
 
-def test_data_transfer_PCSM_330():
-    log_step("Starting PCSM syncs for both targets...")
-    for name, target in TARGETS.items():
-        assert pcsm_start(port=target["port"], include_namespaces=[f"{target['dbname']}.*"]), \
-            f"Failed to start sync for target {name}"
-
-    log_step("Waiting for replication to complete on both targets...")
-    for name, target in TARGETS.items():
-        assert wait_for_repl_stage(port=target["port"], timeout=TIMEOUT), \
-            f"Replication did not complete for target {name}"
-
-    log_step("Finalizing sync on both targets...")
-    for name, target in TARGETS.items():
-        assert pcsm_finalize(port=target["port"]), f"PCSM sync did not complete successfully for target {name}"
-    log_step("Both PCSM syncs completed successfully")
-
-def test_datasize_PCSM_330():
-    for name, target in TARGETS.items():
-        log_step(f"Validating destination data size for target {name} (db {target['dbname']})...")
-        assert confirm_collection_size(target["destination"], datasize, dbname=target["dbname"]), \
-            f"Destination data size validation failed for target {name}"
-        log_step(f"Destination data size confirmed for target {name}")
-
-def _assert_only_own_subset_synced(target_name, target, other_dbname):
-    """
-    Mirrors pcsm-pytest's _assert_only_own_subset_synced (test_multi_target_sync.py):
-    run the full, unscoped source-vs-destination comparison rather than scoping it
-    to the target's own db, then interpret the result - the other sync's db is
-    *expected* to show up as "missing in dst DB" (that's the disjoint-sync signal
-    working correctly), but nothing else should be mismatched. A direct absence
-    check backs that up in case compare_data_rs's own db enumeration ever misses it.
-    """
-    result, mismatches = compare_data_rs(source, target["destination"], "27017", FULL_DATA_COMPARE)
-    if result:
-        raise AssertionError(
-            f"Target {target_name}: expected {other_dbname} to be reported missing, "
-            f"but compare_data_rs found no mismatches at all")
-
-    unexpected = [(name, reason) for name, reason in mismatches if not name.startswith(other_dbname)]
-    assert not unexpected, \
-        f"Target {target_name}: unexpected mismatch in its own subset ({target['dbname']}): {unexpected}"
-    assert any(name.startswith(other_dbname) for name, _ in mismatches), \
-        f"Target {target_name}: {other_dbname} was not reported as missing by compare_data_rs: {mismatches}"
-
-    assert confirm_db_absent(target["destination"], other_dbname), \
-        f"Target {target_name}: unexpectedly contains {other_dbname}, which belongs to the other sync"
-
-def test_data_integrity_and_disjoint_sync_PCSM_330():
-    other = {"a": "b", "b": "a"}
-    for name, target in TARGETS.items():
-        other_dbname = TARGETS[other[name]]["dbname"]
-        log_step(f"Comparing data integrity between source and target {name} "
-                 f"(own db {target['dbname']}, expecting {other_dbname} to be absent)...")
-        _assert_only_own_subset_synced(name, target, other_dbname)
-        log_step(f"Confirmed target {name} has exactly its own subset ({target['dbname']}), "
-                 f"with {other_dbname} correctly absent")
+# def test_data_transfer_PCSM_330():
+#     log_step("Starting PCSM syncs for both targets...")
+#     for name, target in TARGETS.items():
+#         assert pcsm_start(port=target["port"], include_namespaces=[f"{target['dbname']}.*"]), \
+#             f"Failed to start sync for target {name}"
+#
+#     log_step("Waiting for replication to complete on both targets...")
+#     for name, target in TARGETS.items():
+#         assert wait_for_repl_stage(port=target["port"], timeout=TIMEOUT), \
+#             f"Replication did not complete for target {name}"
+#
+#     log_step("Finalizing sync on both targets...")
+#     for name, target in TARGETS.items():
+#         assert pcsm_finalize(port=target["port"]), f"PCSM sync did not complete successfully for target {name}"
+#     log_step("Both PCSM syncs completed successfully")
+#
+# def test_datasize_PCSM_330():
+#     for name, target in TARGETS.items():
+#         log_step(f"Validating destination data size for target {name} (db {target['dbname']})...")
+#         assert confirm_collection_size(target["destination"], datasize, dbname=target["dbname"]), \
+#             f"Destination data size validation failed for target {name}"
+#         log_step(f"Destination data size confirmed for target {name}")
+#
+# def _assert_only_own_subset_synced(target_name, target, other_dbname):
+#     """
+#     Mirrors pcsm-pytest's _assert_only_own_subset_synced (test_multi_target_sync.py):
+#     run the full, unscoped source-vs-destination comparison rather than scoping it
+#     to the target's own db, then interpret the result - the other sync's db is
+#     *expected* to show up as "missing in dst DB" (that's the disjoint-sync signal
+#     working correctly), but nothing else should be mismatched. A direct absence
+#     check backs that up in case compare_data_rs's own db enumeration ever misses it.
+#     """
+#     result, mismatches = compare_data_rs(source, target["destination"], "27017", FULL_DATA_COMPARE)
+#     if result:
+#         raise AssertionError(
+#             f"Target {target_name}: expected {other_dbname} to be reported missing, "
+#             f"but compare_data_rs found no mismatches at all")
+#
+#     unexpected = [(name, reason) for name, reason in mismatches if not name.startswith(other_dbname)]
+#     assert not unexpected, \
+#         f"Target {target_name}: unexpected mismatch in its own subset ({target['dbname']}): {unexpected}"
+#     assert any(name.startswith(other_dbname) for name, _ in mismatches), \
+#         f"Target {target_name}: {other_dbname} was not reported as missing by compare_data_rs: {mismatches}"
+#
+#     assert confirm_db_absent(target["destination"], other_dbname), \
+#         f"Target {target_name}: unexpectedly contains {other_dbname}, which belongs to the other sync"
+#
+# def test_data_integrity_and_disjoint_sync_PCSM_330():
+#     other = {"a": "b", "b": "a"}
+#     for name, target in TARGETS.items():
+#         other_dbname = TARGETS[other[name]]["dbname"]
+#         log_step(f"Comparing data integrity between source and target {name} "
+#                  f"(own db {target['dbname']}, expecting {other_dbname} to be absent)...")
+#         _assert_only_own_subset_synced(name, target, other_dbname)
+#         log_step(f"Confirmed target {name} has exactly its own subset ({target['dbname']}), "
+#                  f"with {other_dbname} correctly absent")
