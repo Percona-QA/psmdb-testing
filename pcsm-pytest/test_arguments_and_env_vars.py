@@ -1,5 +1,7 @@
 import json
 import os
+import re
+from datetime import datetime, timedelta, timezone
 
 import pymongo
 import pytest
@@ -7,6 +9,17 @@ from cluster import Cluster
 from clustersync import Clustersync
 from conftest import get_cluster_config
 from data_generator import create_all_types_db
+
+# PCSM-335 / PCSM-336: YYYY-MM-DDTHH:MM:SS.mmmZ (RFC 3339, UTC)
+RFC3339_UTC_TS = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
+RFC3339_TS = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(?:Z|[+-]\d{2}:\d{2})$"
+)
+CONSOLE_RECORD = re.compile(
+    r"^(?P<ts>.+?)\s+(?P<level>TRC|DBG|INF|WRN|ERR|FTL|PNC)\b"
+)
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+STARTUP_LOG = "Starting HTTP server"
 
 
 @pytest.fixture(scope="module")
@@ -74,6 +87,52 @@ def check_command_output(expected_output, actual_output):
         f"Expected {expected_output!r} in command output, "
         f"got stdout={stdout!r}, stderr={stderr!r}"
     )
+
+def _json_logs(csync_env):
+    return str(csync_env.get("PCSM_LOG_JSON", "")).lower() in ("true", "1")
+
+def iter_log_timestamps(logs, json_logs):
+    """Yield (line, timestamp) for every PCSM log record """
+    for line in logs.splitlines():
+        line = ANSI_ESCAPE.sub("", line).strip()
+        if not line or line == "No logs found":
+            continue
+        if json_logs:
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise AssertionError(
+                    f"PCSM_LOG_JSON is enabled but log line is not JSON: {line}"
+                ) from exc
+            if not isinstance(payload, dict):
+                raise AssertionError(
+                    f"JSON log line is not an object: {line}"
+                )
+            ts = payload.get("time")
+            if not ts:
+                raise AssertionError(
+                    f"JSON log line is missing a time field: {line}"
+                )
+            yield line, ts
+            continue
+        match = CONSOLE_RECORD.match(line)
+        if not match:
+            raise AssertionError(
+                f"PCSM console log line is missing a timestamp/level prefix: {line}"
+            )
+        yield line, match.group("ts")
+
+def collect_log_timestamps(csync, json_logs):
+    assert csync.wait_for_log(STARTUP_LOG, timeout=30), (
+        f"PCSM did not log startup: {csync.logs(tail=None)}"
+    )
+    logs = csync.logs(tail=None)
+    timestamps = list(iter_log_timestamps(logs, json_logs))
+    assert timestamps, f"No timestamped log lines found:\n{logs}"
+    return timestamps
+
+def parse_rfc3339(ts):
+    return datetime.fromisoformat(ts.replace("Z", "+00:00"))
 
 @pytest.mark.timeout(300, func_only=True)
 def test_clone_collections_num_PML_T70(csync, src_cluster, dst_cluster):
@@ -348,6 +407,61 @@ def test_pcsm_log_json_env_var_PML_T76(csync, src_cluster, dst_cluster, csync_en
             raise AssertionError(
                 f"Log line '{line}' is not valid JSON"
             )
+
+@pytest.mark.parametrize("csync_env", [
+    {},
+    {"PCSM_LOG_JSON": "True"},
+], indirect=True)
+@pytest.mark.timeout(300, func_only=True)
+def test_log_timestamp_rfc3339_PML_T115(csync, csync_env):
+    """
+    PCSM-335: log timestamps use RFC 3339 (T separator, milliseconds, timezone).
+    Applies to console and JSON output.
+    """
+    json_logs = _json_logs(csync_env)
+    for line, ts in collect_log_timestamps(csync, json_logs):
+        assert RFC3339_TS.match(ts), (
+            f"PCSM-335: timestamp {ts!r} is not RFC 3339 "
+            f"(YYYY-MM-DDTHH:MM:SS.mmmZ or ±HH:MM)\nline: {line}"
+        )
+        try:
+            parse_rfc3339(ts)
+        except ValueError as exc:
+            raise AssertionError(
+                f"PCSM-335: timestamp {ts!r} is not parseable as RFC 3339\nline: {line}"
+            ) from exc
+
+@pytest.mark.parametrize("csync_env", [
+    {"TZ": "EST5"},
+    {"TZ": "NZST-12"},
+    {"TZ": "EST5", "PCSM_LOG_JSON": "True"},
+    {"TZ": "NZST-12", "PCSM_LOG_JSON": "True"},
+], indirect=True)
+@pytest.mark.timeout(300, func_only=True)
+def test_log_timestamp_utc_PML_T116(csync, csync_env):
+    """
+    PCSM-336: log timestamps are always UTC, independent of container TZ.
+    POSIX TZ=EST5 is UTC-5 and TZ=NZST-12 is UTC+12 (no tzdata required).
+    """
+    json_logs = _json_logs(csync_env)
+    before = datetime.now(timezone.utc) - timedelta(minutes=5)
+    timestamps = collect_log_timestamps(csync, json_logs)
+    after = datetime.now(timezone.utc) + timedelta(seconds=5)
+    tz = csync_env.get("TZ")
+    for line, ts in timestamps:
+        assert RFC3339_UTC_TS.match(ts), (
+            f"PCSM-336: timestamp {ts!r} is not UTC with TZ={tz}\nline: {line}"
+        )
+        parsed = parse_rfc3339(ts)
+        assert parsed.utcoffset() == timedelta(0), (
+            f"PCSM-336: timestamp {ts!r} is not UTC with TZ={tz}\nline: {line}"
+        )
+        assert before <= parsed <= after, (
+            f"PCSM-336: timestamp {ts!r} is not wall-clock UTC "
+            f"(window {before.isoformat()} .. {after.isoformat()}) with TZ={tz}. "
+            "Local time labeled as Z would be offset by hours.\n"
+            f"line: {line}"
+        )
 
 @pytest.mark.csync_env({"PCSM_USE_COLLECTION_BULK_WRITE": "True"})
 @pytest.mark.timeout(300, func_only=True)
