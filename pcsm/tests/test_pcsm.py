@@ -1,55 +1,94 @@
+import json
 import os
+import re
 import time
+from datetime import datetime, timedelta, timezone
 
 import pytest
-import json
-
 import requests
 import testinfra.utils.ansible_runner
+
+# PCSM-335 / PCSM-336: YYYY-MM-DDTHH:MM:SS.mmmZ (RFC 3339, UTC)
+RFC3339_UTC_TS = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
+CONSOLE_RECORD = re.compile(
+    r"^(?P<ts>.+?)\s+(?P<level>TRC|DBG|INF|WRN|ERR|FTL|PNC)\b"
+)
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+
+def _strip_ansi(text):
+    return ANSI_ESCAPE.sub("", text or "")
+
 pcsm = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
 version = os.getenv("pcsm_version")
 install_repo = os.getenv("install_repo")
 
+def _pcsm_output(result):
+    return f"{result.stdout or ''}{result.stderr or ''}"
+
+def wait_until_pcsm_active(host, timeout=60, interval=1):
+    """Wait until this instance holds the HA ACTIVE role
+
+    After systemctl start/restart new process can be STANDBY until the
+    previous instance's lease expires (LeaseTTL is 10s). /start and /status
+    return error not_active on STANDBY process
+    """
+    deadline = time.time() + timeout
+    last = ""
+    while time.time() < deadline:
+        result = host.run("pcsm status")
+        last = _pcsm_output(result).strip()
+        stdout = (result.stdout or "").strip()
+        if stdout:
+            try:
+                payload = json.loads(stdout)
+                if payload.get("ok") is True:
+                    return True
+            except json.JSONDecodeError:
+                pass
+        time.sleep(interval)
+    print(f"Timeout waiting for PCSM ACTIVE role: {last}")
+    return False
+
 def pcsm_start(host, timeout=60, interval=2):
     """Starts PCSM and waits until the endpoint is ready
     Also confirms the PCSM start command works and is ready to clone"""
     try:
         start = time.time()
+        last_error = "unknown"
         while time.time() - start < timeout:
             result = host.run("pcsm start")
-            raw_output = result.stderr
+            raw_output = _pcsm_output(result)
 
-            if 'connection refused' not in raw_output:
-                print("PCSM service has started.")
-                break
+            if "connection refused" in raw_output.lower():
+                time.sleep(interval)
+                continue
 
-            time.sleep(interval)
+            try:
+                output = json.loads(result.stdout)
+            except (json.JSONDecodeError, TypeError):
+                print("Received invalid JSON response.")
+                time.sleep(interval)
+                continue
 
-        else:
-            print("Timeout: PCSM service did not become ready.")
+            if output.get("ok") is True or output.get("error") == "already running":
+                print("Sync started successfully")
+                return True
+
+            last_error = output.get("error", "Unknown error")
+            # Restart left this process STANDBY until the old HA lease expires.
+            if last_error == "not_active":
+                print("PCSM is STANDBY (not_active); waiting to become ACTIVE")
+                time.sleep(interval)
+                continue
+
+            print(f"Failed to start sync between src and dst cluster: {last_error}")
             return False
 
-        output = json.loads(result.stdout)
-
-        if output:
-            try:
-                if output.get("ok") is True or output.get("error") == "already running":
-                    print("Sync started successfully")
-                    return True
-
-                elif output.get("ok") is False and output.get("error") != "already running":
-                    error_msg = output.get("error", "Unknown error")
-                    print(f"Failed to start sync between src and dst cluster: {error_msg}")
-                    return False
-
-            except json.JSONDecodeError:
-                print("Received invalid JSON response.")
-
-        print("Failed to start sync between src and dst cluster")
+        print(f"Timeout: PCSM service did not become ready ({last_error}).")
         return False
-    except Exception as e:
+    except (json.JSONDecodeError, OSError, AssertionError) as e:
         print(f"Unexpected error: {e}")
         return False
 
@@ -75,7 +114,7 @@ def pcsm_finalize(host):
 
         print("Failed to finalize sync between src and dst cluster")
         return False
-    except Exception as e:
+    except (json.JSONDecodeError, OSError, AssertionError) as e:
         print(f"Unexpected error: {e}")
         return False
 
@@ -94,7 +133,7 @@ def pcsm_status(host, timeout=45):
         except json.JSONDecodeError:
             return {"success": False, "error": "Invalid JSON response"}
 
-    except Exception as e:
+    except (json.JSONDecodeError, OSError, AssertionError) as e:
         return {"success": False, "error": str(e)}
 
 def pcsm_version(host):
@@ -171,6 +210,7 @@ def restart_pcsm_service(host):
     assert result.rc == 0, result.stdout
     is_active = host.run("sudo systemctl show -p SubState pcsm")
     assert is_active.stdout.strip() == "SubState=running", f"PCSM service is not running: {is_active.stdout}"
+    assert wait_until_pcsm_active(host), "PCSM did not become ACTIVE after restart"
     return result
 
 def stop_pcsm_service(host):
@@ -187,6 +227,7 @@ def start_pcsm_service(host):
     assert start_pcsm.rc == 0, start_pcsm.stdout
     status = host.run("sudo systemctl is-active pcsm")
     assert status.stdout.strip() == "active", f"PCSM service is inactive: {status.stdout}"
+    assert wait_until_pcsm_active(host), "PCSM did not become ACTIVE after start"
     return start_pcsm
 
 def get_git_commit():
@@ -249,6 +290,65 @@ def test_restart_pcsm(host):
     """Test pcsm service restarts successfully"""
     restart_pcsm_service(host)
 
+def _pcsm_journal_logs(host, timeout=15):
+    """Return pcsm unit messages written in the last two minutes."""
+    deadline = time.time() + timeout
+    last_output = ""
+    while time.time() < deadline:
+        result = host.run(
+            "sudo journalctl -u pcsm --no-pager -o cat --since=-2min"
+        )
+        last_output = _strip_ansi(result.stdout or result.stderr)
+        if any(
+            CONSOLE_RECORD.match(line.strip())
+            for line in last_output.splitlines()
+            if line.strip()
+        ):
+            return last_output
+        time.sleep(0.5)
+    raise AssertionError(
+        f"No PCSM log records found in journal after start/restart:\n{last_output}"
+    )
+
+def test_pcsm_log_timestamps_rfc3339_utc(host):
+    """PCSM-335/336: systemd journal captures RFC 3339 UTC timestamps from PCSM."""
+    status = host.run("sudo systemctl is-active pcsm")
+    if status.stdout.strip() == "active":
+        restart_pcsm_service(host)
+    else:
+        start_pcsm_service(host)
+
+    logs = _pcsm_journal_logs(host)
+    timestamps = []
+    for line in logs.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        match = CONSOLE_RECORD.match(line)
+        if not match:
+            # systemd unit messages (Started/Stopped/...) have no zerolog level
+            continue
+        timestamps.append((line, match.group("ts")))
+    assert timestamps, f"No PCSM log records in journal:\n{logs}"
+
+    now = datetime.now(timezone.utc)
+    parsed_times = []
+    for line, ts in timestamps:
+        assert RFC3339_UTC_TS.match(ts), (
+            f"PCSM-335/336: timestamp {ts!r} is not RFC 3339 UTC\nline: {line}"
+        )
+        parsed = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        assert parsed.utcoffset() == timedelta(0), (
+            f"PCSM-336: timestamp {ts!r} is not UTC\nline: {line}"
+        )
+        parsed_times.append((line, ts, parsed))
+
+    _, last_ts, last_parsed = parsed_times[-1]
+    assert abs((now - last_parsed).total_seconds()) < 300, (
+        f"PCSM-336: latest timestamp {last_ts!r} is not near wall-clock UTC "
+        f"(now={now.isoformat()})"
+    )
+
 def test_pcsm_transfer(host):
     """Test basic PCSM Transfer functionality"""
     assert pcsm_add_db_row(host)
@@ -270,6 +370,7 @@ def test_pcsm_sbom(host):
     assert result.rc == 0, f"SBOM cdx.json not found in package file list: {result.stdout}"
 
     sbom_path = f"/usr/share/doc/percona-clustersync-mongodb/percona-clustersync-mongodb-{version}.cdx.json"
+    """
     if is_rpm:
         distro_map = {"rhel": "redhat", "amzn": "amazon"}
         distro_name = distro_map.get(host.system_info.distribution.lower(), host.system_info.distribution)
@@ -277,6 +378,8 @@ def test_pcsm_sbom(host):
         trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --distro {distro} {sbom_path}")
     else:
         trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 {sbom_path}")
+    """
+    trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 {sbom_path}")
     assert trivy_result.rc == 0, f"trivy sbom scan found HIGH/CRITICAL vulnerabilities:\n{trivy_result.stdout}\n{trivy_result.stderr}"
 
     cdx_cmd = "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /usr/local/bin/cyclonedx"

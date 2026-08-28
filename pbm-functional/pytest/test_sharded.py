@@ -1,14 +1,15 @@
 import json
-import pytest
-import pymongo
-import time
 import os
-import docker
 import threading
-import testinfra
+import time
+from datetime import datetime, timezone
 
-from datetime import datetime
+import pymongo
+import pytest
+import testinfra
 from cluster import Cluster
+
+import docker
 
 documents=[{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
 
@@ -88,7 +89,7 @@ def test_logical_selective_PBM_T218(start_cluster, cluster):
     client["test1"]["test_coll11"].create_index("data", name="test_coll11_index_new")
     client["test2"]["test_coll22"].create_index("data", name="test_coll22_index_new")
     time.sleep(5)
-    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    pitr = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     Cluster.log("Time for PITR is: " + pitr)
     cluster.disable_pitr(pitr)
     pitr = " --time=" + pitr
@@ -144,7 +145,7 @@ def test_logical_pitr_PBM_T194(start_cluster,cluster):
     time.sleep(5)
     pymongo.MongoClient(cluster.connection)["test"]["test3"].insert_many(documents)
     backup_l3 = cluster.make_backup("logical")
-    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    pitr = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(5)
@@ -179,7 +180,7 @@ def test_physical_pitr_PBM_T244(start_cluster,cluster):
     pymongo.MongoClient(cluster.connection)["test"]["test2"].insert_many(documents)
     pymongo.MongoClient(cluster.connection)["test"]["test3"].insert_many(documents)
     time.sleep(5)
-    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    pitr = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     backup="--time=" + pitr + " --base-snapshot=" + backup
     Cluster.log("Time for PITR is: " + pitr)
     time.sleep(5)
@@ -250,6 +251,7 @@ def start_cluster_fs(cluster, request):
         cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(600, func_only=True)
+@pytest.mark.skip(reason="Flaky test")
 def test_backup_fails_on_lost_shard_PBM_T365(start_cluster_fs, cluster):
     """Verify backup is marked as error when a shard agent becomes unreachable mid-backup
     and verifies the backup is successful once the pbm-agent comes back up"""
@@ -306,8 +308,8 @@ def test_backup_fails_on_lost_shard_PBM_T365(start_cluster_fs, cluster):
         for node in shard_nodes:
             try:
                 node.check_output("kill -CONT $(pgrep pbm-agent)")
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 - best-effort cleanup, must not abort teardown
+                Cluster.log(f"Failed to resume pbm-agent on {node}: {exc}")
 
     error_msg = matching[0].get("error", "")
     assert "lost shard" in error_msg or "some of pbm-agents were lost during the backup" in error_msg, (

@@ -28,7 +28,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: rocky8-report.xml
 scenario:
   name: rocky8
   destroy_sequence:
