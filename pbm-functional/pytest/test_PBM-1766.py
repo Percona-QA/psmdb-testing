@@ -68,6 +68,19 @@ def test_describe_backup_on_canceled_backup_PBM_370(start_cluster, cluster):
     assert result.rc == 0, f"Failed to start backup: {result.stdout} {result.stderr}"
     backup_name = json.loads(result.stdout)["name"]
 
+    # Confirm the backup is actually still running before canceling it --
+    # with a tiny dataset it can finish before we get a chance to react,
+    # which would make cancel-backup a no-op and the test flaky/timing-dependent.
+    timeout = time.time() + 30
+    while True:
+        status = cluster.get_status()
+        if status.get("running", {}).get("type") == "backup":
+            break
+        assert time.time() < timeout, (
+            f"Backup {backup_name} was never observed running -- too fast to cancel in time, last status: {status}"
+        )
+        time.sleep(0.2)
+
     cancel = cluster.exec_pbm_cli("cancel-backup")
     assert cancel.rc == 0, f"cancel-backup failed: {cancel.stdout} {cancel.stderr}"
 
@@ -104,12 +117,29 @@ def test_describe_backup_on_agent_lost_backup_PBM_371(start_cluster, cluster):
     assert result.rc == 0, f"Failed to start backup: {result.stdout} {result.stderr}"
     backup_name = json.loads(result.stdout)["name"]
 
+    # Confirm the backup is actually still running before killing the agent --
+    # with a tiny dataset it can finish before we get a chance to react, which
+    # would leave no lock behind to go stale and the test would just time out.
+    timeout = time.time() + 30
+    while True:
+        status = cluster.get_status()
+        if status.get("running", {}).get("type") == "backup":
+            break
+        assert time.time() < timeout, (
+            f"Backup {backup_name} was never observed running -- "
+            f"too fast to kill the agent in time, last status: {status}"
+        )
+        time.sleep(0.2)
+
     n = testinfra.get_host("docker://rs101")
     n.check_output("kill -9 $(pgrep pbm-agent)")
     time.sleep(35)
 
     Cluster.restart_pbm_agent("rs101")
-    cluster.check_pbm_status()
+    # restart_pbm_agent only confirms the process is alive (per supervisor),
+    # not that it has finished registering/heartbeating with the cluster yet
+    # -- wait_pbm_status retries instead of asserting once immediately.
+    cluster.wait_pbm_status()
 
     result2 = cluster.exec_pbm_cli("backup --type=logical --out=json")
     assert result2.rc == 0, f"Failed to start second backup: {result2.stdout} {result2.stderr}"
@@ -121,9 +151,7 @@ def test_describe_backup_on_agent_lost_backup_PBM_371(start_cluster, cluster):
         matching = [s for s in snapshots if s["name"] == backup_name]
         if matching and matching[0]["status"] == "error":
             break
-        assert time.time() < timeout, (
-            f"Timed out waiting for the abandoned backup to be marked as error: {matching}"
-        )
+        assert time.time() < timeout, f"Timed out waiting for the abandoned backup to be marked as error: {matching}"
         time.sleep(1)
 
     Cluster.log(f"Backup {backup_name} ended with status {matching[0]['status']}: {matching[0].get('error')}")
