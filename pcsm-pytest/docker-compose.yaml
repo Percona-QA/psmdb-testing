@@ -18,6 +18,8 @@ services:
     build:
       dockerfile: ./Dockerfile-mongodb
       context: .
+      additional_contexts:
+        easyrsa/local: service:easyrsa
       args:
         - MONGODB_IMAGE=${MONGODB_IMAGE:-percona/percona-server-mongodb}
     command: /bin/bash
@@ -29,6 +31,8 @@ services:
     build:
       dockerfile: ./Dockerfile-mongodb
       context: .
+      additional_contexts:
+        easyrsa/local: service:easyrsa
       args:
         - MONGODB_IMAGE=${MONGODB_SRC_IMAGE:-${MONGODB_IMAGE:-percona/percona-server-mongodb}}
     command: /bin/bash
@@ -40,6 +44,8 @@ services:
     build:
       dockerfile: ./Dockerfile-mongodb
       context: .
+      additional_contexts:
+        easyrsa/local: service:easyrsa
       args:
         - MONGODB_IMAGE=${MONGODB_DST_IMAGE:-${MONGODB_IMAGE:-percona/percona-server-mongodb}}
     command: /bin/bash
@@ -50,6 +56,8 @@ services:
     image: csync/local
     build:
       dockerfile: Dockerfile-csync
+      additional_contexts:
+        easyrsa/local: service:easyrsa
       args:
         - PCSM_BRANCH=${PCSM_BRANCH:-main}
         - MAKE_TARGET=${MAKE_TARGET:-build}

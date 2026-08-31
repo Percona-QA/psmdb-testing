@@ -22,7 +22,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: docker-report.xml
 scenario:
   name: docker
   test_sequence:

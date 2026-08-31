@@ -1,20 +1,21 @@
 import os
-import pytest
-import docker
 
+import pytest
 from cluster import Cluster
 from clustersync import Clustersync
 from data_generator import generate_dummy_data
 from data_integrity_check import compare_data
 
+import docker
+
 # Sample test for PCSM perfomance testing, to run this test, you need to
 # 1. Rename sample_rs_csync_PML_T1000 to test_rs_csync_PML_T1000
 # 2. For the first time run test as following:
-# docker-compose run --env SETUP=true test pytest -s test_load.py
+# docker compose run --env SETUP=true test pytest -s test_load.py
 # 3. All subsequent runs should be run as following:
-# docker-compose run test pytest -s test_load.py
+# docker compose run test pytest -s test_load.py
 # 4. To remove running MongoDB instances run as following:
-# docker-compose run --env CLEANUP=true test pytest -s test_load.py
+# docker compose run --env CLEANUP=true test pytest -s test_load.py
 
 @pytest.fixture(scope="session")
 def docker_client():

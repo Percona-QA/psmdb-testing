@@ -19,7 +19,11 @@
 
 - name: Install packages in venv (RedHat)
   become: true
-  command: /opt/ansible-venv/bin/python -m pip install --upgrade --ignore-installed docker requests
+  shell: /opt/ansible-venv/bin/python -m pip install --upgrade --ignore-installed docker requests
+  retries: 5
+  delay: 5
+  register: result
+  until: result.rc == 0
   when: ansible_os_family == "RedHat"
 
 - name: Use venv interpreter (RedHat)

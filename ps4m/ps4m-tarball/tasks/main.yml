@@ -42,6 +42,9 @@
     src: /tmp/percona-search-mongodb.tar.gz
     dest: /usr/bin
     remote_src: yes
+    extra_opts:
+      - --transform
+      - s/^percona-search-mongodb/mongot-community/
 
 - name: Clone PSMDB repo
   git:

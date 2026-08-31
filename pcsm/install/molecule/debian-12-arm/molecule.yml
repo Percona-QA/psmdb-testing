@@ -28,7 +28,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: debian12-arm-report.xml
 scenario:
   name: debian-12-arm
   destroy_sequence:

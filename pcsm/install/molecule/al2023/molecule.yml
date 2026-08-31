@@ -28,7 +28,7 @@ verifier:
   options:
     verbose: true
     s: true
-    junitxml: report.xml
+    junitxml: al2023-report.xml
 scenario:
   name: al2023
   converge_sequence:

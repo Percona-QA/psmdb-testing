@@ -1,12 +1,13 @@
 import os
+
 from cluster import Cluster
 from clustersync import Clustersync
 from data_generator import generate_dummy_data
 
 # To create setup:
-# docker-compose run --env SETUP=true test python example_shard.py
+# docker compose run --env SETUP=true test python example_shard.py
 # To destroy setup:
-# docker-compose run --env CLEANUP=true test python example_shard.py
+# docker compose run --env CLEANUP=true test python example_shard.py
 
 srcShard = Cluster({
     "mongos": "mongos1",

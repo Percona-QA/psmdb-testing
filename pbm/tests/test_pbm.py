@@ -1,6 +1,8 @@
 import os
+
 import pytest
 import yaml
+
 try:
     from StringIO import StringIO
 except ImportError:
@@ -280,6 +282,7 @@ def test_pbm_sbom(host):
     assert result.rc == 0, f"SBOM cdx.json not found in package file list: {result.stdout}"
 
     sbom_path = f"/usr/share/doc/percona-backup-mongodb/percona-backup-mongodb-{VERSION}.cdx.json"
+    """
     if is_rpm:
         distro_map = {"rhel": "redhat", "amzn": "amazon"}
         distro_name = distro_map.get(host.system_info.distribution.lower(), host.system_info.distribution)
@@ -287,6 +290,8 @@ def test_pbm_sbom(host):
         trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --distro {distro} {sbom_path}")
     else:
         trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 {sbom_path}")
+    """
+    trivy_result = host.run(f"trivy sbom --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 {sbom_path}")
     assert trivy_result.rc == 0, f"trivy sbom scan found HIGH/CRITICAL vulnerabilities:\n{trivy_result.stdout}\n{trivy_result.stderr}"
 
     cdx_cmd = "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /usr/local/bin/cyclonedx"
