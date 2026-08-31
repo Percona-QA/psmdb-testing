@@ -1,7 +1,9 @@
+import concurrent.futures
+import json
 import os
 import time
-import json
 from datetime import datetime
+
 import testinfra.utils.ansible_runner
 from data_integrity_check import compare_data_rs
 
@@ -185,10 +187,21 @@ def log_step(message):
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}")
 
 def test_prepare_data():
+    # PCSM-330: db_0 and db_1 are independent databases on the same source node,
+    # so there's no reason to generate them one after another - that just doubles
+    # the wall-clock time for no benefit. Kick both off at once instead.
+    dbnames = ", ".join(target["dbname"] for target in TARGETS.values())
+    log_step(f"Starting data generation on source node for both targets ({dbnames})...")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(TARGETS)) as executor:
+        futures = {
+            executor.submit(load_data, source, target["dbname"]): name
+            for name, target in TARGETS.items()
+        }
+        for future in concurrent.futures.as_completed(futures):
+            future.result()  # re-raise if load_data failed for this target
+    log_step("Data generation completed for both targets. Validating sizes...")
+
     for name, target in TARGETS.items():
-        log_step(f"Starting data generation on source node for target {name} (db {target['dbname']})...")
-        load_data(source, target["dbname"])
-        log_step(f"Data generation completed. Validating size for {target['dbname']}...")
         assert confirm_collection_size(source, datasize, dbname=target["dbname"]), \
             f"Source data size validation failed for {target['dbname']}"
         log_step(f"Source data size confirmed for {target['dbname']}")
