@@ -46,20 +46,14 @@ def _assert_describe_backup_ok(cluster, backup_name, expected_status):
 
     # Plain-text output should behave the same way as --out=json
     result_text = cluster.exec_pbm_cli(f"describe-backup {backup_name}")
-    assert result_text.rc == 0, (
-        f"describe-backup (text) failed for a zero-size backup: rc={result_text.rc} "
-        f"stdout={result_text.stdout} stderr={result_text.stderr}"
-    )
-    assert "missed file" not in (result_text.stdout + result_text.stderr), (
-        f"Regression in plain-text output: {result_text.stdout} {result_text.stderr}"
-    )
+    assert result_text.rc == 0, (f"describe-backup (text) failed. Expected: {expected_status} backup: rc={result_text.rc}")
+    assert "missed file" not in (result_text.stdout + result_text.stderr), (f"Regression in plain-text output: {result_text.stdout} {result_text.stderr}")
 
 
 @pytest.mark.timeout(180, func_only=True)
 def test_describe_backup_on_canceled_backup_PBM_370(start_cluster, cluster):
     """
-    Verify that an immediately cancelled backup's
-    describe-backup will show the correct output
+    Verify that an immediately cancelled backup's describe-backup will show the correct output
     """
     client = pymongo.MongoClient(cluster.connection)
     client["test"]["test"].insert_many([{"x": i} for i in range(1000)])
@@ -68,17 +62,12 @@ def test_describe_backup_on_canceled_backup_PBM_370(start_cluster, cluster):
     assert result.rc == 0, f"Failed to start backup: {result.stdout} {result.stderr}"
     backup_name = json.loads(result.stdout)["name"]
 
-    # Confirm the backup is actually still running before canceling it --
-    # with a tiny dataset it can finish before we get a chance to react,
-    # which would make cancel-backup a no-op and the test flaky/timing-dependent.
     timeout = time.time() + 30
     while True:
         status = cluster.get_status()
         if status.get("running", {}).get("type") == "backup":
             break
-        assert time.time() < timeout, (
-            f"Backup {backup_name} was never observed running -- too fast to cancel in time, last status: {status}"
-        )
+        assert time.time() < timeout, (f"Backup {backup_name} was never observed running -- too fast to cancel in time, last status: {status}")
         time.sleep(0.2)
 
     cancel = cluster.exec_pbm_cli("cancel-backup")
@@ -96,18 +85,15 @@ def test_describe_backup_on_canceled_backup_PBM_370(start_cluster, cluster):
 
     n = testinfra.get_host("docker://rs101")
     dump_files = n.check_output(f"find /backups/{backup_name} -type f 2>/dev/null || true")
-    assert dump_files.strip() == "", (
-        f"Expected no dump files to have been written before cancellation, found: {dump_files}"
-    )
+    assert dump_files.strip() == "", (f"Expected no dump files to have been written before cancellation, found: {dump_files}"   )
 
     _assert_describe_backup_ok(cluster, backup_name, "canceled")
-    Cluster.log("Finished successfully")
 
 
 @pytest.mark.timeout(3600, func_only=True)
 def test_describe_backup_on_agent_lost_backup_PBM_371(start_cluster, cluster):
     """
-    Verify that a backup that fails due to the pbm-agent dying the
+    Verify that a backup that fails due to the pbm-agent dying,
     describe-backup will show the correct output
     """
     client = pymongo.MongoClient(cluster.connection)
@@ -117,9 +103,6 @@ def test_describe_backup_on_agent_lost_backup_PBM_371(start_cluster, cluster):
     assert result.rc == 0, f"Failed to start backup: {result.stdout} {result.stderr}"
     backup_name = json.loads(result.stdout)["name"]
 
-    # Confirm the backup is actually still running before killing the agent --
-    # with a tiny dataset it can finish before we get a chance to react, which
-    # would leave no lock behind to go stale and the test would just time out.
     timeout = time.time() + 30
     while True:
         status = cluster.get_status()
@@ -133,12 +116,9 @@ def test_describe_backup_on_agent_lost_backup_PBM_371(start_cluster, cluster):
 
     n = testinfra.get_host("docker://rs101")
     n.check_output("kill -9 $(pgrep pbm-agent)")
-    time.sleep(35)
+    time.sleep(35) # Allow PBM to detect the agent is lost (heartbeat timeout) before restarting it
 
     Cluster.restart_pbm_agent("rs101")
-    # restart_pbm_agent only confirms the process is alive (per supervisor),
-    # not that it has finished registering/heartbeating with the cluster yet
-    # -- wait_pbm_status retries instead of asserting once immediately.
     cluster.wait_pbm_status()
 
     result2 = cluster.exec_pbm_cli("backup --type=logical --out=json")
