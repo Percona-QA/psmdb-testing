@@ -52,7 +52,7 @@
 # bc-fips extracts its JNI probe into java.io.tmpdir and dlopens it, so that directory
 # cannot be noexec (/tmp is noexec on RHEL 8+). The rpm/deb ship TMPDIR=/var/lib/mongot/tmp
 # in mongot.env and the systemd unit; a tarball install has neither, so create the same
-# directory here and let the tests point TMPDIR at it when launching mongot.
+# directory here for the tests to pass as java.io.tmpdir via JAVA_TOOL_OPTIONS.
 - name: Create mongot temp directory for JNI extraction
   file:
     path: "{{ mongot_tmpdir }}"

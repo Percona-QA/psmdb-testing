@@ -16,12 +16,13 @@ BUNDLE_FILES = (
     'bin/mongot_community_deploy.jar',
 )
 EMBEDDING_CATALOG = 'embedding-service-configs.yml'
-# The launcher runs the JVM with -Djava.io.tmpdir=${TMPDIR:-/var/tmp}, because bc-fips
-# extracts its JNI probe there and dlopens it, which fails on a noexec /tmp (RHEL 8+).
-# The rpm/deb set TMPDIR=/var/lib/mongot/tmp for the service; a tarball install has no
-# unit file, so the tests export it themselves. Kept in sync with the role.
+# bc-fips extracts its JNI probe into java.io.tmpdir and dlopens it, which fails on a
+# noexec /tmp (RHEL 8+). The JVM ignores TMPDIR for that property, so it is set through
+# JAVA_TOOL_OPTIONS, which any JVM picks up: both the direct --version call and the
+# mongot processes resmoke spawns with an inherited environment. A launcher that passes
+# -Djava.io.tmpdir itself (1.70.4+) overrides this on the command line.
 MONGOT_TMPDIR = '/var/lib/mongot/tmp'
-MONGOT_ENV = f'TMPDIR={MONGOT_TMPDIR}'
+MONGOT_ENV = f'JAVA_TOOL_OPTIONS=-Djava.io.tmpdir={MONGOT_TMPDIR}'
 
 
 def test_mongot_bundle_layout(host):
