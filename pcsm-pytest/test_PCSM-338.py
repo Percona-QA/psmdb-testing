@@ -9,7 +9,7 @@ from data_integrity_check import compare_data
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_csync_PLM_T104(start_cluster, src_cluster, dst_cluster, csync):
+def test_finishTS_after_restart_mid_catchup_PLM_T104(start_cluster, src_cluster, dst_cluster, csync):
     """ Verify finishTS is correctly persisted and survives a restart mid-catchup """
     operation_threads = []
     try:
