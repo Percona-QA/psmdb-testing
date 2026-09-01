@@ -11,15 +11,27 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
 MONGOT_VERSION = os.getenv('MONGOT_VERSION', '1.70.1').split('-')[0]
 PACKAGE_NAME = 'percona-search-mongodb'
 SERVICE_NAME = 'mongot'
-READINESS_URL = 'http://localhost:8080/ready'
-READINESS_RETRIES = 30
+READINESS_URL = 'http://127.0.0.1:8080/ready'
+READINESS_RETRIES = 60
 READINESS_DELAY = 5
+
+
+def _mongot_diagnostics(host):
+    result = host.run(
+        'sudo systemctl status mongot --no-pager -l; '
+        'echo === journalctl ===; '
+        'sudo journalctl -u mongot -n 100 --no-pager; '
+        'echo === listeners ===; '
+        'ss -lntup | grep -E "8080|27028|27017|9946" || true'
+    )
+    return result.stdout
 
 
 def verify_mongot_readiness(host):
     last_error = ''
     for attempt in range(READINESS_RETRIES):
-        result = host.run(f'curl {READINESS_URL}')
+        result = host.run(
+            f'curl -sS --connect-timeout 2 --max-time 5 {READINESS_URL}')
         if result.rc == 0:
             try:
                 if json.loads(result.stdout) == {'status': 'SERVING'}:
@@ -28,11 +40,12 @@ def verify_mongot_readiness(host):
             except json.JSONDecodeError:
                 last_error = result.stdout
         else:
-            last_error = result.stderr
+            last_error = result.stderr or result.stdout
         if attempt + 1 < READINESS_RETRIES:
             time.sleep(READINESS_DELAY)
     pytest.fail(
-        f'mongot readiness check failed after {READINESS_RETRIES} retries: {last_error}')
+        f'mongot readiness check failed after {READINESS_RETRIES} retries: '
+        f'{last_error}\n{_mongot_diagnostics(host)}')
 
 
 @pytest.fixture()

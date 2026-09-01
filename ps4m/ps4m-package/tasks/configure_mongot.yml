@@ -78,18 +78,63 @@
     }"
   no_log: true
 
-- name: start mongot service
+- name: restart mongot service
   service:
     name: mongot
-    state: started
+    state: restarted
     enabled: yes
 
 - name: wait for mongot readiness endpoint
-  shell: curl -s http://localhost:8080/ready
-  register: mongot_readiness
-  until: >
-    mongot_readiness.rc == 0 and
-    (mongot_readiness.stdout | default('{}', true) | from_json).status == "SERVING"
-  retries: 30
-  delay: 5
-  changed_when: false
+  block:
+    - name: wait for mongot readiness endpoint
+      shell: curl -sS --connect-timeout 2 --max-time 5 http://127.0.0.1:8080/ready
+      register: mongot_readiness
+      until: >
+        mongot_readiness.rc == 0 and
+        (mongot_readiness.stdout | default('{}', true) | from_json).status == "SERVING"
+      retries: 60
+      delay: 5
+      changed_when: false
+  rescue:
+    - name: print last readiness attempt
+      debug:
+        msg:
+          - "rc={{ mongot_readiness.rc | default('n/a') }}"
+          - "stdout={{ mongot_readiness.stdout | default('') }}"
+          - "stderr={{ mongot_readiness.stderr | default('') }}"
+
+    - name: collect mongot diagnostics
+      shell: |
+        set +e
+        echo "=== systemctl status mongot ==="
+        systemctl status mongot --no-pager -l
+        echo "=== journalctl -u mongot ==="
+        journalctl -u mongot -n 200 --no-pager
+        echo "=== listeners ==="
+        ss -lntup | grep -E '8080|27028|27017|9946' || true
+        echo "=== curl -sv http://localhost:8080/ready ==="
+        curl -sv --connect-timeout 2 --max-time 5 http://localhost:8080/ready
+        echo
+        echo "=== curl -sv http://127.0.0.1:8080/ready ==="
+        curl -sv --connect-timeout 2 --max-time 5 http://127.0.0.1:8080/ready
+        echo
+        echo "=== curl -sv http://[::1]:8080/ready ==="
+        curl -sv --connect-timeout 2 --max-time 5 "http://[::1]:8080/ready"
+        echo
+        echo "=== getent ahosts localhost ==="
+        getent ahosts localhost || true
+        echo "=== memory ==="
+        free -h
+        echo "=== dmesg oom/kill ==="
+        dmesg -T 2>/dev/null | grep -iE 'oom|mongot|killed process' | tail -20 || true
+      register: mongot_diag
+      changed_when: false
+      failed_when: false
+
+    - name: print mongot diagnostics
+      debug:
+        msg: "{{ mongot_diag.stdout_lines }}"
+
+    - name: fail after mongot readiness timeout
+      fail:
+        msg: "mongot did not become ready on 127.0.0.1:8080. See diagnostics above."
