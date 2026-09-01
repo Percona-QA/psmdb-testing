@@ -4,6 +4,7 @@
     repo: "{{ lookup('env', 'REPO') | default('testing', true) }}"
     psmdb_branch: "{{ lookup('env', 'PSMDB_BRANCH') | default('v8.3', true) }}"
     mongot_tarball_url: "{{ lookup('env', 'MONGOT_TARBALL_URL') | default('https://downloads.percona.com/downloads/TESTING/ps4m-1.70.1/percona-search-mongodb-1.70.1-linux_x86_64.tar.gz', true) }}"
+    mongot_tmpdir: /var/lib/mongot/tmp
 
 - name: Select mongot tarball URL for host architecture
   set_fact:
@@ -43,8 +44,20 @@
     dest: /usr/bin
     remote_src: yes
     extra_opts:
+      # resmoke always resolves mongot as <installDir>/mongot-community/mongot, while the
+      # bundle directory inside tarball is renamed between releases, so map whatever it is
       - --transform
-      - s/^percona-search-mongodb/mongot-community/
+      - s,^[^/]*,mongot-community,
+
+# bc-fips extracts its JNI probe into java.io.tmpdir and dlopens it, so that directory
+# cannot be noexec (/tmp is noexec on RHEL 8+). The rpm/deb ship TMPDIR=/var/lib/mongot/tmp
+# in mongot.env and the systemd unit; a tarball install has neither, so create the same
+# directory here and let the tests point TMPDIR at it when launching mongot.
+- name: Create mongot temp directory for JNI extraction
+  file:
+    path: "{{ mongot_tmpdir }}"
+    state: directory
+    mode: '0750'
 
 - name: Clone PSMDB repo
   git:
