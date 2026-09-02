@@ -6,6 +6,7 @@ import pytest
 import testinfra
 from cluster import Cluster
 
+
 @pytest.fixture(scope="function")
 def config():
     return {"_id": "rs1", "members": [{"host": "rs101"}]}
@@ -91,15 +92,24 @@ def test_no_s3_debug_leak_in_status_PBM_T371(start_cluster, cluster):
     assert matching["status"] == "error", (f"Backup {backup_name} didn't end up errored (got {matching['status']!r})")
 
     failures = []
-    S3_DEBUG_MARKERS = ["AWS4-HMAC-SHA256", "x-amz-date", "x-amz-content-sha256"]
+    S3_DEBUG_MARKERS = ["aws4-hmac-sha256", "x-amz-date", "x-amz-content-sha256", "aws-sdk-go-v2"]
     for cmd in ("pbm status", "pbm status --out=json", f"pbm describe-backup {backup_name}"):
         Cluster.log(f"Running: {cmd}")
         result = n.run(cmd)
         combined = result.stdout + "\n" + result.stderr
-        leaked = [marker for marker in S3_DEBUG_MARKERS if marker in combined]
+        combined_lower = combined.lower()
+        leaked = [marker for marker in S3_DEBUG_MARKERS if marker in combined_lower]
         if leaked:
             failures.append(
                 f"'{cmd}' leaked (found: {leaked}):\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
             )
+        elif result.rc != 0:
+            failures.append(
+                f"'{cmd}' failed (rc={result.rc})\n"
+                f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+            )
 
-    assert not failures, (f"S3 debug output leaked into {len(failures)}/3 commands:\n\n" + "\n\n".join(failures))
+    assert not failures, (
+        f"{len(failures)}/3 commands failed the check (leaked debug output and/or exited "
+        f"non-zero):\n\n" + "\n\n".join(failures)
+    )
