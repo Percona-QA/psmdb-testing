@@ -56,7 +56,10 @@ def test_describe_backup_on_canceled_backup_PBM_370(start_cluster, cluster):
     Verify that an immediately cancelled backup's describe-backup will show the correct output
     """
     client = pymongo.MongoClient(cluster.connection)
-    client["test"]["test"].insert_many([{"x": i} for i in range(1000)])
+    client["test"]["test"].insert_many([{"x": i} for i in range(100000)])
+
+    result = cluster.exec_pbm_cli("config --set storage.s3.debugLogLevels=Request,Retries --wait")
+    assert result.rc == 0, f"Failed to enable S3 debug logging: {result.stdout} {result.stderr}"
 
     result = cluster.exec_pbm_cli("backup --type=logical --out=json")
     assert result.rc == 0, f"Failed to start backup: {result.stdout} {result.stderr}"
@@ -72,6 +75,9 @@ def test_describe_backup_on_canceled_backup_PBM_370(start_cluster, cluster):
 
     cancel = cluster.exec_pbm_cli("cancel-backup")
     assert cancel.rc == 0, f"cancel-backup failed: {cancel.stdout} {cancel.stderr}"
+
+    print("SLEEPING")
+    time.sleep(3600)
 
     timeout = time.time() + 60
     while True:
