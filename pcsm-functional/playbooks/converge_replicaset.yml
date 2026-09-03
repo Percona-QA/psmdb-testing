@@ -419,6 +419,7 @@
             --source mongodb://{{ private_source_ip }}:27017 \
             --target mongodb://{{ private_destination_ip }}:27017 \
             --port 2242 \
+            --group-name pcsm-a \
             --log-level debug \
             --log-json
           Restart=on-failure
@@ -449,6 +450,7 @@
             --source mongodb://{{ private_source_ip }}:27017 \
             --target mongodb://{{ private_destination_b_ip }}:27017 \
             --port 2243 \
+            --group-name pcsm-b \
             --log-level debug \
             --log-json
           Restart=on-failure
