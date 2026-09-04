@@ -167,6 +167,13 @@
     dest: /tmp/load_data.py
     mode: '0755'
 
+- name: Copy background_writer.py to /tmp
+  copy:
+    src: ../scripts/background_writer.py
+    dest: /tmp/background_writer.py
+    mode: '0755'
+  when: inventory_hostname == "sharded-pcsm-source"
+
 - name: Get private source ip address
   set_fact:
     private_source_ip: "{{ hostvars['sharded-pcsm-source']['ansible_default_ipv4']['address'] }}"

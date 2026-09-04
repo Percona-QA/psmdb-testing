@@ -27,6 +27,13 @@ doc_template = os.getenv("DOC_TEMPLATE", default = 'random')
 FULL_DATA_COMPARE = os.getenv("FULL_DATA_COMPARE", default="false").lower() == "true"
 TIMEOUT = int(os.getenv("TIMEOUT", default=3600))
 
+# Off by default: the one-off insert + live index creation below is too small/brief
+# to move a rate()-based dashboard panel like "Events Rate". Set LIVE_WRITE_DURATION
+# (seconds) when triggering the Jenkins job to get a sustained stream of live writes
+# on the source while replication is running, so PMM dashboards have something to show.
+LIVE_WRITE_DURATION = int(os.getenv("LIVE_WRITE_DURATION", default=0))
+LIVE_WRITE_INTERVAL = os.getenv("LIVE_WRITE_INTERVAL", default="0.5")
+
 # PCSM-330: two independent syncs run off the same sharded source, each carrying a
 # different database to its own sharded target. TARGETS maps each PCSM instance
 # (its own HTTP API port and systemd unit) to the db it owns and the destination
@@ -42,6 +49,21 @@ def load_data(node, dbname):
         f"DOC_TEMPLATE={doc_template} DBNAME={dbname}"
     )
     node.run_test(f"{env_vars} python3 /tmp/load_data.py --port 27018")
+
+def start_background_writer(node, dbname, port=27018):
+    """
+    Launches background_writer.py as a detached background process on `node`,
+    so PCSM has continuous live writes to replicate while a Jenkins run is being
+    watched on a PMM dashboard. Returns the remote PID so it can be stopped later.
+    """
+    pid = node.check_output(
+        f"nohup python3 /tmp/background_writer.py --port {port} --dbname {dbname} "
+        f"--interval {LIVE_WRITE_INTERVAL} > /tmp/background_writer_{dbname}.log 2>&1 & echo $!"
+    )
+    return pid.strip()
+
+def stop_background_writer(node, pid):
+    node.check_output(f"kill {pid} || true")
 
 def obtain_pcsm_address(node):
     ipaddress = node.check_output(
@@ -221,6 +243,18 @@ def test_data_transfer_PCSM_330():
     for name, target in TARGETS.items():
         assert pcsm_start(port=target["port"], include_namespaces=[f"{target['dbname']}.*"]), \
             f"Failed to start sync for target {name}"
+
+    if LIVE_WRITE_DURATION > 0:
+        log_step(f"LIVE_WRITE_DURATION={LIVE_WRITE_DURATION}s set - starting background writers on "
+                  f"the source so live replication metrics (e.g. Events Rate) have something to show...")
+        writer_pids = {
+            name: start_background_writer(source, target["dbname"])
+            for name, target in TARGETS.items()
+        }
+        time.sleep(LIVE_WRITE_DURATION)
+        for name, pid in writer_pids.items():
+            stop_background_writer(source, pid)
+        log_step("Background writers stopped.")
 
     log_step("Waiting for replication to complete on both targets...")
     for name, target in TARGETS.items():
