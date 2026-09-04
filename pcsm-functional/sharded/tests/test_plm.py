@@ -244,22 +244,28 @@ def test_data_transfer_PCSM_330():
         assert pcsm_start(port=target["port"], include_namespaces=[f"{target['dbname']}.*"]), \
             f"Failed to start sync for target {name}"
 
+    writer_pids = {}
     if LIVE_WRITE_DURATION > 0:
-        log_step(f"LIVE_WRITE_DURATION={LIVE_WRITE_DURATION}s set - starting background writers on "
-                  f"the source so live replication metrics (e.g. Events Rate) have something to show...")
+        log_step("LIVE_WRITE_DURATION set - starting background writers on the source now, "
+                  "so they're running throughout the clone (not just before it) and PCSM's live "
+                  "replication metrics (e.g. Events Rate) have something to show once it catches up...")
         writer_pids = {
             name: start_background_writer(source, target["dbname"])
             for name, target in TARGETS.items()
         }
-        time.sleep(LIVE_WRITE_DURATION)
-        for name, pid in writer_pids.items():
-            stop_background_writer(source, pid)
-        log_step("Background writers stopped.")
 
     log_step("Waiting for replication to complete on both targets...")
     for name, target in TARGETS.items():
         assert wait_for_repl_stage(port=target["port"], timeout=TIMEOUT), \
             f"Replication did not complete for target {name}"
+
+    if writer_pids:
+        log_step(f"Replication stage reached - keeping background writers running for an extra "
+                  f"{LIVE_WRITE_DURATION}s of steady-state traffic before stopping them...")
+        time.sleep(LIVE_WRITE_DURATION)
+        for name, pid in writer_pids.items():
+            stop_background_writer(source, pid)
+        log_step("Background writers stopped.")
 
     log_step("Finalizing sync on both targets...")
     for name, target in TARGETS.items():
