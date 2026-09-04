@@ -28,6 +28,21 @@
     name: pcsm-destination-shard-2
   when: inventory_hostname == "sharded-pcsm-destination-shard-2"
 
+- name: Change Destination B node hostname
+  hostname:
+    name: pcsm-destination-b
+  when: inventory_hostname == "sharded-pcsm-destination-b"
+
+- name: Change Destination B shard 1 node hostname
+  hostname:
+    name: pcsm-destination-b-shard-1
+  when: inventory_hostname == "sharded-pcsm-destination-b-shard-1"
+
+- name: Change Destination B shard 2 node hostname
+  hostname:
+    name: pcsm-destination-b-shard-2
+  when: inventory_hostname == "sharded-pcsm-destination-b-shard-2"
+
 - name: Change PCSM node hostname
   hostname:
     name: pcsm-clustersync
@@ -176,6 +191,18 @@
   set_fact:
     private_destination_shard_2_ip: "{{ hostvars['sharded-pcsm-destination-shard-2']['ansible_default_ipv4']['address'] }}"
 
+- name: Get private destination B ip address
+  set_fact:
+    private_destination_b_ip: "{{ hostvars['sharded-pcsm-destination-b']['ansible_default_ipv4']['address'] }}"
+
+- name: Get private destination B shard 1 ip address
+  set_fact:
+    private_destination_b_shard_1_ip: "{{ hostvars['sharded-pcsm-destination-b-shard-1']['ansible_default_ipv4']['address'] }}"
+
+- name: Get private destination B shard 2 ip address
+  set_fact:
+    private_destination_b_shard_2_ip: "{{ hostvars['sharded-pcsm-destination-b-shard-2']['ansible_default_ipv4']['address'] }}"
+
 - name: Get private pcsm ip address
   set_fact:
     private_clustersync_ip: "{{ hostvars['sharded-pcsm-clustersync']['ansible_default_ipv4']['address'] }}"
@@ -210,6 +237,21 @@
     var: private_destination_shard_2_ip
   when: private_destination_shard_2_ip is defined and inventory_hostname == "sharded-pcsm-destination-shard-2"
 
+- name: Show Destination B IP (Debug)
+  debug:
+    var: private_destination_b_ip
+  when: private_destination_b_ip is defined and inventory_hostname == "sharded-pcsm-destination-b"
+
+- name: Show Destination B shard 1 IP (Debug)
+  debug:
+    var: private_destination_b_shard_1_ip
+  when: private_destination_b_shard_1_ip is defined and inventory_hostname == "sharded-pcsm-destination-b-shard-1"
+
+- name: Show Destination B shard 2 IP (Debug)
+  debug:
+    var: private_destination_b_shard_2_ip
+  when: private_destination_b_shard_2_ip is defined and inventory_hostname == "sharded-pcsm-destination-b-shard-2"
+
 - name: Show Clustersync IP (Debug)
   debug:
     var: private_clustersync_ip
@@ -235,12 +277,23 @@
     unsafe_writes: true
   when: inventory_hostname == "sharded-pcsm-destination"
 
-- name: Add source and destination to /etc/hosts in pcsm
+- name: Add destination B shard 1 to /etc/hosts of destination B
+  blockinfile:
+    path: /etc/hosts
+    block: |
+      {{ private_destination_b_shard_1_ip }} shard1
+      {{ private_destination_b_shard_2_ip }} shard2
+    create: false
+    unsafe_writes: true
+  when: inventory_hostname == "sharded-pcsm-destination-b"
+
+- name: Add source and destinations to /etc/hosts in pcsm
   blockinfile:
     path: /etc/hosts
     block: |
       {{ private_source_ip }}    source
       {{ private_destination_ip }}    destination
+      {{ private_destination_b_ip }}    destination-b
     create: false
     unsafe_writes: true
   when: inventory_hostname == "sharded-pcsm-clustersync"

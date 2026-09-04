@@ -124,7 +124,10 @@
         path: /etc/mongod.conf
         regexp: '^#replication:'
         replace: 'replication:\n  replSetName: "configReplSet"'
-      when: inventory_hostname == "sharded-pcsm-source" or inventory_hostname == "sharded-pcsm-destination"
+      when: >
+        inventory_hostname == "sharded-pcsm-source" or
+        inventory_hostname == "sharded-pcsm-destination" or
+        inventory_hostname == "sharded-pcsm-destination-b"
 
     - name: Add replica set name for source shard 1
       replace:
@@ -154,12 +157,29 @@
         replace: 'replication:\n  replSetName: "dstShard2"'
       when: inventory_hostname == "sharded-pcsm-destination-shard-2"
 
+    - name: Add replica set name for destination B shard 1
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#replication:'
+        replace: 'replication:\n  replSetName: "dstBShard1"'
+      when: inventory_hostname == "sharded-pcsm-destination-b-shard-1"
+
+    - name: Add replica set name for destination B shard 2
+      replace:
+        path: /etc/mongod.conf
+        regexp: '^#replication:'
+        replace: 'replication:\n  replSetName: "dstBShard2"'
+      when: inventory_hostname == "sharded-pcsm-destination-b-shard-2"
+
     - name: Ensure configsvr role is present on config servers
       ansible.builtin.replace:
         path: /etc/mongod.conf
         regexp: '^#sharding:\s*$'
         replace: 'sharding:\n  clusterRole: "configsvr"'
-      when: inventory_hostname == "sharded-pcsm-source" or inventory_hostname == "sharded-pcsm-destination"
+      when: >
+        inventory_hostname == "sharded-pcsm-source" or
+        inventory_hostname == "sharded-pcsm-destination" or
+        inventory_hostname == "sharded-pcsm-destination-b"
 
     - name: Ensure shardsrv role is present on shards
       ansible.builtin.replace:
@@ -223,6 +243,26 @@
         validate: no
       when: inventory_hostname == "sharded-pcsm-destination-shard-2"
 
+    - name: Create a replicaset rs for Destination B Shard 1
+      community.mongodb.mongodb_replicaset:
+        replica_set: dstBShard1
+        login_host: "{{ private_destination_b_shard_1_ip }}"
+        members:
+          - host: "{{ private_destination_b_shard_1_ip }}:27017"
+            priority: 1
+        validate: no
+      when: inventory_hostname == "sharded-pcsm-destination-b-shard-1"
+
+    - name: Create a replicaset rs for Destination B Shard 2
+      community.mongodb.mongodb_replicaset:
+        replica_set: dstBShard2
+        login_host: "{{ private_destination_b_shard_2_ip }}"
+        members:
+          - host: "{{ private_destination_b_shard_2_ip }}:27017"
+            priority: 1
+        validate: no
+      when: inventory_hostname == "sharded-pcsm-destination-b-shard-2"
+
     - name: Initiate config server replica set on source
       community.mongodb.mongodb_shell:
         login_host: "{{ private_source_ip }}"
@@ -238,6 +278,14 @@
         eval: >
           rs.initiate({_id: "configReplSet", configsvr: true, members: [{ _id: 0, host: "{{ private_destination_ip }}:27017" }]})
       when: inventory_hostname == "sharded-pcsm-destination"
+
+    - name: Initiate config server replica set on destination B
+      community.mongodb.mongodb_shell:
+        login_host: "{{ private_destination_b_ip }}"
+        login_port: 27017
+        eval: >
+          rs.initiate({_id: "configReplSet", configsvr: true, members: [{ _id: 0, host: "{{ private_destination_b_ip }}:27017" }]})
+      when: inventory_hostname == "sharded-pcsm-destination-b"
 
     - name: Start mongos router on source (Debian)
       become: true
@@ -261,6 +309,17 @@
         --fork
       when: inventory_hostname == "sharded-pcsm-destination" and ansible_os_family == "Debian"
 
+    - name: Start mongos router on destination B (Debian)
+      become: true
+      ansible.builtin.command: >
+        mongos \
+        --configdb configReplSet/pcsm-destination-b:27017 \
+        --port 27018 \
+        --bind_ip 0.0.0.0 \
+        --logpath /var/log/mongodb/mongos.log \
+        --fork
+      when: inventory_hostname == "sharded-pcsm-destination-b" and ansible_os_family == "Debian"
+
     - name: Start mongos router on source (RedHat)
       become: true
       ansible.builtin.command: >
@@ -282,6 +341,17 @@
         --logpath {{ '/var/log/mongodb' if mongodb_provider == 'MongoDB_Community' else '/var/log/mongo' }}/mongos.log \
         --fork
       when: inventory_hostname == "sharded-pcsm-destination" and ansible_os_family == "RedHat"
+
+    - name: Start mongos router on destination B (RedHat)
+      become: true
+      ansible.builtin.command: >
+        mongos \
+        --configdb configReplSet/pcsm-destination-b:27017 \
+        --port 27018 \
+        --bind_ip 0.0.0.0 \
+        --logpath {{ '/var/log/mongodb' if mongodb_provider == 'MongoDB_Community' else '/var/log/mongo' }}/mongos.log \
+        --fork
+      when: inventory_hostname == "sharded-pcsm-destination-b" and ansible_os_family == "RedHat"
 
     - name: Wait for replica set primaries to be elected
       pause:
@@ -315,12 +385,31 @@
         eval: 'sh.addShard("dstShard2/{{ private_destination_shard_2_ip }}:27017")'
       when: inventory_hostname == "sharded-pcsm-destination"
 
-    - name: Create PCSM system unit file with optional environment variables
+    - name: Add shard 1 dstBShard1 to destination B cluster
+      community.mongodb.mongodb_shell:
+        login_host: "{{ private_destination_b_ip }}"
+        login_port: 27018
+        eval: 'sh.addShard("dstBShard1/{{ private_destination_b_shard_1_ip }}:27017")'
+      when: inventory_hostname == "sharded-pcsm-destination-b"
+
+    - name: Add shard 2 dstBShard2 to destination B cluster
+      community.mongodb.mongodb_shell:
+        login_host: "{{ private_destination_b_ip }}"
+        login_port: 27018
+        eval: 'sh.addShard("dstBShard2/{{ private_destination_b_shard_2_ip }}:27017")'
+      when: inventory_hostname == "sharded-pcsm-destination-b"
+
+    # PCSM-330: two independent syncs run off the same source, each carrying a
+    # different database to its own sharded target. pcsm-a targets destination
+    # (port 2242, group-name pcsm-a); pcsm-b targets destination-b (port 2243,
+    # group-name pcsm-b). Namespace scoping happens at /start time (see test_plm.py),
+    # not via a daemon CLI flag.
+    - name: Create PCSM system unit file for target A (db_0) with optional environment variables
       copy:
-        dest: /etc/systemd/system/pcsm.service
+        dest: /etc/systemd/system/pcsm-a.service
         content: |
           [Unit]
-          Description=Percona Clustersync Service
+          Description=Percona Clustersync Service (target A)
           After=network.target
 
           [Service]
@@ -332,6 +421,8 @@
           ExecStart=/usr/local/bin/pcsm \
             --source mongodb://{{ private_source_ip }}:27018 \
             --target mongodb://{{ private_destination_ip }}:27018 \
+            --port 2242 \
+            --group-name pcsm-a \
             --log-level debug \
             --log-json
           Restart=on-failure
@@ -344,11 +435,45 @@
         mode: '0644'
       when: inventory_hostname == "sharded-pcsm-clustersync"
 
-    - name: Reload systemd and start pcsm service
+    - name: Create PCSM system unit file for target B (db_1) with optional environment variables
+      copy:
+        dest: /etc/systemd/system/pcsm-b.service
+        content: |
+          [Unit]
+          Description=Percona Clustersync Service (target B)
+          After=network.target
+
+          [Service]
+          {% if env_vars_parsed %}
+          {% for item in env_vars_parsed | dict2items %}
+          Environment="{{ item.key }}={{ item.value }}"
+          {% endfor %}
+          {% endif %}
+          ExecStart=/usr/local/bin/pcsm \
+            --source mongodb://{{ private_source_ip }}:27018 \
+            --target mongodb://{{ private_destination_b_ip }}:27018 \
+            --port 2243 \
+            --group-name pcsm-b \
+            --log-level debug \
+            --log-json
+          Restart=on-failure
+          User=root
+
+          [Install]
+          WantedBy=multi-user.target
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname == "sharded-pcsm-clustersync"
+
+    - name: Reload systemd and start pcsm services
       service:
         daemon_reload: yes
-        name: pcsm.service
+        name: "{{ item }}"
         state: started
+      loop:
+        - pcsm-a.service
+        - pcsm-b.service
       when: inventory_hostname == "sharded-pcsm-clustersync"
 
     - name: Install and configure PMM Client

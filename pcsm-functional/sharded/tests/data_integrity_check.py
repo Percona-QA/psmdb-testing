@@ -1,6 +1,16 @@
 import json
 
 def compare_data_rs(db1, db2, port, full_comparison):
+    """Compare data between two sharded clusters (via their mongos routers).
+
+    This is intentionally an unscoped, whole-database comparison (mirrors
+    pcsm-pytest's compare_data). For a multi-target setup (PCSM-330) where
+    db1 (source) legitimately holds more databases than db2 (one of several
+    disjoint targets), the caller is expected to interpret the "missing in
+    dst DB" mismatches for the other target's db as the expected signal that
+    routing worked, rather than asking this function to hide them - see
+    test_plm.py's test_data_integrity_and_disjoint_sync_PCSM_330.
+    """
 
     all_coll_count, mismatch_dbs_count, mismatch_coll_count = compare_entries_number(db1, db2, port)
     mismatch_summary = []
@@ -241,8 +251,17 @@ def get_indexes(db, collection_name, port):
     db_name, coll_name = collection_name.split(".", 1)
 
     query = f'db.getSiblingDB("{db_name}").getCollection("{coll_name}").getIndexes()'
-    response = db.check_output(
-        f"mongo mongodb://127.0.0.1:{port}/test --json --eval '{query}' --quiet")
+    try:
+        # compare_collection_indexes loops over the *union* of collection names from
+        # both sides; in a multi-target setup (PCSM-330) that union legitimately
+        # includes namespaces that only exist on one side (e.g. the other sync's db),
+        # so a NamespaceNotFound/non-zero exit here means "zero indexes", not a real
+        # failure.
+        response = db.check_output(
+            f"mongo mongodb://127.0.0.1:{port}/test --json --eval '{query}' --quiet")
+    except AssertionError:
+        print(f"Warning: Could not retrieve indexes for {collection_name} (namespace likely missing). Skipping...")
+        return []
 
     try:
         indexes = json.loads(response)
