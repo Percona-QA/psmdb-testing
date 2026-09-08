@@ -5,7 +5,6 @@ import pymongo
 import pytest
 import testinfra
 from bson.binary import Binary
-
 from cluster import Cluster
 
 # Not collected by CI (filename is not test_*.py). Run locally:
