@@ -127,6 +127,9 @@ def _logical_backup_peak_rss_kb(cluster):
             if snap.get("status") == "error":
                 logs = _host(cluster.pbm_cli).check_output("pbm logs -t0")
                 assert False, f"backup {name} failed: {snap.get('error')}\n{logs}"
+            if snap.get("status") == "canceled":
+                logs = _host(cluster.pbm_cli).check_output("pbm logs -t0")
+                assert False, f"backup {name} canceled: {snap}\n{logs}"
         time.sleep(1)
     assert False, f"timed out sampling RSS for backup {name}"
 
