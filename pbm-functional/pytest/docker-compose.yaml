@@ -37,8 +37,12 @@ services:
       - "4566:4566"
     networks:
       - test
+    volumes:
+      - floci-data:/app/data
     environment:
       FLOCI_HOSTNAME: floci
+      FLOCI_STORAGE_MODE: persistent
+      FLOCI_STORAGE_PERSISTENT_PATH: /app/data
 
   nginx-minio:
     build:
@@ -192,6 +196,8 @@ networks:
     name: test
 
 volumes:
+  floci-data:
+    name: floci-data
   fs:
     name: fs
   keytabs:
