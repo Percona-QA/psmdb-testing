@@ -258,6 +258,7 @@ class Cluster:
     # configures and starts all docker-containers, creates necessary layout, setups athorization
     def create(self):
         start = time.time()
+        ulimits = [docker.types.Ulimit(name="nofile", soft=20000, hard=20000)]
         Cluster.log("Creating cluster: " + str(self.config))
         if self.layout == "replicaset":
             for host in self.config['members']:
@@ -287,7 +288,8 @@ class Cluster:
                     network='test',
                     environment=env_list,
                     volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"],
-                    cap_add=["NET_ADMIN", "NET_RAW"]
+                    cap_add=["NET_ADMIN", "NET_RAW"],
+                    ulimits=ulimits
                 )
                 if host.get("arbiterOnly"):
                     self.__delete_pbm(host['host'])
@@ -326,7 +328,8 @@ class Cluster:
                         detach=True,
                         network='test',
                         environment=env_list,
-                        volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
+                        volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"],
+                        ulimits=ulimits
                     )
                     if host.get('arbiterOnly'):
                         self.__delete_pbm(host['host'])
@@ -363,7 +366,8 @@ class Cluster:
                     detach=True,
                     network='test',
                     environment=env_list,
-                    volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
+                    volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"],
+                    ulimits=ulimits
                 )
                 if host.get("arbiterOnly"):
                     self.__delete_pbm(host['host'])
@@ -384,7 +388,8 @@ class Cluster:
                 command='mongos ' + keyfile_arg + '--configdb ' +
                 configdb + ' --port 27017 --bind_ip 0.0.0.0',
                 detach=True,
-                network='test'
+                network='test',
+                ulimits=ulimits
             )
             if not self.no_auth:
                 Cluster.setup_authorization(self.config['mongos'],self.pbm_mongodb_uri)

@@ -39,10 +39,19 @@ services:
       - test
     volumes:
       - floci-data:/app/data
+      - ./conf/floci/application.yml:/app/config/application.yml:ro
+    command: ["/app/application", "-Xmx512m"]
+    ulimits:
+      nofile:
+        soft: 20000
+        hard: 20000
     environment:
       FLOCI_HOSTNAME: floci
-      FLOCI_STORAGE_MODE: persistent
+      FLOCI_STORAGE_MODE: wal
+      FLOCI_STORAGE_SERVICES_S3_MODE: wal
       FLOCI_STORAGE_PERSISTENT_PATH: /app/data
+      QUARKUS_VERTX_MAX_EVENT_LOOP_EXECUTE_TIME: 60S
+      QUARKUS_VERTX_WARNING_EXCEPTION_TIME: 60S
 
   nginx-minio:
     build:

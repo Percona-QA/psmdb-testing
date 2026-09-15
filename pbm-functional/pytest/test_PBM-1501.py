@@ -30,7 +30,7 @@ def start_cluster(cluster,request):
         os.chmod("/backups",0o777)
         os.system("rm -rf /backups/*")
         cluster.create()
-        cluster.setup_pbm()
+        cluster.setup_pbm("/etc/pbm-fs.conf")
         yield True
 
     finally:
