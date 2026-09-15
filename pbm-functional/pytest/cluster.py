@@ -412,7 +412,7 @@ class Cluster:
         duration = time.time() - start
         Cluster.log("The cluster was prepared in {} seconds".format(duration))
 
-    # setups pbm from default config-file, minio as storage
+    # setups pbm from default config-file, Floci as S3 storage
     def setup_pbm(self, file="/etc/pbm-aws-provider.conf", retries=3):
         host = self.pbm_cli
         n = testinfra.get_host("docker://" + host)

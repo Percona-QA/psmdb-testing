@@ -10,7 +10,7 @@ Environment variables for  the setup:
 2) PBM_BRANCH (defaut **main**) - branch, or tag, or commithash to build PBM from
 3) GO_VER (default **latest**) - golang version 
 
-```docker-compose up -d``` - create *test* network, start and configure storages for tests  - volume *fs* as fs-storage, container *minio* as AWS S3-like storage and container *azurite* as emulator for Azure Blob Storage.
+```docker-compose up -d``` - create *test* network, start and configure storages for tests  - volume *fs* as fs-storage, container *floci* as AWS S3-like storage and container *azurite* as emulator for Azure Blob Storage.
 
 ## Re-build image with local repo ##
 
@@ -88,7 +88,7 @@ Some of the class **Cluster** methods:
 
 - **cluster.destroy()** - destroys all containers
 
-- **cluster.setup_pbm()** - configure pbm with minio storage, the same as ```pbm config --file=/etc/pbm.conf --out=json```
+- **cluster.setup_pbm()** - configure pbm with Floci S3 storage, the same as ```pbm config --file=/etc/pbm.conf --out=json```
 
 - **cluster.make_backup(type)** - creates backup, returns the **name** of the backup, the same as ```pbm backup --type=type``` 
 
