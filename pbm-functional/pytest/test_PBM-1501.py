@@ -1,10 +1,12 @@
-import pytest
-import pymongo
 import os
-import docker
 import random
 
+import pymongo
+import pytest
 from cluster import Cluster
+
+import docker
+
 
 @pytest.fixture(scope="package")
 def docker_client():
