@@ -1,15 +1,17 @@
-import testinfra
-import time
-import docker
-import pymongo
-import json
-import copy
 import concurrent.futures
+import copy
+import json
 import os
 import re
-from azure.storage.blob import BlobServiceClient
+import time
+from datetime import datetime, timezone
+
+import pymongo
+import testinfra
 from azure.core.exceptions import ResourceExistsError
-from datetime import datetime
+from azure.storage.blob import BlobServiceClient
+
+import docker
 
 # the structure of the cluster could be one of
 # 1. { _id: "rsname", members: [{host: "host", hidden: boolean, priority: int, arbiterOnly: bool}, ...]} for replicaset
@@ -106,7 +108,7 @@ class Cluster:
                     hosts.append(member['host'])
                 else:
                     assert False
-                if 'arbiterOnly' in member and member['arbiterOnly']:
+                if member.get('arbiterOnly'):
                     if arbiter:
                         assert False
                     arbiter = True
@@ -198,19 +200,16 @@ class Cluster:
         hosts = []
         if self.layout == "replicaset":
             for host in self.config['members']:
-                if "arbiterOnly" in host:
-                    if host['arbiterOnly']:
-                        hosts.append(host['host'])
+                if host.get("arbiterOnly"):
+                    hosts.append(host['host'])
         else:
             for shard in self.config['shards']:
                 for host in shard['members']:
-                    if "arbiterOnly" in host:
-                        if host['arbiterOnly']:
-                            hosts.append(host['host'])
-            for host in self.config['configserver']['members']:
-                if "arbiterOnly" in host:
-                    if host['arbiterOnly']:
+                    if host.get("arbiterOnly"):
                         hosts.append(host['host'])
+            for host in self.config['configserver']['members']:
+                if host.get("arbiterOnly"):
+                    hosts.append(host['host'])
         return hosts
 
     # returns array of hosts with mongod - all hosts except mongos
@@ -260,6 +259,7 @@ class Cluster:
     def create(self):
         start = time.time()
         Cluster.log("Creating cluster: " + str(self.config))
+        ulimits = [docker.types.Ulimit(name="nofile", soft=20000, hard=20000)]
         if self.layout == "replicaset":
             for host in self.config['members']:
                 Cluster.log("Creating container " + host['host'])
@@ -288,11 +288,11 @@ class Cluster:
                     network='test',
                     environment=env_list,
                     volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"],
-                    cap_add=["NET_ADMIN", "NET_RAW"]
+                    cap_add=["NET_ADMIN", "NET_RAW"],
+                    ulimits=ulimits
                 )
-                if "arbiterOnly" in host:
-                    if host['arbiterOnly']:
-                        self.__delete_pbm(host['host'])
+                if host.get("arbiterOnly"):
+                    self.__delete_pbm(host['host'])
             time.sleep(2)
             Cluster.setup_replicaset(self.config)
             if not self.no_auth:
@@ -328,11 +328,11 @@ class Cluster:
                         detach=True,
                         network='test',
                         environment=env_list,
-                        volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
+                        volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"],
+                        ulimits=ulimits
                     )
-                    if 'arbiterOnly' in host:
-                        if host['arbiterOnly']:
-                            self.__delete_pbm(host['host'])
+                    if host.get('arbiterOnly'):
+                        self.__delete_pbm(host['host'])
                     if 'hidden' not in host or not host['hidden']:
                         conn = conn + host['host'] + ':27017,'
                 conn = conn[:-1]
@@ -366,11 +366,11 @@ class Cluster:
                     detach=True,
                     network='test',
                     environment=env_list,
-                    volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"]
+                    volumes=["fs:/backups","keytabs:/keytabs","gocoverdir:/gocoverdir"],
+                    ulimits=ulimits
                 )
-                if "arbiterOnly" in host:
-                    if host['arbiterOnly']:
-                        self.__delete_pbm(host['host'])
+                if host.get("arbiterOnly"):
+                    self.__delete_pbm(host['host'])
                 conn = conn + host['host'] + ':27017,'
             conn = conn[:-1]
             configdb = conn
@@ -388,7 +388,8 @@ class Cluster:
                 command='mongos ' + keyfile_arg + '--configdb ' +
                 configdb + ' --port 27017 --bind_ip 0.0.0.0',
                 detach=True,
-                network='test'
+                network='test',
+                ulimits=ulimits
             )
             if not self.no_auth:
                 Cluster.setup_authorization(self.config['mongos'],self.pbm_mongodb_uri)
@@ -410,9 +411,9 @@ class Cluster:
                         raise
         self.restart_pbm_agents()
         duration = time.time() - start
-        Cluster.log("The cluster was prepared in {} seconds".format(duration))
+        Cluster.log(f"The cluster was prepared in {duration} seconds")
 
-    # setups pbm from default config-file, minio as storage
+    # setups pbm from default config-file, SeaweedFS as S3 storage
     def setup_pbm(self, file="/etc/pbm-aws-provider.conf", retries=3):
         host = self.pbm_cli
         n = testinfra.get_host("docker://" + host)
@@ -547,7 +548,7 @@ class Cluster:
                         'cat /var/lib/mongo/pbm.restore.log', stderr=False)
                     if get_logs.exit_code == 0:
                         Cluster.log(
-                            "!!!!Possible failure on {}, file pbm.restore.log was found:".format(host))
+                            f"!!!!Possible failure on {host}, file pbm.restore.log was found:")
                         logs = get_logs.output.decode('utf-8')
                         Cluster.log(logs)
                         if '"s":"F"' in logs:
@@ -606,7 +607,7 @@ class Cluster:
             try:
                 container = docker.from_env().containers.get(host)
                 container.remove(force=True)
-                Cluster.log("Container {} was removed".format(host))
+                Cluster.log(f"Container {host} was removed")
             except docker.errors.NotFound:
                 pass
 
@@ -905,7 +906,7 @@ class Cluster:
             if chunks:
                 return
             time.sleep(1)
-        assert False, "No PITR chunk appeared within {}s".format(wait)
+        assert False, f"No PITR chunk appeared within {wait}s"
 
     def check_pbm_status(self):
         parsed_result = self.get_status()
@@ -985,7 +986,7 @@ class Cluster:
 
     def get_logs(self):
         for container in self.pbm_hosts:
-            header = "Logs from {name}:".format(name=container)
+            header = f"Logs from {container}:"
             Cluster.log(header, '', "=" * len(header))
             try:
                 print(docker.from_env().containers.get(
@@ -1006,7 +1007,7 @@ class Cluster:
 
     @staticmethod
     def log(*args, **kwargs):
-        print("[%s]" % (datetime.now()).strftime('%Y-%m-%dT%H:%M:%S'),*args, **kwargs)
+        print(f"[{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')}]", *args, **kwargs)
 
     def delete_backup(self, name=None, allow_fail=False, **kwargs):
         n = testinfra.get_host("docker://" + self.pbm_cli)
@@ -1042,9 +1043,8 @@ class Cluster:
         while True:
             status = self.get_status()
             Cluster.log(status['running'])
-            if status['running']:
-                if status['running']['status'] == "copyReady":
-                    break
+            if status['running'] and status['running']['status'] == "copyReady":
+                break
             if time.time() > timeout:
                 assert False
             time.sleep(1)
