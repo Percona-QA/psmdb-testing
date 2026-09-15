@@ -5,8 +5,8 @@ import pymongo
 import pytest
 import testinfra
 from botocore.config import Config
-
 from cluster import Cluster
+
 
 def s3_client():
     return boto3.client(

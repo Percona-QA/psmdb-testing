@@ -4,8 +4,8 @@ import boto3
 import pymongo
 import pytest
 from botocore.config import Config
-
 from cluster import Cluster
+
 
 def generate_data(client, count, offset=0, batch_size=1000):
     """Insert documents into database"""

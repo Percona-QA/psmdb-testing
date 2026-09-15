@@ -1,11 +1,11 @@
-import pytest
-import pymongo
-import time
 import os
+import time
+from datetime import datetime, timezone
 
 import boto3
+import pymongo
+import pytest
 from botocore.config import Config
-from datetime import datetime
 from cluster import Cluster
 
 
@@ -62,7 +62,7 @@ def test_physical_PBM_T279(start_cluster, cluster):
     for i in range(10):
         pymongo.MongoClient(cluster.connection)["test"]["test"].insert_one({"doc": i})
     time.sleep(5)
-    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    pitr = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     backup = " --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     cluster.disable_pitr(pitr)
@@ -104,7 +104,7 @@ def test_logical_PBM_T280(start_cluster, cluster):
     for i in range(10):
         pymongo.MongoClient(cluster.connection)["test"]["test"].insert_one({"doc": i})
     time.sleep(5)
-    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    pitr = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     backup = " --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     cluster.disable_pitr(pitr)
