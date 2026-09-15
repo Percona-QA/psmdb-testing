@@ -1,0 +1,20 @@
+{
+  "identities": [
+    {
+      "name": "pbm",
+      "credentials": [
+        {
+          "accessKey": "minio1234",
+          "secretKey": "minio1234"
+        }
+      ],
+      "actions": [
+        "Admin",
+        "Read",
+        "List",
+        "Tagging",
+        "Write"
+      ]
+    }
+  ]
+}
