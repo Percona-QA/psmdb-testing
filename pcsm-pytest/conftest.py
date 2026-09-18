@@ -1,9 +1,10 @@
-import pytest
 import threading
-import docker
 
+import pytest
 from cluster import Cluster
 from clustersync import Clustersync
+
+import docker
 
 pytest_plugins = ["metrics_collector"]
 
@@ -32,9 +33,9 @@ def cleanup_all_test_containers():
                     Cluster.log(f"Cleaned up leftover container: {container_name}")
                 except docker.errors.NotFound:
                     pass
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     Cluster.log(f"Warning: Failed to remove container {container_name}: {e}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         Cluster.log(f"Warning: Error during test container cleanup: {e}")
 
 def get_cluster_config(setup_type):
@@ -67,6 +68,46 @@ def get_cluster_config(setup_type):
                 "shards": [
                     {"_id": "rs3", "members": [{"host": "rs301"}]},
                     {"_id": "rs4", "members": [{"host": "rs401"}]}
+                ]
+            }
+        }
+    elif setup_type == "sharded_3v2":
+        return {
+            "src_config": {
+                "mongos": "mongos1",
+                "configserver": {"_id": "rscfg1", "members": [{"host": "rscfg101"}]},
+                "shards": [
+                    {"_id": "rs1", "members": [{"host": "rs101"}]},
+                    {"_id": "rs2", "members": [{"host": "rs201"}]},
+                    {"_id": "rs5", "members": [{"host": "rs501"}]}
+                ]
+            },
+            "dst_config": {
+                "mongos": "mongos2",
+                "configserver": {"_id": "rscfg2", "members": [{"host": "rscfg201"}]},
+                "shards": [
+                    {"_id": "rs3", "members": [{"host": "rs301"}]},
+                    {"_id": "rs4", "members": [{"host": "rs401"}]}
+                ]
+            }
+        }
+    elif setup_type == "sharded_2v3":
+        return {
+            "src_config": {
+                "mongos": "mongos1",
+                "configserver": {"_id": "rscfg1", "members": [{"host": "rscfg101"}]},
+                "shards": [
+                    {"_id": "rs1", "members": [{"host": "rs101"}]},
+                    {"_id": "rs2", "members": [{"host": "rs201"}]}
+                ]
+            },
+            "dst_config": {
+                "mongos": "mongos2",
+                "configserver": {"_id": "rscfg2", "members": [{"host": "rscfg201"}]},
+                "shards": [
+                    {"_id": "rs3", "members": [{"host": "rs301"}]},
+                    {"_id": "rs4", "members": [{"host": "rs401"}]},
+                    {"_id": "rs6", "members": [{"host": "rs601"}]}
                 ]
             }
         }
@@ -148,8 +189,12 @@ def dst_cluster(cluster_configs, request):
         mongod_extra_args = extra_args_marker.args[0]
     else:
         mongod_extra_args = ""
-    Cluster.log(f"dst_cluster mongod_extra_args: '{mongod_extra_args}'")
-    return Cluster(config, mongod_extra_args=mongod_extra_args, mongo_image="mongodb-dst/local")
+    mongos_marker = request.node.get_closest_marker("mongos_extra_args")
+    mongos_extra_args = mongos_marker.args[0] if mongos_marker and mongos_marker.args else ""
+    Cluster.log(f"dst_cluster mongod_extra_args: '{mongod_extra_args}' "
+                f"mongos_extra_args: '{mongos_extra_args}'")
+    return Cluster(config, mongod_extra_args=mongod_extra_args,
+                   mongos_extra_args=mongos_extra_args, mongo_image="mongodb-dst/local")
 
 @pytest.fixture(scope="function")
 def csync(src_cluster, dst_cluster):
@@ -182,7 +227,7 @@ def start_cluster(src_cluster, dst_cluster, csync, request, csync_env):
     def create_cluster(cluster_name, cluster):
         try:
             cluster.create()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             Cluster.log(f"{cluster_name} cluster creation failed: {e}")
             exceptions[cluster_name] = e
     try:
@@ -197,11 +242,8 @@ def start_cluster(src_cluster, dst_cluster, csync, request, csync_env):
                 raise TimeoutError(f"{cluster_name} cluster creation timed out after {CLUSTER_CREATE_TIMEOUT} seconds")
             if cluster_name in exceptions:
                 raise exceptions[cluster_name]
-        try:
-            wait_for_thread(src_create_thread, "src")
-            wait_for_thread(dst_create_thread, "dst")
-        except TimeoutError:
-            raise
+        wait_for_thread(src_create_thread, "src")
+        wait_for_thread(dst_create_thread, "dst")
         env_vars.update(csync_env or {})
         csync.create(log_level=log_level, env_vars=env_vars)
         yield True
@@ -213,5 +255,5 @@ def start_cluster(src_cluster, dst_cluster, csync, request, csync_env):
             src_cluster.destroy()
             dst_cluster.destroy()
             csync.destroy()
-        except Exception:
+        except Exception:  # noqa: BLE001
             cleanup_all_test_containers()

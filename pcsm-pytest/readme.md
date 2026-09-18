@@ -66,6 +66,11 @@ docker compose run test pytest -k test_name --jenkins  # Run specific test or wi
 - Example: `@pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")`
 - Applied to both src/dst clusters via fixtures
 
+**@pytest.mark.mongos_extra_args("args")**
+- Add custom mongos command-line arguments, for sharded topologies
+- Example: `@pytest.mark.mongos_extra_args("--setParameter enableTestCommands=1")`
+- Applied to the dst cluster
+
 **@pytest.mark.csync_log_level("level")**
 - Set PCSM log level: `debug` (default), `info`, `trace`, `warn`, `error`
 - Example: `@pytest.mark.csync_log_level("trace")`
@@ -88,8 +93,10 @@ docker compose run test pytest -k test_name --jenkins  # Run specific test or wi
 Available topologies via `@pytest.mark.parametrize("cluster_configs", [...], indirect=True)`:
 - `replicaset` - 1-node RS → 1-node RS
 - `replicaset_3n` - 3-node RS → 3-node RS
-- `sharded` - 1-shard cluster → 1-shard cluster
+- `sharded` - 2-shard cluster → 2-shard cluster
 - `sharded_3n` - 3-node sharded → 3-node sharded
+- `sharded_3v2` - 3-shard cluster → 2-shard cluster (unequal shard counts)
+- `sharded_2v3` - 2-shard cluster → 3-shard cluster (unequal shard counts)
 - `rs_sharded` - RS → sharded cluster
 - `sharded_rs` - sharded cluster → RS
 
