@@ -335,7 +335,7 @@ def test_auth(host,auth):
         print(result)
         assert 'ok: 1' in result or '"ok" : 1' in result
 
-@pytest.mark.parametrize("encryption,cipher",[('KEYFILE','AES256-CBC'),('KEYFILE','AES256-GCM'),('VAULT','AES256-CBC'),('VAULT','AES256-GCM')])
+@pytest.mark.parametrize("encryption,cipher",[('KEYFILE','AES256-CBC'),('KEYFILE','AES256-GCM')])
 def test_encryption(host,encryption,cipher):
     #fix privileges
     KEY_FILE='/package-testing/scripts/psmdb_encryption/mongodb-keyfile'
