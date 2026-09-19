@@ -83,6 +83,31 @@
     - rm -f main.zip
     - mv psmdb-testing-main /package-testing
 
+- name: Check whether curl is available
+  shell: command -v curl
+  register: curl_check
+  changed_when: false
+  failed_when: false
+
+- name: Install curl for grype installer
+  package:
+    name: curl
+    state: present
+  when: curl_check.rc != 0
+
+- name: Install grype
+  shell: curl -sSfL --retry 5 --retry-delay 10 https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+  args:
+    creates: /usr/local/bin/grype
+
+- name: Install CycloneDX CLI
+  shell: >
+    curl -sSfL --retry 5 --retry-delay 10
+    "https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-{{ 'arm64' if ansible_architecture == 'aarch64' else 'x64' }}"
+    -o /usr/local/bin/cyclonedx && chmod 0755 /usr/local/bin/cyclonedx
+  args:
+    creates: /usr/local/bin/cyclonedx
+
 - name: install latest bats from github
   command: "{{ item }}"
   with_items:
@@ -109,9 +134,46 @@
   when:
     lookup('env', 'ENCRYPTION') == "KEYFILE"
 
-- name: Install and configure KMIP
+- name: Install docker for Vault KMIP
   include_role:
-   name: ../../../roles/kmip
+   name: ../../../roles/docker
+  when: lookup('env', 'ENCRYPTION') == "KMIP"
+
+- name: Install EasyRSA for Vault KMIP certs
+  include_role:
+   name: ../../../roles/easyrsa
+  when: lookup('env', 'ENCRYPTION') == "KMIP"
+
+- name: Install and configure Vault KMIP
+  include_role:
+   name: ../../../roles/kmip-vault
+  when: lookup('env', 'ENCRYPTION') == "KMIP"
+
+- name: Stage Vault KMIP certs for enable_kmip_encryption.yml
+  file:
+    path: /pykmip_workdir
+    state: directory
+    mode: '0755'
+  when: lookup('env', 'ENCRYPTION') == "KMIP"
+
+- name: Copy Vault KMIP client cert
+  copy:
+    src: /etc/kmip/mongod-kmip-client.pem
+    dest: /pykmip_workdir/mongod.pem
+    remote_src: true
+    owner: mongod
+    group: mongod
+    mode: '0400'
+  when: lookup('env', 'ENCRYPTION') == "KMIP"
+
+- name: Copy Vault KMIP CA bundle
+  copy:
+    src: /etc/kmip/ca-bundle.pem
+    dest: /pykmip_workdir/ca.crt
+    remote_src: true
+    owner: mongod
+    group: mongod
+    mode: '0400'
   when: lookup('env', 'ENCRYPTION') == "KMIP"
 
 - name: Enable KMIP encryption

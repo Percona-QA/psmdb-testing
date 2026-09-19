@@ -114,11 +114,15 @@ def test_psmdb_sbom(host):
         result = host.run("rpm -ql percona-server-mongodb-server | grep cdx.json")
     else:
         result = host.run("dpkg -L percona-server-mongodb-server | grep cdx.json")
-    assert result.rc == 0 and result.stdout.strip(), f"SBOM cdx.json not found in package file list: {result.stdout}"
+    if not (result.rc == 0 and result.stdout.strip()):
+        # Upgrade jobs verify the FROM package first; older releases do not ship an SBOM.
+        if os.environ.get("FROM_PSMDB_VERSION"):
+            pytest.skip("SBOM cdx.json not present in this package version")
+        pytest.fail(f"SBOM cdx.json not found in package file list: {result.stdout}")
     sbom_path = result.stdout.strip().split("\n")[0]
 
     # Report vulnerabilities only; do not fail the test if any are found
-    grype_result = host.run(f'grype sbom:"{sbom_path}" --only-fixed')
+    grype_result = host.run(f'/usr/local/bin/grype sbom:"{sbom_path}" --only-fixed')
     assert grype_result.rc == 0, f"grype scan failed: {grype_result.stdout}\n{grype_result.stderr}"
     print(f"grype scan result:\n{grype_result.stdout}\n{grype_result.stderr}")
 

@@ -287,6 +287,32 @@
         mode: '0400'
       when:  stat_key.stat.exists
 
+    - name: Check if KMIP client cert exists
+      stat:
+        path: /pykmip_workdir/mongod.pem
+      register: stat_kmip_pem
+
+    - name: Ensure KMIP client cert has correct permissions
+      file:
+        path: /pykmip_workdir/mongod.pem
+        owner: mongod
+        group: mongod
+        mode: '0400'
+      when: stat_kmip_pem.stat.exists
+
+    - name: Check if KMIP CA cert exists
+      stat:
+        path: /pykmip_workdir/ca.crt
+      register: stat_kmip_ca
+
+    - name: Ensure KMIP CA cert has correct permissions
+      file:
+        path: /pykmip_workdir/ca.crt
+        owner: mongod
+        group: mongod
+        mode: '0400'
+      when: stat_kmip_ca.stat.exists
+
     - name: change permissions to mongodb directory after downgrade
       file:
         path: /var/lib/mongo
