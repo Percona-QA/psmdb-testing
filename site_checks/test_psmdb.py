@@ -13,7 +13,9 @@ if version.parse(PSMDB_VER) > version.parse("8.0.0"):
     if version.parse(PSMDB_VER) < version.parse("8.3.0"):
         SOFTWARE_FILES += ['trixie','redhat/10']
 elif version.parse(PSMDB_VER) > version.parse("7.0.0") and version.parse(PSMDB_VER) < version.parse("8.0.0"):
-    SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','source','jammy','redhat/2023']
+    SOFTWARE_FILES = ['bookworm','binary','redhat/9','redhat/8','source','jammy','redhat/2023']
+    if version.parse(MAJ_VER) < version.parse("7.0.43"):
+        SOFTWARE_FILES.append('bullseye')
 elif version.parse(PSMDB_VER) > version.parse("6.0.0") and version.parse(PSMDB_VER) < version.parse("7.0.0"):
     SOFTWARE_FILES = ['bullseye','binary','redhat/9','redhat/8','source','jammy','redhat/2023']
     if (MAJ_VER.startswith("5") and version.parse(MAJ_VER) > version.parse("5.0.27")):
