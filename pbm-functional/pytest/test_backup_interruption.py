@@ -5,13 +5,13 @@ import boto3
 import pymongo
 import pytest
 from botocore.config import Config
-
 from cluster import Cluster
+
 
 def s3_client():
     return boto3.client(
         "s3",
-        endpoint_url="http://minio:9000",
+        endpoint_url="http://seaweedfs:8333",
         aws_access_key_id="minio1234",
         aws_secret_access_key="minio1234",
         config=Config(s3={"addressing_style": "path"}, signature_version="s3v4"),
