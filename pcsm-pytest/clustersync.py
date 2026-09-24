@@ -198,6 +198,151 @@ class Clustersync:
             Cluster.log("No container to restart")
             return False
 
+    @property
+    def is_alive(self):
+        try:
+            return self.container.status == "running"
+        except docker.errors.NotFound:
+            return False
+        except docker.errors.APIError as e:
+            Cluster.log(f"Failed to read state of container '{self.name}': {e}")
+            return False
+
+    def kill(self):
+        """SIGKILL the container, simulating a host or pod crash."""
+        try:
+            self.container.kill()
+            Cluster.log(f"Killed csync container '{self.name}'")
+            return True
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Failed to kill container '{self.name}': {e}")
+            return False
+
+    def pause_container(self):
+        """
+        Freeze the whole container, simulating a zombie instance.
+        """
+        try:
+            self.container.pause()
+            Cluster.log(f"Paused csync container '{self.name}'")
+            return True
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Failed to pause container '{self.name}': {e}")
+            return False
+
+    def unpause_container(self):
+        try:
+            self.container.unpause()
+            Cluster.log(f"Unpaused csync container '{self.name}'")
+            return True
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Failed to unpause container '{self.name}': {e}")
+            return False
+
+    def start_container(self, timeout=60):
+        """Bring a stopped or killed container back up, without resetting state."""
+        try:
+            self.container.start()
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Failed to start container '{self.name}': {e}")
+            return False
+        if not self._wait_for_http_server(timeout):
+            Cluster.log(f"'{self.name}' HTTP server not ready after restart")
+            return False
+        Cluster.log(f"Restarted csync container '{self.name}'")
+        return True
+
+    def disconnect_network(self):
+        """Cut the instance off from the clusters without stopping the process."""
+        try:
+            docker.from_env().networks.get("test").disconnect(self.container, force=True)
+            Cluster.log(f"Disconnected '{self.name}' from the test network")
+            return True
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Failed to disconnect '{self.name}': {e}")
+            return False
+
+    def connect_network(self):
+        try:
+            docker.from_env().networks.get("test").connect(self.container)
+            Cluster.log(f"Reconnected '{self.name}' to the test network")
+            return True
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Failed to reconnect '{self.name}': {e}")
+            return False
+
+    def cli(self, args):
+        """Run a pcsm CLI subcommand inside the container."""
+        try:
+            exec_result = self.container.exec_run(f"pcsm {args}", demux=True)
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"CLI '{args}' on '{self.name}' failed: {e}")
+            return None, "", str(e)
+        stdout, stderr = exec_result.output
+        self.cmd_stdout = stdout.decode("utf-8", errors="replace") if stdout else ""
+        self.cmd_stderr = stderr.decode("utf-8", errors="replace") if stderr else ""
+        return exec_result.exit_code, self.cmd_stdout, self.cmd_stderr
+
+    def request(self, method, path, payload=None, timeout=10):
+        """
+        Call a PCSM HTTP endpoint and return (status_code, body).
+
+        Unlike status()/pause()/finalize(), this keeps the HTTP status code,
+        which HA tests need to tell an ACTIVE apart from a STANDBY replying
+        409 not_active. body is decoded JSON when the endpoint returns JSON
+        and raw text otherwise, since /metrics is plain text.
+        """
+        cmd = f"curl -s -m {timeout} -w '\\n%{{http_code}}' -X {method} http://localhost:2242{path}"
+        if payload is not None:
+            cmd += f" -H 'Content-Type: application/json' -d '{json.dumps(payload)}'"
+        try:
+            exec_result = self.container.exec_run(cmd)
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Request {method} {path} on '{self.name}' failed: {e}")
+            return None, None
+        output = exec_result.output.decode("utf-8", errors="replace")
+        if exec_result.exit_code != 0:
+            Cluster.log(f"curl {method} {path} on '{self.name}' exited {exec_result.exit_code}")
+            return None, output
+        body, _, code = output.rpartition("\n")
+        try:
+            status_code = int(code.strip())
+        except ValueError:
+            Cluster.log(f"No HTTP status in response from '{self.name}': {output!r}")
+            return None, output
+        body = body.strip()
+        try:
+            return status_code, json.loads(body)
+        except json.JSONDecodeError:
+            return status_code, body
+
+    def role(self):
+        """
+        Current HA role, or None when the instance can't be reached.
+
+        /status is ACTIVE-only, so a 200 means ACTIVE even when the response
+        carries no 'role' field - PCSM omits it while only one member is live.
+        """
+        status_code, body = self.request("GET", "/status")
+        if isinstance(body, dict) and body.get("role"):
+            return body["role"]
+        if status_code == 200:
+            return "ACTIVE"
+        if status_code == 409:
+            return "STANDBY"
+        return None
+
+    def wait_for_role(self, role, timeout=30, interval=0.5):
+        start_time = time.time()
+        last_role = None
+        while time.time() - start_time < timeout:
+            last_role = self.role()
+            if last_role == role:
+                return True
+            time.sleep(interval)
+        Cluster.log(f"'{self.name}' is {last_role}, not {role}, after {timeout}s")
+        return False
+
     def pause(self):
         try:
             exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/pause")

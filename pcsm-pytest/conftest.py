@@ -3,6 +3,7 @@ import threading
 import pytest
 from cluster import Cluster
 from clustersync import Clustersync
+from ha import PCSMGroup
 
 import docker
 
@@ -211,39 +212,46 @@ def csync_env(request):
         env.update(param_env)
     return env
 
-@pytest.fixture(scope="function")
-def start_cluster(src_cluster, dst_cluster, csync, request, csync_env):
+CLUSTER_CREATE_TIMEOUT = 60
+
+def create_clusters(src_cluster, dst_cluster):
     """
-    Unified cluster startup fixture that works with both RS and sharded
-    clusters and handles cluster creation, csync startup and cleanup
+    Bring both clusters up in parallel and re-raise the first failure
     """
-    CLUSTER_CREATE_TIMEOUT = 60
     exceptions = {}
-    log_marker = request.node.get_closest_marker("csync_log_level")
-    log_level = log_marker.args[0] if log_marker and log_marker.args else "debug"
-    env_marker = request.node.get_closest_marker("csync_env")
-    env_vars = dict(env_marker.args[0]) if env_marker and env_marker.args else {}
-    cleanup_all_test_containers()
     def create_cluster(cluster_name, cluster):
         try:
             cluster.create()
         except Exception as e:  # noqa: BLE001
             Cluster.log(f"{cluster_name} cluster creation failed: {e}")
             exceptions[cluster_name] = e
+    # Lambda wraps create_cluster with arguments since threading.Thread expects a zero-argument callable
+    src_create_thread = threading.Thread(target=lambda: create_cluster("src", src_cluster))
+    dst_create_thread = threading.Thread(target=lambda: create_cluster("dst", dst_cluster))
+    src_create_thread.start()
+    dst_create_thread.start()
+    def wait_for_thread(thread, cluster_name):
+        thread.join(timeout=CLUSTER_CREATE_TIMEOUT)
+        if thread.is_alive():
+            raise TimeoutError(f"{cluster_name} cluster creation timed out after {CLUSTER_CREATE_TIMEOUT} seconds")
+        if cluster_name in exceptions:
+            raise exceptions[cluster_name]
+    wait_for_thread(src_create_thread, "src")
+    wait_for_thread(dst_create_thread, "dst")
+
+@pytest.fixture(scope="function")
+def start_cluster(src_cluster, dst_cluster, csync, request, csync_env):
+    """
+    Unified cluster startup fixture that works with both RS and sharded
+    clusters and handles cluster creation, csync startup and cleanup
+    """
+    log_marker = request.node.get_closest_marker("csync_log_level")
+    log_level = log_marker.args[0] if log_marker and log_marker.args else "debug"
+    env_marker = request.node.get_closest_marker("csync_env")
+    env_vars = dict(env_marker.args[0]) if env_marker and env_marker.args else {}
+    cleanup_all_test_containers()
     try:
-        # Lambda wraps create_cluster with arguments since threading.Thread expects a zero-argument callable
-        src_create_thread = threading.Thread(target=lambda: create_cluster("src", src_cluster))
-        dst_create_thread = threading.Thread(target=lambda: create_cluster("dst", dst_cluster))
-        src_create_thread.start()
-        dst_create_thread.start()
-        def wait_for_thread(thread, cluster_name):
-            thread.join(timeout=CLUSTER_CREATE_TIMEOUT)
-            if thread.is_alive():
-                raise TimeoutError(f"{cluster_name} cluster creation timed out after {CLUSTER_CREATE_TIMEOUT} seconds")
-            if cluster_name in exceptions:
-                raise exceptions[cluster_name]
-        wait_for_thread(src_create_thread, "src")
-        wait_for_thread(dst_create_thread, "dst")
+        create_clusters(src_cluster, dst_cluster)
         env_vars.update(csync_env or {})
         csync.create(log_level=log_level, env_vars=env_vars)
         yield True
@@ -255,5 +263,40 @@ def start_cluster(src_cluster, dst_cluster, csync, request, csync_env):
             src_cluster.destroy()
             dst_cluster.destroy()
             csync.destroy()
+        except Exception:  # noqa: BLE001
+            cleanup_all_test_containers()
+
+@pytest.fixture(scope="function")
+def start_ha_cluster(src_cluster, dst_cluster, request, csync_env):
+    """
+    Same as start_cluster but starts a group of PCSM instances
+    sharing one lease on the target instead of a single csync.
+    """
+    log_marker = request.node.get_closest_marker("csync_log_level")
+    log_level = log_marker.args[0] if log_marker and log_marker.args else "debug"
+    env_marker = request.node.get_closest_marker("csync_env")
+    env_vars = dict(env_marker.args[0]) if env_marker and env_marker.args else {}
+    count_marker = request.node.get_closest_marker("ha_instances")
+    instances = count_marker.args[0] if count_marker and count_marker.args else 3
+    cleanup_all_test_containers()
+    group = None
+    try:
+        create_clusters(src_cluster, dst_cluster)
+        env_vars.update(csync_env or {})
+        group = PCSMGroup(
+            src_cluster.csync_connection,
+            dst_cluster.csync_connection,
+            n=instances,
+            log_level=log_level,
+            env_vars=env_vars)
+        yield group.start()
+    finally:
+        if group and request.config.getoption("--verbose"):
+            print(f"\n\ncsync Logs for HA group:\n{group.logs()}\n\n")
+        try:
+            if group:
+                group.stop()
+            src_cluster.destroy()
+            dst_cluster.destroy()
         except Exception:  # noqa: BLE001
             cleanup_all_test_containers()
