@@ -4,7 +4,7 @@ import requests
 import pytest
 
 PBM_VER = os.environ.get("PBM_VERSION")
-SOFTWARE_FILES = ['bookworm','bullseye','binary','redhat/9','redhat/8','source','jammy','noble','redhat/2023']
+SOFTWARE_FILES = ['bookworm','trixie','binary','redhat/9','redhat/8','redhat/10','source','jammy','noble','redhat/2023']
 
 PRODUCT_ID = 'percona-backup-mongodb'
 DOWNLOADS_API_URL = "https://www.percona.com/wp-admin/admin-ajax.php"
