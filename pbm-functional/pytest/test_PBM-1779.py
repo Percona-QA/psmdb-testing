@@ -89,7 +89,7 @@ def _heartbeat_writer(connection, doc_ids, total_updates, stop_event):
     return applied
 
 @pytest.mark.timeout(900, func_only=True)
-def test_physical_pitr_restore_with_ttl_unique_index_PBM_1779(start_cluster, cluster):
+def test_physical_pitr_restore_with_ttl_unique_index_PBM_T373(start_cluster, cluster):
     """
         Verify that TTL cleanup does not interfere with a physical PITR restore,
         normal updates are still replayed, and TTL cleanup works again afterwards
