@@ -3,15 +3,16 @@ import os
 import random
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-import pytest
 import pymongo
-
+import pytest
 from cluster import Cluster
 
 NORMAL_DOC_COUNT = 50
 NORMAL_ID_START = 1000
+WRITER_THREADS = 20
+TOTAL_UPDATES = 480_000
 
 @pytest.fixture(scope="package")
 def config():
@@ -40,14 +41,14 @@ def _seed_heartbeats(connection):
     coll = client["ttl_pitr_db"]["heartbeats"]
     coll.create_index("instanceId", unique=True)
     coll.create_index("validTill", expireAfterSeconds=0)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     docs = [
         {
             "_id": i,
             "instanceId": f"instance-{i}",
             "lastBeat": now,
             "n": 0,
-            "validTill": now + timedelta(seconds=5),
+            "validTill": now + timedelta(hours=1),
         }
         for i in range(100)
     ]
@@ -63,27 +64,38 @@ def _seed_normal_docs(connection):
     ]
     coll.insert_many(docs)
 
-def _heartbeat_writer(connection, doc_ids, duration, stop_event):
+def _heartbeat_writer(connection, doc_ids, total_updates, stop_event):
+    # Batched so the same volume of oplog is produced in a fraction of the time; the restore's
+    # replay (and therefore the chance of a TTL pass landing mid-replay) scales with the volume.
     client = pymongo.MongoClient(connection)
     coll = client["ttl_pitr_db"]["heartbeats"]
     n = 0
-    deadline = time.time() + duration
-    while time.time() < deadline and not stop_event.is_set():
-        doc_id = random.choice(doc_ids)
-        n += 1
-        now = datetime.utcnow()
-        try:
-            coll.update_one(
-                {"_id": doc_id},
-                {"$set": {"lastBeat": now, "n": n, "validTill": now + timedelta(seconds=5)}},
+    applied = 0
+    while n < total_updates and not stop_event.is_set():
+        now = datetime.now(timezone.utc)
+        batch = []
+        for _ in range(min(500, total_updates - n)):
+            n += 1
+            batch.append(
+                pymongo.UpdateOne(
+                    {"_id": random.choice(doc_ids)},
+                    {"$set": {"lastBeat": now, "n": n, "validTill": now + timedelta(seconds=5)}},
+                )
             )
+        try:
+            applied += coll.bulk_write(batch, ordered=False).matched_count
+        except pymongo.errors.BulkWriteError as e:
+            applied += e.details.get("nMatched", 0)
         except pymongo.errors.PyMongoError:
             pass
+    return applied
 
-@pytest.mark.timeout(3600, func_only=True)
+@pytest.mark.timeout(900, func_only=True)
 def test_physical_pitr_restore_with_ttl_unique_index_PBM_1779(start_cluster, cluster):
     """
-
+    Physical backup + PITR restore of a collection with a TTL index and a unique index must not
+    fail with a duplicate-key error (PBM-1779), must replay normal updates, and must re-enable
+    TTL cleanup afterwards.
     """
 
     doc_ids = _seed_heartbeats(cluster.connection)
@@ -93,29 +105,34 @@ def test_physical_pitr_restore_with_ttl_unique_index_PBM_1779(start_cluster, clu
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
 
     stop_event = threading.Event()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+    workload_start = time.time()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=WRITER_THREADS) as executor:
         writers = [
-            executor.submit(_heartbeat_writer, cluster.connection, doc_ids, 240, stop_event)
-            for _ in range(20)
+            executor.submit(
+                _heartbeat_writer, cluster.connection, doc_ids, TOTAL_UPDATES // WRITER_THREADS, stop_event
+            )
+            for _ in range(WRITER_THREADS)
         ]
         try:
-            for w in writers:
-                w.result()
+            updates_applied = sum(w.result() for w in writers)
         finally:
             stop_event.set()
-    Cluster.log("Update workload finished")
+    Cluster.log(f"Update workload finished: {updates_applied} updates applied in {time.time() - workload_start:.0f}s")
+    assert updates_applied >= TOTAL_UPDATES * 0.9, (
+        f"Setup: only {updates_applied}/{TOTAL_UPDATES} heartbeat updates matched a document -- "
+        "the workload did not generate the oplog volume this test needs"
+    )
 
     pymongo.MongoClient(cluster.connection)["ttl_pitr_db"]["heartbeats"].update_many(
         {"_id": {"$gte": NORMAL_ID_START}}, {"$set": {"version": 1}}
     )
 
-    # Give the TTL monitor on the live cluster a beat to catch up so PITR
-    # captures TTL-driven deletes too, not just the heartbeat updates.
-    time.sleep(10)
+    # pitr_time is truncated to whole seconds, so step past the second of the version=1 update
+    # above; otherwise the restore target can land just before it.
+    time.sleep(2)
 
-    pitr_time = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    pitr_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     cluster.disable_pitr(pitr_time)
-    time.sleep(10)
 
     restore_arg = f"--time={pitr_time}"
     try:
@@ -139,9 +156,11 @@ def test_physical_pitr_restore_with_ttl_unique_index_PBM_1779(start_cluster, clu
     assert coll.count_documents(normal_filter) == NORMAL_DOC_COUNT, "Non-expiring documents were lost during the restore"
     assert coll.count_documents({**normal_filter, "version": 1}) == NORMAL_DOC_COUNT, "Updates made to normal documents during the PITR window were not replayed"
 
-    deadline = time.time() + 180
+    ttl_wait_start = time.time()
+    deadline = ttl_wait_start + 180
     while coll.count_documents({"_id": {"$lt": NORMAL_ID_START}}) and time.time() < deadline:
-        time.sleep(5)
+        time.sleep(1)
+    Cluster.log(f"TTL cleanup wait took {time.time() - ttl_wait_start:.0f}s")
     remaining = coll.count_documents({"_id": {"$lt": NORMAL_ID_START}})
     assert remaining == 0, f"{remaining} expired heartbeat document(s) still present"
     assert coll.count_documents(normal_filter) == NORMAL_DOC_COUNT, "TTL cleanup after restore removed non-expiring documents"
