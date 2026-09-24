@@ -65,8 +65,6 @@ def _seed_normal_docs(connection):
     coll.insert_many(docs)
 
 def _heartbeat_writer(connection, doc_ids, total_updates, stop_event):
-    # Batched so the same volume of oplog is produced in a fraction of the time; the restore's
-    # replay (and therefore the chance of a TTL pass landing mid-replay) scales with the volume.
     client = pymongo.MongoClient(connection)
     coll = client["ttl_pitr_db"]["heartbeats"]
     n = 0
@@ -93,9 +91,8 @@ def _heartbeat_writer(connection, doc_ids, total_updates, stop_event):
 @pytest.mark.timeout(900, func_only=True)
 def test_physical_pitr_restore_with_ttl_unique_index_PBM_1779(start_cluster, cluster):
     """
-    Physical backup + PITR restore of a collection with a TTL index and a unique index must not
-    fail with a duplicate-key error (PBM-1779), must replay normal updates, and must re-enable
-    TTL cleanup afterwards.
+        Verify that TTL cleanup does not interfere with a physical PITR restore,
+        normal updates are still replayed, and TTL cleanup works again afterwards
     """
 
     doc_ids = _seed_heartbeats(cluster.connection)
@@ -105,19 +102,15 @@ def test_physical_pitr_restore_with_ttl_unique_index_PBM_1779(start_cluster, clu
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
 
     stop_event = threading.Event()
-    workload_start = time.time()
     with concurrent.futures.ThreadPoolExecutor(max_workers=WRITER_THREADS) as executor:
         writers = [
-            executor.submit(
-                _heartbeat_writer, cluster.connection, doc_ids, TOTAL_UPDATES // WRITER_THREADS, stop_event
-            )
+            executor.submit(_heartbeat_writer, cluster.connection, doc_ids, TOTAL_UPDATES // WRITER_THREADS, stop_event)
             for _ in range(WRITER_THREADS)
         ]
         try:
             updates_applied = sum(w.result() for w in writers)
         finally:
             stop_event.set()
-    Cluster.log(f"Update workload finished: {updates_applied} updates applied in {time.time() - workload_start:.0f}s")
     assert updates_applied >= TOTAL_UPDATES * 0.9, (
         f"Setup: only {updates_applied}/{TOTAL_UPDATES} heartbeat updates matched a document -- "
         "the workload did not generate the oplog volume this test needs"
@@ -127,8 +120,6 @@ def test_physical_pitr_restore_with_ttl_unique_index_PBM_1779(start_cluster, clu
         {"_id": {"$gte": NORMAL_ID_START}}, {"$set": {"version": 1}}
     )
 
-    # pitr_time is truncated to whole seconds, so step past the second of the version=1 update
-    # above; otherwise the restore target can land just before it.
     time.sleep(2)
 
     pitr_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
@@ -148,6 +139,9 @@ def test_physical_pitr_restore_with_ttl_unique_index_PBM_1779(start_cluster, clu
 
     null_instance_docs = list(coll.find({"instanceId": None}))
     assert not null_instance_docs, f"Found {len(null_instance_docs)} document(s) with a null instanceId"
+    indexes = coll.index_information()
+    assert indexes.get("instanceId_1", {}).get("unique") is True, "Unique instanceId index was not restored"
+    assert indexes.get("validTill_1", {}).get("expireAfterSeconds") == 0, "TTL index was not restored"
 
     instance_ids = [d["instanceId"] for d in coll.find({}, {"instanceId": 1})]
     assert len(instance_ids) == len(set(instance_ids)), "Duplicate instanceId values found in destination"
@@ -160,7 +154,6 @@ def test_physical_pitr_restore_with_ttl_unique_index_PBM_1779(start_cluster, clu
     deadline = ttl_wait_start + 180
     while coll.count_documents({"_id": {"$lt": NORMAL_ID_START}}) and time.time() < deadline:
         time.sleep(1)
-    Cluster.log(f"TTL cleanup wait took {time.time() - ttl_wait_start:.0f}s")
     remaining = coll.count_documents({"_id": {"$lt": NORMAL_ID_START}})
     assert remaining == 0, f"{remaining} expired heartbeat document(s) still present"
     assert coll.count_documents(normal_filter) == NORMAL_DOC_COUNT, "TTL cleanup after restore removed non-expiring documents"
