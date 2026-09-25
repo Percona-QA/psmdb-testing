@@ -127,7 +127,7 @@ def test_physical_pitr_restore_with_ttl_unique_index_PBM_T373(start_cluster, clu
 
     restore_arg = f"--time={pitr_time}"
     try:
-        cluster.make_restore(restore_arg, restart_cluster=True, check_pbm_status=True)
+        cluster.make_restore(restore_arg, restart_cluster=True, check_pbm_status=True, timeout=600)
     except AssertionError as e:
         dup_key_lines = [l for l in str(e).splitlines() if "E11000" in l or "duplicate key" in l.lower()]
         if dup_key_lines:
