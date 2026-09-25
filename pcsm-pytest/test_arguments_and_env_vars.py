@@ -21,6 +21,13 @@ CONSOLE_RECORD = re.compile(
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 STARTUP_LOG = "Starting HTTP server"
 
+# PCSM-369: --mongodb-operation-timeout belongs only to the commands that open a
+# MongoDB connection (server mode and reset). The HTTP client commands talk to an
+# already running server, so they must reject it as an unknown flag.
+TIMEOUT_FLAG = "--mongodb-operation-timeout"
+UNKNOWN_FLAG_ERROR = f"unknown flag: {TIMEOUT_FLAG}"
+HTTP_CLIENT_COMMANDS = ["status", "start", "pause", "resume", "finalize"]
+
 
 @pytest.fixture(scope="module")
 def src_cluster():
@@ -87,6 +94,19 @@ def check_command_output(expected_output, actual_output):
         f"Expected {expected_output!r} in command output, "
         f"got stdout={stdout!r}, stderr={stderr!r}"
     )
+
+def run_pcsm_cli(csync, args):
+    """
+    Run an arbitrary pcsm CLI command inside the csync container.
+
+    Returns (exit_code, output) with stdout and stderr merged, since PCSM writes
+    the cobra error to stdout and the fatal log record to stderr.
+    """
+    exec_result = csync.container.exec_run(["pcsm", *args], demux=True)
+    stdout, stderr = exec_result.output
+    output = (stdout.decode("utf-8", errors="replace") if stdout else "") + \
+             (stderr.decode("utf-8", errors="replace") if stderr else "")
+    return exec_result.exit_code, output
 
 def _json_logs(csync_env):
     return str(csync_env.get("PCSM_LOG_JSON", "")).lower() in ("true", "1")
@@ -754,3 +774,79 @@ def test_client_compressors_env_var_PML_T92(csync, src_cluster, dst_cluster, csy
     if "PCSM_TARGET_CLIENT_COMPRESSORS" in csync_env:
         expected = "target client compressors: [snappy zlib]"
         assert expected in logs, f"Expected '{expected}' does not appear in logs"
+
+@pytest.mark.timeout(300, func_only=True)
+def test_mongodb_operation_timeout_PML_T119(csync, src_cluster, dst_cluster):
+    """
+    Test PCSM --mongodb-operation-timeout flag.
+
+    PCSM-369: the flag belongs to the server, the HTTP client commands reject it.
+    """
+    # server values that abort PCSM at startup: (flag value, expected error)
+    invalid_values = [
+        ("abc", "'mongodb-operation-timeout' time: invalid duration"),
+        ("45", "'mongodb-operation-timeout' time: missing unit in duration"),
+        ("-1s", 'invalid value "-1s" for "Timeout": value must be positive'),
+    ]
+    # commands that do not accept the flag, with the flag on both sides of the
+    # command name: (CLI arguments, expected error)
+    rejected_args = [([command, f"{TIMEOUT_FLAG}=1s"], UNKNOWN_FLAG_ERROR)
+                     for command in HTTP_CLIENT_COMMANDS + ["version"]]
+    rejected_args += [([f"{TIMEOUT_FLAG}=1s", "status"], UNKNOWN_FLAG_ERROR)]
+    # where the flag shows up in the help output: (CLI arguments, is listed)
+    help_args = [(["--help"], True), (["status", "--help"], False)]
+    failures = []
+    for args, expected_output in rejected_args:
+        try:
+            exit_code, output = run_pcsm_cli(csync, args)
+            assert exit_code != 0, f"Expected a non-zero exit code, got {exit_code}: {output}"
+            assert expected_output in output, f"Expected '{expected_output}', got: {output}"
+        except AssertionError as e:
+            failures.append(f"pcsm {' '.join(args)}: {e!s}")
+    for args, is_listed in help_args:
+        try:
+            _, output = run_pcsm_cli(csync, args)
+            assert (TIMEOUT_FLAG in output) == is_listed, \
+                f"Expected {TIMEOUT_FLAG} listed={is_listed}, got: {output}"
+        except AssertionError as e:
+            failures.append(f"pcsm {' '.join(args)}: {e!s}")
+    # restarts PCSM, so it runs after the cases that exec into a live container
+    for value, expected_log in invalid_values:
+        try:
+            csync.create(extra_args=f"--reset-state {TIMEOUT_FLAG}={value}")
+            assert csync.wait_for_log(expected_log, timeout=30), \
+                f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
+        except AssertionError as e:
+            failures.append(f"Case {TIMEOUT_FLAG}={value}: {e!s}")
+    if failures:
+        pytest.fail(f"Failed {len(failures)} cases:\n" + "\n".join(failures))
+    # a non-default timeout is accepted and replication starts
+    create_test_collection(src_cluster.connection)
+    csync.create(extra_args=f"--reset-state {TIMEOUT_FLAG}=70s")
+    assert csync.start()
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+
+@pytest.mark.parametrize("csync_env", [
+    {"PCSM_MONGODB_OPERATION_TIMEOUT": "30s"},
+    {"PLM_MONGODB_CLI_OPERATION_TIMEOUT": "30s"},
+], indirect=True)
+@pytest.mark.timeout(300, func_only=True)
+def test_pcsm_mongodb_operation_timeout_env_var_PML_T120(csync, src_cluster, dst_cluster, csync_env):
+    """
+    Test the PCSM_MONGODB_OPERATION_TIMEOUT environment variable and its
+    deprecated PLM_MONGODB_CLI_OPERATION_TIMEOUT alias.
+    """
+    env_var = next(iter(csync_env))
+    create_test_collection(src_cluster.connection)
+    if env_var == "PLM_MONGODB_CLI_OPERATION_TIMEOUT":
+        expected_log = ("Environment variable PLM_MONGODB_CLI_OPERATION_TIMEOUT is deprecated; "
+                        "use PCSM_MONGODB_OPERATION_TIMEOUT instead")
+        assert csync.wait_for_log(expected_log, timeout=30), \
+            f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
+    assert csync.start()
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+    # the variable configures the timeout, an invalid duration aborts PCSM
+    expected_log = "'mongodb-operation-timeout' time: invalid duration"
+    csync.create(extra_args="--reset-state", env_vars={env_var: "abc"})
+    assert csync.wait_for_log(expected_log, timeout=30), \
+        f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
