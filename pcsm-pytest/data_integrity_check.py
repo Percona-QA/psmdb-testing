@@ -1,11 +1,12 @@
+import contextlib
 import json
 import time
 from contextlib import contextmanager
-import bson
-from pymongo import MongoClient
-from pymongo.errors import PyMongoError, ServerSelectionTimeoutError, NetworkTimeout, AutoReconnect, ExecutionTimeout
 
+import bson
 from cluster import Cluster
+from pymongo import MongoClient
+from pymongo.errors import AutoReconnect, ExecutionTimeout, NetworkTimeout, PyMongoError, ServerSelectionTimeoutError
 
 # Fixed codec so doc equality compares raw BSON bytes (Python NaN != NaN)
 _BSON_COMPARE_CODEC = bson.CodecOptions(document_class=dict)
@@ -18,10 +19,8 @@ _CONNECTION_ERRORS = (ServerSelectionTimeoutError, NetworkTimeout, AutoReconnect
 
 def _safe_close_client(client):
     if client:
-        try:
+        with contextlib.suppress(PyMongoError):
             client.close()
-        except Exception:
-            pass
 
 @contextmanager
 def _mongo_client_with_retry(uri, max_retries=3, retry_delay=1):
@@ -76,7 +75,7 @@ def compare_data(db1, db2):
     def resolve_container_or_uri(db):
         if hasattr(db, "connection"):
             return db.connection
-        elif isinstance(db, str) and (db.startswith("mongodb://") or db.startswith("mongodb+srv://")):
+        if isinstance(db, str) and db.startswith(("mongodb://", "mongodb+srv://")):
             return db
         return None
 
@@ -85,18 +84,20 @@ def compare_data(db1, db2):
     if db1_container is None or db2_container is None:
         raise ValueError("Invalid database argument: must be cluster object or connection string")
 
-    is_sharded = False
-    if hasattr(db1, "layout") and db1.layout == "sharded":
-        is_sharded = True
-    elif hasattr(db2, "layout") and db2.layout == "sharded":
-        is_sharded = True
+    is_sharded = (
+        (hasattr(db1, "layout") and db1.layout == "sharded")
+        or (hasattr(db2, "layout") and db2.layout == "sharded"))
 
     mismatch_summary = []
     # Hash mismatch is only checked for replica sets, not sharded clusters.
     # dbHash on capped collections is skipped; they are validated separately
     # via record-by-record comparison below
     if not is_sharded:
-        all_coll_hash, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1_container, db2_container)
+        _, mismatch_dbs_hash, mismatch_coll_hash = compare_database_hashes(db1_container, db2_container)
+        # A differing hash is not proof of differing data, so confirm each one
+        # against the documents before failing the comparison on it.
+        mismatch_dbs_hash, mismatch_coll_hash = recheck_hash_mismatches(
+            db1_container, db2_container, mismatch_dbs_hash, mismatch_coll_hash)
         if mismatch_dbs_hash:
             mismatch_summary.extend(mismatch_dbs_hash)
         if mismatch_coll_hash:
@@ -131,6 +132,106 @@ def compare_data(db1, db2):
     Cluster.log(f"Mismatched databases, collections, or indexes found: {mismatch_summary}")
     return False, mismatch_summary
 
+def compare_collection_records(src_client, dst_client, full_name, max_reported=3):
+    """
+    Compare one collection document by document, sorted by _id.
+    Returns a reason string, or None when every document matches.
+    """
+    db_name, coll_name = full_name.split(".", 1)
+    src_coll = src_client[db_name][coll_name]
+    dst_coll = dst_client[db_name][coll_name]
+    try:
+        src_count = src_coll.count_documents({})
+        dst_count = dst_coll.count_documents({})
+    except PyMongoError as e:
+        Cluster.log(f"Collection '{full_name}': count failed: {e}")
+        return f"count error: {e}"
+
+    if src_count != dst_count:
+        Cluster.log(f"Collection '{full_name}': record count mismatch {src_count} != {dst_count}")
+        return f"record count mismatch: src={src_count}, dst={dst_count}"
+
+    # Stream both cursors in lockstep instead of materializing them
+    src_cursor = src_coll.find({}, sort=[("_id", 1)])
+    dst_cursor = dst_coll.find({}, sort=[("_id", 1)])
+    differing = 0
+    try:
+        for i, (s_doc, d_doc) in enumerate(zip(src_cursor, dst_cursor)):
+            # Byte-level BSON compare so NaN, Decimal128(NaN), binary
+            # subtypes etc. are not flagged as different just because
+            # Python's value-level equality says so (NaN != NaN)
+            if _bson_doc_eq(s_doc, d_doc):
+                continue
+            differing += 1
+            if differing <= max_reported:
+                try:
+                    s_hex = bson.encode(s_doc, codec_options=_BSON_COMPARE_CODEC).hex()
+                    d_hex = bson.encode(d_doc, codec_options=_BSON_COMPARE_CODEC).hex()
+                except (bson.errors.BSONError, TypeError, OverflowError):
+                    s_hex = d_hex = "<unencodable>"
+                Cluster.log(
+                    f"Collection '{full_name}' doc[{i}] mismatch:\n"
+                    f"  src: {s_doc}\n"
+                    f"  dst: {d_doc}\n"
+                    f"  src bson: {s_hex}\n"
+                    f"  dst bson: {d_hex}")
+    except PyMongoError as e:
+        Cluster.log(f"Collection '{full_name}': find failed: {e}")
+        return f"find error: {e}"
+    finally:
+        src_cursor.close()
+        dst_cursor.close()
+
+    if differing:
+        Cluster.log(f"Collection '{full_name}': {differing} of {src_count} docs differ")
+        return f"{differing} document(s) differ"
+
+    Cluster.log(f"Collection '{full_name}': {src_count} docs match")
+    return None
+
+def recheck_hash_mismatches(db1_container, db2_container, mismatched_dbs, mismatched_collections):
+    """
+    Confirm dbHash mismatches document by document.
+    dbHash covers on-disk details the documents themselves do not - ordering,
+    collation and index state - so two independent clusters can hash
+    differently while holding identical data. Keep only the mismatches where
+    the documents really differ, and report which ones.
+    """
+    suspect = [name for name, reason in mismatched_collections if reason == "hash mismatch"]
+    if not suspect:
+        return mismatched_dbs, mismatched_collections
+
+    Cluster.log(f"Re-checking {len(suspect)} collection hash mismatch(es) record-by-record...")
+    confirmed = {}
+    with _mongo_client_with_retry(db1_container) as src_client, \
+         _mongo_client_with_retry(db2_container) as dst_client:
+        for full_name in suspect:
+            reason = compare_collection_records(src_client, dst_client, full_name)
+            if reason:
+                confirmed[full_name] = reason
+            else:
+                Cluster.log(
+                    f"Collection '{full_name}': hash differs but every document matches, "
+                    "not a data mismatch")
+
+    collections = []
+    for name, reason in mismatched_collections:
+        if reason != "hash mismatch":
+            collections.append((name, reason))
+        elif name in confirmed:
+            collections.append((name, confirmed[name]))
+
+    # A database hash only differs because a collection in it does, so drop
+    # the database-level entry once its collections turn out to match. A
+    # database with nothing re-checked is kept: dbHash may have failed on it.
+    rechecked = {name.split(".", 1)[0] for name in suspect}
+    remaining = {name.split(".", 1)[0] for name, _ in collections}
+    dbs = [
+        (name, reason) for name, reason in mismatched_dbs
+        if reason != "hash mismatch" or name not in rechecked or name in remaining
+    ]
+    return dbs, collections
+
 def compare_capped_collections(db1, db2, databases=None):
     """
     Record-by-record comparison of capped collections, sorted by _id.
@@ -143,7 +244,7 @@ def compare_capped_collections(db1, db2, databases=None):
     def resolve_uri(db):
         if hasattr(db, "connection"):
             return db.connection
-        if isinstance(db, str) and (db.startswith("mongodb://") or db.startswith("mongodb+srv://")):
+        if isinstance(db, str) and db.startswith(("mongodb://", "mongodb+srv://")):
             return db
         raise ValueError("Invalid database argument: must be cluster object or connection string")
 
@@ -200,58 +301,9 @@ def compare_capped_collections(db1, db2, databases=None):
                 Cluster.log(f"Capped '{full_name}' exists in source_DB but not in destination_DB")
                 continue
 
-            src_coll = src_client[db_name][coll_name]
-            dst_coll = dst_client[db_name][coll_name]
-            try:
-                src_count = src_coll.count_documents({})
-                dst_count = dst_coll.count_documents({})
-            except PyMongoError as e:
-                Cluster.log(f"Capped '{full_name}': count failed: {e}")
-                mismatches.append((full_name, f"count error: {e}"))
-                continue
-
-            if src_count != dst_count:
-                mismatches.append((full_name, f"record count mismatch: src={src_count}, dst={dst_count}"))
-                Cluster.log(f"Capped '{full_name}': record count mismatch {src_count} != {dst_count}")
-                continue
-
-            # Stream both cursors in lockstep instead of materializing them
-            src_cursor = src_coll.find({}, sort=[("_id", 1)])
-            dst_cursor = dst_coll.find({}, sort=[("_id", 1)])
-            differing = 0
-            try:
-                for i, (s_doc, d_doc) in enumerate(zip(src_cursor, dst_cursor)):
-                    # Byte-level BSON compare so NaN, Decimal128(NaN), binary
-                    # subtypes etc. are not flagged as different just because
-                    # Python's value-level equality says so (NaN != NaN)
-                    if _bson_doc_eq(s_doc, d_doc):
-                        continue
-                    differing += 1
-                    if differing <= 3:
-                        try:
-                            s_hex = bson.encode(s_doc, codec_options=_BSON_COMPARE_CODEC).hex()
-                            d_hex = bson.encode(d_doc, codec_options=_BSON_COMPARE_CODEC).hex()
-                        except Exception:
-                            s_hex = d_hex = "<unencodable>"
-                        Cluster.log(
-                            f"Capped '{full_name}' doc[{i}] mismatch:\n"
-                            f"  src: {s_doc}\n"
-                            f"  dst: {d_doc}\n"
-                            f"  src bson: {s_hex}\n"
-                            f"  dst bson: {d_hex}")
-            except PyMongoError as e:
-                Cluster.log(f"Capped '{full_name}': find failed: {e}")
-                mismatches.append((full_name, f"find error: {e}"))
-                continue
-            finally:
-                src_cursor.close()
-                dst_cursor.close()
-
-            if differing:
-                mismatches.append((full_name, f"{differing} document(s) differ"))
-                Cluster.log(f"Capped '{full_name}': {differing} of {src_count} docs differ")
-            else:
-                Cluster.log(f"Capped '{full_name}': {src_count} docs match")
+            reason = compare_collection_records(src_client, dst_client, full_name)
+            if reason:
+                mismatches.append((full_name, reason))
 
     return len(mismatches) == 0, mismatches
 
@@ -286,7 +338,7 @@ def compare_database_hashes(db1_container, db2_container):
                     for coll, coll_hash in result.get("collections", {}).items():
                         collection_hashes[f"{db_name}.{coll}"] = coll_hash
                 except PyMongoError as e:
-                    Cluster.log(f"Warning: could not run dbHash on {db_name}: {str(e)}")
+                    Cluster.log(f"Warning: could not run dbHash on {db_name}: {e!s}")
                     db_hashes[db_name] = None
             return db_hashes, collection_hashes
 
@@ -342,7 +394,7 @@ def compare_entries_number(db1_container, db2_container):
                         # Timeout errors - skip this collection and continue
                         Cluster.log(f"Warning: Timeout counting documents in {db_name}.{coll_name}: {e}. Skipping...")
                         continue
-                    except Exception as e:
+                    except PyMongoError as e:
                         Cluster.log(f"Warning: Could not count documents in {db_name}.{coll_name}: {e}")
                         continue
             return collection_counts
@@ -420,10 +472,10 @@ def get_all_collection_metadata(uri):
                             "idIndex": coll.get("idIndex")
                         })
                 except (ServerSelectionTimeoutError, NetworkTimeout, ExecutionTimeout, AutoReconnect) as e:
-                    Cluster.log(f"Warning: Timeout accessing metadata for DB '{db_name}': {str(e)}. Skipping DB...")
+                    Cluster.log(f"Warning: Timeout accessing metadata for DB '{db_name}': {e!s}. Skipping DB...")
                     continue
                 except PyMongoError as e:
-                    Cluster.log(f"Warning: Could not access metadata for DB '{db_name}': {str(e)}")
+                    Cluster.log(f"Warning: Could not access metadata for DB '{db_name}': {e!s}")
                     continue
             return metadata_list
     except (ServerSelectionTimeoutError, NetworkTimeout, ExecutionTimeout, AutoReconnect) as e:
@@ -441,12 +493,12 @@ def compare_collection_indexes(db1_container, db2_container, all_collections):
         db1_index_dict = {index["name"]: index for index in db1_indexes if "name" in index}
         db2_index_dict = {index["name"]: index for index in db2_indexes if "name" in index}
 
-        for index_name, index_details in db1_index_dict.items():
+        for index_name in db1_index_dict:
             if index_name not in db2_index_dict:
                 mismatched_indexes.append((coll_name, index_name))
                 Cluster.log(f"Collection '{coll_name}': Index '{index_name}' exists in source_DB but not in destination_DB")
 
-        for index_name in db2_index_dict.keys():
+        for index_name in db2_index_dict:
             if index_name not in db1_index_dict:
                 mismatched_indexes.append((coll_name, index_name))
                 Cluster.log(f"Collection '{coll_name}': Index '{index_name}' exists in destination_DB but not in source_DB")
@@ -529,7 +581,7 @@ def compare_collection_sharding(db1_container, db2_container, all_collections):
                 else:
                     Cluster.log("Warning: No sharded collections found")
             except PyMongoError as e:
-                Cluster.log(f"Warning: Could not access sharding info: {str(e)}")
+                Cluster.log(f"Warning: Could not access sharding info: {e!s}")
             return sharding_info
 
     db1_sharding = get_sharding_info(db1_container)

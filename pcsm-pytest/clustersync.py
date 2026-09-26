@@ -8,6 +8,15 @@ from cluster import Cluster
 
 import docker
 
+# A single instance demotes itself whenever it cannot renew its HA lease, for
+# example while the target has no primary, and promotes itself again once the
+# target is back. In between every endpoint is rejected with HTTP 409 and this
+# error, which is a transient window rather than a replication failure.
+NOT_ACTIVE_ERROR = "not_active"
+
+def _is_not_active(data):
+    return isinstance(data, dict) and data.get("error") == NOT_ACTIVE_ERROR
+
 # class Clustersync for creating/manipulating with single clustersync instance
 # name = the name of the container
 # src = mongodb uri for -source option
@@ -332,6 +341,25 @@ class Clustersync:
             return "STANDBY"
         return None
 
+    def wait_for_active(self, timeout=120, interval=1):
+        """
+        Poll until /status stops answering with the STANDBY not_active body.
+        Used in tests that disturb target: the instance steps down while
+        it cannot renew the lease and comes back on its own, so command has
+        to wait for that instead of failing on the first rejection.
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            status_response = self.status()
+            if not status_response.get("success"):
+                Cluster.log(f"Error: {status_response.get('error', 'Failed to retrieve status')}")
+                return False
+            if not _is_not_active(status_response["data"]):
+                return True
+            time.sleep(interval)
+        Cluster.log(f"Error: instance is still not_active after {timeout}s")
+        return False
+
     def wait_for_role(self, role, timeout=30, interval=0.5):
         start_time = time.time()
         last_role = None
@@ -410,6 +438,9 @@ class Clustersync:
 
     def finalize(self, timeout=240, interval=1):
         try:
+            if not self.wait_for_active():
+                Cluster.log("Failed to finalize sync between src and dst cluster: instance is not ACTIVE")
+                return False
             exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/finalize -d '{}'")
             response = exec_result.output.decode("utf-8").strip()
             status_code = exec_result.exit_code
@@ -515,6 +546,7 @@ class Clustersync:
         last_events_read = None
         last_events_applied = None
         stability_counter = 0
+        standby_wait = False
         self.last_error = None
 
         try:
@@ -544,10 +576,21 @@ class Clustersync:
                 Cluster.log(f"Error: {self.last_error}")
                 return False
             if not status_response["data"].get("ok"):
+                if _is_not_active(status_response["data"]):
+                    Cluster.log("Instance is STANDBY (not_active), waiting for it to become ACTIVE")
+                    # The counters freeze while the pipeline is paused, so drop
+                    # them and re-establish stability once it is ACTIVE again.
+                    standby_wait = True
+                    last_events_read = None
+                    last_events_applied = None
+                    stability_counter = 0
+                    time.sleep(interval)
+                    continue
                 self.last_error = status_response["data"].get("error", "Unknown error")
                 Cluster.log(f"Error: replication failed, error: {self.last_error}")
                 return False
 
+            standby_wait = False
             status_data = status_response["data"]
             last_repl_op = status_data.get("lastReplicatedOpTime", {}).get("ts")
             current_events_read = status_data.get("eventsRead")
@@ -589,7 +632,10 @@ class Clustersync:
             last_events_applied = current_events_applied
             time.sleep(interval)
 
-        self.last_error = "Timeout reached while waiting for replication to catch up"
+        if standby_wait:
+            self.last_error = f"Instance stayed not_active for {timeout}s, it never became ACTIVE again"
+        else:
+            self.last_error = "Timeout reached while waiting for replication to catch up"
         Cluster.log(f"Error: {self.last_error}")
         return False
 
@@ -605,6 +651,10 @@ class Clustersync:
 
             data = status_response.get("data")
             if not data or not data.get("ok"):
+                if _is_not_active(data):
+                    Cluster.log("Instance is STANDBY (not_active), waiting for it to become ACTIVE")
+                    time.sleep(interval)
+                    continue
                 error_msg = data.get("error", "Unknown error") if data else "No data received"
                 Cluster.log(f"Error: replication failed, error: {error_msg}")
                 return False
@@ -617,6 +667,7 @@ class Clustersync:
                 time.sleep(interval)
                 continue
             if initial_sync["completed"]:
+                demoted = False
                 stable_start = time.time()
                 while time.time() - stable_start < stable_duration:
                     stable_status = self.status()
@@ -624,10 +675,17 @@ class Clustersync:
                         Cluster.log(f"Error: Impossible to retrieve status, {stable_status['error']}")
                         return False
 
+                    if _is_not_active(stable_status["data"]):
+                        demoted = True
+                        break
                     state = stable_status["data"].get("state")
                     if state != "running":
                         return False
                     time.sleep(0.5)
+                if demoted:
+                    Cluster.log("Instance became STANDBY (not_active) mid-check, re-checking")
+                    time.sleep(interval)
+                    continue
                 Cluster.log("Initial sync is completed")
                 return True
             time.sleep(interval)

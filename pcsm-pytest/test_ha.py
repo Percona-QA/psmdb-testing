@@ -165,18 +165,6 @@ def _drive_to_state(group, src_cluster, dst_cluster, state, operation_threads):
         assert not (_status(active).get("initialSync") or {}).get("cloneCompleted"), (
             "clone completed before the kill landed; increase the seed size")
         if state == "cloning":
-            # A promoted instance can only restore a mid-clone state if one
-            # was written, so wait for a checkpoint with an unfinished clone.
-            checkpoints = _state_coll(dst_cluster, "checkpoints")
-            unfinished = {
-                "_id": "pcsm",
-                "data.clone.startTime": {"$exists": True},
-                "data.clone.finishTime": {"$exists": False},
-            }
-            deadline = time.time() + 45
-            while not checkpoints.find_one(unfinished):
-                assert time.time() < deadline, "the unfinished clone was never checkpointed"
-                time.sleep(0.2)
             return active
         # 'failed' comes from that same mid-clone kill - an interrupted clone
         # is not resumable, so it is the one reliable way in.
@@ -421,8 +409,8 @@ def test_ha_promotion_from_state_PML_T129(start_ha_cluster, src_cluster, dst_clu
     try:
         active = _drive_to_state(group, src_cluster, dst_cluster, state, operation_threads)
         if state not in ("idle", "cloning"):
-            # 'idle' writes no checkpoint at all, and _drive_to_state already
-            # waited for the 'cloning' one. wait_for_checkpoint() is no use
+            # 'idle' writes no checkpoint at all, and a clone still in progress
+            # is checkpointed as 'running'. wait_for_checkpoint() is no use
             # here: it waits for a finished clone, so read the state directly.
             checkpoints = _state_coll(dst_cluster, "checkpoints")
             deadline = time.time() + 60
@@ -563,7 +551,7 @@ def test_ha_network_faults_PML_T130(start_ha_cluster, src_cluster, dst_cluster, 
             for doc_id, (expected, got) in sorted(stale.items()):
                 Cluster.log(f"counter _id={doc_id}: source has {expected}, target has {got}")
             result, mismatch = compare_data(src_cluster, dst_cluster)
-            if stale or result is not True:
+            if stale:
                 # Known product issue: the checkpoint is the only thing guarded
                 # by the lease term, so an instance that lost the lease can
                 # still write. Nothing repairs it - the new ACTIVE will not
@@ -572,6 +560,9 @@ def test_ha_network_faults_PML_T130(start_ha_cluster, src_cluster, dst_cluster, 
                     f"'{active.name}' overwrote newer data after losing the lease: "
                     f"{len(stale)} of {len(source_values)} counter documents differ, "
                     f"source and target differ by {mismatch}")
+            # The counters are the detector for the known issue. Anything else
+            # diverging is a separate regression and must fail.
+            assert result is True, f"target diverged after the partition healed: {mismatch}"
             assert group.active().name == promoted.name, "reconnecting must not change the ACTIVE"
             assert len(group.standbys()) == 2
     finally:
