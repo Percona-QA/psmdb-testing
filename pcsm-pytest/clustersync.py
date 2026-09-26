@@ -8,6 +8,15 @@ from cluster import Cluster
 
 import docker
 
+# A single instance demotes itself whenever it cannot renew its HA lease, for
+# example while the target has no primary, and promotes itself again once the
+# target is back. In between every endpoint is rejected with HTTP 409 and this
+# error, which is a transient window rather than a replication failure.
+NOT_ACTIVE_ERROR = "not_active"
+
+def _is_not_active(data):
+    return isinstance(data, dict) and data.get("error") == NOT_ACTIVE_ERROR
+
 # class Clustersync for creating/manipulating with single clustersync instance
 # name = the name of the container
 # src = mongodb uri for -source option
@@ -198,6 +207,170 @@ class Clustersync:
             Cluster.log("No container to restart")
             return False
 
+    @property
+    def is_alive(self):
+        try:
+            return self.container.status == "running"
+        except docker.errors.NotFound:
+            return False
+        except docker.errors.APIError as e:
+            Cluster.log(f"Failed to read state of container '{self.name}': {e}")
+            return False
+
+    def kill(self):
+        """SIGKILL the container, simulating a host or pod crash."""
+        try:
+            self.container.kill()
+            Cluster.log(f"Killed csync container '{self.name}'")
+            return True
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Failed to kill container '{self.name}': {e}")
+            return False
+
+    def pause_container(self):
+        """
+        Freeze the whole container, simulating a zombie instance.
+        """
+        try:
+            self.container.pause()
+            Cluster.log(f"Paused csync container '{self.name}'")
+            return True
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Failed to pause container '{self.name}': {e}")
+            return False
+
+    def unpause_container(self):
+        try:
+            self.container.unpause()
+            Cluster.log(f"Unpaused csync container '{self.name}'")
+            return True
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Failed to unpause container '{self.name}': {e}")
+            return False
+
+    def start_container(self, timeout=60):
+        """Bring a stopped or killed container back up, without resetting state."""
+        try:
+            self.container.start()
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Failed to start container '{self.name}': {e}")
+            return False
+        if not self._wait_for_http_server(timeout):
+            Cluster.log(f"'{self.name}' HTTP server not ready after restart")
+            return False
+        Cluster.log(f"Restarted csync container '{self.name}'")
+        return True
+
+    def disconnect_network(self):
+        """Cut the instance off from the clusters without stopping the process."""
+        try:
+            docker.from_env().networks.get("test").disconnect(self.container, force=True)
+            Cluster.log(f"Disconnected '{self.name}' from the test network")
+            return True
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Failed to disconnect '{self.name}': {e}")
+            return False
+
+    def connect_network(self):
+        try:
+            docker.from_env().networks.get("test").connect(self.container)
+            Cluster.log(f"Reconnected '{self.name}' to the test network")
+            return True
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Failed to reconnect '{self.name}': {e}")
+            return False
+
+    def cli(self, args):
+        """Run a pcsm CLI subcommand inside the container."""
+        try:
+            exec_result = self.container.exec_run(f"pcsm {args}", demux=True)
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"CLI '{args}' on '{self.name}' failed: {e}")
+            return None, "", str(e)
+        stdout, stderr = exec_result.output
+        self.cmd_stdout = stdout.decode("utf-8", errors="replace") if stdout else ""
+        self.cmd_stderr = stderr.decode("utf-8", errors="replace") if stderr else ""
+        return exec_result.exit_code, self.cmd_stdout, self.cmd_stderr
+
+    def request(self, method, path, payload=None, timeout=10):
+        """
+        Call a PCSM HTTP endpoint and return (status_code, body).
+
+        Unlike status()/pause()/finalize(), this keeps the HTTP status code,
+        which HA tests need to tell an ACTIVE apart from a STANDBY replying
+        409 not_active. body is decoded JSON when the endpoint returns JSON
+        and raw text otherwise, since /metrics is plain text.
+        """
+        cmd = f"curl -s -m {timeout} -w '\\n%{{http_code}}' -X {method} http://localhost:2242{path}"
+        if payload is not None:
+            cmd += f" -H 'Content-Type: application/json' -d '{json.dumps(payload)}'"
+        try:
+            exec_result = self.container.exec_run(cmd)
+        except (docker.errors.APIError, docker.errors.NotFound) as e:
+            Cluster.log(f"Request {method} {path} on '{self.name}' failed: {e}")
+            return None, None
+        output = exec_result.output.decode("utf-8", errors="replace")
+        if exec_result.exit_code != 0:
+            Cluster.log(f"curl {method} {path} on '{self.name}' exited {exec_result.exit_code}")
+            return None, output
+        body, _, code = output.rpartition("\n")
+        try:
+            status_code = int(code.strip())
+        except ValueError:
+            Cluster.log(f"No HTTP status in response from '{self.name}': {output!r}")
+            return None, output
+        body = body.strip()
+        try:
+            return status_code, json.loads(body)
+        except json.JSONDecodeError:
+            return status_code, body
+
+    def role(self):
+        """
+        Current HA role, or None when the instance can't be reached.
+
+        /status is ACTIVE-only, so a 200 means ACTIVE even when the response
+        carries no 'role' field - PCSM omits it while only one member is live.
+        """
+        status_code, body = self.request("GET", "/status")
+        if isinstance(body, dict) and body.get("role"):
+            return body["role"]
+        if status_code == 200:
+            return "ACTIVE"
+        if status_code == 409:
+            return "STANDBY"
+        return None
+
+    def wait_for_active(self, timeout=120, interval=1):
+        """
+        Poll until /status stops answering with the STANDBY not_active body.
+        Used in tests that disturb target: the instance steps down while
+        it cannot renew the lease and comes back on its own, so command has
+        to wait for that instead of failing on the first rejection.
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            status_response = self.status()
+            if not status_response.get("success"):
+                Cluster.log(f"Error: {status_response.get('error', 'Failed to retrieve status')}")
+                return False
+            if not _is_not_active(status_response["data"]):
+                return True
+            time.sleep(interval)
+        Cluster.log(f"Error: instance is still not_active after {timeout}s")
+        return False
+
+    def wait_for_role(self, role, timeout=30, interval=0.5):
+        start_time = time.time()
+        last_role = None
+        while time.time() - start_time < timeout:
+            last_role = self.role()
+            if last_role == role:
+                return True
+            time.sleep(interval)
+        Cluster.log(f"'{self.name}' is {last_role}, not {role}, after {timeout}s")
+        return False
+
     def pause(self):
         try:
             exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/pause")
@@ -265,6 +438,9 @@ class Clustersync:
 
     def finalize(self, timeout=240, interval=1):
         try:
+            if not self.wait_for_active():
+                Cluster.log("Failed to finalize sync between src and dst cluster: instance is not ACTIVE")
+                return False
             exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/finalize -d '{}'")
             response = exec_result.output.decode("utf-8").strip()
             status_code = exec_result.exit_code
@@ -370,6 +546,7 @@ class Clustersync:
         last_events_read = None
         last_events_applied = None
         stability_counter = 0
+        standby_wait = False
         self.last_error = None
 
         try:
@@ -399,10 +576,21 @@ class Clustersync:
                 Cluster.log(f"Error: {self.last_error}")
                 return False
             if not status_response["data"].get("ok"):
+                if _is_not_active(status_response["data"]):
+                    Cluster.log("Instance is STANDBY (not_active), waiting for it to become ACTIVE")
+                    # The counters freeze while the pipeline is paused, so drop
+                    # them and re-establish stability once it is ACTIVE again.
+                    standby_wait = True
+                    last_events_read = None
+                    last_events_applied = None
+                    stability_counter = 0
+                    time.sleep(interval)
+                    continue
                 self.last_error = status_response["data"].get("error", "Unknown error")
                 Cluster.log(f"Error: replication failed, error: {self.last_error}")
                 return False
 
+            standby_wait = False
             status_data = status_response["data"]
             last_repl_op = status_data.get("lastReplicatedOpTime", {}).get("ts")
             current_events_read = status_data.get("eventsRead")
@@ -444,7 +632,10 @@ class Clustersync:
             last_events_applied = current_events_applied
             time.sleep(interval)
 
-        self.last_error = "Timeout reached while waiting for replication to catch up"
+        if standby_wait:
+            self.last_error = f"Instance stayed not_active for {timeout}s, it never became ACTIVE again"
+        else:
+            self.last_error = "Timeout reached while waiting for replication to catch up"
         Cluster.log(f"Error: {self.last_error}")
         return False
 
@@ -460,6 +651,10 @@ class Clustersync:
 
             data = status_response.get("data")
             if not data or not data.get("ok"):
+                if _is_not_active(data):
+                    Cluster.log("Instance is STANDBY (not_active), waiting for it to become ACTIVE")
+                    time.sleep(interval)
+                    continue
                 error_msg = data.get("error", "Unknown error") if data else "No data received"
                 Cluster.log(f"Error: replication failed, error: {error_msg}")
                 return False
@@ -472,6 +667,7 @@ class Clustersync:
                 time.sleep(interval)
                 continue
             if initial_sync["completed"]:
+                demoted = False
                 stable_start = time.time()
                 while time.time() - stable_start < stable_duration:
                     stable_status = self.status()
@@ -479,10 +675,17 @@ class Clustersync:
                         Cluster.log(f"Error: Impossible to retrieve status, {stable_status['error']}")
                         return False
 
+                    if _is_not_active(stable_status["data"]):
+                        demoted = True
+                        break
                     state = stable_status["data"].get("state")
                     if state != "running":
                         return False
                     time.sleep(0.5)
+                if demoted:
+                    Cluster.log("Instance became STANDBY (not_active) mid-check, re-checking")
+                    time.sleep(interval)
+                    continue
                 Cluster.log("Initial sync is completed")
                 return True
             time.sleep(interval)
