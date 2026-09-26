@@ -1,4 +1,5 @@
 import threading
+import time
 
 import pytest
 from cluster import Cluster
@@ -226,18 +227,27 @@ def create_clusters(src_cluster, dst_cluster):
             Cluster.log(f"{cluster_name} cluster creation failed: {e}")
             exceptions[cluster_name] = e
     # Lambda wraps create_cluster with arguments since threading.Thread expects a zero-argument callable
-    src_create_thread = threading.Thread(target=lambda: create_cluster("src", src_cluster))
-    dst_create_thread = threading.Thread(target=lambda: create_cluster("dst", dst_cluster))
+    # Daemon threads so a wedged creation cannot keep the test process alive
+    src_create_thread = threading.Thread(target=lambda: create_cluster("src", src_cluster), daemon=True)
+    dst_create_thread = threading.Thread(target=lambda: create_cluster("dst", dst_cluster), daemon=True)
     src_create_thread.start()
     dst_create_thread.start()
-    def wait_for_thread(thread, cluster_name):
-        thread.join(timeout=CLUSTER_CREATE_TIMEOUT)
-        if thread.is_alive():
-            raise TimeoutError(f"{cluster_name} cluster creation timed out after {CLUSTER_CREATE_TIMEOUT} seconds")
+    deadline = time.time() + CLUSTER_CREATE_TIMEOUT
+    threads = {"src": src_create_thread, "dst": dst_create_thread}
+    for thread in threads.values():
+        thread.join(timeout=max(0, deadline - time.time()))
+    late = [name for name, thread in threads.items() if thread.is_alive()]
+    if late:
+        Cluster.log(f"{', '.join(late)} cluster creation is over the "
+                    f"{CLUSTER_CREATE_TIMEOUT}s budget, waiting for it to finish before failing")
+        for name in late:
+            threads[name].join()
+    for cluster_name in threads:
         if cluster_name in exceptions:
             raise exceptions[cluster_name]
-    wait_for_thread(src_create_thread, "src")
-    wait_for_thread(dst_create_thread, "dst")
+    if late:
+        raise TimeoutError(
+            f"{', '.join(late)} cluster creation took longer than {CLUSTER_CREATE_TIMEOUT} seconds")
 
 @pytest.fixture(scope="function")
 def start_cluster(src_cluster, dst_cluster, csync, request, csync_env):

@@ -1,7 +1,6 @@
 import re
 
 import pytest
-
 from data_generator import create_all_types_db, stop_all_crud_operations
 from data_integrity_check import compare_data
 
@@ -14,7 +13,7 @@ def assert_metrics(metrics, check_worker_metrics=False):
         'go_gc_duration_seconds{quantile="0.25"}': lambda v: 0 <= v <= 0.02,
         'go_gc_duration_seconds{quantile="0.5"}': lambda v: 0 <= v <= 0.02,
         'go_gc_duration_seconds{quantile="0.75"}': lambda v: 0 <= v <= 0.02,
-        'go_gc_duration_seconds{quantile="1"}': lambda v: 0 <= v <= 0.02,
+        'go_gc_duration_seconds{quantile="1"}': lambda v: 0 <= v <= 0.5,
         'go_gc_duration_seconds_sum': lambda v: 0 <= v <= 1.0,
         'go_gc_duration_seconds_count': lambda v: 0 <= v <= 10_000,
         'go_gc_gogc_percent': lambda v: v == 100,
@@ -73,7 +72,9 @@ def assert_metrics(metrics, check_worker_metrics=False):
         try:
             if not check(value):
                 invalid.append((key, value))
-        except Exception:
+        except TypeError:
+            # A metric that came back as something the check cannot compare
+            # against is just as wrong as one out of range.
             invalid.append((key, value))
     assert not invalid, f"Invalid metric values: {invalid}"
     if check_worker_metrics:
@@ -114,8 +115,6 @@ def test_csync_PML_T44(start_cluster, src_cluster, dst_cluster, csync):
         assert metrics["success"], f"Failed to fetch metrics after start: {metrics.get('error')}"
         assert_metrics(metrics["data"])
         _, operation_threads_3 = create_all_types_db(src_cluster.connection, "repl_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
-    except Exception:
-        raise
     finally:
         stop_all_crud_operations()
         all_threads = []

@@ -4,6 +4,8 @@ import time
 from cluster import Cluster
 from clustersync import Clustersync
 
+import docker
+
 # Failover budget: lease TTL (10s) plus margin for
 # new ACTIVE to renew, recover and publish its role.
 FAILOVER_TIMEOUT = 30.0
@@ -52,12 +54,14 @@ class PCSMGroup:
             log_level=self.log_level,
             env_vars=self.env_vars,
             extra_args=extra_args)
+        # Register before the readiness checks, otherwise a container that
+        # fails to come up is never destroyed by stop().
+        with self._lock:
+            self.instances.append(inst)
         if not inst._wait_for_http_server():
             raise AssertionError(
                 f"'{name}' HTTP server not ready on startup: {inst.logs()}"
             )
-        with self._lock:
-            self.instances.append(inst)
         self._verify_instance_ready(inst)
         return inst
 
@@ -84,7 +88,7 @@ class PCSMGroup:
         for inst in self.instances:
             try:
                 inst.destroy()
-            except Exception as e:
+            except docker.errors.APIError as e:
                 Cluster.log(f"Warning: failed to destroy '{inst.name}': {e}")
 
     def alive_instances(self):
