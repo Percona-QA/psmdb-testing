@@ -1,0 +1,51 @@
+---
+- import_playbook: prepare.yml
+
+- name: Enable FIPS mode on RHEL
+  hosts: all
+  become: true
+  become_method: "{{ ansible_become_method | default('sudo') }}"
+  gather_facts: true
+  tasks:
+    - name: Check if FIPS mode is already enabled
+      command: cat /proc/sys/crypto/fips_enabled
+      register: fips_before
+      changed_when: false
+
+    - name: Enable FIPS mode
+      block:
+        - name: Enable FIPS mode with fips-mode-setup on RHEL8/9
+          command: fips-mode-setup --enable
+          when: ansible_distribution_major_version|int <= 9
+
+        # fips-mode-setup was removed in RHEL10, so set the crypto policy and kernel argument directly
+        - name: Enable FIPS mode on RHEL10+
+          block:
+            - name: Set system-wide crypto policy to FIPS
+              command: update-crypto-policies --set FIPS
+
+            - name: Find /boot partition UUID if /boot is a separate mount
+              command: findmnt -n -o UUID /boot
+              register: boot_uuid
+              failed_when: false
+              changed_when: false
+
+            - name: Add fips=1 to kernel arguments
+              command: >-
+                grubby --update-kernel=ALL
+                --args="fips=1{{ ' boot=UUID=' ~ boot_uuid.stdout | trim if boot_uuid.rc == 0 and boot_uuid.stdout | trim else '' }}"
+
+            - name: Rebuild initramfs with FIPS module
+              command: dracut -f --regenerate-all
+          when: ansible_distribution_major_version|int >= 10
+
+        - name: Reboot to activate FIPS mode
+          reboot:
+            reboot_timeout: 600
+      when: fips_before.stdout | trim != "1"
+
+    - name: Verify FIPS mode is enabled in the kernel
+      command: cat /proc/sys/crypto/fips_enabled
+      register: fips_after
+      changed_when: false
+      failed_when: fips_after.stdout | trim != "1"
