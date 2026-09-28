@@ -1,10 +1,11 @@
 import os
 import re
-import requests
+
 import pytest
+import requests
 
 PCSM_VER = os.environ.get("PCSM_VERSION")
-SOFTWARE_FILES = ['bookworm','bullseye','redhat/9','redhat/8','jammy','noble','redhat/2023', 'source']
+SOFTWARE_FILES = ['bookworm','trixie','binary','redhat/9','redhat/8','redhat/10','jammy','noble','redhat/2023', 'source']
 
 PRODUCT_ID = 'percona-clustersync-mongodb'
 DOWNLOADS_API_URL = "https://www.percona.com/wp-admin/admin-ajax.php"
