@@ -545,7 +545,13 @@ class Cluster:
             else:
                 Cluster.log("Waiting for " + host + " to became primary")
             if time.time() > timeout:
-                assert False
+                members = n.run(
+                    "mongosh " + connection + " --quiet --eval "
+                    "'rs.status().members.map(m => m.name + \"=\" + m.stateStr).join(\", \")'")
+                assert False, (
+                    f"'{host}' did not become primary within 60s: "
+                    f"hello={result.stdout.strip() or result.stderr.strip()}, "
+                    f"members={members.stdout.strip() or members.stderr.strip()}")
             time.sleep(0.5)
 
     def wait_for_primaries(self):

@@ -58,6 +58,9 @@ docker compose run test pytest -k test_name --jenkins  # Run specific test or wi
 - `src_cluster` / `dst_cluster` - source and destination MongoDB clusters
 - `csync` - PCSM container for synchronization
 - `start_cluster` - unified fixture for cluster startup and cleanup
+- `start_ha_cluster` - same, but starts a group of PCSM instances sharing one
+  lease on the target instead of a single `csync`. Yields a `PCSMGroup` (see
+  [High Availability tests](#high-availability-tests))
 
 ### Custom Pytest Markers
 
@@ -78,6 +81,10 @@ docker compose run test pytest -k test_name --jenkins  # Run specific test or wi
 **@pytest.mark.csync_env({"VAR": "value"})**
 - Set environment variables for PCSM container
 - Example: `@pytest.mark.csync_env({"PCSM_CLONE_NUM_PARALLEL_COLLECTIONS": "5"})`
+
+**@pytest.mark.ha_instances(n)**
+- Number of PCSM instances `start_ha_cluster` brings up, default 3
+- Example: `@pytest.mark.ha_instances(5)`
 
 **@pytest.mark.jenkins**
 - Mark tests to run only with `--jenkins` flag (excluded by default)
@@ -111,6 +118,54 @@ Available topologies via `@pytest.mark.parametrize("cluster_configs", [...], ind
 def test_example(start_cluster, src_cluster, dst_cluster, csync):
     # Your test code here
     pass
+```
+
+### High Availability tests
+
+PCSM HA is always on: instances contend for one lease on the target, exactly
+one becomes ACTIVE and drives replication, the rest stay STANDBY and reject
+operational endpoints with HTTP 409 `not_active`. `start_ha_cluster` brings up
+a group of them against the same source and target, so no extra setup is
+needed beyond the normal `docker compose build`.
+
+```bash
+docker compose run test pytest test_ha.py -v
+docker compose run test pytest test_ha.py -k "T127 and sharded" -v
+```
+
+The fixture yields a `PCSMGroup`. Instances are named `csync0`, `csync1`, ...
+and share `--group-name=qa`; each one is an ordinary `Clustersync`, so the
+usual `start()`, `finalize()` and `logs()` calls work on it.
+
+| Call | Purpose |
+| --- | --- |
+| `group.active()` | The ACTIVE instance, waiting up to 30s for one to settle |
+| `group.standbys()` | Live instances that are not ACTIVE |
+| `group.alive_instances()` | Instances whose container is still running |
+| `group.wait_for_single_active()` | Block until exactly one ACTIVE is seen |
+| `group.kill_active()` | SIGKILL the ACTIVE and return it, simulating a crash |
+| `group.add_instance(reset=False)` | Add a member to a running group |
+| `group.logs()` | Logs from every instance |
+
+Faults are injected through the instance itself: `kill()`, `start_container()`,
+`pause_container()`, `disconnect_network()` and `connect_network()`. A killed
+instance leaves its member document behind and is dropped from the group
+roster by heartbeat age, so check `group.active().status()` rather than the
+`members` collection when asserting membership.
+
+```python
+@pytest.mark.ha_instances(5)
+@pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
+@pytest.mark.timeout(600, func_only=True)
+def test_example_ha(start_ha_cluster, src_cluster, dst_cluster):
+    group = start_ha_cluster
+    active = group.active()
+    assert active.start(), "Failed to start csync on ACTIVE"
+    assert active.wait_for_repl_stage(), "Failed to reach replication stage"
+    killed = group.kill_active()
+    group.wait_for_single_active()
+    promoted = group.active()
+    assert promoted.name != killed.name
 ```
 
 ## Cleanup ##

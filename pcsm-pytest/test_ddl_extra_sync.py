@@ -1,12 +1,13 @@
-import pytest
-import pymongo
-import time
-import threading
 import datetime
 import re
+import threading
+import time
 
+import pymongo
+import pytest
 from data_generator import create_all_types_db, generate_dummy_data, stop_all_crud_operations
 from data_integrity_check import compare_data
+
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300,func_only=True)
@@ -41,8 +42,6 @@ def test_csync_PML_T13(start_cluster, src_cluster, dst_cluster, csync):
             validationLevel="strict"
         )
         assert res.get("ok") == 1.0, f"collMod failed: {res}"
-    except Exception:
-        raise
     finally:
         stop_all_crud_operations()
         if "operation_threads_1" in locals():
@@ -88,8 +87,6 @@ def test_csync_PML_T14(start_cluster, src_cluster, dst_cluster, csync):
             changeStreamPreAndPostImages={"enabled": True})
         assert res.get("ok") == 1.0, f"collMod failed: {res}"
 
-    except Exception:
-        raise
     finally:
         stop_all_crud_operations()
         if "operation_threads_1" in locals():
@@ -143,8 +140,6 @@ def test_csync_PML_T15(start_cluster, src_cluster, dst_cluster, csync):
             {"$project": {"user": 1, "description": 1, "_id": 0}}])
         assert res.get("ok") == 1.0, f"collMod failed on view: {res}"
 
-    except Exception:
-        raise
     finally:
         stop_all_crud_operations()
         if "operation_threads_1" in locals():
@@ -188,8 +183,6 @@ def test_csync_PML_T16(start_cluster, src_cluster, dst_cluster, csync):
         cappedMax=500)
         assert res.get("ok") == 1.0, f"collMod failed: {res}"
 
-    except Exception:
-        raise
     finally:
         stop_all_crud_operations()
         if "operation_threads_1" in locals():
@@ -265,8 +258,6 @@ def test_csync_PML_T17(start_cluster, src_cluster, dst_cluster, csync):
         res = src[db_name].command("collMod", coll_name, index={"keyPattern": {"c": 1}, "unique": True})
         assert res.get("ok") == 1.0
 
-    except Exception:
-        raise
     finally:
         stop_all_crud_operations()
         if "operation_threads_1" in locals():
@@ -327,8 +318,6 @@ def test_csync_PML_T18(start_cluster, src_cluster, dst_cluster, csync):
             code_name = e.details.get("codeName") if e.details else None
             assert code_name == "CannotConvertIndexToUnique", f"Unexpected codeName: {code_name}"
 
-    except Exception:
-        raise
     finally:
         stop_all_crud_operations()
         if "operation_threads_1" in locals():
@@ -397,7 +386,7 @@ def test_csync_PML_T19(start_cluster, src_cluster, dst_cluster, csync, clone_sta
         t2.start()
         t1.join()
         t2.join()
-    except Exception:
+    except Exception:  # noqa: TRY203
         raise
     assert csync.wait_for_repl_stage() is True, "Failed to finish init sync"
     assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
@@ -456,8 +445,8 @@ def test_csync_PML_T20(start_cluster, src_cluster, dst_cluster, csync):
             rename1_done = rename2_done = rename3_done = rename4_done = rename5_done = False
             for raw_line in log_stream:
                 line = raw_line.decode("utf-8").strip()
-                for coll in watched_collections:
-                    if not watched_collections[coll] and f'Collection "{coll}" cloned' in line:
+                for coll, cloned in watched_collections.items():
+                    if not cloned and f'Collection "{coll}" cloned' in line:
                         watched_collections[coll] = True
                 if watched_collections[f"{db_name1}.{old_name1}"] and not rename1_done:
                     res = src.admin.command("renameCollection", f"{db_name1}.{old_name1}", to=f"{db_name1}.{new_name1}")
@@ -493,7 +482,7 @@ def test_csync_PML_T20(start_cluster, src_cluster, dst_cluster, csync):
         t2.start()
         t1.join()
         t2.join()
-    except Exception:
+    except Exception:  # noqa: TRY203
         raise
     assert csync.wait_for_repl_stage() is True, "Failed to finish init sync"
     assert csync.wait_for_zero_lag() is True, "Failed to catch up on replication"
@@ -512,11 +501,7 @@ def test_csync_PML_T20(start_cluster, src_cluster, dst_cluster, csync):
         for name in [sh_old_name1, sh_old_name2]:
             assert name not in dst_collections1, f"Old collection '{name}' still exists in {db_name1}"
     result, summary = compare_data(src_cluster, dst_cluster)
-    if not result:
-        expected_mismatches = ["hash mismatch"]
-        unexpected_mismatches = [mismatch for mismatch in summary if mismatch[1] not in expected_mismatches]
-        if unexpected_mismatches:
-            pytest.fail("Unexpected mismatches:\n" + "\n".join(str(m) for m in unexpected_mismatches))
+    assert result is True, f"Data mismatch after synchronization: {summary}"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300,func_only=True)
@@ -562,8 +547,6 @@ def test_csync_PML_T21(start_cluster, src_cluster, dst_cluster, csync):
             assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
             res = src.admin.command("renameCollection", f"{db_name1}.{sh_old_name2}", to=f"{db_name1}.{sh_new_name2}", dropTarget=True)
             assert res.get("ok") == 1.0, f"renameCollection failed: {res}"
-    except Exception:
-        raise
     finally:
         stop_all_crud_operations()
         all_threads = []

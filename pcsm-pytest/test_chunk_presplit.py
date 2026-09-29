@@ -522,9 +522,14 @@ def test_pcsm_presplit_move_is_retried_PML_T126(start_cluster, src_cluster,
         pytest.skip("failCommand failpoint is unavailable on the target mongos")
     try:
         assert csync.start(), "Failed to start csync"
-        assert csync.wait_for_log(f"Transient error: ({error_name})", timeout=120), \
+        assert csync.wait_for_log("Transient error:", timeout=120), \
             f"the chunk move failing with {error_name} was not retried, " \
             "it was treated as a final failure"
+        # A server prints Location<code> for a code it has no name for, and
+        # RetriableRemoteCommandFailure (91331) is only named in 8.0.
+        assert (csync.wait_for_log(f"Transient error: ({error_name})", timeout=1)
+                or csync.wait_for_log(f"Transient error: (Location{error_code})", timeout=1)), \
+            f"the retried error was not the injected {error_name} ({error_code})"
         assert csync.wait_for_log("retry attempt 2", timeout=120), \
             "the chunk move was retried once and then given up on"
         assert csync.wait_for_repl_stage(timeout=300), \
