@@ -493,8 +493,8 @@ class Cluster:
 
     @staticmethod
     def setup_authorization(host):
+        host = Cluster.wait_for_primary(host, "mongodb://127.0.0.1:27017")
         primary = testinfra.get_host("docker://" + host)
-        Cluster.wait_for_primary(host, "mongodb://127.0.0.1:27017")
         Cluster.log("Setup authorization on " + host)
         Cluster.log("Adding root user on " + host)
         init_root_user = '\'db.getSiblingDB("admin").createUser({ user: "root", pwd: "root", roles: [ "root", "userAdminAnyDatabase", "clusterAdmin" ] });\''
@@ -538,12 +538,17 @@ class Cluster:
                 "mongosh " + connection + " --quiet --eval 'db.hello().isWritablePrimary'")
             if 'true' in result.stdout.lower():
                 Cluster.log("Host " + host + " became primary")
-                return True
-                break
+                return host
             elif 'mongoservererror' in result.stderr.lower():
                 assert False, result.stderr
-            else:
-                Cluster.log("Waiting for " + host + " to became primary")
+            elected = n.run(
+                "mongosh " + connection + " --quiet --eval "
+                "'rs.status().members.filter(m => m.stateStr == \"PRIMARY\").map(m => m.name).join()'")
+            elected = elected.stdout.strip()
+            if ":" in elected:
+                Cluster.log(f"Host {elected} became primary instead of {host}")
+                return elected.split(":")[0]
+            Cluster.log("Waiting for " + host + " to became primary")
             if time.time() > timeout:
                 members = n.run(
                     "mongosh " + connection + " --quiet --eval "

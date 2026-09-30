@@ -11,7 +11,7 @@ from data_integrity_check import get_indexes
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
 @pytest.mark.timeout(300, func_only=True)
-def test_pcsm_status_finalization_section_PCSM_T95(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_status_finalization_section_PML_T95(start_cluster, src_cluster, dst_cluster, csync):
     """Verify finalization section in pcsm status after pcsm finalize."""
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
@@ -94,7 +94,7 @@ def test_pcsm_status_finalization_section_PCSM_T95(start_cluster, src_cluster, d
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_pcsm_status_finalization_no_failed_indexes_PCSM_T96(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_status_finalization_no_failed_indexes_PML_T96(start_cluster, src_cluster, dst_cluster, csync):
     """Verify unsuccessfulIndexes does not appear in finalization status when all indexes succeed."""
     src = pymongo.MongoClient(src_cluster.connection)
     db = src["testdb"]
@@ -131,7 +131,7 @@ def test_pcsm_status_finalization_no_failed_indexes_PCSM_T96(start_cluster, src_
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
 @pytest.mark.timeout(300, func_only=True)
-def test_pcsm_status_finalization_retry_clears_failed_indexes_PCSM_T97(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_status_finalization_retry_clears_failed_indexes_PML_T97(start_cluster, src_cluster, dst_cluster, csync):
     """Verify that a second finalize after fixing the index issue clears unsuccessfulIndexes."""
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
@@ -259,7 +259,7 @@ def test_pcsm_status_finalization_incomplete_index_still_building_PML_T113(start
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
 @pytest.mark.timeout(300, func_only=True)
-def test_pcsm_status_finalization_persists_after_restart_PCSM_T101(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_status_finalization_persists_after_restart_PML_T101(start_cluster, src_cluster, dst_cluster, csync):
     """Verify that finalization.completed persists from checkpoint after PCSM restart."""
     src = pymongo.MongoClient(src_cluster.connection)
     dst = pymongo.MongoClient(dst_cluster.connection)
@@ -287,6 +287,24 @@ def test_pcsm_status_finalization_persists_after_restart_PCSM_T101(start_cluster
     assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
 
     assert csync.finalize(), "Failed to finalize csync"
+
+    # /status reports finalized before the checkpoint does, and only the
+    # checkpoint survives a restart. Two writers race to persist the state, so
+    # it has to hold across reads rather than just show up once.
+    dst = pymongo.MongoClient(dst_cluster.connection)
+    deadline = time.time() + 60
+    stable = 0
+    while stable < 3 and time.time() < deadline:
+        checkpoint = dst["percona_clustersync_mongodb"]["checkpoints"].find_one({"_id": "pcsm"})
+        state = (checkpoint or {}).get("data", {}).get("state")
+        Cluster.log(f"persisted checkpoint state: {state}")
+        if state == "finalized":
+            stable += 1
+        else:
+            stable = 0
+        time.sleep(1)
+    dst.close()
+    assert stable == 3, f"finalized state did not hold in the checkpoint: {checkpoint}"
 
     assert csync.restart(), "Failed to restart csync"
 
@@ -323,7 +341,7 @@ def _hide_index_from_mongos(src_cluster, mongos_client, db_name, coll_name, inde
 
 @pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
 @pytest.mark.timeout(3600, func_only=True)
-def test_pcsm_status_finalization_inconsistent_index_hidden_from_mongos_PCSM_T106(start_cluster, src_cluster, dst_cluster, csync):
+def test_pcsm_status_finalization_inconsistent_index_hidden_from_mongos_PML_T106(start_cluster, src_cluster, dst_cluster, csync):
     """
     Verify an inconsistent index is still reported when it happens to be missing from the specific shard mongos routes listIndexes to
     """

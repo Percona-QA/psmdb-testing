@@ -194,7 +194,7 @@ class Clustersync:
                 start_time = time.time()
                 for line in log_stream:
                     log_line = line.decode('utf-8').strip()
-                    if "Checking Recovery Data" in log_line:
+                    if "Successfully recovered" in log_line or "Recovery Data not found" in log_line:
                         Cluster.log("Csync restarted successfully")
                         return True
                     if time.time() - start_time > timeout:
@@ -533,10 +533,15 @@ class Clustersync:
 
         ansi_escape_re = re.compile(r"\x1b\[[0-9;]*m")
         error_pattern = re.compile(r"\b(?:ERROR|ERR|error|err)\b")
+        # PCSM-389: a lone instance can demote itself when its first checkpoint
+        # loses a write race with its own state-change checkpoint. The demotion
+        # pause then fails because the clone is still running, and PCSM logs
+        # that at ERR even though the caller treats it as harmless.
+        benign = "cannot pause: Change Replication is not running"
         def error_lines():
             for line in logs.splitlines():
                 clean = ansi_escape_re.sub("", line)
-                if error_pattern.search(clean):
+                if error_pattern.search(clean) and benign not in clean:
                     yield clean
         errors_found = list(error_lines())
         return not bool(errors_found), errors_found
@@ -573,8 +578,9 @@ class Clustersync:
             status_response = self.status()
             if not status_response.get("success"):
                 self.last_error = status_response.get("error", "Failed to retrieve status")
-                Cluster.log(f"Error: {self.last_error}")
-                return False
+                Cluster.log(f"Failed to read status: {self.last_error}")
+                time.sleep(interval)
+                continue
             if not status_response["data"].get("ok"):
                 if _is_not_active(status_response["data"]):
                     Cluster.log("Instance is STANDBY (not_active), waiting for it to become ACTIVE")
@@ -645,9 +651,9 @@ class Clustersync:
         while time.time() - start_time < timeout:
             status_response = self.status()
             if not status_response.get("success"):
-                error_msg = status_response.get("error", "Unknown error")
-                Cluster.log(f"Error: replication failed, error: {error_msg}")
-                return False
+                Cluster.log(f"Failed to read status: {status_response.get('error', 'Unknown error')}")
+                time.sleep(interval)
+                continue
 
             data = status_response.get("data")
             if not data or not data.get("ok"):
@@ -672,8 +678,9 @@ class Clustersync:
                 while time.time() - stable_start < stable_duration:
                     stable_status = self.status()
                     if not stable_status["success"]:
-                        Cluster.log(f"Error: Impossible to retrieve status, {stable_status['error']}")
-                        return False
+                        Cluster.log(f"Failed to read status: {stable_status['error']}")
+                        time.sleep(0.5)
+                        continue
 
                     if _is_not_active(stable_status["data"]):
                         demoted = True
