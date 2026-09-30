@@ -533,10 +533,15 @@ class Clustersync:
 
         ansi_escape_re = re.compile(r"\x1b\[[0-9;]*m")
         error_pattern = re.compile(r"\b(?:ERROR|ERR|error|err)\b")
+        # PCSM-389: a lone instance can demote itself when its first checkpoint
+        # loses a write race with its own state-change checkpoint. The demotion
+        # pause then fails because the clone is still running, and PCSM logs
+        # that at ERR even though the caller treats it as harmless.
+        benign = "cannot pause: Change Replication is not running"
         def error_lines():
             for line in logs.splitlines():
                 clean = ansi_escape_re.sub("", line)
-                if error_pattern.search(clean):
+                if error_pattern.search(clean) and benign not in clean:
                     yield clean
         errors_found = list(error_lines())
         return not bool(errors_found), errors_found

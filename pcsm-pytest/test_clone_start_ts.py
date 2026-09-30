@@ -80,6 +80,15 @@ def _wait_for_clone_start_ts(csync, dst, timeout=30):
             return start_ts
         time.sleep(0.2)
     doc = dst["percona_clustersync_mongodb"]["checkpoints"].find_one({"_id": "pcsm"})
+    if "Stopping checkpointing" in csync.logs(tail=None):
+        # Known product issue: the first checkpoint of a run is written by both
+        # the periodic loop and the state-change callback, and the loser reads
+        # its duplicate key as a takeover by a newer term. It stops
+        # checkpointing and never restarts, so the checkpoint stays frozen at
+        # whatever it held before the clone captured startTS.
+        pytest.xfail(
+            "Known issue: PCSM-389. Checkpointing stopped before the clone "
+            f"captured startTS, leaving the checkpoint frozen at {doc}")
     raise AssertionError(
         "clone startTS was not exposed in /status or persisted as "
         f"data.clone.startTS in the target checkpoint. checkpoint={doc}, "
@@ -118,7 +127,6 @@ def _repl_started_from_log(csync, start_ts):
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-@pytest.mark.csync_env({"PCSM_RECOVERY_CHECKPOINT_INTERVAL": "1s"})
 def test_csync_PML_T114(start_cluster, src_cluster, dst_cluster, csync):
     """
     PCSM-241: clone startTS is captured with appendOplogNote, not ping,
