@@ -333,6 +333,54 @@ def test_clone_read_batch_size_PML_T74(csync, src_cluster, dst_cluster):
         pytest.fail(f"Failed {len(failures)}/{len(test_cases)} cases:\n" + "\n".join(failures))
 
 @pytest.mark.timeout(300, func_only=True)
+def test_clone_skip_presplit_PML_T132(csync, src_cluster, dst_cluster):
+    """
+    PCSM-382: test PCSM --clone-skip-presplit flag and cloneSkipPresplit HTTP API parameter
+    """
+    test_cases = [
+        (["--clone-skip-presplit"], True, '"ok": true', "cli"),
+        (["--clone-skip-presplit=false"], True, '"ok": true', "cli"),
+        (["--clone-skip-presplit=1"], True, '"ok": true', "cli"),
+        (["--clone-skip-presplit=yes"], False,
+         'Error: invalid argument "yes" for "--clone-skip-presplit" flag: strconv.ParseBool: parsing "yes": invalid syntax',
+         "cli"),
+        ({"cloneSkipPresplit": True}, True, '"ok":true', "http"),
+    ]
+    failures = []
+    _, help_output = run_pcsm_cli(csync, ["start", "--help"])
+    if "--clone-skip-presplit" not in help_output:
+        failures.append(f"--clone-skip-presplit is missing from 'pcsm start --help': {help_output}")
+    create_test_collection(src_cluster.connection)
+    for idx, (raw_args, should_pass, expected_cmd_return, mode) in enumerate(test_cases):
+        try:
+            result = csync.start(mode=mode, raw_args=raw_args)
+            assert result == should_pass, f"Expected should_pass={should_pass}, got {result}"
+            assert check_command_output(expected_cmd_return, csync), \
+                f"Expected command output '{expected_cmd_return}', got STDOUT: {csync.cmd_stdout} STDERR: {csync.cmd_stderr}"
+            if should_pass:
+                assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+        except AssertionError as e:
+            failures.append(f"Case {idx+1} {raw_args}: {e!s}")
+        finally:
+            csync.create(extra_args="--reset-state")
+    if failures:
+        pytest.fail(f"Failed {len(failures)}/{len(test_cases) + 1} cases:\n" + "\n".join(failures))
+
+@pytest.mark.parametrize("csync_env", [{"PCSM_CLONE_SKIP_PRESPLIT": "true"}], indirect=True)
+@pytest.mark.timeout(300, func_only=True)
+def test_pcsm_clone_skip_presplit_env_var_PML_T133(csync, src_cluster, dst_cluster, csync_env):
+    """
+    PCSM-382: test the PCSM_CLONE_SKIP_PRESPLIT environment variable
+    """
+    create_test_collection(src_cluster.connection)
+    assert csync.start()
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+    expected_log = "'clone-skip-presplit' cannot parse value as 'bool'"
+    csync.create(extra_args="--reset-state", env_vars={"PCSM_CLONE_SKIP_PRESPLIT": "abc"})
+    assert csync.wait_for_log(expected_log, timeout=30), \
+        f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
+
+@pytest.mark.timeout(300, func_only=True)
 def test_use_collection_bulk_write_PML_T77(csync, src_cluster, dst_cluster):
     """
     Test PCSM --use-collection-bulk-write argument and useCollectionBulkWrite environment variable

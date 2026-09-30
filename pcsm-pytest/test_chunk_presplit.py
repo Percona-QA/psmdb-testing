@@ -480,6 +480,87 @@ def test_pcsm_presplit_empty_chunks_spread_PML_T125(start_cluster, src_cluster,
     assert result is True, f"Data mismatch: {summary}"
     assert_no_unexpected_errors(csync)
 
+@pytest.mark.parametrize("cluster_configs", [ "sharded",
+    pytest.param("sharded_3v2", marks=pytest.mark.jenkins)], indirect=True)
+@pytest.mark.timeout(900, func_only=True)
+def test_pcsm_skip_presplit_keeps_native_layout_PML_T134(start_cluster, src_cluster,
+                                                         dst_cluster, csync):
+    """
+    PCSM-382: cloneSkipPresplit shards the target with the source key but does
+    not pre-split it.
+
+    Without the option PCSM splits two ranged collections across target shards,
+    whereas with it each one keeps what shardCollection created: a single chunk
+    on the primary shard. Hashed keys are never pre-split, so the hashed
+    collection is unaffected.
+    """
+    src = pymongo.MongoClient(src_cluster.connection)
+    dst = pymongo.MongoClient(dst_cluster.connection)
+    db_name = "skip_presplit_db"
+    ranged_ns = f"{db_name}.ranged_coll"
+    compound_ns = f"{db_name}.compound_coll"
+    hashed_ns = f"{db_name}.hashed_coll"
+    src_shards = sorted_shard_ids(src)
+    tgt_shards = sorted_shard_ids(dst)
+    dst_balancer_before = balancer_state(dst)
+    src.admin.command("enableSharding", db_name)
+    src.admin.command("shardCollection", ranged_ns, key={"_id": 1})
+    pin_source_layout(src, ranged_ns)
+    for point in (0, 100, 200):
+        src.admin.command("split", ranged_ns, middle={"_id": point})
+    scatter_chunks(src, ranged_ns, src_shards)
+    src[db_name]["ranged_coll"].insert_many(
+        [{"_id": i, "value": f"v_{i}"} for i in range(-50, 300, 5)])
+    assert_source_spans_shards(src, ranged_ns, src_shards)
+    src.admin.command("shardCollection", compound_ns, key={"a": 1, "b": 1})
+    pin_source_layout(src, compound_ns)
+    for point in (100, 200):
+        src.admin.command("split", compound_ns, middle={"a": point, "b": 0})
+    scatter_chunks(src, compound_ns, src_shards)
+    src[db_name]["compound_coll"].insert_many(
+        [{"_id": i, "a": i, "b": i % 5} for i in range(300)])
+    assert_source_spans_shards(src, compound_ns, src_shards)
+    src.admin.command("shardCollection", hashed_ns, key={"a": "hashed"})
+    pin_source_layout(src, hashed_ns)
+    src[db_name]["hashed_coll"].insert_many([{"_id": i, "a": i} for i in range(200)])
+    assert csync.start(raw_args={"cloneSkipPresplit": True}), "Failed to start csync"
+    assert csync.wait_for_repl_stage(timeout=300), "Failed to complete the initial clone"
+    tgt_primary = database_primary(dst, db_name)
+    for ns, key in ((ranged_ns, {"_id": 1}), (compound_ns, {"a": 1, "b": 1})):
+        target_config = dst["config"]["collections"].find_one({"_id": ns})
+        assert target_config is not None, \
+            f"{ns} is missing from config.collections, a skipped pre-split must still shard"
+        assert target_config["key"] == key, \
+            f"{ns} was sharded with {target_config['key']}, expected the source key {key}"
+        tgt_chunks = chunks_for_ns(dst, ns)
+        Cluster.log(f"{ns} source layout: {chunks_by_shard(chunks_for_ns(src, ns))}")
+        Cluster.log(f"{ns} target layout: {chunks_by_shard(tgt_chunks)}, primary {tgt_primary}")
+        assert len(tgt_chunks) == 1, \
+            f"{ns}: the target was pre-split despite cloneSkipPresplit: {chunks_by_shard(tgt_chunks)}"
+        assert tgt_chunks[0]["shard"] == tgt_primary, \
+            (f"{ns}: the single chunk is on {tgt_chunks[0]['shard']}, expected the primary "
+             f"shard {tgt_primary}: source ownership must not be mirrored")
+    hashed_per_shard = chunks_by_shard(chunks_for_ns(dst, hashed_ns))
+    Cluster.log(f"{hashed_ns} target layout: {hashed_per_shard}")
+    assert set(hashed_per_shard) == set(tgt_shards), \
+        f"a hashed key must keep the even native layout on every target shard: {hashed_per_shard}"
+    for ns in (ranged_ns, compound_ns, hashed_ns):
+        assert csync.wait_for_log(
+            f'Pre-split of "{ns}" skipped by configuration, keeping the native chunk layout'), \
+            f"PCSM did not report a skipped pre-split for {ns}"
+        assert not csync.wait_for_log(f"Pre-split ranged collection {ns}", timeout=1), \
+            f"PCSM pre-split {ns} even though cloneSkipPresplit was set"
+    counts = docs_per_shard(dst_cluster, db_name, ["ranged_coll", "compound_coll"])
+    Cluster.log(f"ranged documents per target shard: {counts}")
+    assert counts.get(tgt_primary) == sum(counts.values()), (
+        f"one chunk owns the whole key range of both ranged collections, so every one of "
+        f"their documents belongs on the primary shard {tgt_primary}: {counts}")
+    assert balancer_state(dst) == dst_balancer_before, "target balancer changed during clone"
+    assert csync.finalize(), "Failed to finalize csync service"
+    result, summary = compare_data(src_cluster, dst_cluster)
+    assert result is True, f"Data mismatch: {summary}"
+    assert_no_unexpected_errors(csync)
+
 # Chunk-migration codes which are classified as retryable for moveChunk.
 MOVE_RETRY_CODES = {
     "LockTimeout": 24,
