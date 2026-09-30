@@ -1,18 +1,18 @@
-import pytest
-import pymongo
-import time
 import os
+import time
+from datetime import datetime, timezone
 
 import boto3
+import pymongo
+import pytest
 from botocore.config import Config
-from datetime import datetime
 from cluster import Cluster
 
 
 def s3_client():
     return boto3.client(
         "s3",
-        endpoint_url="http://minio:9000",
+        endpoint_url="http://seaweedfs:8333",
         aws_access_key_id="minio1234",
         aws_secret_access_key="minio1234",
         config=Config(s3={"addressing_style": "path"}, signature_version="s3v4"),
@@ -62,7 +62,7 @@ def test_physical_PBM_T279(start_cluster, cluster):
     for i in range(10):
         pymongo.MongoClient(cluster.connection)["test"]["test"].insert_one({"doc": i})
     time.sleep(5)
-    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    pitr = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     backup = " --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     cluster.disable_pitr(pitr)
@@ -104,7 +104,7 @@ def test_logical_PBM_T280(start_cluster, cluster):
     for i in range(10):
         pymongo.MongoClient(cluster.connection)["test"]["test"].insert_one({"doc": i})
     time.sleep(5)
-    pitr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    pitr = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     backup = " --time=" + pitr
     Cluster.log("Time for PITR is: " + pitr)
     cluster.disable_pitr(pitr)
