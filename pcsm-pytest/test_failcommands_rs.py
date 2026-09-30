@@ -1,13 +1,13 @@
 import json
-
-import pytest
-import pymongo
-import time
 import threading
-from bson import ObjectId
+import time
 
+import pymongo
+import pytest
+from bson import ObjectId
 from cluster import Cluster
 from clustersync import Clustersync
+
 
 @pytest.fixture(scope="module")
 def dstRS():
@@ -141,7 +141,7 @@ def test_csync_PML_T39(start_cluster, srcRS, dstRS, csync):
                     break
                 batch = [{**doc, "_id": ObjectId()} for _ in range(10000)]
                 src["dummy"]["capped_collection"].insert_many(batch, ordered=False, bypass_document_validation=True)
-            except Exception:
+            except pymongo.errors.PyMongoError:
                 break
     t1 = threading.Thread(target=capped_insert)
     assert csync.start(), "Failed to start csync service"
@@ -153,13 +153,17 @@ def test_csync_PML_T39(start_cluster, srcRS, dstRS, csync):
     result = csync.wait_for_zero_lag(120)
     stop_event.set()
     t1.join()
-    if not result:
-        for _ in range(30):
-            status = csync.status()
-            Cluster.log(status)
-            if not status['data']['ok'] and status['data']['state'] == 'failed':
-                break
-            time.sleep(1)
+    assert not result, \
+        "replication caught up, so the capped collection never overran the change stream"
+    deadline = time.time() + 120
+    while True:
+        status = csync.status()
+        Cluster.log(status)
+        if not status['data']['ok'] and status['data']['state'] == 'failed':
+            break
+        if time.time() > deadline:
+            break
+        time.sleep(1)
     assert not status['data']['ok']
     assert status['data']['state'] != 'running'
     assert status['data']['error'] == "change replication: oplog history is lost"

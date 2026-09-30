@@ -79,9 +79,11 @@ def _wait_for_clone_start_ts(csync, dst, timeout=30):
         if start_ts is not None:
             return start_ts
         time.sleep(0.2)
+    doc = dst["percona_clustersync_mongodb"]["checkpoints"].find_one({"_id": "pcsm"})
     raise AssertionError(
         "clone startTS was not exposed in /status or persisted as "
-        "data.clone.startTS in the target checkpoint")
+        f"data.clone.startTS in the target checkpoint. checkpoint={doc}, "
+        f"status={csync.status()}")
 
 
 def _repl_checkpoint_op_ts(dst):

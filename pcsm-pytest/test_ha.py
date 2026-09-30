@@ -558,17 +558,10 @@ def test_ha_network_faults_PML_T130(start_ha_cluster, src_cluster, dst_cluster, 
             for doc_id, (expected, got) in sorted(stale.items()):
                 Cluster.log(f"counter _id={doc_id}: source has {expected}, target has {got}")
             result, mismatch = compare_data(src_cluster, dst_cluster)
-            if stale:
-                # Known product issue: the checkpoint is the only thing guarded
-                # by the lease term, so an instance that lost the lease can
-                # still write. Nothing repairs it - the new ACTIVE will not
-                # re-apply what it already applied.
-                pytest.xfail(
-                    f"'{active.name}' overwrote newer data after losing the lease: "
-                    f"{len(stale)} of {len(source_values)} counter documents differ, "
-                    f"source and target differ by {mismatch}")
-            # The counters are the detector for the known issue. Anything else
-            # diverging is a separate regression and must fail.
+            assert not stale, (
+                f"'{active.name}' overwrote newer data after losing the lease: "
+                f"{len(stale)} of {len(source_values)} counter documents differ, "
+                f"source and target differ by {mismatch}")
             assert result is True, f"target diverged after the partition healed: {mismatch}"
             assert group.active().name == promoted.name, "reconnecting must not change the ACTIVE"
             assert len(group.standbys()) == 2
