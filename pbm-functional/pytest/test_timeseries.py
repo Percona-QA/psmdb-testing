@@ -176,14 +176,12 @@ def test_logical_pitr_unsharded_timeseries_PBM_T366(start_cluster_unsharded_ts,c
     client["test"].drop_collection('ts1')
     client["test"].drop_collection('ts2')
 
-    try:
-        cluster.make_restore("--time=" + pitr_time, check_pbm_status=True)
-    except AssertionError as e:
-        if "system.buckets" in str(e) and "DocumentValidationFailure" in str(e):
-            pytest.xfail("PBM-1813: known bug")
-        raise
+    cluster.make_restore("--time=" + pitr_time, check_pbm_status=True)
 
     restored_client = pymongo.MongoClient(cluster.connection)
     assert restored_client["test"]["ts1"].count_documents({}) == counters['ts1']
     assert restored_client["test"]["ts2"].count_documents({}) == counters['ts2']
+    for col in ['ts1', 'ts2']:
+        result = restored_client["test"].command("validate", col, full=True)
+        assert result["valid"], f"validate failed for {col}: {result}"
     Cluster.log("Finished successfully")
