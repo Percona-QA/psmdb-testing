@@ -440,12 +440,11 @@ def test_ha_promotion_from_state_PML_T129(start_ha_cluster, src_cluster, dst_clu
     if state == "finalizing":
         # Finalization is not resumed on promotion by design, so it has to be re-issued.
         assert not promoted.start(), "/start must be refused while the state is 'finalizing'"
-        # Bounded on purpose: this call currently hangs the instance.
-        promoted.request("POST", "/finalize", {}, timeout=15)
-        if not _wait_state(promoted, "finalized", timeout=90):
-            pytest.xfail(
-                "Known issue: PCSM-385. Re-issuing finalize after promotion deadlocks: "
-                f"last state {_status(promoted).get('state')!r}")
+        code, body = promoted.request("POST", "/finalize", {}, timeout=60)
+        assert code == 200 and body.get("ok"), f"re-issued finalize was rejected: {code}, {body}"
+        assert _wait_state(promoted, "finalized", timeout=90), (
+            "re-issued finalize did not complete, last state "
+            f"{_status(promoted).get('state')!r}")
         result, mismatch = compare_data(src_cluster, dst_cluster)
         assert result is True, f"data mismatch after re-finalizing: {mismatch}"
         return
