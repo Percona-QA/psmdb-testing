@@ -12,12 +12,13 @@ from cluster import Cluster
 
 @pytest.fixture(scope="package")
 def config():
-    return {"_id": "rs1", "members": [{"host": "rs101"}]}
+    return {"_id": "rs1", "members": [{"host": "rs101"}, {"host": "rs102"}, {"host": "rs103"}]}
 
 
 @pytest.fixture(scope="package")
 def cluster(config):
-    return Cluster(config)
+    # rseq workaround: PSMDB 8.x won't start on kernel 6.19+ otherwise (SERVER-121912)
+    return Cluster(config, extra_environment={"GLIBC_TUNABLES": "glibc.pthread.rseq=1"})
 
 
 @pytest.fixture(scope="function")
@@ -37,7 +38,11 @@ def start_cluster(cluster, request):
 @pytest.mark.timeout(900, func_only=True)
 def test_logical_pitr_expiring_timeseries_ttl_off_restore(start_cluster, cluster):
     client = pymongo.MongoClient(cluster.connection)
-    client.admin.command({"setParameter": 1, "ttlMonitorSleepSecs": 1})
+    # ttlMonitor* are per-node parameters, so set them on every member, not just the primary
+    nodes = {m["host"]: pymongo.MongoClient(f"mongodb://root:root@{m['host']}:27017/?directConnection=true")
+             for m in cluster.config["members"]}
+    for node in nodes.values():
+        node.admin.command({"setParameter": 1, "ttlMonitorSleepSecs": 1})
     client["test"].create_collection("ts1", timeseries={"timeField": "timestamp"}, expireAfterSeconds=30)
 
     stop_event = threading.Event()
@@ -75,8 +80,15 @@ def test_logical_pitr_expiring_timeseries_ttl_off_restore(start_cluster, cluster
     pitr_end = cluster.get_last_pitr_chunk_end()
     pitr_time = datetime.fromtimestamp(pitr_end, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
-    client.admin.command({"setParameter": 1, "ttlMonitorEnabled": False})
-    time.sleep(3)
+    for node in nodes.values():
+        node.admin.command({"setParameter": 1, "ttlMonitorEnabled": False})
+    # Long wait so any in-flight TTL pass finishes, then confirm the monitor really stopped on every node
+    time.sleep(60)
+    passes = {h: n.admin.command("serverStatus")["metrics"]["ttl"]["passes"] for h, n in nodes.items()}
+    time.sleep(10)
+    for h, n in nodes.items():
+        assert n.admin.command("serverStatus")["metrics"]["ttl"]["passes"] == passes[h], f"TTL monitor still running on {h}"
+    Cluster.log(f"TTL monitor confirmed stopped on all nodes (passes={passes})")
     before = client["test"]["ts1"].count_documents({})
 
     client["test"].drop_collection("ts1")
