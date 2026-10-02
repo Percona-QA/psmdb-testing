@@ -38,7 +38,6 @@ def start_cluster(cluster, request):
 @pytest.mark.timeout(900, func_only=True)
 def test_logical_pitr_expiring_timeseries_ttl_off_restore(start_cluster, cluster):
     client = pymongo.MongoClient(cluster.connection)
-    # ttlMonitor* are per-node parameters, so set them on every member, not just the primary
     nodes = {m["host"]: pymongo.MongoClient(f"mongodb://root:root@{m['host']}:27017/?directConnection=true")
              for m in cluster.config["members"]}
     for node in nodes.values():
@@ -92,7 +91,14 @@ def test_logical_pitr_expiring_timeseries_ttl_off_restore(start_cluster, cluster
     before = client["test"]["ts1"].count_documents({})
 
     client["test"].drop_collection("ts1")
-    cluster.make_restore("--time=" + pitr_time, check_pbm_status=True)
+    try:
+        cluster.make_restore("--time=" + pitr_time, check_pbm_status=True)
+    except AssertionError as e:
+        error = str(e)
+        assert "Location6781400" in error and "missing 'control' field" in error \
+            and "system.buckets.ts1" in error, f"Restore failed with an unexpected error: {error}"
+        pytest.fail("Restore failed: replayed an update for a timeseries bucket deleted by TTL "
+                    "during the backup (Location6781400, missing 'control' field)")
 
     restored = pymongo.MongoClient(cluster.connection)["test"]
     result = restored.command("validate", "ts1", full=True)
