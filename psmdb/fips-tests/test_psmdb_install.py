@@ -8,20 +8,32 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
 
-BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
-            'mongofiles', 'mongoimport', 'mongorestore', 'mongotop', 'mongostat']
+SERVER_BINARIES = ['mongod', 'mongos', 'mongobridge']
+TOOLS_BINARIES = ['bsondump', 'mongodump', 'mongoexport', 'mongofiles', 'mongoimport',
+                  'mongorestore', 'mongotop', 'mongostat']
+BINARIES = SERVER_BINARIES + TOOLS_BINARIES
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
 
+
+def get_tools_package_version(host):
+    if host.system_info.distribution.lower() in ["redhat", "centos", "rhel", "rocky", "almalinux", "ol", "amzn"]:
+        return host.check_output("rpm -q --queryformat '%{VERSION}' percona-server-mongodb-tools")
+    return host.check_output("dpkg-query -W -f '${Version}' percona-server-mongodb-tools").split("-")[0]
 
 def test_mongod_service(host):
     mongod = host.service("mongod")
     assert mongod.is_running
 
-@pytest.mark.parametrize("binary", BINARIES)
+@pytest.mark.parametrize("binary", SERVER_BINARIES)
 def test_binary_version(host, binary):
     result = host.run(f"{binary} --version")
     assert PSMDB_VER in result.stdout, result.stdout
+
+@pytest.mark.parametrize("binary", TOOLS_BINARIES)
+def test_tools_binary_version(host, binary):
+    result = host.run(f"{binary} --version")
+    assert get_tools_package_version(host) in result.stdout, result.stdout
 
 def test_fips(host):
     with host.sudo():
