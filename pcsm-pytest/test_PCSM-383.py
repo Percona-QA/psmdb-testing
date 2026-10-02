@@ -18,6 +18,7 @@ QUIET_SECONDS = 3
 TAIL_SECONDS = 15
 FROZEN_SECONDS = 3
 SAMPLE_INTERVAL = 1
+TICK_INTERVAL = 1
 
 THROTTLED_START_OPTIONS = {
     "cloneNumParallelCollections": 1,
@@ -33,6 +34,27 @@ THROTTLED_START_OPTIONS = {
 def csync(src_cluster, dst_cluster):
     return Clustersync("csync", src_cluster.csync_connection + "&appName=pcsm",
                        dst_cluster.csync_connection + "&appName=pcsm")
+
+@pytest.fixture(scope="function")
+def source_clock(start_cluster, src_cluster):
+    """PCSM derives lagTimeSeconds from sourceClusterTime - lastReplicatedOpTime and
+    quiet source stops moving its cluster time, no-op notes keep the reported lag real."""
+    stop = threading.Event()
+    client = pymongo.MongoClient(src_cluster.connection)
+    def tick():
+        while not stop.is_set():
+            try:
+                client.admin.command({"appendOplogNote": 1, "data": {"msg": "PML_T118:tick"}})
+            except pymongo.errors.PyMongoError as e:
+                Cluster.log(f"Source clock ticker: {e}")
+            stop.wait(TICK_INTERVAL)
+
+    ticker = threading.Thread(target=tick)
+    ticker.start()
+    yield
+    stop.set()
+    ticker.join()
+    client.close()
 
 def _write_backlog(connection):
     client = pymongo.MongoClient(connection)
@@ -181,7 +203,8 @@ def _frozen_violation(window):
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
 @pytest.mark.timeout(800, func_only=True)
-def test_rs_csync_lag_frozen_during_catchup_PML_T118(start_cluster, src_cluster, dst_cluster, csync):
+def test_rs_csync_lag_frozen_during_catchup_PML_T118(start_cluster, src_cluster, dst_cluster,
+                                                     csync, source_clock):
     """PCSM-383: after clone, lastReplicatedOpTime must move as oplog catch-up applies."""
     generate_dummy_data(src_cluster.connection, SEED_DB, 2, 800000, 10000)
     assert csync.start(raw_args=THROTTLED_START_OPTIONS) is True, "Failed to start csync"
