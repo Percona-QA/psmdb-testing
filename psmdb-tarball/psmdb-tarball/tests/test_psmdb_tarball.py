@@ -1,6 +1,7 @@
 import os
 
 import pytest
+import requests
 import testinfra.utils.ansible_runner
 from packaging import version
 
@@ -8,10 +9,21 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
 
-BINARIES = ['mongod', 'mongos', 'bsondump', 'mongoexport', 'mongobridge',
-            'mongofiles', 'mongoimport', 'mongorestore', 'mongotop', 'mongostat']
+SERVER_BINARIES = ['mongod', 'mongos', 'mongobridge']
+TOOLS_BINARIES = ['bsondump', 'mongodump', 'mongoexport', 'mongofiles', 'mongoimport',
+                  'mongorestore', 'mongotop', 'mongostat']
+BINARIES = SERVER_BINARIES + TOOLS_BINARIES
 
 psmdb_version = os.environ["PSMDB_VERSION"]
+testing_branch = os.environ.get("TESTING_BRANCH", "main")
+
+def get_tools_ver():
+    url = "https://raw.githubusercontent.com/Percona-QA/psmdb-testing/" + testing_branch + "/MONGO_TOOLS_VERSION"
+    r = requests.get(url, timeout=30)
+    r.raise_for_status()
+    return r.text.rstrip()
+
+mongo_tools_version = get_tools_ver()
 
 JSTESTS = ['test_kerberos_simple.js', 'test_ldap_simple.js']
 if version.parse(psmdb_version) >= version.parse("7.0.0"):
@@ -23,10 +35,16 @@ def is_ubuntu_pro(host):
     proStatus = host.run("sudo pro status")
     return "This machine is not attached to an Ubuntu Pro subscription." not in proStatus.stdout
 
-@pytest.mark.parametrize("binary", BINARIES)
+@pytest.mark.parametrize("binary", SERVER_BINARIES)
 def test_binary_version(host, binary):
     result = host.check_output(f"/usr/bin/{binary} --version")
     assert psmdb_version in result, f"{result}"
+
+@pytest.mark.parametrize("binary", TOOLS_BINARIES)
+def test_tools_binary_version(host, binary):
+    assert host.file(f"/usr/bin/{binary}").exists, f"/usr/bin/{binary} not installed"
+    result = host.check_output(f"/usr/bin/{binary} --version")
+    assert mongo_tools_version in result, f"{result}"
 
 @pytest.mark.parametrize("jstest", JSTESTS)
 def test_jstests(host, jstest):
