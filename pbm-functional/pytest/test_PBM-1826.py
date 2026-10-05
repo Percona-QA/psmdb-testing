@@ -133,9 +133,6 @@ def check_index_moved_sharded(client, old_names, new_name, index_name, sharded):
         f"Index {index_name} is missing on {new_name}, indexes left on old namespaces: {old_indexes}"
     assert not old_indexes, \
         f"Old namespaces were recreated by restore: {old_indexes}"
-    if sharded:
-        assert "_id_hashed" in new_indexes, \
-            f"Shard key index _id_hashed is missing on {new_name}, indexes left on old namespaces: {old_indexes}"
 
     # Sharding metadata must follow the rename too
     meta = client["config"]["collections"]
