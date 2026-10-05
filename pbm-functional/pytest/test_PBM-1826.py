@@ -257,7 +257,7 @@ def test_logical_rename_during_backup_PBM_T377(start_cluster, cluster):
     renames = backup_oplog_renames(backup)
     Cluster.log(f"Renames in backup oplog: {renames}")
     assert ("test.c1", "test.c1b") in renames and ("test.c2", "test.c2b") in renames, \
-        f"Renames did not happen during the backup"
+        "Renames did not happen during the backup"
 
     client.drop_database("test")
     cluster.make_restore(backup, check_pbm_status=True)
