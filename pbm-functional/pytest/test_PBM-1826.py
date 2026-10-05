@@ -1,7 +1,10 @@
+import glob
 import os
+import threading
 import time
 from datetime import datetime, timezone
 
+import bson
 import pymongo
 import pytest
 from cluster import Cluster
@@ -63,6 +66,10 @@ def start_sharded_cluster(sharded_cluster, request):
 
 
 def check_index_moved(db, old_names, new_name, index_name):
+    """
+        Verify that after restore the renamed collection has its data and index
+        and the old names no longer exist
+    """
     names = db.list_collection_names()
     assert new_name in names, f"{new_name} is missing after restore"
     assert db[new_name].count_documents({}) == 10
@@ -76,7 +83,7 @@ def check_index_moved(db, old_names, new_name, index_name):
 
 @pytest.mark.timeout(600, func_only=True)
 @pytest.mark.parametrize("backup_type", ["logical", "physical"])
-def test_pitr_rename_collection_indexes_PBM_T374(start_cluster, cluster, backup_type):
+def test_pitr_rename_collection_indexes_PBM_T375(start_cluster, cluster, backup_type):
     """
         Verify that indexes follow renamed collections during PITR oplog
          replay and old names are not recreated on a replicaset environment
@@ -123,6 +130,9 @@ def test_pitr_rename_collection_indexes_PBM_T374(start_cluster, cluster, backup_
 
 
 def check_index_moved_sharded(client, old_names, new_name, index_name, sharded):
+    """
+        Verify that after restore the renamed collection has its data and index
+    """
     db = client["test"]
     names = db.list_collection_names()
     assert new_name in names, f"{new_name} is missing after restore"
@@ -158,7 +168,7 @@ def check_index_moved_sharded(client, old_names, new_name, index_name, sharded):
 
 
 @pytest.mark.timeout(900, func_only=True)
-def test_pitr_rename_collection_indexes_sharded_PBM_T375(start_sharded_cluster, sharded_cluster):
+def test_pitr_rename_collection_indexes_sharded_PBM_T376(start_sharded_cluster, sharded_cluster):
     """
         Verify that indexes follow renamed collections during PITR oplog
         replay and old names are not recreated on a sharded environment
@@ -199,3 +209,59 @@ def test_pitr_rename_collection_indexes_sharded_PBM_T375(start_sharded_cluster, 
     check_index_moved_sharded(client, ["c2"], "c2b", "b_idx", sharded=False)
     check_index_moved_sharded(client, ["c3", "c3a"], "c3b", "c_idx", sharded=False)
     check_index_moved_sharded(client, ["c4", "c4a"], "c4b", "d_idx", sharded=True)
+
+
+def backup_oplog_renames(backup):
+    renames = []
+    for chunk in glob.glob(f"/backups/{backup}/rs1/oplog/*"):
+        with open(chunk, "rb") as f:
+            for op in bson.decode_all(f.read()):
+                if op.get("op") == "c" and "renameCollection" in op.get("o", {}):
+                    renames.append((op["o"]["renameCollection"], op["o"]["to"]))
+    return renames
+
+
+@pytest.mark.timeout(600, func_only=True)
+def test_logical_rename_during_backup_PBM_T377(start_cluster, cluster):
+    """
+        Verify that indexes follow collections renamed while a logical backup
+        is running, when restoring the backup without PITR
+    """
+    client = pymongo.MongoClient(cluster.connection)
+    db = client["test"]
+    db["c1"].insert_many([{"_id": i, "a": i} for i in range(10)])
+    db["c1"].create_index("a", name="a_idx")
+    # Large collection to keep the dump running while the renames happen
+    payload = "x" * 1024
+    for batch in range(200):
+        db["filler"].insert_many([{"_id": batch * 1000 + i, "p": payload} for i in range(1000)])
+
+    result = {}
+    backup_thread = threading.Thread(target=lambda: result.update(
+        name=cluster.make_backup("logical", **{"compression": "none", "num-parallel-collections": 4})))
+    backup_thread.start()
+
+    # Rename only after c1 has been dumped under its old name
+    timeout = time.time() + 120
+    while not glob.glob("/backups/*/rs1/test.c1*"):
+        assert time.time() < timeout, "c1 was not dumped in time"
+        time.sleep(0.1)
+
+    db["c2"].insert_many([{"_id": i, "b": i} for i in range(10)])
+    db["c2"].create_index("b", name="b_idx")
+    db["c1"].rename("c1b")
+    db["c2"].rename("c2b")
+
+    backup_thread.join()
+    backup = result["name"]
+    renames = backup_oplog_renames(backup)
+    Cluster.log(f"Renames in backup oplog: {renames}")
+    assert ("test.c1", "test.c1b") in renames and ("test.c2", "test.c2b") in renames, \
+        f"Renames did not happen during the backup, increase the filler size: {renames}"
+
+    client.drop_database("test")
+    cluster.make_restore(backup, check_pbm_status=True)
+
+    db = pymongo.MongoClient(cluster.connection)["test"]
+    check_index_moved(db, ["c1"], "c1b", "a_idx")
+    check_index_moved(db, ["c2"], "c2b", "b_idx")
