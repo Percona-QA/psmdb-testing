@@ -110,7 +110,7 @@ def test_pitr_rename_collection_indexes_PBM_T375(start_cluster, cluster, backup_
     db["c4"].rename("c4a")
     db["c4a"].rename("c4b")
 
-    time.sleep(5)
+    time.sleep(2)
     pitr = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     cluster.disable_pitr(pitr)
 
@@ -144,7 +144,6 @@ def check_index_moved_sharded(client, old_names, new_name, index_name, sharded):
     assert not old_indexes, \
         f"Old namespaces were recreated by restore: {old_indexes}"
 
-    # Sharding metadata must follow the rename too
     meta = client["config"]["collections"]
     for old in old_names:
         assert meta.find_one({"_id": f"test.{old}"}) is None, \
@@ -153,7 +152,6 @@ def check_index_moved_sharded(client, old_names, new_name, index_name, sharded):
         assert meta.find_one({"_id": f"test.{new_name}"}) is not None, \
             f"Sharding metadata is missing for test.{new_name}"
 
-    # Check each shard directly: a stray old-name collection could exist on one shard only
     SHARD_HOSTS = {"rs1": "rs101", "rs2": "rs201"}
     for rs, host in SHARD_HOSTS.items():
         shard_db = pymongo.MongoClient(f"mongodb://root:root@{host}:27017/")["test"]
@@ -196,9 +194,8 @@ def test_pitr_rename_collection_indexes_sharded_PBM_T376(start_sharded_cluster, 
     db["c4"].rename("c4a")
     db["c4a"].rename("c4b")
 
-    time.sleep(5)
+    time.sleep(2)
     pitr = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
-    time.sleep(5)
     sharded_cluster.disable_pitr(pitr)
 
     client.drop_database("test")
@@ -212,6 +209,10 @@ def test_pitr_rename_collection_indexes_sharded_PBM_T376(start_sharded_cluster, 
 
 
 def backup_oplog_renames(backup):
+    """
+        Return the (old, new) collection renames recorded in the backup's oplog,
+        the backup must be taken with --compression=none
+    """
     renames = []
     for chunk in glob.glob(f"/backups/{backup}/rs1/oplog/*"):
         with open(chunk, "rb") as f:
@@ -241,7 +242,6 @@ def test_logical_rename_during_backup_PBM_T377(start_cluster, cluster):
         name=cluster.make_backup("logical", **{"compression": "none", "num-parallel-collections": 4})))
     backup_thread.start()
 
-    # Rename only after c1 has been dumped under its old name
     timeout = time.time() + 120
     while not glob.glob("/backups/*/rs1/test.c1*"):
         assert time.time() < timeout, "c1 was not dumped in time"
@@ -257,7 +257,7 @@ def test_logical_rename_during_backup_PBM_T377(start_cluster, cluster):
     renames = backup_oplog_renames(backup)
     Cluster.log(f"Renames in backup oplog: {renames}")
     assert ("test.c1", "test.c1b") in renames and ("test.c2", "test.c2b") in renames, \
-        f"Renames did not happen during the backup, increase the filler size: {renames}"
+        f"Renames did not happen during the backup"
 
     client.drop_database("test")
     cluster.make_restore(backup, check_pbm_status=True)
