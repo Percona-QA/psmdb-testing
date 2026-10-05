@@ -88,7 +88,6 @@ def test_pitr_rename_collection_indexes_PBM_T375(start_cluster, cluster, backup_
         Verify that indexes follow renamed collections during PITR oplog
          replay and old names are not recreated on a replicaset environment
     """
-
     client = pymongo.MongoClient(cluster.connection)
     db = client["test"]
     db["c1"].insert_many([{"_id": i, "a": i} for i in range(10)])
@@ -165,7 +164,7 @@ def check_index_moved_sharded(client, old_names, new_name, index_name, sharded):
             assert not sharded, f"Sharded collection {new_name} is missing on shard {rs}"
 
 
-@pytest.mark.timeout(900, func_only=True)
+@pytest.mark.timeout(600, func_only=True)
 def test_pitr_rename_collection_indexes_sharded_PBM_T376(start_sharded_cluster, sharded_cluster):
     """
         Verify that indexes follow renamed collections during PITR oplog
