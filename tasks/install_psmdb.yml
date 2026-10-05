@@ -31,7 +31,6 @@
     - "percona-server-mongodb{{ psmdb_pkg_name_addon }}={{ psmdb_to_test }}*"
     - "percona-server-mongodb-server{{ psmdb_pkg_name_addon }}={{ psmdb_to_test }}*"
     - "percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}={{ psmdb_to_test }}*"
-    - "percona-server-mongodb-tools={{ psmdb_to_test }}*"
     - "percona-server-mongodb-shell={{ psmdb_to_test }}*"
   register: result
   retries: 10
@@ -61,7 +60,6 @@
     - "percona-server-mongodb{{ psmdb_pkg_name_addon }}-{{ psmdb_to_test }}"
     - "percona-server-mongodb-server{{ psmdb_pkg_name_addon }}-{{ psmdb_to_test }}"
     - "percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}-{{ psmdb_to_test }}"
-    - "percona-server-mongodb-tools-{{ psmdb_to_test }}"
     - "percona-server-mongodb-shell-{{ psmdb_to_test }}"
   register: result
   retries: 10
@@ -101,7 +99,6 @@
     state: latest
   vars:
     packages:
-      - "percona-server-mongodb-tools-debuginfo-{{ psmdb_to_test }}"
       - "percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}-debuginfo-{{ psmdb_to_test }}"
       - "percona-server-mongodb-server{{ psmdb_pkg_name_addon }}-debuginfo-{{ psmdb_to_test }}"
   register: result
@@ -116,7 +113,6 @@
     state: latest
   vars:
     packages:
-      - "percona-server-mongodb-tools-debuginfo-{{ psmdb_to_test }}"
       - "percona-server-mongodb-mongos{{ psmdb_pkg_name_addon }}-debuginfo-{{ psmdb_to_test }}"
       - "percona-server-mongodb-server{{ psmdb_pkg_name_addon }}-debuginfo-{{ psmdb_to_test }}"
   register: result
