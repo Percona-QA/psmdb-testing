@@ -8,7 +8,8 @@ import pytest
 import testinfra
 from cluster import Cluster
 
-HISTORY_ERROR = "can't find incremental backup history"
+HISTORY_ERROR = ("can't find incremental backup history. Previous backup was made on another node. "
+                 "You can make a new base incremental backup to start a new history.")
 CONVERGE_TIMEOUT = "reached converge timeout"
 
 
@@ -94,7 +95,7 @@ def backup_node(cluster, name, rs):
     return next(r["node"] for r in json.loads(result.stdout)["replsets"] if r["name"] == rs).split(":")[0]
 
 @pytest.mark.timeout(900,func_only=True)
-def test_agent_down_on_base_node_PBM(start_cluster,cluster):
+def test_agent_down_on_base_node_PBM_T384(start_cluster,cluster):
     """Verify an incremental backup fails fast with the real shard error when the base-backup node's agent is down"""
     client = pymongo.MongoClient(cluster.connection)
     collection = client["test"]["test"]
