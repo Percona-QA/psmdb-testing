@@ -91,48 +91,6 @@ def check_backup_reports_history_error(cluster, name, failed_rs):
     assert result.rc == 0, result.stdout + result.stderr
     assert HISTORY_ERROR in result.stdout, f"pbm logs don't show the shard error:\n{result.stdout}"
 
-@pytest.mark.timeout(900,func_only=True)
-def test_incremental_shard_error_propagation(start_cluster,cluster):
-    """Verify an incremental backup that fails on one shard because its base-backup node is unavailable
-    fails fast with the real shard error instead of the 33s convergeClusterWithTimeout error"""
-    cluster.check_pbm_status()
-    client = pymongo.MongoClient(cluster.connection)
-    client["test"]["test"].insert_many([{"data": i} for i in range(1000)])
-    base_backup = cluster.make_backup("incremental --base")
-
-    result = cluster.exec_pbm_cli(f"describe-backup {base_backup} --out=json")
-    assert result.rc == 0, result.stdout + result.stderr
-    base_node = next(rs["node"] for rs in json.loads(result.stdout)["replsets"] if rs["name"] == "rs1")
-    Cluster.log(f"Base backup for rs1 was taken on {base_node}")
-    stop_agent_and_wait(cluster, base_node.split(":")[0])
-
-    # Step 1: pbm backup --wait shows the real error, quickly
-    start = time.time()
-    result = cluster.exec_pbm_cli("backup --type=incremental --wait")
-    duration = time.time() - start
-    output = result.stdout + result.stderr
-    Cluster.log(f"Incremental backup with --wait took {duration:.1f}s, rc={result.rc}:\n{output}")
-    assert result.rc != 0, f"Incremental backup unexpectedly succeeded:\n{output}"
-    assert HISTORY_ERROR in output, f"--wait output doesn't show the shard error:\n{output}"
-    assert CONVERGE_TIMEOUT not in output, f"--wait output shows the converge timeout:\n{output}"
-    assert duration < 30, f"Backup took {duration:.1f}s to fail, expected well under the 33s converge timeout"
-    name = re.search(r'Starting backup "([^"]+)"', output).group(1)
-
-    # Step 2: pbm status, describe-backup and logs show the real error too
-    check_backup_reports_history_error(cluster, name, "rs1")
-
-    # Step 2: same checks for a backup started without --wait. The CLI still waits for the backup to start,
-    # so with the shard failing fast it can already exit non-zero; if so it must show the real error.
-    result = cluster.exec_pbm_cli("backup --type=incremental")
-    output = result.stdout + result.stderr
-    Cluster.log(f"Incremental backup without --wait, rc={result.rc}:\n{output}")
-    if result.rc != 0:
-        assert HISTORY_ERROR in output, f"backup output doesn't show the shard error:\n{output}"
-        assert CONVERGE_TIMEOUT not in output, f"backup output shows the converge timeout:\n{output}"
-    name = re.search(r'Starting backup "([^"]+)"', output).group(1)
-    check_backup_reports_history_error(cluster, name, "rs1")
-    Cluster.log("Finished successfully")
-
 def backup_node(cluster, name, rs):
     result = cluster.exec_pbm_cli(f"describe-backup {name} --out=json")
     assert result.rc == 0, result.stdout + result.stderr
@@ -143,7 +101,7 @@ def test_agent_down_on_base_node(start_cluster,cluster):
     """With pbm-agent down on the node that took rs1's base incremental backup:
     a full physical backup still works from another rs1 node,
     the next incremental fails fast with the real shard error (not the 33s converge timeout),
-    and a new --base starts a fresh chain that can be built on"""
+    with or without --wait, and a new --base starts a fresh chain that can be built on"""
     cluster.check_pbm_status()
     client = pymongo.MongoClient(cluster.connection)
     collection = client["test"]["test"]
@@ -173,12 +131,22 @@ def test_agent_down_on_base_node(start_cluster,cluster):
     name = re.search(r'Starting backup "([^"]+)"', output).group(1)
     check_backup_reports_history_error(cluster, name, "rs1")
 
-    # Step 3: following the error's advice, a new --base starts a fresh chain on a working node
+    # Step 3: same checks for a backup started without --wait. The CLI still waits for the backup to start,
+    # so with the shard failing fast it can already exit non-zero; if so it must show the real error.
+    result = cluster.exec_pbm_cli("backup --type=incremental")
+    output = result.stdout + result.stderr
+    Cluster.log(f"Incremental backup without --wait, rc={result.rc}:\n{output}")
+    if result.rc != 0:
+        assert CONVERGE_TIMEOUT not in output, f"backup output shows the converge timeout:\n{output}"
+        assert HISTORY_ERROR in output, f"backup output doesn't show the shard error:\n{output}"
+    name = re.search(r'Starting backup "([^"]+)"', output).group(1)
+    check_backup_reports_history_error(cluster, name, "rs1")
+
+    # Step 4: following the error's advice, a new --base starts a fresh chain on a working node
     new_base = cluster.make_backup("incremental --base")
     new_base_node = backup_node(cluster, new_base, "rs1")
     assert new_base_node != base_node, f"New base backup used {new_base_node}, whose agent is down"
     collection.insert_many([{"data": i} for i in range(2000, 3000)])
     new_incr = cluster.make_backup("incremental")
     Cluster.log(f"New chain: base {new_base} and incremental {new_incr} on {new_base_node}")
-
     Cluster.log("Finished successfully")
