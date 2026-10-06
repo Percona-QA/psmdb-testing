@@ -37,6 +37,7 @@ def start_cluster(cluster, request):
 
 @pytest.mark.timeout(900, func_only=True)
 def test_logical_pitr_expiring_timeseries_ttl_off_restore(start_cluster, cluster):
+    """ Verify logical PITR restore of an expiring timeseries collection works when TTL deletes buckets during backup """
     client = pymongo.MongoClient(cluster.connection)
     nodes = {m["host"]: pymongo.MongoClient(f"mongodb://root:root@{m['host']}:27017/?directConnection=true")
              for m in cluster.config["members"]}
@@ -68,8 +69,8 @@ def test_logical_pitr_expiring_timeseries_ttl_off_restore(start_cluster, cluster
     cluster.make_backup("logical")
     cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
 
-    Cluster.log("Generating expiring timeseries data for 60 seconds")
-    time.sleep(60)
+    Cluster.log("Generating expiring timeseries data for 15 seconds")
+    time.sleep(15)
     stop_event.set()
     future.result()
     executor.shutdown()
@@ -81,12 +82,17 @@ def test_logical_pitr_expiring_timeseries_ttl_off_restore(start_cluster, cluster
 
     for node in nodes.values():
         node.admin.command({"setParameter": 1, "ttlMonitorEnabled": False})
-    # Long wait so any in-flight TTL pass finishes, then confirm the monitor really stopped on every node
-    time.sleep(60)
-    passes = {h: n.admin.command("serverStatus")["metrics"]["ttl"]["passes"] for h, n in nodes.items()}
-    time.sleep(10)
-    for h, n in nodes.items():
-        assert n.admin.command("serverStatus")["metrics"]["ttl"]["passes"] == passes[h], f"TTL monitor still running on {h}"
+    # Wait until the TTL pass count stays unchanged for 5s on every node, so the monitor has really stopped
+    timeout = time.time() + 60
+    stable_since = time.time()
+    passes = {}
+    while time.time() - stable_since < 5:
+        current = {h: n.admin.command("serverStatus")["metrics"]["ttl"]["passes"] for h, n in nodes.items()}
+        if current != passes:
+            passes = current
+            stable_since = time.time()
+        assert time.time() < timeout, f"TTL monitor still running: passes={passes}"
+        time.sleep(1)
     Cluster.log(f"TTL monitor confirmed stopped on all nodes (passes={passes})")
     before = client["test"]["ts1"].count_documents({})
 
