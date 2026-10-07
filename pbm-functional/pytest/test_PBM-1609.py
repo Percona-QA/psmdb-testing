@@ -1,3 +1,4 @@
+import re
 import threading
 import time
 
@@ -78,13 +79,17 @@ def test_pitr_stopped_during_restore_PBM_T317(start_cluster, cluster):
     pbm_logs = cluster.exec_pbm_cli("logs -sD -t0")
     lines = pbm_logs.stdout.splitlines()
 
-    recovery_started = None
+    recovery_started = {}
     for idx, line in enumerate(lines):
-        if "recovery started" in line:
-            recovery_started = idx
-            break
+        rs = re.search(r"\[([^/\]]+)/", line)
+        if rs and "recovery started" in line:
+            recovery_started.setdefault(rs.group(1), idx)
 
-    assert recovery_started is not None, "'recovery started' was not found in PBM logs"
+    assert recovery_started, "'recovery started' was not found in PBM logs"
 
-    chunks_after = [line for line in lines[recovery_started + 1:] if "created chunk" in line]
+    chunks_after = []
+    for idx, line in enumerate(lines):
+        rs = re.search(r"\[([^/\]]+)/", line)
+        if rs and "created chunk" in line and rs.group(1) in recovery_started and idx > recovery_started[rs.group(1)]:
+            chunks_after.append(line)
     assert not chunks_after, "PITR chunks were created after restore started:\n" + "\n".join(chunks_after)
