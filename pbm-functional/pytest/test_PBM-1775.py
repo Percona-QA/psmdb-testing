@@ -94,7 +94,7 @@ def backup_node(cluster, name, rs):
     assert result.rc == 0, result.stdout + result.stderr
     return next(r["node"] for r in json.loads(result.stdout)["replsets"] if r["name"] == rs).split(":")[0]
 
-@pytest.mark.timeout(3900,func_only=True)
+@pytest.mark.timeout(900,func_only=True)
 def test_agent_down_on_base_node_PBM_T384(start_cluster,cluster):
     """Verify an incremental backup fails fast with the real shard error when the base-backup node's agent is down"""
 
