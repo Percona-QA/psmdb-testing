@@ -4,8 +4,8 @@ import time
 
 import pymongo
 import pytest
-
 from cluster import Cluster
+
 
 @pytest.fixture(scope="function")
 def config(cluster_configs):
@@ -79,6 +79,8 @@ def test_pitr_stopped_during_restore_PBM_T317(start_cluster, cluster):
     pbm_logs = cluster.exec_pbm_cli("logs -sD -t0")
     lines = pbm_logs.stdout.splitlines()
 
+    # Each replset waits only for its own slicer to stop before starting the restore, so a
+    # replset may still upload its final chunk after another replset has started recovery.
     recovery_started = {}
     for idx, line in enumerate(lines):
         rs = re.search(r"\[([^/\]]+)/", line)
@@ -86,10 +88,16 @@ def test_pitr_stopped_during_restore_PBM_T317(start_cluster, cluster):
             recovery_started.setdefault(rs.group(1), idx)
 
     assert recovery_started, "'recovery started' was not found in PBM logs"
+    first_recovery_started = min(recovery_started.values())
 
     chunks_after = []
     for idx, line in enumerate(lines):
         rs = re.search(r"\[([^/\]]+)/", line)
-        if rs and "created chunk" in line and rs.group(1) in recovery_started and idx > recovery_started[rs.group(1)]:
+        if not rs or "created chunk" not in line or idx < first_recovery_started:
+            continue
+        # A regular chunk schedules the next one, the final chunk of a stopping slicer does not
+        still_slicing = "Next chunk creation scheduled" in line
+        own_recovery_started = idx > recovery_started.get(rs.group(1), -1)
+        if still_slicing or own_recovery_started:
             chunks_after.append(line)
     assert not chunks_after, "PITR chunks were created after restore started:\n" + "\n".join(chunks_after)
