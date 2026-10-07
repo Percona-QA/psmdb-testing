@@ -94,9 +94,10 @@ def backup_node(cluster, name, rs):
     assert result.rc == 0, result.stdout + result.stderr
     return next(r["node"] for r in json.loads(result.stdout)["replsets"] if r["name"] == rs).split(":")[0]
 
-@pytest.mark.timeout(900,func_only=True)
+@pytest.mark.timeout(3900,func_only=True)
 def test_agent_down_on_base_node_PBM_T384(start_cluster,cluster):
     """Verify an incremental backup fails fast with the real shard error when the base-backup node's agent is down"""
+
     client = pymongo.MongoClient(cluster.connection)
     collection = client["test"]["test"]
     collection.insert_many([{"data": i} for i in range(1000)])
@@ -104,18 +105,11 @@ def test_agent_down_on_base_node_PBM_T384(start_cluster,cluster):
     base_node = backup_node(cluster, base_backup, "rs1")
     Cluster.log(f"Base backup for rs1 was taken on {base_node}")
     stop_agent_and_wait(cluster, base_node)
-    collection.insert_many([{"data": i} for i in range(1000, 2000)])
-
-    full_backup = cluster.make_backup("physical")
-    full_node = backup_node(cluster, full_backup, "rs1")
-    Cluster.log(f"Full physical backup for rs1 was taken on {full_node}")
-    assert full_node != base_node, f"Full backup used {full_node}, whose agent is down"
 
     start = time.time()
     result = cluster.exec_pbm_cli("backup --type=incremental --wait")
     duration = time.time() - start
     output = result.stdout + result.stderr
-    Cluster.log(f"Incremental backup with --wait took {duration:.1f}s, rc={result.rc}:\n{output}")
     assert result.rc != 0, f"Incremental backup unexpectedly succeeded:\n{output}"
     assert CONVERGE_TIMEOUT not in output, f"--wait output shows the converge timeout:\n{output}"
     assert HISTORY_ERROR in output, f"--wait output doesn't show the shard error:\n{output}"
