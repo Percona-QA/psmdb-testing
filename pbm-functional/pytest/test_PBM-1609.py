@@ -1,10 +1,11 @@
+import re
 import threading
 import time
 
 import pymongo
 import pytest
-
 from cluster import Cluster
+
 
 @pytest.fixture(scope="function")
 def config(cluster_configs):
