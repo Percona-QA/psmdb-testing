@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 import pymongo
 import pytest
+import testinfra
 from cluster import Cluster
 
 
@@ -110,4 +111,9 @@ def test_logical_pitr_expiring_timeseries_ttl_off_restore(start_cluster, cluster
     result = restored.command("validate", "ts1", full=True)
     assert result["valid"], f"validate failed for ts1: {result}"
     assert restored["ts1"].count_documents({}) == before
-    Cluster.log("Finished successfully")
+
+    n = testinfra.get_host("docker://" + cluster.pbm_cli)
+    logs = n.check_output("pbm logs -sD -t0")
+    skips = logs.count("skipping update to missing time-series bucket")
+    Cluster.log(f"Restore skipped {skips} updates to missing time-series buckets")
+    assert skips > 0, "Timeseries skips not detected"
