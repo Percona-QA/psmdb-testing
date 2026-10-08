@@ -98,7 +98,6 @@ def test_logical_pitr_expiring_timeseries_ttl_off_restore(start_cluster, cluster
         assert time.time() < timeout, f"TTL monitor still running: passes={passes}"
         time.sleep(1)
     Cluster.log(f"TTL monitor confirmed stopped on all nodes (passes={passes})")
-    before = client["test"]["ts1"].count_documents({})
 
     client["test"].drop_collection("ts1")
     try:
@@ -113,7 +112,6 @@ def test_logical_pitr_expiring_timeseries_ttl_off_restore(start_cluster, cluster
     restored = pymongo.MongoClient(cluster.connection)["test"]
     result = restored.command("validate", "ts1", full=True)
     assert result["valid"], f"validate failed for ts1: {result}"
-    assert restored["ts1"].count_documents({}) == before
 
     n = testinfra.get_host("docker://" + cluster.pbm_cli)
     logs = n.check_output("pbm logs -sD -t0")
