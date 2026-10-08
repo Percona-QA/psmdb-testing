@@ -60,21 +60,23 @@ def test_logical_pitr_expiring_timeseries_ttl_off_restore(start_cluster, cluster
 
     executor = concurrent.futures.ThreadPoolExecutor()
     future = executor.submit(writer)
-    time.sleep(5)
+    try:
+        time.sleep(5)
 
-    # Sanity check: TTL really is deleting buckets, otherwise the test proves nothing
-    present = client["test"]["ts1"].count_documents({})
-    Cluster.log(f"Inserted {inserted[0]} docs so far, {present} still present")
-    assert present < inserted[0] / 2, "TTL monitor is not deleting buckets"
+        # Sanity check: TTL really is deleting buckets, otherwise the test proves nothing
+        present = client["test"]["ts1"].count_documents({})
+        Cluster.log(f"Inserted {inserted[0]} docs so far, {present} still present")
+        assert present < inserted[0] / 2, "TTL monitor is not deleting buckets"
 
-    cluster.make_backup("logical")
-    cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
+        cluster.make_backup("logical")
+        cluster.enable_pitr(pitr_extra_args="--set pitr.oplogSpanMin=0.1")
 
-    Cluster.log("Generating expiring timeseries data for 15 seconds")
-    time.sleep(15)
-    stop_event.set()
+        Cluster.log("Generating expiring timeseries data for 15 seconds")
+        time.sleep(15)
+    finally:
+        stop_event.set()
+        executor.shutdown(wait=True)
     future.result()
-    executor.shutdown()
     cluster.disable_pitr()
     time.sleep(6)
 
@@ -83,7 +85,8 @@ def test_logical_pitr_expiring_timeseries_ttl_off_restore(start_cluster, cluster
 
     for node in nodes.values():
         node.admin.command({"setParameter": 1, "ttlMonitorEnabled": False})
-    # Wait until the TTL pass count stays unchanged for 5s on every node, so the monitor has really stopped
+
+    Cluster.log("Confirming TTL Monitor has fully stopped")
     timeout = time.time() + 60
     stable_since = time.time()
     passes = {}
