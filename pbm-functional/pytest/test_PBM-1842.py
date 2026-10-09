@@ -37,7 +37,7 @@ def start_cluster(cluster, request):
         cluster.destroy(cleanup_backups=True)
 
 @pytest.mark.timeout(900, func_only=True)
-def test_logical_pitr_expiring_timeseries_ttl_off_restore(start_cluster, cluster):
+def test_logical_pitr_expiring_timeseries_ttl_off_restore_PBM_T385(start_cluster, cluster):
     """ Verify logical PITR restore of an expiring timeseries collection works when TTL deletes buckets during backup """
     client = pymongo.MongoClient(cluster.connection)
     nodes = {m["host"]: pymongo.MongoClient(f"mongodb://root:root@{m['host']}:27017/?directConnection=true")
