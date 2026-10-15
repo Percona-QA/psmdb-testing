@@ -105,6 +105,7 @@ def start_cluster(cluster, request):
 
         yield backup
     finally:
+        # Do not reorder lines, destroy requires access to S3 which restore_key_policy allows
         if denied:
             _remove_deny(kms, key_id)
         if request.config.getoption("--verbose"):
