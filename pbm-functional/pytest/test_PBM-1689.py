@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import boto3
 import pymongo
@@ -42,7 +42,7 @@ def _deny_decrypt(kms, key_id, principal_arn):
     so the key can't stay locked if the run is killed before cleanup.
     """
     policy = json.loads(kms.get_key_policy(KeyId=key_id, PolicyName="default")["Policy"])
-    expires = datetime.now(timezone.utc) + timedelta(minutes=10)
+    expires = datetime.now(UTC) + timedelta(minutes=10)
 
     statements = policy["Statement"]
     if isinstance(statements, dict):
