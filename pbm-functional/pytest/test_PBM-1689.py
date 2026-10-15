@@ -1,15 +1,17 @@
 import json
+from datetime import UTC, datetime, timedelta
+
 import boto3
 import pymongo
 import pytest
 import testinfra
 import yaml
-
 from cluster import Cluster
 
 documents = [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}]
 
-KMS_KEY_ID = "alias/test-pbm-1689"
+# One key per PSMDB version
+KMS_KEY_PREFIX = "alias/test-pbm-1689-psmdb"
 KMS_REGION = "eu-central-1"
 
 def _aws_credentials():
@@ -36,11 +38,11 @@ def sts_client():
     )
 
 def _deny_decrypt(kms, key_id, principal_arn):
-    """Add an explicit Deny statement for kms:Decrypt.
-    Returns the original policy JSON string so it can be restored afterward.
+    """Add an explicit Deny statement for kms:Decrypt that expires after 10 minutes,
+    so the key can't stay locked if the run is killed before cleanup.
     """
-    original_policy = kms.get_key_policy(KeyId=key_id, PolicyName="default")["Policy"]
-    policy = json.loads(original_policy)
+    policy = json.loads(kms.get_key_policy(KeyId=key_id, PolicyName="default")["Policy"])
+    expires = datetime.now(UTC) + timedelta(minutes=10)
 
     statements = policy["Statement"]
     if isinstance(statements, dict):
@@ -53,13 +55,19 @@ def _deny_decrypt(kms, key_id, principal_arn):
         "Principal": {"AWS": principal_arn},
         "Action": "kms:Decrypt",
         "Resource": "*",
+        "Condition": {"DateLessThan": {"aws:CurrentTime": expires.strftime("%Y-%m-%dT%H:%M:%SZ")}},
     })
     policy["Statement"] = statements
     kms.put_key_policy(KeyId=key_id, PolicyName="default", Policy=json.dumps(policy))
-    return original_policy
 
-def _restore_key_policy(kms, key_id, original_policy):
-    kms.put_key_policy(KeyId=key_id, PolicyName="default", Policy=original_policy)
+def _remove_deny(kms, key_id):
+    """Remove only our Deny statement. Restoring a saved copy could put back another run's Deny."""
+    policy = json.loads(kms.get_key_policy(KeyId=key_id, PolicyName="default")["Policy"])
+    statements = policy["Statement"]
+    if isinstance(statements, dict):
+        statements = [statements]
+    policy["Statement"] = [s for s in statements if s.get("Sid") != "PBM1689DenyDecrypt"]
+    kms.put_key_policy(KeyId=key_id, PolicyName="default", Policy=json.dumps(policy))
 
 @pytest.fixture(scope="function")
 def config():
@@ -71,16 +79,18 @@ def cluster(config):
 
 @pytest.fixture(scope="function")
 def start_cluster(cluster, request):
-    original_policy = None
+    denied = False
     kms = key_id = None
     try:
         cluster.destroy(cleanup_backups=True)
         cluster.create()
+        major, minor = pymongo.MongoClient(cluster.connection).server_info()["version"].split(".")[:2]
+        kms_key_id = f"{KMS_KEY_PREFIX}{major}{minor}"
 
         cluster.setup_pbm(file="/etc/aws.conf")
         result = cluster.exec_pbm_cli(
             "config --set storage.s3.serverSideEncryption.sseAlgorithm=aws:kms "
-            f"--set storage.s3.serverSideEncryption.kmsKeyID={KMS_KEY_ID} --out json -w"
+            f"--set storage.s3.serverSideEncryption.kmsKeyID={kms_key_id} --out json -w"
         )
         assert result.rc == 0, result.stdout + result.stderr
 
@@ -89,14 +99,15 @@ def start_cluster(cluster, request):
 
         kms = kms_client()
         caller_arn = sts_client().get_caller_identity()["Arn"]
-        key_id = kms.describe_key(KeyId=KMS_KEY_ID)["KeyMetadata"]["KeyId"]
-        original_policy = _deny_decrypt(kms, key_id, caller_arn)
+        key_id = kms.describe_key(KeyId=kms_key_id)["KeyMetadata"]["KeyId"]
+        _deny_decrypt(kms, key_id, caller_arn)
+        denied = True
 
         yield backup
     finally:
         # Do not reorder lines, destroy requires access to S3 which restore_key_policy allows
-        if original_policy is not None:
-            _restore_key_policy(kms, key_id, original_policy)
+        if denied:
+            _remove_deny(kms, key_id)
         if request.config.getoption("--verbose"):
             cluster.get_logs()
         cluster.destroy(cleanup_backups=True)
