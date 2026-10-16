@@ -140,7 +140,7 @@
         - percona-server-mongodb-{{ psmdb_version }}
         - percona-server-mongodb-server-{{ psmdb_version }}
         - percona-server-mongodb-mongos-{{ psmdb_version }}
-        - percona-server-mongodb-tools-{{ psmdb_version }}
+        - percona-server-mongodb-tools
       when: ansible_os_family == "RedHat" and psmdb_version != "latest"
 
     - name: install mongo shell deb package

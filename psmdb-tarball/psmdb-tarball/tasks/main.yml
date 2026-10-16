@@ -108,6 +108,21 @@
     - --transform
     - 's,^/*[^/]*,/usr,S'
 
+- name: Copy tools tarball
+  copy:
+    src: /tmp/percona-server-mongodb-tools-{{ os }}.tar.gz
+    dest: /tmp/percona-server-mongodb-tools.tar.gz
+    mode: '0644'
+
+- name: Unpack tools tarball
+  unarchive:
+    src: /tmp/percona-server-mongodb-tools.tar.gz
+    dest: /
+    remote_src: yes
+    extra_opts:
+    - --transform
+    - 's,^/*[^/]*,/usr,S'
+
 - name: Check whether curl is available
   shell: command -v curl
   register: curl_check

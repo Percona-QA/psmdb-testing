@@ -36,6 +36,30 @@
         - trixie
       ignore_errors: yes
 
+    - set_fact:
+        tools_ver: "{{ lookup('file', playbook_dir + '/../../../MONGO_TOOLS_VERSION') | trim }}"
+        tools_rev: "{{ lookup('env', 'MONGO_TOOLS_REVISION') | default('1', true) }}"
+
+    - name: Download tools tarball from url
+      get_url:
+        url: 'https://downloads.percona.com/downloads/TESTING/psmdb-tools-{{ tools_ver }}/percona-server-mongodb-tools-{{ tools_ver }}-{{ tools_rev }}-{{ ansible_architecture }}.{{ item }}.tar.gz'
+        dest: /tmp/percona-server-mongodb-tools-{{ item }}.tar.gz
+        mode: '0644'
+      loop:
+        - ol7
+        - ol8
+        - ol9
+        - ol10
+        - ol2023
+        - jammy
+        - focal
+        - noble
+        - buster
+        - bookworm
+        - bullseye
+        - trixie
+      ignore_errors: yes
+
 - name: Converge
   hosts: all
   become: true

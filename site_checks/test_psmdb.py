@@ -30,6 +30,18 @@ else:
 PRODUCT_ID = 'percona-server-mongodb-' + FCV_VER
 DOWNLOADS_API_URL = "https://www.percona.com/wp-admin/admin-ajax.php"
 
+TESTING_BRANCH = os.environ.get("TESTING_BRANCH", "main")
+TARBALL_OS = {'redhat/10': 'ol10', 'redhat/9': 'ol9', 'redhat/8': 'ol8', 'redhat/7': 'ol7', 'redhat/2023': 'ol2023'}
+
+def get_tools_ver():
+    url = "https://raw.githubusercontent.com/Percona-QA/psmdb-testing/" + TESTING_BRANCH + "/MONGO_TOOLS_VERSION"
+    r = requests.get(url, timeout=30)
+    r.raise_for_status()
+    return r.text.rstrip()
+
+TARBALL_FILES = [TARBALL_OS.get(name, name) for name in SOFTWARE_FILES if name not in ['source', 'binary']]
+MONGO_TOOLS_VER = get_tools_ver()
+
 def get_package_tuples():
     list = []
     psmdb_version = 'percona-server-mongodb-' + PSMDB_VER
@@ -55,9 +67,7 @@ def get_package_tuples():
                (MAJ_VER.startswith("6") and version.parse(MAJ_VER) > version.parse("6.0.15")) or \
                (MAJ_VER.startswith("7") and version.parse(MAJ_VER) > version.parse("7.0.12")) or \
                (MAJ_VER.startswith("8") and version.parse(MAJ_VER) > version.parse("8.0.0")) :
-                replacement_map = {'redhat/10': 'ol10','redhat/9': 'ol9','redhat/8': 'ol8','redhat/7': 'ol7','redhat/2023': 'ol2023'}
-                tar_os = [replacement_map.get(os, os) for os in SOFTWARE_FILES if os not in ['source', 'binary']]
-                for os in tar_os:
+                for os in TARBALL_FILES:
                   assert "percona-server-mongodb-" + PSMDB_VER + "-x86_64." + os + "-minimal.tar.gz" in req.text
                   assert "percona-server-mongodb-" + PSMDB_VER + "-x86_64." + os + "-minimal.tar.gz.sha256sum" in req.text
                   assert "percona-server-mongodb-" + PSMDB_VER + "-x86_64." + os + ".tar.gz" in req.text
@@ -71,13 +81,17 @@ def get_package_tuples():
                 assert "percona-server-mongodb-" + PSMDB_VER + "-x86_64.glibc2.17.tar.gz.sha256sum" in req.text
                 assert "percona-server-mongodb-" + PSMDB_VER + "-x86_64.glibc2.35.tar.gz" in req.text
                 assert "percona-server-mongodb-" + PSMDB_VER + "-x86_64.glibc2.35.tar.gz.sha256sum" in req.text
+            for suffix in TARBALL_FILES:
+                tools_tarball = r"percona-server-mongodb-tools-" + re.escape(MONGO_TOOLS_VER) + r"-\d+-x86_64\." + re.escape(suffix) + r"\.tar\.gz"
+                assert re.search(tools_tarball + r"(?!\.)", req.text), suffix
+                assert re.search(tools_tarball + r"\.sha256sum", req.text), suffix
         elif software_files == 'source':
             assert "percona-server-mongodb-" + PSMDB_VER + ".tar.gz" in req.text
         else:
             assert "percona-server-mongodb-" + PSMDB_VER + "." in req.text or "percona-server-mongodb_" + PSMDB_VER + "." in req.text
             assert "percona-server-mongodb-server-" + PSMDB_VER in req.text or "percona-server-mongodb-server_" + PSMDB_VER in req.text
             assert "percona-server-mongodb-mongos-" + PSMDB_VER in req.text or "percona-server-mongodb-mongos_" + PSMDB_VER in req.text
-            assert "percona-server-mongodb-tools-" + PSMDB_VER in req.text or "percona-server-mongodb-tools_" + PSMDB_VER in req.text
+            assert "percona-server-mongodb-tools-" + MONGO_TOOLS_VER in req.text or "percona-server-mongodb-tools_" + MONGO_TOOLS_VER in req.text
             assert "percona-telemetry-agent" in req.text
             assert "dbg" in req.text or "debug" in req.text
             if version.parse(PSMDB_VER) > version.parse("6.0.0"):
