@@ -60,7 +60,7 @@ backup_tde_gcm --jobs=1 --testTimeout=600
  benchmarks_storage # Requires a separate C++ test build
  benchmarks_streams # Requires a separate C++ test build
  benchmarks_util # Requires a separate C++ test build
-buildscripts_test
+ buildscripts_test # Python tooling/self-tests; outside server binary regression scope
 bulk_write_causally_consistent_jscore_passthrough --jobs=1 --testTimeout=600
 bulk_write_multi_op_causally_consistent_jscore_passthrough
 bulk_write_multi_op_sharded_collections_jscore_passthrough
@@ -134,9 +134,9 @@ change_streams_sharding_fsm_embedded_watch_db --testTimeout=600
 change_streams_sharding_fsm_irs_watch_cluster --testTimeout=600
 change_streams_sharding_fsm_irs_watch_collection --testTimeout=600
 change_streams_sharding_fsm_irs_watch_db --testTimeout=600
-change_streams_sharding_fsm_pairwise_irs_watch_cluster --testTimeout=600
-change_streams_sharding_fsm_pairwise_irs_watch_collection --testTimeout=600
-change_streams_sharding_fsm_pairwise_irs_watch_db --testTimeout=600
+ change_streams_sharding_fsm_pairwise_irs_watch_cluster --testTimeout=600 # No tests with default feature flags: the only non-excluded root test requires featureFlagChangeStreamReaderV2, disabled by default
+ change_streams_sharding_fsm_pairwise_irs_watch_collection --testTimeout=600 # No tests with default feature flags: the only non-excluded root test requires featureFlagChangeStreamReaderV2, disabled by default
+ change_streams_sharding_fsm_pairwise_irs_watch_db --testTimeout=600 # No tests with default feature flags: the only non-excluded root test requires featureFlagChangeStreamReaderV2, disabled by default
 change_streams_sharding_fsm_watch_cluster --testTimeout=600
 change_streams_sharding_fsm_watch_collection --testTimeout=600
 change_streams_sharding_fsm_watch_db --testTimeout=600
@@ -163,12 +163,12 @@ change_streams_whole_db_sharded_collections_passthrough_v1 --jobs=1 --testTimeou
 client_encrypt --testTimeout=600
 clustered_collection_passthrough --jobs=1 --testTimeout=600
 concurrency --jobs=1 --testTimeout=600
-concurrency_compute_mode --jobs=1 --testTimeout=600
+ concurrency_compute_mode --jobs=1 --testTimeout=600 # No tests: selector.roots is empty; its only workload is disabled upstream under SERVER-112530
 concurrency_replication --jobs=1 --testTimeout=600
 concurrency_replication_causal_consistency --jobs=1 --testTimeout=600
 concurrency_replication_execution_control_with_prioritization --jobs=1 --testTimeout=600
-concurrency_replication_for_backup_restore --jobs=1 --testTimeout=600
-concurrency_replication_for_export_import --jobs=1 --testTimeout=600
+ concurrency_replication_for_backup_restore --jobs=1 --testTimeout=600 # ExternalFixture helper requires a pre-existing cluster and --shellConnString/--shellPort; not a standalone regression suite
+ concurrency_replication_for_export_import --jobs=1 --testTimeout=600 # ExternalFixture helper requires a pre-existing cluster and --shellConnString/--shellPort; not a standalone regression suite
 concurrency_replication_high_yielding --jobs=1 --testTimeout=600
 concurrency_replication_last_continuous_new_new_old --jobs=1 --testTimeout=600||python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 8.3
 concurrency_replication_last_continuous_new_old_new --jobs=1 --testTimeout=600||python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 8.3
@@ -230,7 +230,7 @@ cwrwc_rc_majority_passthrough --jobs=1 --testTimeout=600
 cwrwc_wc_majority_passthrough --jobs=1 --testTimeout=600
 decimal --testTimeout=600
 disk_wiredtiger --testTimeout=600
-ese --testTimeout=600
+ ese --testTimeout=600 # No tests: required upstream module roots are absent: src/mongo/db/modules/*/jstests/encryptdb/*.js
 extensions_sharded_cluster --installDir /usr/bin --testTimeout=600||buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=9.0.4-1
 extensions_sharded_collections --installDir /usr/bin --testTimeout=600||buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=9.0.4-1
 extensions_single_node --installDir /usr/bin --testTimeout=600||buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=9.0.4-1
@@ -250,11 +250,11 @@ fcv_upgrade_downgrade_sharded_collections_jscore_passthrough --jobs=1 --testTime
 fcv_upgrade_downgrade_sharded_collections_jscore_passthrough_retryable_writes --jobs=1 --testTimeout=600
 fcv_upgrade_downgrade_sharding_jscore_passthrough --jobs=1 --testTimeout=600
 fcv_upgrade_downgrade_sharding_jscore_passthrough_retryable_writes --jobs=1 --testTimeout=600
-feature_flag_multiversion --testTimeout=600||python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.3
-fle --testTimeout=600
+ feature_flag_multiversion --testTimeout=600||python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.3 # No tests with default feature flags: the only test requires featureFlagToaster and featureFlagSpoon, excluded by default
+ fle --testTimeout=600 # No tests: required upstream module roots are absent: src/mongo/db/modules/*/jstests/fle/*.js
 fle2 --testTimeout=600
 fle2_high_cardinality --testTimeout=600
-fle2_query_analysis --testTimeout=600
+ fle2_query_analysis --testTimeout=600 # No tests: required upstream module roots are absent: src/mongo/db/modules/*/jstests/fle/*.js, src/mongo/db/modules/*/jstests/fle2_query_analysis/*.js
 fle2_sharding --testTimeout=600
 fle2_sharding_high_cardinality --testTimeout=600
  generational_fuzzer --testTimeout=600 # Requires jstestfuzz/out/*.js generated by 10gen/jstestfuzz; repository requires authentication and is unavailable anonymously
@@ -298,9 +298,9 @@ ldapauthz_mock --testTimeout=600
  libfuzzer # Requires a separate C++ test build
 libunwind --testTimeout=600
 logging_perf
-magic_restore_replica_sets_jscore_passthrough
-magic_restore_sharded_collections_jscore_passthrough
-magic_restore_sharding_jscore_passthrough
+ magic_restore_replica_sets_jscore_passthrough # Requires missing upstream enterprise runner: src/mongo/db/modules/enterprise/jstests/hot_backups/libs/magic_restore_passthrough_runner.js
+ magic_restore_sharded_collections_jscore_passthrough # Requires missing upstream enterprise runner: src/mongo/db/modules/enterprise/jstests/hot_backups/libs/magic_restore_passthrough_runner.js
+ magic_restore_sharding_jscore_passthrough # Requires missing upstream enterprise runner: src/mongo/db/modules/enterprise/jstests/hot_backups/libs/magic_restore_passthrough_runner.js
 mongos_test
 mongot_community_e2e_sharded_collections --installDir /usr/bin --testTimeout=600
 mongot_community_e2e_single_node --installDir /usr/bin --testTimeout=600
@@ -316,8 +316,8 @@ multi_shard_multi_stmt_txn_jscore_passthrough_rate_limited
 multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough
 multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough
 multi_stmt_txn_jscore_passthrough_with_migration
-multitenancy_with_mongoq_jscore_passthrough --jobs=1 --testTimeout=600
-multitenancy_with_mongoq_unsigned_token_jscore_passthrough --jobs=1 --testTimeout=600
+ multitenancy_with_mongoq_jscore_passthrough --jobs=1 --testTimeout=600 # Requires missing multitenancy/serverless override: jstests/libs/override_methods/simulate_mongoq.js
+ multitenancy_with_mongoq_unsigned_token_jscore_passthrough --jobs=1 --testTimeout=600 # Requires missing multitenancy/serverless override: jstests/libs/override_methods/simulate_mongoq.js
 multiversion --jobs=1 --testTimeout=600||python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.3 && buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=9.0.4-1
 multiversion_auth --jobs=1 --testTimeout=600||python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.3 && buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=9.0.4-1
 multiversion_auth_future_git_tag --jobs=1 --testTimeout=600||python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 7.0 8.0 8.3 && buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=9.0.4-1
@@ -340,7 +340,7 @@ no_passthrough_with_mongod_qemp_ifr_batch1 --testTimeout=600
 ocsp --jobs=1 --testTimeout=600||python -m pip install --force-reinstall --no-deps git+https://github.com/wbond/oscrypto.git@76bfdcb7285d856c44f8d0fbafe0ecca1c6d2f8b
 oidc --testTimeout=600
 percona_no_passthrough_with_mongod --testTimeout=600
-pretty-printer-tests
+ pretty-printer-tests # Tests debugger pretty-printers; outside server binary regression scope
 product_limits --testTimeout=600
 query_cbr_automatic_cost_choice_aggregation_passthrough --jobs=1 --testTimeout=600
 query_cbr_automatic_cost_choice_jscore_passthrough --jobs=1 --testTimeout=600
@@ -358,15 +358,15 @@ query_golden_cbr_automatic_no_multiplanning_results --testTimeout=600
 query_golden_cbr_histogram --testTimeout=600
 query_golden_cbr_sampling --testTimeout=600
 query_golden_classic --testTimeout=600
-query_golden_disagg --testTimeout=600
+ query_golden_disagg --testTimeout=600 # Requires unavailable Atlas DisaggReplicaSetFixture from missing buildscripts/modules/atlas/fixtures
 query_golden_join_optimization --testTimeout=600
 query_golden_join_optimization_plan_stability --testTimeout=600
 query_golden_sharding --jobs=1 --testTimeout=600
-query_golden_sharding_disagg --jobs=1 --testTimeout=600
+ query_golden_sharding_disagg --jobs=1 --testTimeout=600 # Requires missing Atlas module import: src/mongo/db/modules/atlas/jstests/disagg_storage/libs/disagg_storage_override.js
 query_join_optimization_no_passthrough_with_mongod --testTimeout=600
 query_join_optimization_passthrough --jobs=1 --testTimeout=600||buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //:install-extensions --define=MONGO_VERSION=9.0.4-1
 query_tester_manual_test
-query_tester_self_test
+ query_tester_self_test # Tests QueryTester/mongotest tooling itself, not server behavior; outside server binary regression scope
 ratelimit --testTimeout=600
 read_concern_linearizable_passthrough --jobs=1 --testTimeout=600
 read_concern_majority_passthrough --jobs=1 --testTimeout=600
@@ -434,8 +434,8 @@ replica_sets_uninitialized_fcv_jscore_passthrough --jobs=1 --testTimeout=600
 replica_sets_with_priority_ports --jobs=1 --testTimeout=600
  resharding_fuzzer --testTimeout=600 # Requires jstestfuzz/out/*.js generated by 10gen/jstestfuzz; repository requires authentication and is unavailable anonymously
  resharding_fuzzer_idempotency --testTimeout=600 # Requires jstestfuzz/out/*.js generated by 10gen/jstestfuzz; repository requires authentication and is unavailable anonymously
-resmoke_end2end_tests
-resmoke_validation_tests
+ resmoke_end2end_tests # Python tooling/self-tests; outside server binary regression scope
+ resmoke_validation_tests # Python tooling/self-tests; outside server binary regression scope
 retryable_writes_downgrade --testTimeout=600
 retryable_writes_downgrade_last_continuous --testTimeout=600||python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 8.3
 retryable_writes_downgrade_last_lts --testTimeout=600||python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 8.0
@@ -450,8 +450,8 @@ retryable_writes_jscore_stepdown_passthrough_primary_driven_index_builds --testT
  rollback_fuzzer_unclean_shutdowns --testTimeout=600 # Requires jstestfuzz/out/*.js generated by 10gen/jstestfuzz; repository requires authentication and is unavailable anonymously
 rseq_kernel_check --testTimeout=600
 rseq_kernel_check_7014 --testTimeout=600
-sasl --testTimeout=600
-sasl_windows_cyrussasl --testTimeout=600
+ sasl --testTimeout=600 # No tests: required upstream module roots are absent: src/mongo/db/modules/*/jstests/sasl/*.js
+ sasl_windows_cyrussasl --testTimeout=600 # No tests: required upstream module roots are absent: src/mongo/db/modules/*/jstests/sasl/sasl_plugins.js
 sdam_json_test --installDir /usr/bin||buildscripts/install_bazel.py && bazel build --config=psmdb_opt_release //src/mongo/client/sdam:sdam_json_test --define=MONGO_VERSION=9.0.4-1 && cp -L bazel-bin/src/mongo/client/sdam/sdam_json_test /usr/bin/sdam_json_test
 search --testTimeout=600
 search_auth --testTimeout=600
