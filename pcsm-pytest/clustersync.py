@@ -487,11 +487,12 @@ class Clustersync:
             Cluster.log(f"Unexpected error: {e}")
             return False
 
-    def logs(self, tail=50, filter=True, stream=False):
+    def logs(self, tail=50, filter=True, stream=False, since=None):
         try:
             if stream:
                 return self.container.logs(stream=True, follow=True)
-            raw_logs = self.container.logs().decode("utf-8").strip()
+            kwargs = {"since": since} if since else {}
+            raw_logs = self.container.logs(**kwargs).decode("utf-8").strip()
             lines = raw_logs.splitlines()
             if filter:
                 lines = [line for line in lines if "GET /status" not in line]
@@ -505,7 +506,7 @@ class Clustersync:
         except (docker.errors.APIError, UnicodeDecodeError) as e:
             return f"Error fetching logs: {e}"
 
-    def wait_for_log(self, expected_log, timeout=10, interval=0.5, tail=None):
+    def wait_for_log(self, expected_log, timeout=10, interval=0.5, tail=None, since=None):
         """
         Poll the csync container's logs for expected_log to show up.
 
@@ -514,10 +515,13 @@ class Clustersync:
         (e.g. clone config like "NumParallelCollections: 1" is logged a
         moment later). A single immediate check of logs() races with that
         and is flaky, so poll for a bit instead of asserting once.
+
+        Pass since (unix timestamp) to ignore lines logged before it, e.g.
+        lines from before a restart.
         """
         start_time = time.time()
         while time.time() - start_time < timeout:
-            if expected_log in self.logs(tail=tail):
+            if expected_log in self.logs(tail=tail, since=since):
                 return True
             time.sleep(interval)
         return False
