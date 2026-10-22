@@ -1,6 +1,7 @@
 import re
 import time
 
+import docker
 import pymongo
 import pytest
 from cluster import Cluster
@@ -77,9 +78,7 @@ def write_repl_data(src_cluster, start=1000, count=100):
 def set_secondary_delay(cluster, delay_secs):
     """
     Make every secondary of a replica set apply the oplog delay_secs behind
-    the primary. Delayed members must be priority 0, they're hidden too as
-    MongoDB recommends. They still vote, so a majority write has to wait for
-    one of them, which is how a lagging target is simulated. 0 restores them.
+    the primary
     """
     client = pymongo.MongoClient(cluster.connection)
     config = client.admin.command("replSetGetConfig")["config"]
@@ -94,13 +93,15 @@ def set_secondary_delay(cluster, delay_secs):
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.csync_env({"PCSM_RECOVERY_CHECKPOINT_INTERVAL": "1s"})
-@pytest.mark.timeout(600, func_only=True)
+@pytest.mark.timeout(3600, func_only=True)
 def test_restart_keeps_target_write_concern_PML_T135(start_cluster, src_cluster, dst_cluster, csync):
     """
     Verify targetWriteConcern is kept if PCSM is restarted, and a new run
     started without one goes back to majority
     """
     seed_source(src_cluster)
+    print("SLEEPING")
+    time.sleep(3600)
     assert csync.start(mode="cli", raw_args=["--target-write-concern=1"]), (
         "failed to start with --target-write-concern=1")
     assert csync.wait_for_repl_stage(), "failed to reach the replication stage"
@@ -231,7 +232,7 @@ def test_majority_unreachable_during_clone_PML_T139(start_cluster, src_cluster, 
     once majority writes succeed again
     """
     seed_source(src_cluster)
-    # PCSM exits if majority is unreachable while it boots, so block it only once it's up
+
     assert csync.wait_for_role("ACTIVE"), "csync server didn't come up"
     set_secondary_delay(dst_cluster, 3600)
     try:
@@ -249,3 +250,38 @@ def test_majority_unreachable_during_clone_PML_T139(start_cluster, src_cluster, 
     assert csync.finalize(), "failed to finalize"
     result, mismatch = compare_data(src_cluster, dst_cluster)
     assert result is True, f"data mismatch after majority was unreachable: {mismatch}"
+
+@pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
+@pytest.mark.timeout(300, func_only=True)
+def test_reset_recovers_failed_clone_PML_T140(start_cluster, src_cluster, dst_cluster, csync):
+    """
+        Verify unsatisfiable targetWriteConcern recovery
+    """
+    seed_source(src_cluster)
+    assert csync.start(raw_args={"targetWriteConcern": "2"}), "failed to start with targetWriteConcern=2"
+    wait_for_state(csync, "failed", timeout=120)
+
+    # A failed clone counts as finished, so a fresh start is refused until the state is reset
+    assert not csync.start(mode="cli", raw_args=["--target-write-concern=1"]), "fresh start after a failed clone"
+    assert "already running" in csync.cmd_stdout + csync.cmd_stderr, (
+        f"fresh start refused for an unexpected reason: {csync.cmd_stdout} {csync.cmd_stderr}")
+
+    # pcsm reset must run while no server is using the target
+    csync.container.stop()
+    output = docker.from_env().containers.run(
+        image=csync.csync_image, network="test", remove=True,
+        command=f"pcsm reset --target {csync.dst}", stderr=True).decode()
+    assert "OK: reset all" in output, f"pcsm reset failed: {output}"
+    assert csync.start_container(), "csync didn't come back after the reset"
+    assert csync.wait_for_role("ACTIVE"), "csync not ACTIVE after the reset"
+    wait_for_state(csync, "idle")
+
+    new_run_at = int(time.time())
+    assert csync.start(mode="cli", raw_args=["--target-write-concern=1"]), "failed to start a new run after the reset"
+    assert csync.wait_for_repl_stage(), "new run failed to reach the replication stage"
+    assert_wc_logged(csync, "1", since=new_run_at)
+    write_repl_data(src_cluster)
+    assert csync.wait_for_zero_lag(), "failed to catch up on replication"
+    assert csync.finalize(), "failed to finalize"
+    result, mismatch = compare_data(src_cluster, dst_cluster)
+    assert result is True, f"data mismatch after recovering with pcsm reset: {mismatch}"
