@@ -1,11 +1,12 @@
 import re
 import time
 
-import docker
 import pymongo
 import pytest
 from cluster import Cluster
 from data_integrity_check import compare_data
+
+import docker
 
 WC_SCOPES = ("clone", "repl")
 
