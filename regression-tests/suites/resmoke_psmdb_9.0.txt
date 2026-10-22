@@ -227,7 +227,7 @@ core_txns_large_txns_format --testTimeout=600
 core_wildcard_indexes --jobs=1 --testTimeout=600
 cwrwc_passthrough --jobs=1 --testTimeout=600
 cwrwc_rc_majority_passthrough --jobs=1 --testTimeout=600
-cwrwc_wc_majority_passthrough --jobs=1 --testTimeout=600
+ cwrwc_wc_majority_passthrough --jobs=1 --testTimeout=600 # Disabled upstream (SERVER-89135): secondary reads after majority writes require causal consistency; fix the passthrough or remove it.
 decimal --testTimeout=600
 disk_wiredtiger --testTimeout=600
  ese --testTimeout=600 # No tests: required upstream module roots are absent: src/mongo/db/modules/*/jstests/encryptdb/*.js
@@ -614,7 +614,7 @@ with_mongot_extension_vectorSearch_disabled_sharded_cluster --installDir /usr/bi
 with_mongot_extension_vectorSearch_disabled_sharded_collections --installDir /usr/bin --testTimeout=600||mkdir -p bazel-bin/install-extensions/lib
 with_mongot_extension_vectorSearch_disabled_single_node --installDir /usr/bin --testTimeout=600||mkdir -p bazel-bin/install-extensions/lib
 with_mongot_extension_vectorSearch_disabled_single_shard --installDir /usr/bin --testTimeout=600||mkdir -p bazel-bin/install-extensions/lib
-write_concern_majority_passthrough --jobs=1 --testTimeout=600
+ write_concern_majority_passthrough --jobs=1 --testTimeout=600 # Disabled upstream (SERVER-89135): secondary reads after majority writes require causal consistency; fix the passthrough or remove it.
 core --jobs=1 --testTimeout=600|inMemory
 aggregation --jobs=1 --testTimeout=600|inMemory
 core_txns --testTimeout=600 --storageEngine=inMemory --storageEngineCacheSizeGB=4 --excludeWithAnyTags=requires_persistence,requires_journaling,requires_mmapv1,requires_wiredtiger
