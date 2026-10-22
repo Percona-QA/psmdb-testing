@@ -94,15 +94,13 @@ def set_secondary_delay(cluster, delay_secs):
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
 @pytest.mark.csync_env({"PCSM_RECOVERY_CHECKPOINT_INTERVAL": "1s"})
-@pytest.mark.timeout(3600, func_only=True)
+@pytest.mark.timeout(600, func_only=True)
 def test_restart_keeps_target_write_concern_PML_T135(start_cluster, src_cluster, dst_cluster, csync):
     """
     Verify targetWriteConcern is kept if PCSM is restarted, and a new run
     started without one goes back to majority
     """
     seed_source(src_cluster)
-    print("SLEEPING")
-    time.sleep(3600)
     assert csync.start(mode="cli", raw_args=["--target-write-concern=1"]), (
         "failed to start with --target-write-concern=1")
     assert csync.wait_for_repl_stage(), "failed to reach the replication stage"
