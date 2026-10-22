@@ -131,9 +131,9 @@ change_streams_sharding_fsm_bg_mutator_watch_db --testTimeout=600
 change_streams_sharding_fsm_embedded_watch_cluster --testTimeout=600
 change_streams_sharding_fsm_embedded_watch_collection --testTimeout=600
 change_streams_sharding_fsm_embedded_watch_db --testTimeout=600
-change_streams_sharding_fsm_irs_watch_cluster --testTimeout=600
-change_streams_sharding_fsm_irs_watch_collection --testTimeout=600
-change_streams_sharding_fsm_irs_watch_db --testTimeout=600
+ change_streams_sharding_fsm_irs_watch_cluster --testTimeout=600 # Requires featureFlagChangeStreamReaderV2=true for ignoreRemovedShards; upstream disabled it by default in 9.0.2 (SERVER-135099), and this suite does not enable it.
+ change_streams_sharding_fsm_irs_watch_collection --testTimeout=600 # Requires featureFlagChangeStreamReaderV2=true for ignoreRemovedShards; upstream disabled it by default in 9.0.2 (SERVER-135099), and this suite does not enable it.
+ change_streams_sharding_fsm_irs_watch_db --testTimeout=600 # Requires featureFlagChangeStreamReaderV2=true for ignoreRemovedShards; upstream disabled it by default in 9.0.2 (SERVER-135099), and this suite does not enable it.
  change_streams_sharding_fsm_pairwise_irs_watch_cluster --testTimeout=600 # No tests with default feature flags: the only non-excluded root test requires featureFlagChangeStreamReaderV2, disabled by default
  change_streams_sharding_fsm_pairwise_irs_watch_collection --testTimeout=600 # No tests with default feature flags: the only non-excluded root test requires featureFlagChangeStreamReaderV2, disabled by default
  change_streams_sharding_fsm_pairwise_irs_watch_db --testTimeout=600 # No tests with default feature flags: the only non-excluded root test requires featureFlagChangeStreamReaderV2, disabled by default
@@ -359,8 +359,8 @@ query_golden_cbr_histogram --testTimeout=600
 query_golden_cbr_sampling --testTimeout=600
 query_golden_classic --testTimeout=600
  query_golden_disagg --testTimeout=600 # Requires unavailable Atlas DisaggReplicaSetFixture from missing buildscripts/modules/atlas/fixtures
-query_golden_join_optimization --testTimeout=600
-query_golden_join_optimization_plan_stability --testTimeout=600
+ query_golden_join_optimization --testTimeout=600 # Excluded from regression: Upstream Evergreen task query_golden_join_optimization is tagged experimental (configuration at 6174f65b504^).
+ query_golden_join_optimization_plan_stability --testTimeout=600 # Excluded from regression: Upstream Evergreen task query_golden_join_optimization_plan_stability is tagged experimental (configuration at 6174f65b504^).
 query_golden_sharding --jobs=1 --testTimeout=600
  query_golden_sharding_disagg --jobs=1 --testTimeout=600 # Requires missing Atlas module import: src/mongo/db/modules/atlas/jstests/disagg_storage/libs/disagg_storage_override.js
 query_join_optimization_no_passthrough_with_mongod --testTimeout=600
@@ -505,7 +505,7 @@ sharding_api_strict_passthrough --testTimeout=600
 sharding_api_version_jscore_passthrough --jobs=1 --testTimeout=600
 sharding_auth --jobs=1 --testTimeout=600
 sharding_auth_audit --jobs=1 --testTimeout=600
-sharding_change_streams_ignore_removed_shards --testTimeout=600
+ sharding_change_streams_ignore_removed_shards --testTimeout=600 # Requires featureFlagChangeStreamReaderV2=true for ignoreRemovedShards; upstream disabled it by default in 9.0.2 (SERVER-135099), and this suite does not enable it.
 sharding_change_streams_v1 --testTimeout=600
 sharding_clustered_collections --jobs=1 --testTimeout=600
 sharding_config_shard --jobs=1 --testTimeout=600
