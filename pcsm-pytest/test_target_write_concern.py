@@ -107,7 +107,7 @@ def test_restart_keeps_target_write_concern_PML_T135(start_cluster, src_cluster,
     assert_wc_logged(csync, "1")
     assert wait_for_checkpoint_wc(dst_cluster, "running") == "1", "checkpoint did not save targetWriteConcern=1"
 
-    restarted_at = int(time.time())
+    restarted_at = time.time()
     assert csync.restart(), "failed to restart csync"
     assert_wc_logged(csync, "1", since=restarted_at)
 
@@ -116,7 +116,7 @@ def test_restart_keeps_target_write_concern_PML_T135(start_cluster, src_cluster,
     assert csync.finalize(), "failed to finalize"
 
     # A fresh run from the finalized state must not inherit the previous run's value
-    new_run_at = int(time.time())
+    new_run_at = time.time()
     assert csync.start(), "failed to start a new run"
     assert csync.wait_for_repl_stage(), "new run failed to reach the replication stage"
     assert_wc_logged(csync, "majority", since=new_run_at)
@@ -275,7 +275,7 @@ def test_reset_recovers_failed_clone_PML_T140(start_cluster, src_cluster, dst_cl
     assert csync.wait_for_role("ACTIVE"), "csync not ACTIVE after the reset"
     wait_for_state(csync, "idle")
 
-    new_run_at = int(time.time())
+    new_run_at = time.time()
     assert csync.start(mode="cli", raw_args=["--target-write-concern=1"]), "failed to start a new run after the reset"
     assert csync.wait_for_repl_stage(), "new run failed to reach the replication stage"
     assert_wc_logged(csync, "1", since=new_run_at)
