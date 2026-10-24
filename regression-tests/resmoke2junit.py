@@ -9,12 +9,28 @@ def resmoke2junit(skip_long_lines=1):
 
     cwd = os.getcwd()
     error_log = deque("",200)
+    result_files = [
+        name for name in os.listdir(cwd)
+        if name.startswith('resmoke') and name.endswith(('.json', '.log'))
+    ]
 
     with open('junit.xml', 'w') as junitfile:
         junitfile.write('<?xml version="1.0" ?>\n')
         junitfile.write('<testsuites>\n')
 
-        for jsonfile in os.listdir(cwd):
+        # Setup can fail before resmoke creates either its report or redirected log.
+        # Emit a failure so Jenkins cannot accept that case as an empty result set.
+        if not result_files:
+            junitfile.write('\t<testsuite name="resmoke_missing_results" failures="1" tests="1">\n')
+            junitfile.write('\t\t<testcase name="resmoke_missing_results" time="0.0">\n')
+            junitfile.write('\t\t\t<failure><![CDATA['
+                            'No resmoke JSON reports or log files were found. '
+                            'Suite setup or container startup may have failed before resmoke ran. '
+                            'Check the Jenkins console output for the original error.'
+                            ']]></failure>\n')
+            junitfile.write('\t\t</testcase>\n\t</testsuite>\n')
+
+        for jsonfile in result_files:
 
             if jsonfile.startswith('resmoke') and jsonfile.endswith('.log'):
                 jsonfileexists = '{}.json'.format(jsonfile[:-4])
