@@ -218,7 +218,7 @@ core_ingress_request_rate_limiter --jobs=1 --testTimeout=1800
  core_min_batch_repeat_queries_multiplan_single_solutions_ese_gcm --testTimeout=1800 # Requires missing upstream module path: src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
 core_minimum_batch_size --jobs=1 --testTimeout=1800 --excludeWithAnyTags=requires_default_first_batch_size --tagFile=generated_resmoke_config/default_first_batch_size_tags.yml||mkdir -p generated_resmoke_config && printf '%s\n' selector: '  js_test:' '    jstests/core/query/resume_query_from_non_existent_record.js:' '      - requires_default_first_batch_size' > generated_resmoke_config/default_first_batch_size_tags.yml
 core_qemp_ifr_batch1 --jobs=1 --testTimeout=1800
-core_repeat_queries --jobs=1 --testTimeout=1800
+core_repeat_queries --jobs=1 --testTimeout=1800 --excludeWithAnyTags=does_not_support_repeated_reads --tagFile=generated_resmoke_config/repeated_reads_tags.yml||mkdir -p generated_resmoke_config && printf '%s\n' selector: '  js_test:' '    jstests/core/query/cbr_plan_in_cache_cbr_disabled.js:' '      - does_not_support_repeated_reads' '    jstests/core/query/plan_cache/plan_cache_distinct.js:' '      - does_not_support_repeated_reads' > generated_resmoke_config/repeated_reads_tags.yml
 core_repeat_queries_always_replan --jobs=1 --testTimeout=1800
 core_tde_cbc --jobs=1 --testTimeout=1800
 core_tde_gcm --jobs=1 --testTimeout=1800
@@ -304,8 +304,8 @@ libunwind --testTimeout=1800
 mongos_test
 mongot_community_e2e_sharded_collections --installDir /usr/bin --testTimeout=1800
 mongot_community_e2e_single_node --installDir /usr/bin --testTimeout=1800
-mongot_community_fixture_e2e_sharded_collections --installDir /usr/bin --testTimeout=1800||curl -fL https://downloads.percona.com/downloads/percona-search-mongodb/percona-search-mongodb-1.70.3/binary/tarball/percona-search-mongodb-1.70.3-linux_x86_64.tar.gz -o /tmp/percona-search-mongodb.tar.gz && mkdir -p /usr/bin/mongot-community && tar -xf /tmp/percona-search-mongodb.tar.gz -C /usr/bin/mongot-community --strip-components=1
-mongot_community_fixture_e2e_single_node --installDir /usr/bin --testTimeout=1800 --excludeWithAnyTags=requires_synchronous_mongot_index_drop --tagFile=generated_resmoke_config/percona_mongot_index_drop_tags.yml||curl -fL https://downloads.percona.com/downloads/percona-search-mongodb/percona-search-mongodb-1.70.3/binary/tarball/percona-search-mongodb-1.70.3-linux_x86_64.tar.gz -o /tmp/percona-search-mongodb.tar.gz && mkdir -p /usr/bin/mongot-community && tar -xf /tmp/percona-search-mongodb.tar.gz -C /usr/bin/mongot-community --strip-components=1 && mkdir -p generated_resmoke_config && printf '%s\n' selector: '  js_test:' '    jstests/with_mongot/e2e/views/mongot_indexed_views_upgrade_downgrade.js:' '      - requires_synchronous_mongot_index_drop' > generated_resmoke_config/percona_mongot_index_drop_tags.yml
+mongot_community_fixture_e2e_sharded_collections --installDir /usr/bin --testTimeout=1800 --excludeWithAnyTags=requires_synchronous_mongot_index_drop --tagFile=generated_resmoke_config/percona_mongot_index_drop_tags.yml||curl -fL https://downloads.percona.com/downloads/percona-search-mongodb/percona-search-mongodb-1.70.3/binary/tarball/percona-search-mongodb-1.70.3-linux_x86_64.tar.gz -o /tmp/percona-search-mongodb.tar.gz && mkdir -p /usr/bin/mongot-community && tar -xf /tmp/percona-search-mongodb.tar.gz -C /usr/bin/mongot-community --strip-components=1 && mkdir -p generated_resmoke_config && printf '%s\n' selector: '  js_test:' '    jstests/with_mongot/e2e/hybridSearch/ranked_fusion_on_search_view.js:' '      - requires_synchronous_mongot_index_drop' > generated_resmoke_config/percona_mongot_index_drop_tags.yml
+mongot_community_fixture_e2e_single_node --installDir /usr/bin --testTimeout=1800 --excludeWithAnyTags=requires_synchronous_mongot_index_drop --tagFile=generated_resmoke_config/percona_mongot_index_drop_tags.yml||curl -fL https://downloads.percona.com/downloads/percona-search-mongodb/percona-search-mongodb-1.70.3/binary/tarball/percona-search-mongodb-1.70.3-linux_x86_64.tar.gz -o /tmp/percona-search-mongodb.tar.gz && mkdir -p /usr/bin/mongot-community && tar -xf /tmp/percona-search-mongodb.tar.gz -C /usr/bin/mongot-community --strip-components=1 && mkdir -p generated_resmoke_config && printf '%s\n' selector: '  js_test:' '    jstests/with_mongot/e2e/views/mongot_indexed_views_upgrade_downgrade.js:' '      - requires_synchronous_mongot_index_drop' '    jstests/with_mongot/e2e/hybridSearch/ranked_fusion_on_search_view.js:' '      - requires_synchronous_mongot_index_drop' > generated_resmoke_config/percona_mongot_index_drop_tags.yml
 mongot_e2e_sharded_cluster --installDir /usr/bin --jobs=1 --testTimeout=1800
 mongot_e2e_sharded_collections --installDir /usr/bin --testTimeout=1800
 mongot_e2e_single_node --installDir /usr/bin --testTimeout=1800
@@ -341,7 +341,7 @@ ocsp --jobs=1 --testTimeout=1800||python -m pip install --force-reinstall --no-d
 oidc --testTimeout=1800
 percona_no_passthrough_with_mongod --testTimeout=1800
  pretty-printer-tests # Tests debugger pretty-printers; outside server binary regression scope
-product_limits --testTimeout=1800
+ product_limits --testTimeout=1800 # query_limits_test: DatasetManyCollections.WorkloadManyCollectionsLookupBushy explain exceeds BSON nesting depth; helper only accepts BSONObjectTooLarge
 query_cbr_automatic_cost_choice_aggregation_passthrough --jobs=1 --testTimeout=1800
 query_cbr_automatic_cost_choice_jscore_passthrough --jobs=1 --testTimeout=1800
 query_cbr_automatic_no_multiplanning_results_aggregation_passthrough --jobs=1 --testTimeout=1800
