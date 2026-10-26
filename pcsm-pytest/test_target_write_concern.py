@@ -167,8 +167,6 @@ def test_target_write_concern_above_member_count_PML_T137(start_cluster, src_clu
     initial_sync = status.get("initialSync") or {}
     assert not initial_sync.get("completed"), f"clone reported completed despite failed writes: {status}"
 
-
-@pytest.mark.jenkins
 @pytest.mark.parametrize("cluster_configs", ["replicaset_3n"], indirect=True)
 @pytest.mark.parametrize("write_concern", ["majority", "1"])
 @pytest.mark.timeout(600, func_only=True)
@@ -224,8 +222,9 @@ def test_lagging_target_secondaries_during_replication_PML_T138(start_cluster, s
     assert result is True, f"data mismatch: {mismatch}"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset_3n"], indirect=True)
+@pytest.mark.parametrize("write_concern", ["majority", "1"])
 @pytest.mark.timeout(600, func_only=True)
-def test_majority_unreachable_during_clone_PML_T139(start_cluster, src_cluster, dst_cluster, csync):
+def test_majority_unreachable_during_clone_PML_T139(start_cluster, src_cluster, dst_cluster, csync, write_concern):
     """
     Verify PCSM moves to standby mode, stays alive, and becomes active again
     once majority writes succeed again
@@ -235,8 +234,8 @@ def test_majority_unreachable_during_clone_PML_T139(start_cluster, src_cluster, 
     assert csync.wait_for_role("ACTIVE"), "csync server didn't come up"
     set_secondary_delay(dst_cluster, 3600)
     try:
-        assert csync.start(), "failed to start with the default write concern"
-        assert_wc_logged(csync, "majority")
+        assert csync.start(raw_args={"targetWriteConcern": write_concern}), f"failed to start with w:{write_concern}"
+        assert_wc_logged(csync, write_concern)
         assert csync.wait_for_role("STANDBY", timeout=60), "csync didn't step down while majority was unreachable"
         assert csync.is_alive, f"csync exited while majority was unreachable: {csync.logs(tail=30)}"
     finally:
@@ -250,7 +249,7 @@ def test_majority_unreachable_during_clone_PML_T139(start_cluster, src_cluster, 
     result, mismatch = compare_data(src_cluster, dst_cluster)
     assert result is True, f"data mismatch after majority was unreachable: {mismatch}"
 
-@pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
+@pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
 def test_reset_recovers_failed_clone_PML_T140(start_cluster, src_cluster, dst_cluster, csync):
     """
