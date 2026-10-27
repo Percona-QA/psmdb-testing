@@ -1,6 +1,6 @@
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pymongo
 import pytest
@@ -123,7 +123,7 @@ def _seed_index_heavy_db(src_cluster):
     Seed data that takes a while to finalize, so the kill can land mid-way.
     """
     db = pymongo.MongoClient(src_cluster.connection)["ha_finalize_db"]
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for i in range(200):
         coll = db[f"index_collection_{i}"]
         coll.insert_many(
@@ -557,17 +557,10 @@ def test_ha_network_faults_PML_T130(start_ha_cluster, src_cluster, dst_cluster, 
             for doc_id, (expected, got) in sorted(stale.items()):
                 Cluster.log(f"counter _id={doc_id}: source has {expected}, target has {got}")
             result, mismatch = compare_data(src_cluster, dst_cluster)
-            if stale:
-                # Known product issue: the checkpoint is the only thing guarded
-                # by the lease term, so an instance that lost the lease can
-                # still write. Nothing repairs it - the new ACTIVE will not
-                # re-apply what it already applied.
-                pytest.xfail(
-                    f"Known issue: PCSM-388. '{active.name}' overwrote newer data "
-                    f"after losing the lease: {len(stale)} of {len(source_values)} "
-                    f"counter documents differ, source and target differ by {mismatch}")
-            # The counters are the detector for the known issue. Anything else
-            # diverging is a separate regression and must fail.
+            assert not stale, (
+                f"'{active.name}' overwrote newer data after losing the lease: "
+                f"{len(stale)} of {len(source_values)} counter documents differ, "
+                f"source and target differ by {mismatch}")
             assert result is True, f"target diverged after the partition healed: {mismatch}"
             assert group.active().name == promoted.name, "reconnecting must not change the ACTIVE"
             assert len(group.standbys()) == 2
@@ -582,14 +575,6 @@ def test_ha_network_faults_PML_T130(start_ha_cluster, src_cluster, dst_cluster, 
         assert promoted.wait_for_zero_lag(timeout=600), f"failed to catch up after {fault}"
         assert promoted.finalize(), f"failed to finalize after {fault}"
     result, mismatch = compare_data(src_cluster, dst_cluster)
-    if fault == "target_outage" and not result:
-        # Known product issue: the deposed ACTIVE still holds the backlog it
-        # built up during the outage, and only the checkpoint is guarded by the
-        # lease term, so it can flush stale documents over what the new ACTIVE
-        # already applied. Nothing repairs it afterwards.
-        pytest.xfail(
-            "Known issue: PCSM-388. The deposed ACTIVE overwrote newer data "
-            f"after the outage: {mismatch}")
     assert result is True, f"data mismatch after {fault}: {mismatch}"
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
