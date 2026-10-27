@@ -333,7 +333,7 @@
         url: 'https://dl.min.io/client/mc/release/linux-amd64/mc'
         dest: /usr/bin/mc
         mode: '0755'
-      when: inventory_hostname in groups['mc']
+      when: inventory_hostname in groups['mc'] and storage == "minio"
 
     - name: Download mgodatagen
       get_url:
