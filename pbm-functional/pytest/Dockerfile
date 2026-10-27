@@ -25,7 +25,7 @@ RUN mkdir -p /pbm-old && mkdir -p /pbm-new && \
 FROM $PSMDB
 USER root
 RUN microdnf install -y yum || true
-RUN yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm -y && yum install -y cyrus-sasl-gssapi supervisor jq libfaketime strace && \
+RUN yum install https://mirrors.kernel.org/fedora-epel/epel-release-latest-9.noarch.rpm -y && yum install -y cyrus-sasl-gssapi supervisor jq libfaketime strace && \
     mkdir -p /pbm-old && mkdir -p /pbm-new && mkdir /etc/pykmip && mkdir /etc/vault && mkdir /etc/x509 && \
     VERSION=$(mongod --version | tail -n +2 | sed 's|Build Info: ||' | jq -r .version | sed -E 's|-.+||') && \
     ARCH=$(mongod --version | tail -n +2 | sed 's/Build Info: //' | jq -r .environment.distarch)  && \
@@ -82,3 +82,5 @@ RUN echo -e 'vaulttoken' > /etc/vault/token && \
 ENTRYPOINT []
 CMD ["/usr/bin/supervisord","-c","/etc/supervisord.conf","-n"]
 
+# Lets PSMDB 8.0+ start on kernel 6.19+ (SERVER-121912), at a performance cost
+ENV GLIBC_TUNABLES=glibc.pthread.rseq=1
