@@ -11,6 +11,3 @@ RUN mkdir -p /var/lib/mongo && \
     chown -R mongodb /etc/x509 && chmod 400 /etc/x509/*
 ENTRYPOINT []
 USER mongodb
-
-# Lets PSMDB 8.0+ start on kernel 6.19+ (SERVER-121912), at a performance cost
-ENV GLIBC_TUNABLES=glibc.pthread.rseq=1
