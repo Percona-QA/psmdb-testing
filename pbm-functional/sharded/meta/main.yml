@@ -1,6 +1,8 @@
 ---
 galaxy_info:
   author: your name
+  namespace: percona
+  role_name: pbm_functional_sharded
   description: your description
   company: your company (optional)
 
