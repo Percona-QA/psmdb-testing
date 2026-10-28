@@ -1,6 +1,8 @@
 ---
 galaxy_info:
   author: your name
+  namespace: percona
+  role_name: pbm_upgrade
   description: your description
   company: your company (optional)
 
