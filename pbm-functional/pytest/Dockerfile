@@ -27,10 +27,15 @@ USER root
 RUN microdnf install -y yum || true
 RUN yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm -y && yum install -y cyrus-sasl-gssapi supervisor jq libfaketime strace && \
     mkdir -p /pbm-old && mkdir -p /pbm-new && mkdir /etc/pykmip && mkdir /etc/vault && mkdir /etc/x509 && \
-    VERSION=$(mongod --version | tail -n +2 | sed 's|Build Info: ||' | jq -r .version | sed -E 's|-.+||') && \
-    ARCH=$(mongod --version | tail -n +2 | sed 's/Build Info: //' | jq -r .environment.distarch)  && \
-    if [ $ARCH == x86_64 ]; then curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel93-$VERSION.tgz || curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-$VERSION.tgz ||true; fi && \
-    if [ $ARCH == aarch64 ]; then curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel93-$VERSION.tgz || curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-$VERSION.tgz || true ; fi && \
+    MONGOD_OUT=$(mongod --version 2>&1) || { rc=$?; echo "ERROR: 'mongod --version' failed (rc=$rc; 132=SIGILL/unsupported CPU, 139=SIGSEGV):"; echo "$MONGOD_OUT"; echo "--- uname: $(uname -a)"; echo "--- cpu: $(grep -m1 'model name' /proc/cpuinfo)"; echo "--- cpu flags (avx/sse4/bmi): $(grep -m1 '^flags' /proc/cpuinfo | tr ' ' '\n' | grep -E '^(avx|avx2|sse4_2|bmi2)$' | tr '\n' ' ')"; echo "--- ldd:"; ldd "$(command -v mongod)" 2>&1 | head -30; exit 1; } && \
+    BUILD_INFO=$(echo "$MONGOD_OUT" | tail -n +2 | sed 's|Build Info: ||') && \
+    VERSION=$(echo "$BUILD_INFO" | jq -r .version | sed -E 's|-.+||') && \
+    ARCH=$(echo "$BUILD_INFO" | jq -r '.environment.distarch // empty') && \
+    if [ -z "$ARCH" ]; then ARCH=$(uname -m); fi && \
+    echo "Detected mongod VERSION=$VERSION ARCH=$ARCH" && \
+    if [ -z "$VERSION" ] || [ -z "$ARCH" ]; then echo "ERROR: could not detect VERSION/ARCH. mongod --version output:"; echo "$MONGOD_OUT"; exit 1; fi && \
+    if [ "$ARCH" = "x86_64" ]; then curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel93-$VERSION.tgz || curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-$VERSION.tgz || true; fi && \
+    if [ "$ARCH" = "aarch64" ]; then curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel93-$VERSION.tgz || curl -Lf -o mongo-ce.tgz https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-$VERSION.tgz || true ; fi && \
     mkdir -p /opt/mongodb && tar -C /opt/mongodb --transform='s,^/*[^/]*,,S' -xzvf mongo-ce.tgz || true && rm -rf mongo-ce.tgz || true && \
     curl -Lf -o /tmp/iproute-tc.rpm https://rpmfind.net/linux/centos-stream/9-stream/BaseOS/$ARCH/os/Packages/iproute-tc-6.14.0-2.el9.$ARCH.rpm || true && \
     curl -Lf -o /tmp/iproute.rpm https://rpmfind.net/linux/centos-stream/9-stream/BaseOS/$ARCH/os/Packages/iproute-6.14.0-2.el9.$ARCH.rpm || true && \
