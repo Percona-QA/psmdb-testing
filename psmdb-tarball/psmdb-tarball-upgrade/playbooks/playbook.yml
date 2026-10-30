@@ -53,4 +53,4 @@
   become: true
   become_method: sudo
   roles:
-    - role: psmdb-tarball-upgrade
+    - role: '../../psmdb-tarball-upgrade'
