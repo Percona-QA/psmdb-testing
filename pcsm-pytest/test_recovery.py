@@ -143,6 +143,81 @@ def test_csync_PML_T37(start_cluster, src_cluster, dst_cluster, csync):
     assert status['data']['state'] == 'failed'
     assert "oplog history is lost" in status['data']['error']
 
+@pytest.mark.parametrize("cluster_configs", ["sharded"], indirect=True)
+@pytest.mark.csync_env({"PCSM_RECOVERY_CHECKPOINT_INTERVAL": "1h"})
+@pytest.mark.timeout(180, func_only=True)
+def test_restart_replays_pre_sharding_insert(start_cluster, src_cluster, dst_cluster, csync):
+    """Replay inserts against a target sharded after the saved checkpoint."""
+    database = "repl_test_db"
+    collection = "sharded_compound_hashed_collection"
+    namespace = {"ns.db": database, "ns.coll": collection}
+
+    with (
+        pymongo.MongoClient(src_cluster.connection, timeoutMS=20000) as source,
+        pymongo.MongoClient(dst_cluster.connection, timeoutMS=20000) as target,
+    ):
+        source.init_test_db.seed.insert_one({"_id": 1})
+        assert csync.start()
+        assert csync.wait_for_repl_stage()
+
+        source.admin.command("enableSharding", database)
+        with target.watch(
+            [{"$match": {**namespace, "operationType": "create"}}],
+            show_expanded_events=True,
+        ) as created:
+            source[database].create_collection(collection)
+            next(created)
+
+        # Keep a real checkpoint from before the insert/shard sequence. State
+        # changes save checkpoints; the long interval prevents periodic saves.
+        checkpoints = target.percona_clustersync_mongodb.checkpoints
+        with checkpoints.watch(full_document="updateLookup") as saved:
+            assert csync.pause()
+            next(change for change in saved if change["fullDocument"]["data"]["state"] == "paused")
+            assert csync.resume()
+            checkpoint = next(
+                change["fullDocument"] for change in saved
+                if change["fullDocument"]["data"]["state"] == "running"
+            )
+
+        source_coll = source[database][collection]
+        target_coll = target[database][collection]
+        source_coll.insert_many([
+            {"_id": 1, "a": 1, "b": "hashed_1", "c": 2, "value": "before"},
+            {"_id": 2, "a": 2, "b": "hashed_2", "c": 4},
+            {"_id": 3, "a": 3, "b": "hashed_3", "c": 6},
+        ])
+        source_coll.update_one({"_id": 1}, {"$set": {"value": "after"}})
+        source_coll.delete_one({"_id": 2})
+        source_coll.insert_one({"_id": 2, "a": 20, "b": "hashed_20", "c": 40})
+        source_coll.delete_one({"_id": 3})
+        source_coll.create_index([("a", 1), ("b", "hashed"), ("c", 1)])
+        with target.watch(
+            [{"$match": {**namespace, "operationType": "shardCollection"}}],
+            show_expanded_events=True,
+        ) as sharded:
+            source.admin.command(
+                "shardCollection", f"{database}.{collection}",
+                key={"a": 1, "b": "hashed", "c": 1},
+            )
+            next(sharded)
+
+        assert checkpoints.find_one({"_id": "pcsm"})["data"] == checkpoint["data"]
+        assert list(target_coll.find().sort("_id")) == list(source_coll.find().sort("_id"))
+
+        # The post-sharding insert follows the replayed DDL barrier, so seeing
+        # it on target proves the earlier replayed writes have completed.
+        with target_coll.watch(
+            [{"$match": {"operationType": "insert", "fullDocument._id": 4}}],
+        ) as caught_up:
+            assert csync.restart()
+            source_coll.insert_one({"_id": 4, "a": 4, "b": "hashed_4", "c": 8})
+            next(caught_up)
+
+        assert csync.status()["data"]["ok"]
+        assert list(target_coll.find().sort("_id")) == list(source_coll.find().sort("_id"))
+
+
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300,func_only=True)
 def test_csync_PML_T38(start_cluster, src_cluster, dst_cluster, csync):
