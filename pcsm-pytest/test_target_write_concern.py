@@ -242,7 +242,23 @@ def test_majority_unreachable_during_clone_PML_T139(start_cluster, src_cluster, 
         set_secondary_delay(dst_cluster, 0)
 
     assert csync.wait_for_active(), "csync didn't become ACTIVE again once the secondaries caught up"
-    assert csync.wait_for_repl_stage(timeout=180), "clone didn't recover once the secondaries caught up"
+    # The promoted tenure restores the checkpoint: a clone interrupted by the
+    # lease loss restores as failed and needs a fresh start
+    response = csync.status()
+    assert response.get("success"), f"failed to read recovered status: {response}"
+    status = response["data"]
+    assert status.get("state") in ("running", "failed"), f"unexpected recovered state: {status}"
+    if status["state"] == "failed":
+        assert status.get("ok") is False, status
+        assert "initial clone interrupted by failover" in (status.get("error") or ""), status
+        assert status["initialSync"]["cloneCompleted"] is False, status
+        assert status["initialSync"]["completed"] is False, status
+        assert csync.start(raw_args={"targetWriteConcern": write_concern}), (
+            "fresh start after an interrupted clone was rejected")
+    else:
+        assert status.get("ok") is True, status
+    assert csync.wait_for_repl_stage(timeout=180), "failed to reach replication after majority recovered"
+    assert_wc_logged(csync, write_concern)
     write_repl_data(src_cluster)
     assert csync.wait_for_zero_lag(), "failed to catch up on replication"
     assert csync.finalize(), "failed to finalize"
