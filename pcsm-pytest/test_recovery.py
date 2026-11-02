@@ -97,36 +97,51 @@ def test_csync_PML_T37(start_cluster, src_cluster, dst_cluster, csync):
     """
     Test to check PCSM when it's not possible to resume due to lost oplog history
     """
-    try:
-        src = pymongo.MongoClient(src_cluster.connection)
+    with contextlib.ExitStack() as clients:
+        src = clients.enter_context(pymongo.MongoClient(src_cluster.connection))
+        dst = clients.enter_context(pymongo.MongoClient(dst_cluster.connection))
         if src_cluster.is_sharded:
-            for shard_rs, shard_client in src_cluster.get_shard_primary_clients():
-                result = shard_client.admin.command("replSetResizeOplog", size=990)
-                assert result.get("ok") == 1.0, f"Failed to resize oplog on {shard_rs}: {result}"
+            primaries = src_cluster.get_shard_primary_clients()
+            for _, primary in primaries:
+                clients.enter_context(primary)
         else:
-            result = src.admin.command("replSetResizeOplog", size=990)
-            assert result.get("ok") == 1.0, f"Failed to resize oplog: {result}"
-        init_test_db, operation_threads_1 = create_all_types_db(src_cluster.connection, "init_test_db", start_crud=True, is_sharded=src_cluster.is_sharded)
+            primaries = [(src_cluster.config["_id"], src)]
+        for name, primary in primaries:
+            result = primary.admin.command("replSetResizeOplog", size=990, minRetentionHours=0)
+            assert result.get("ok") == 1.0, f"Failed to resize oplog on {name}: {result}"
+        create_all_types_db(src_cluster.connection, "init_test_db", is_sharded=src_cluster.is_sharded)
         assert csync.start(), "Failed to start csync service"
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
-        result = csync.pause()
-        assert result is True, "Replication is paused"
-        generate_dummy_data(src_cluster.connection, "dummy", 15, 300000, is_sharded=src_cluster.is_sharded)
-        result = csync.resume()
-        assert result is True, "Replication is resumed"
-    finally:
-        stop_all_crud_operations()
-        all_threads = []
-        if "operation_threads_1" in locals():
-            all_threads += operation_threads_1
-        for thread in all_threads:
-            thread.join()
-    result = csync.wait_for_zero_lag()
-    if not result:
-        assert "oplog history is lost" in csync.logs()
+        assert csync.pause(), "Replication is paused"
+        checkpoints = dst["percona_clustersync_mongodb"]["checkpoints"]
+        checkpoint = checkpoints.find_one({"_id": "pcsm", "data.state": "paused"})
+        assert checkpoint is not None, "Paused checkpoint was not persisted"
+        resume_ts = checkpoint["data"]["repl"]["checkpointOpTS"]
+
+        # A fixed document count does not guarantee oplog eviction. Advance each
+        # source oplog until the actual resume floor is outside retained history.
+        with pymongo.timeout(120):
+            for _, primary in primaries:
+                oplog = primary["local"]["oplog.rs"]
+                while oplog.find_one(sort=[("$natural", 1)])["ts"] <= resume_ts:
+                    primary.admin.command(
+                        "appendOplogNote", 1,
+                        data={"padding": "x" * (4 * 1024 * 1024)},
+                        writeConcern={"w": "majority"},
+                    )
+
+        # Subscribe before resume so an immediate failure cannot be missed.
+        with pymongo.timeout(60), checkpoints.watch(
+            [{"$match": {"documentKey._id": "pcsm", "fullDocument.data.state": "failed"}}],
+            full_document="updateLookup",
+        ) as failures:
+            assert csync.resume(), "Replication is resumed"
+            next(failures)
+
     status = csync.status()
     assert not status['data']['ok']
-    assert status['data']['state'] != 'running'
+    assert status['data']['state'] == 'failed'
+    assert "oplog history is lost" in status['data']['error']
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300,func_only=True)
