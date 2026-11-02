@@ -232,8 +232,14 @@
       mongodb_version: "{{ psmdb_version | regex_search('([0-9]+\\.[0-9]+)', '\\1') }}"
 
   - set_fact:
+      python_version: "{{ lookup('env', 'PYTHON_VERSION') | default('3.13.11', true) }}"
+    when: mongodb_version[0] | float >= 9.0
+
+  - set_fact:
       python_version: "{{ lookup('env', 'PYTHON_VERSION') | default('3.10.14', true) }}"
-    when: mongodb_version[0] | float >= 7.0
+    when:
+      - mongodb_version[0] | float >= 7.0
+      - mongodb_version[0] | float < 9.0
 
   - set_fact:
       python_version: "{{ lookup('env', 'PYTHON_VERSION') | default('3.8.19', true) }}"
