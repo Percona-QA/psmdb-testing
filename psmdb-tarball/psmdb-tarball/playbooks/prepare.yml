@@ -267,8 +267,15 @@
     args:
       chdir: /opt/Python-{{ python_version }}
 
+  # PGO (--enable-optimizations) rebuilds after deleting .o files. Running
+  # install in the same parallel make races with that clean and fails the link.
+  - name: Build python
+    shell: "make -j2"
+    args:
+      chdir: /opt/Python-{{ python_version }}
+
   - name: Install python
-    shell: "make -j2 install"
+    shell: "make install"
     args:
       chdir: /opt/Python-{{ python_version }}
 
