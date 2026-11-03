@@ -1,5 +1,7 @@
 ---
 galaxy_info:
+  role_name: pdmdb_upgrade
+  namespace: percona
   author: your name
   description: your description
   company: your company (optional)
