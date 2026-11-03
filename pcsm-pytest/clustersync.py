@@ -292,7 +292,7 @@ class Clustersync:
         self.cmd_stderr = stderr.decode("utf-8", errors="replace") if stderr else ""
         return exec_result.exit_code, self.cmd_stdout, self.cmd_stderr
 
-    def request(self, method, path, payload=None, timeout=10):
+    def request(self, method, path, payload=None, timeout: float = 10):
         """
         Call a PCSM HTTP endpoint and return (status_code, body).
 
@@ -371,42 +371,66 @@ class Clustersync:
         Cluster.log(f"'{self.name}' is {last_role}, not {role}, after {timeout}s")
         return False
 
-    def pause(self):
+    def pause(self, timeout: float = 240) -> bool:
+        """Wait for live pause completion and a fresh durable pause checkpoint."""
+        deadline = time.monotonic() + timeout
+
+        def remaining() -> float:
+            budget = deadline - time.monotonic()
+            if budget <= 0:
+                raise TimeoutError
+            return budget
+
         try:
-            exec_result = self.container.exec_run("curl -s -X POST http://localhost:2242/pause")
-            response = exec_result.output.decode("utf-8").strip()
-            status_code = exec_result.exit_code
-            if status_code == 0 and response:
-                try:
-                    json_response = json.loads(response)
-                    if json_response.get("ok") is True:
-                        Cluster.log("Sync paused successfully")
-                        try:
-                            dst_client = pymongo.MongoClient(self.dst)
-                            start_time = time.time()
-                            while time.time() - start_time < 10:
-                                doc = dst_client["percona_clustersync_mongodb"]["checkpoints"].find_one({"_id": "pcsm", "data.state": "paused"})
-                                if doc:
-                                    Cluster.log("Checkpoint state confirmed as 'paused'")
-                                    break
-                                time.sleep(1)
-                            else:
-                                Cluster.log("Warning: checkpoint state is not 'paused' after 10 seconds")
-                                return False
-                        except pymongo.errors.PyMongoError as e:
-                            Cluster.log(f"Failed to verify checkpoint state: {e}")
-                            return False
-                        return True
-                    elif json_response.get("ok") is False:
-                        error_msg = json_response.get("error", "Unknown error")
-                        Cluster.log(f"Failed to pause sync: {error_msg}")
+            with pymongo.timeout(remaining()), pymongo.MongoClient(self.dst) as dst_client:
+                checkpoints = dst_client["percona_clustersync_mongodb"]["checkpoints"]
+                # Subscribe before the request so even its immediate checkpoint is
+                # observed. updateLookup alone can return an older paused snapshot.
+                with checkpoints.watch(
+                    [{"$match": {"documentKey._id": "pcsm"}}],
+                    full_document="updateLookup",
+                    max_await_time_ms=1000,
+                ) as changes:
+                    baseline = checkpoints.find_one({"_id": "pcsm"}) or {}
+                    previous_pause = baseline.get("data", {}).get("repl", {}).get("pauseTime")
+                    code, response = self.request("POST", "/pause", timeout=remaining())
+                    if code != 200 or not isinstance(response, dict) or response.get("ok") is not True:
+                        Cluster.log(f"Failed to pause sync: {response}")
                         return False
-                except json.JSONDecodeError:
-                    Cluster.log("Received invalid JSON response.")
-            Cluster.log("Failed to pause sync")
-            return False
-        except (docker.errors.APIError, docker.errors.NotFound) as e:
-            Cluster.log(f"Unexpected error: {e}")
+                    fresh_checkpoint = False
+                    while True:
+                        code, status = self.request("GET", "/status", timeout=remaining())
+                        remaining()
+                        if (
+                            code != 200
+                            or not isinstance(status, dict)
+                            or status.get("ok") is not True
+                            or status.get("state") == "failed"
+                        ):
+                            Cluster.log(f"Failed while waiting for pause: {status}")
+                            return False
+                        if status.get("state") == "paused" and fresh_checkpoint:
+                            Cluster.log("Sync paused successfully")
+                            return True
+
+                        event = changes.try_next()
+                        if event is not None:
+                            data = (event.get("fullDocument") or {}).get("data", {})
+                            pause_time = data.get("repl", {}).get("pauseTime")
+                            # Resume clears pauseTime; drain completion assigns it.
+                            # Sequential QA callers wait for each pause to persist,
+                            # so the baseline identifies the prior pause even if
+                            # another snapshot of that pause is still in flight.
+                            fresh_checkpoint = (
+                                data.get("state") == "paused"
+                                and bool(pause_time)
+                                and pause_time != previous_pause
+                            )
+                        if not changes.alive:
+                            Cluster.log("Checkpoint change stream closed before pause completed")
+                            return False
+        except (TimeoutError, pymongo.errors.PyMongoError) as e:
+            Cluster.log(f"Failed to complete pause within {timeout}s: {e}")
             return False
 
     def resume(self, from_failure=False):
