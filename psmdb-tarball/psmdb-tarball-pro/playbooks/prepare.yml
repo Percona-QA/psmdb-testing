@@ -127,20 +127,27 @@
       - unzip
     when: ansible_os_family == "Debian"
 
-  - set_fact:
-      tarball: "{{ lookup('env', 'TARBALL') | default('https://downloads.percona.com/downloads/TESTING/psmdb-6.0.16/percona-server-mongodb-6.0.16-13-x86_64.glibc2.17-minimal.tar.gz', true) }}"
+  - name: Get mongodb version
+    set_fact:
+      psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') }}"
 
   - name: Get mongodb major version
     set_fact:
-      mongodb_version: "{{ tarball | regex_search('mongodb-([0-9]+\\.[0-9]+)', '\\1') }}"
+      mongodb_version: "{{ psmdb_version | regex_search('([0-9]+\\.[0-9]+)', '\\1') }}"
+
+  - set_fact:
+      python_version: "{{ lookup('env', 'PYTHON_VERSION') | default('3.13.11', true) }}"
+    when: mongodb_version[0] | float >= 9.0
 
   - set_fact:
       python_version: "{{ lookup('env', 'PYTHON_VERSION') | default('3.10.14', true) }}"
-    when: mongodb_version[0] | float >= 6.0
+    when:
+      - mongodb_version[0] | float >= 7.0
+      - mongodb_version[0] | float < 9.0
 
   - set_fact:
       python_version: "{{ lookup('env', 'PYTHON_VERSION') | default('3.8.19', true) }}"
-    when: mongodb_version[0] | float <= 5.0
+    when: mongodb_version[0] | float <= 6.0
 
   - name: Download python
     get_url:
@@ -153,13 +160,20 @@
       dest: /opt
       remote_src: yes
 
+  # PGO (--enable-optimizations) rebuilds after deleting .o files. Running
+  # install in the same parallel make races with that clean and fails the link.
   - name: Configure python
     shell: "./configure --prefix=/opt/python --enable-optimizations"
     args:
       chdir: /opt/Python-{{ python_version }}
 
+  - name: Build python
+    shell: "make -j2"
+    args:
+      chdir: /opt/Python-{{ python_version }}
+
   - name: Install python
-    shell: "make -j2 install"
+    shell: "make install"
     args:
       chdir: /opt/Python-{{ python_version }}
 
