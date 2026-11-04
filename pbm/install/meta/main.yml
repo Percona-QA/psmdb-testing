@@ -1,6 +1,8 @@
 ---
 galaxy_info:
   author: your name
+  namespace: percona
+  role_name: pbm_install
   description: your description
   company: your company (optional)
 

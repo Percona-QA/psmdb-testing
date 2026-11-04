@@ -46,8 +46,10 @@ platforms:
       - minio
     image: "minio/minio"
     exposed_ports: 
-      - 9000
-    env: "MINIO_ACCESS_KEY=minio1234 MINIO_SECRET_KEY=minio1234"
+      - "9000"
+    env:
+      MINIO_ACCESS_KEY: minio1234
+      MINIO_SECRET_KEY: minio1234
     command: "server /backup"
     pre_build_image: true
     networks: 

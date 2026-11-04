@@ -27,7 +27,7 @@ def parse_yaml_string(ys):
     :return:
     """
     fd = StringIO(ys)
-    dct = yaml.load(fd)
+    dct = yaml.safe_load(fd)
     return dct
 
 

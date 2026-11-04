@@ -5,4 +5,4 @@
   become_method: sudo
   gather_facts: yes
   roles:
-    - role: ps4m-tarball
+    - role: '../../ps4m-tarball'
