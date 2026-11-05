@@ -66,7 +66,7 @@ bulk_write_multi_op_causally_consistent_jscore_passthrough
 bulk_write_multi_op_sharded_collections_jscore_passthrough
 bulk_write_replica_sets_jscore_passthrough --jobs=1 --testTimeout=1800
 bulk_write_replica_sets_kill_stepdown_terminate_jscore_passthrough --testTimeout=1800
-bulk_write_replica_sets_multi_stmt_txn_jscore_passthrough --excludeWithAnyTags=requires_explain_outside_transactions --tagFile=generated_resmoke_config/txn_passthrough_exclude_tags.yml||mkdir -p generated_resmoke_config && printf '%s\n' selector: '  js_test:' '    jstests/core/query/computation_hoisting_match_pushdown_pbt.js:' '      - requires_explain_outside_transactions' > generated_resmoke_config/txn_passthrough_exclude_tags.yml
+bulk_write_replica_sets_multi_stmt_txn_jscore_passthrough
 bulk_write_replica_sets_multi_stmt_txn_kill_stepdown_terminate_jscore_passthrough
 bulk_write_sharded_causally_consistent_jscore_passthrough --jobs=1 --testTimeout=1800
 bulk_write_sharded_collections_jscore_passthrough --jobs=1 --testTimeout=1800
@@ -411,7 +411,7 @@ replica_sets_last_continuous --jobs=1 --testTimeout=1800 --tagFile=generated_res
 replica_sets_last_lts --jobs=1 --testTimeout=1800 --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml --excludeWithAnyTags=requires_fcv_81,requires_fcv_82,requires_fcv_83,requires_fcv_90,multiversion_incompatible,backport_required_multiversion||python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2404 --architecture x86_64 8.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v90.py -o /tmp/generate_multiversion_exclude_tags_v90.py && python /tmp/generate_multiversion_exclude_tags_v90.py --oldBinVersion=last_lts --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
  replica_sets_last_patch --jobs=1 --testTimeout=1800 --excludeWithAnyTags=multiversion_incompatible # First 9.0 release; no previous patch binary is available
 replica_sets_max_mirroring --jobs=1 --testTimeout=1800
-replica_sets_multi_stmt_txn_jscore_passthrough --excludeWithAnyTags=requires_explain_outside_transactions --tagFile=generated_resmoke_config/txn_passthrough_exclude_tags.yml||mkdir -p generated_resmoke_config && printf '%s\n' selector: '  js_test:' '    jstests/core/query/computation_hoisting_match_pushdown_pbt.js:' '      - requires_explain_outside_transactions' > generated_resmoke_config/txn_passthrough_exclude_tags.yml
+replica_sets_multi_stmt_txn_jscore_passthrough
 replica_sets_multi_stmt_txn_kill_primary_jscore_passthrough
 replica_sets_multi_stmt_txn_kill_stepdown_terminate_jscore_passthrough
 replica_sets_multi_stmt_txn_stepdown_jscore_passthrough
@@ -623,7 +623,7 @@ sharded_collections_jscore_passthrough --jobs=1 --testTimeout=1800|inMemory
 sharding_jscore_passthrough --testTimeout=1800|inMemory
 replica_sets_initsync_jscore_passthrough --jobs=1 --testTimeout=1800 --mongodSetParameters='{initialSyncMethod: logical}'|inMemory
 replica_sets_initsync_static_jscore_passthrough --jobs=1 --testTimeout=1800 --mongodSetParameters='{initialSyncMethod: logical}'|inMemory
-replica_sets_multi_stmt_txn_jscore_passthrough --testTimeout=1800 --storageEngine=inMemory --storageEngineCacheSizeGB=4 --excludeWithAnyTags=requires_persistence,requires_journaling,requires_mmapv1,requires_wiredtiger,requires_explain_outside_transactions --tagFile=generated_resmoke_config/txn_passthrough_exclude_tags.yml||mkdir -p generated_resmoke_config && printf '%s\n' selector: '  js_test:' '    jstests/core/query/computation_hoisting_match_pushdown_pbt.js:' '      - requires_explain_outside_transactions' > generated_resmoke_config/txn_passthrough_exclude_tags.yml
+replica_sets_multi_stmt_txn_jscore_passthrough --testTimeout=1800 --storageEngine=inMemory --storageEngineCacheSizeGB=4 --excludeWithAnyTags=requires_persistence,requires_journaling,requires_mmapv1,requires_wiredtiger
 sharded_multi_stmt_txn_jscore_passthrough --testTimeout=1800 --storageEngine=inMemory --storageEngineCacheSizeGB=4 --excludeWithAnyTags=requires_persistence,requires_journaling,requires_mmapv1,requires_wiredtiger
 timeseries_crud_jscore_passthrough --testTimeout=1800|inMemory
 identity_views_passthrough --jobs=1 --testTimeout=1800|inMemory
