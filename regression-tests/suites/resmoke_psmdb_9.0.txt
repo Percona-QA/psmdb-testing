@@ -566,7 +566,7 @@ timeseries_crud_jscore_passthrough --testTimeout=1800
 timeseries_write_pbt --testTimeout=1800
 timeseries_write_pbt_replset --testTimeout=1800
 timeseries_write_pbt_sharded --testTimeout=1800
-tla_plus||apt-get update && apt-get install -y default-jre && mkdir -p /opt/java/jdk11/bin && ln -sfn /usr/bin/java /opt/java/jdk11/bin/java && (cd src/mongo/tla_plus && ./download-tlc.sh)
+tla_plus --jobs=1||apt-get update && apt-get install -y default-jre && mkdir -p /opt/java/jdk11/bin && ln -sfn /usr/bin/java /opt/java/jdk11/bin/java && (cd src/mongo/tla_plus && ./download-tlc.sh)
 transitioning_replica_sets_jscore_passthrough --jobs=1 --testTimeout=1800
  unittest_shell_hang_analyzer --testTimeout=1800 # Resmoke hang-analyzer infrastructure self-test requiring Evergreen mode and debugger/core-dump support; outside Evergreen the analyzer is skipped and the first assertion expects exit code 0.
 unittests
