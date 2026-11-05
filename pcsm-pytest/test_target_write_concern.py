@@ -223,26 +223,51 @@ def test_lagging_target_secondaries_during_replication_PML_T138(start_cluster, s
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset_3n"], indirect=True)
 @pytest.mark.parametrize("write_concern", ["majority", "1"])
+@pytest.mark.csync_env({"PCSM_HA_LEASE_TTL": "60s"})
 @pytest.mark.timeout(600, func_only=True)
 def test_majority_unreachable_during_clone_PML_T139(start_cluster, src_cluster, dst_cluster, csync, write_concern):
     """
     Verify PCSM moves to standby mode, stays alive, and becomes active again
-    once majority writes succeed again
+    once majority writes succeed again when lease TTL is raised
+
+    With default 10s TTL an outage makes PCSM lose lease: tenure ends and
+    interrupted clone is not resumed (state failed, needs a new /start).
+    With 60s TTL lease survives the outage, so PCSM stays ACTIVE and waits.
+    Once majority is reachable again the same run continues, with no new
+    /start, and ends with the data in sync.
     """
+    outage_secs = 20
     seed_source(src_cluster)
 
     assert csync.wait_for_role("ACTIVE"), "csync server didn't come up"
+    metrics = csync.metrics()["data"]
+    transitions_before = metrics["percona_clustersync_mongodb_ha_role_transitions_total"]
+    term_before = metrics["percona_clustersync_mongodb_ha_term"]
+
     set_secondary_delay(dst_cluster, 3600)
     try:
         assert csync.start(raw_args={"targetWriteConcern": write_concern}), f"failed to start with w:{write_concern}"
         assert_wc_logged(csync, write_concern)
-        assert csync.wait_for_role("STANDBY", timeout=60), "csync didn't step down while majority was unreachable"
-        assert csync.is_alive, f"csync exited while majority was unreachable: {csync.logs(tail=30)}"
+
+        data = {}
+        deadline = time.time() + outage_secs
+        while time.time() < deadline:
+            time.sleep(1)
+            assert csync.role() == "ACTIVE", (
+                f"csync stepped down before the raised lease TTL expired: {csync.logs(tail=30)}")
+            data = csync.status().get("data") or {}
+            assert data.get("state") == "running", f"run left the running state during the outage: {data}"
+            assert not (data.get("initialSync") or {}).get("cloneCompleted"), (
+                f"clone completed while majority was unreachable: {data}")
     finally:
         set_secondary_delay(dst_cluster, 0)
 
-    assert csync.wait_for_active(), "csync didn't become ACTIVE again once the secondaries caught up"
-    assert csync.wait_for_repl_stage(timeout=180), "clone didn't recover once the secondaries caught up"
+    assert csync.wait_for_repl_stage(timeout=180), "run didn't continue once the secondaries caught up"
+    metrics = csync.metrics()["data"]
+    assert metrics["percona_clustersync_mongodb_ha_role_transitions_total"] == transitions_before, (
+        "csync changed role during the outage despite the raised lease TTL")
+    assert metrics["percona_clustersync_mongodb_ha_term"] == term_before, "lease term changed during the outage"
+
     write_repl_data(src_cluster)
     assert csync.wait_for_zero_lag(), "failed to catch up on replication"
     assert csync.finalize(), "failed to finalize"
