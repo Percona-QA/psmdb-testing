@@ -3,8 +3,22 @@ import time
 
 import pymongo
 import pytest
+from bson.timestamp import Timestamp
+from cluster import Cluster
 from data_generator import create_all_types_db, generate_dummy_data, stop_all_crud_operations
 from data_integrity_check import compare_data
+
+
+def _last_replicated_ts(csync):
+    status = csync.status()
+    raw = status["data"]["lastReplicatedOpTime"]["ts"]
+    seconds, increment = str(raw).split(".")
+    return Timestamp(int(seconds), int(increment))
+
+
+def _first_oplog_ts(client):
+    doc = client.local["oplog.rs"].find_one(sort=[("$natural", 1)])
+    return doc["ts"]
 
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
@@ -111,7 +125,27 @@ def test_csync_PML_T37(start_cluster, src_cluster, dst_cluster, csync):
         assert csync.wait_for_repl_stage(), "Failed to start replication stage"
         result = csync.pause()
         assert result is True, "Replication is paused"
-        generate_dummy_data(src_cluster.connection, "dummy", 15, 300000, is_sharded=src_cluster.is_sharded)
+        paused_ts = _last_replicated_ts(csync)
+        Cluster.log(f"Paused at lastReplicatedOpTime {paused_ts}")
+        if src_cluster.is_sharded:
+            oplog_clients = [client for _, client in src_cluster.get_shard_primary_clients()]
+        else:
+            oplog_clients = [src]
+        # Faster nodes may not wrap oplog with a single pass, so keep writing until
+        # oplog on every source primary no longer covers the point where PCSM was paused
+        deadline = time.time() + 180
+        while True:
+            generate_dummy_data(src_cluster.connection, "dummy", 15, 300000, is_sharded=src_cluster.is_sharded)
+            truncate_deadline = time.time() + 20
+            while True:
+                if all(_first_oplog_ts(c) > paused_ts for c in oplog_clients):
+                    break
+                if time.time() > truncate_deadline:
+                    break
+                time.sleep(1)
+            if all(_first_oplog_ts(c) > paused_ts for c in oplog_clients):
+                break
+            assert time.time() < deadline, "Source oplog did not roll over past the paused position"
         result = csync.resume()
         assert result is True, "Replication is resumed"
     finally:
