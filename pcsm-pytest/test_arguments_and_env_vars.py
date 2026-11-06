@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pymongo
 import pytest
@@ -152,7 +152,7 @@ def collect_log_timestamps(csync, json_logs):
     return timestamps
 
 def parse_rfc3339(ts):
-    return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    return datetime.fromisoformat(ts)
 
 @pytest.mark.timeout(300, func_only=True)
 def test_clone_collections_num_PML_T70(csync, src_cluster, dst_cluster):
@@ -512,9 +512,9 @@ def test_log_timestamp_utc_PML_T116(csync, csync_env):
     POSIX TZ=EST5 is UTC-5 and TZ=NZST-12 is UTC+12 (no tzdata required).
     """
     json_logs = _json_logs(csync_env)
-    before = datetime.now(timezone.utc) - timedelta(minutes=5)
+    before = datetime.now(UTC) - timedelta(minutes=5)
     timestamps = collect_log_timestamps(csync, json_logs)
-    after = datetime.now(timezone.utc) + timedelta(seconds=5)
+    after = datetime.now(UTC) + timedelta(seconds=5)
     tz = csync_env.get("TZ")
     for line, ts in timestamps:
         assert RFC3339_UTC_TS.match(ts), (
@@ -873,6 +873,83 @@ def test_mongodb_operation_timeout_PML_T119(csync, src_cluster, dst_cluster):
     csync.create(extra_args=f"--reset-state {TIMEOUT_FLAG}=70s")
     assert csync.start()
     assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+
+@pytest.mark.timeout(300, func_only=True)
+def test_ha_lease_ttl_PML_T142(csync, src_cluster, dst_cluster):
+    """
+    PCSM-405: test the PCSM --ha-lease-ttl flag.
+    """
+    lease_ttl_too_short = "--ha-lease-ttl must be at least 10s, got {}"
+    invalid_values = [
+        ("9s", lease_ttl_too_short.format("9s")),
+        ("-1s", lease_ttl_too_short.format("-1s")),
+        ("abc", 'invalid argument "abc" for "--ha-lease-ttl" flag'),
+        ("45", "missing unit in duration"),
+    ]
+    valid_values = [
+        ("", "10s"),
+        ("--ha-lease-ttl=0s", "10s"),
+        ("--ha-lease-ttl=10s", "10s"),
+        ("--ha-lease-ttl=10.0009s", "10s"),
+        ("--ha-lease-ttl=1m", "1m0s"),
+    ]
+    failures = []
+    _, help_output = run_pcsm_cli(csync, ["--help"])
+    if "--ha-lease-ttl" not in help_output:
+        failures.append(f"--ha-lease-ttl is missing from 'pcsm --help': {help_output}")
+    _, output = run_pcsm_cli(csync, ["status", "--ha-lease-ttl=20s"])
+    if "unknown flag: --ha-lease-ttl" not in output:
+        failures.append(f"'pcsm status' must reject --ha-lease-ttl, got: {output}")
+    for value, expected_log in invalid_values:
+        try:
+            csync.create(extra_args=f"--reset-state --ha-lease-ttl={value}")
+            assert csync.wait_for_log(expected_log, timeout=30), \
+                f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
+            assert "Starting HTTP server" not in csync.logs(tail=None), \
+                "PCSM must abort before it serves HTTP with an invalid lease TTL"
+        except AssertionError as e:
+            failures.append(f"Case --ha-lease-ttl={value}: {e!s}")
+    for extra_args, ttl in valid_values:
+        expected_log = f"HALeaseTTL: {ttl}"
+        try:
+            csync.create(extra_args=f"--reset-state {extra_args}")
+            assert csync.wait_for_log(expected_log, timeout=30), \
+                f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
+        except AssertionError as e:
+            failures.append(f"Case [{extra_args or 'default'}]: {e!s}")
+    if failures:
+        pytest.fail(f"Failed {len(failures)} cases:\n" + "\n".join(failures))
+    create_test_collection(src_cluster.connection)
+    csync.create(extra_args="--reset-state --ha-lease-ttl=30s")
+    assert csync.start()
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+    assert csync.wait_for_zero_lag(), "Failed to catch up on replication"
+    assert csync.finalize(), "Failed to finalize csync service"
+    assert pymongo.MongoClient(dst_cluster.connection)["test_db"]["test_collection"].count_documents({}) == 1
+
+@pytest.mark.parametrize("csync_env", [{"PCSM_HA_LEASE_TTL": "45s"}], indirect=True)
+@pytest.mark.timeout(300, func_only=True)
+def test_pcsm_ha_lease_ttl_env_var_PML_T143(csync, src_cluster, dst_cluster, csync_env):
+    """
+    PCSM-405: test the PCSM_HA_LEASE_TTL environment variable.
+    """
+    expected_log = "HALeaseTTL: 45s"
+    assert csync.wait_for_log(expected_log, timeout=30), \
+        f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
+    create_test_collection(src_cluster.connection)
+    assert csync.start()
+    assert csync.wait_for_repl_stage(), "Failed to start replication stage"
+    expected_log = "HALeaseTTL: 20s"
+    csync.create(extra_args="--reset-state --ha-lease-ttl=20s", env_vars={"PCSM_HA_LEASE_TTL": "60s"})
+    assert csync.wait_for_log(expected_log, timeout=30), \
+        f"Expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
+    for value, expected_log in [
+        ("5s", "--ha-lease-ttl must be at least 10s, got 5s"),
+        ("abc", "'ha-lease-ttl' time: invalid duration"),
+    ]:
+        csync.create(extra_args="--reset-state", env_vars={"PCSM_HA_LEASE_TTL": value})
+        assert csync.wait_for_log(expected_log, timeout=30), \
+            f"PCSM_HA_LEASE_TTL={value}: expected '{expected_log}' does not appear in logs: {csync.logs(tail=None)}"
 
 @pytest.mark.parametrize("csync_env", [
     {"PCSM_MONGODB_OPERATION_TIMEOUT": "30s"},
