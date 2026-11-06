@@ -25,12 +25,13 @@ jobs:
   test:
     # Will not run if item is a draft
     if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    # pinned: PSMDB 8.0 refuses to start on Linux kernels >= 6.19 (SERVER-121912)
+    runs-on: ubuntu-22.04
     timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
-        psmdb_pair: ["6.0-6.0", "6.0-8.0", "7.0-7.0", "8.0-8.0"]
+        psmdb_pair: ["6.0-6.0", "6.0-8.0", "7.0-7.0", "8.0-8.0", "8.3-8.3"]
         shard: [0, 1, 2, 3, 4]
     env:
       PCSM_BRANCH: ${{ github.event.inputs.pcsm_branch || 'main' }}
