@@ -4,8 +4,8 @@ import boto3
 import pymongo
 import pytest
 from botocore.config import Config
-
 from cluster import Cluster
+
 
 def generate_data(client, count, offset=0, batch_size=1000):
     """Insert documents into database"""
@@ -16,7 +16,7 @@ def generate_data(client, count, offset=0, batch_size=1000):
 def s3_client():
     return boto3.client(
         "s3",
-        endpoint_url="http://minio:9000",
+        endpoint_url="http://seaweedfs:8333",
         aws_access_key_id="minio1234",
         aws_secret_access_key="minio1234",
         config=Config(s3={"addressing_style": "path"}, signature_version="s3v4"),
@@ -70,7 +70,7 @@ def get_uncompressed_size_from_s2_files(backup_name):
     return total
 
 def get_backup_storage_size(backup_name):
-    """Returns the total size in bytes of all objects stored in minio for the given backup name."""
+    """Returns the total size in bytes of all objects stored in SeaweedFS for the given backup name."""
     s3 = s3_client()
     paginator = s3.get_paginator("list_objects_v2")
     total = sum(
