@@ -59,7 +59,7 @@ def check_external_reachability(host, path="/status", method="GET", port=2242, t
     ({}, "--listen-host=0.0.0.0", "0.0.0.0"),
     ({"PCSM_LISTEN_HOST": "localhost"}, "--listen-host=0.0.0.0", "0.0.0.0"),
 ], indirect=["csync_env"])
-def test_listen_host_PLM_T107(csync, src_cluster, dst_cluster, csync_env, listen_host_args, expected_bind_host):
+def test_listen_host_PML_T107(csync, src_cluster, dst_cluster, csync_env, listen_host_args, expected_bind_host):
     """
     Verify PCSM server-bind options --listen-host and PCSM_LISTEN_HOST
     """

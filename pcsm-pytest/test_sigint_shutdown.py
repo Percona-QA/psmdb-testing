@@ -73,7 +73,7 @@ def test_csync_clone_SIGINT_shutdown_PML_T79(start_cluster, src_cluster, dst_clu
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset", "sharded"], indirect=True)
 @pytest.mark.timeout(300, func_only=True)
-def test_csync_replication_SIGIN_shutdown_PML_T80(start_cluster, src_cluster, dst_cluster, csync):
+def test_csync_replication_SIGINT_shutdown_PML_T80(start_cluster, src_cluster, dst_cluster, csync):
     """Verify SIGINT during replication causes a clean shutdown with no context errors and no cursor cleanup errors in logs."""
     operation_threads = []
     try:
