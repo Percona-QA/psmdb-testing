@@ -30,6 +30,7 @@
         - jammy
         - focal
         - noble
+        - resolute
         - buster
         - bookworm
         - bullseye
@@ -54,6 +55,7 @@
         - jammy
         - focal
         - noble
+        - resolute
         - buster
         - bookworm
         - bullseye
