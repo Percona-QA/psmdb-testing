@@ -1,0 +1,16 @@
+FROM easyrsa/psmdb AS easyrsa
+
+FROM openbao/openbao
+
+USER root
+COPY --from=easyrsa /etc/vault/ca.crt /openbao/tls/ca.crt
+COPY --from=easyrsa /etc/vault/vault.crt /openbao/tls/vault.crt
+COPY --from=easyrsa /etc/vault/vault.key /openbao/tls/vault.key
+COPY conf/vault.hcl /openbao/config/vault.hcl
+COPY conf/vault-start.sh /usr/local/bin/vault-start.sh
+RUN chown -R openbao:openbao /openbao /usr/local/bin/vault-start.sh && \
+    chmod 755 /usr/local/bin/vault-start.sh && \
+    chmod 644 /openbao/tls/ca.crt /openbao/tls/vault.crt /openbao/config/vault.hcl && \
+    chmod 640 /openbao/tls/vault.key
+USER openbao
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "/usr/local/bin/vault-start.sh"]

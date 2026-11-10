@@ -42,3 +42,13 @@ RUN ./easyrsa --batch build-server-full keycloak nopass && \
     cat pki/issued/keycloak.crt pki/private/keycloak.key > /etc/keycloak/keycloak.pem && \
     cp pki/issued/keycloak.crt /etc/keycloak/ && \
     cp pki/private/keycloak.key /etc/keycloak/
+#For LDAP and Vault. The names are the Docker hostnames mongod dials.
+RUN ./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:ldap --batch build-server-full ldap nopass && \
+    ./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:vault --batch build-server-full vault nopass && \
+    mkdir -p /etc/ldap /etc/vault && \
+    cp pki/ca.crt /etc/ldap/ca.crt && \
+    cp pki/issued/ldap.crt /etc/ldap/ldap.crt && \
+    cp pki/private/ldap.key /etc/ldap/ldap.key && \
+    cp pki/ca.crt /etc/vault/ca.crt && \
+    cp pki/issued/vault.crt /etc/vault/vault.crt && \
+    cp pki/private/vault.key /etc/vault/vault.key

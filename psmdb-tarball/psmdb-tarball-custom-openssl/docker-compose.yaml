@@ -1,5 +1,6 @@
 services:
   test:
+    hostname: test
     build:
       dockerfile: Dockerfile.test
       context: .
@@ -38,14 +39,17 @@ services:
       - easyrsa
 
   vault:
-    image: openbao/openbao
+    image: vault/psmdb
+    build:
+      dockerfile: Dockerfile-vault
+      context: .
     hostname: vault
     ports:
       - "8200:8200"
-    environment:
-      - BAO_DEV_ROOT_TOKEN_ID=vaulttoken
     networks:
       - psmdb
+    depends_on:
+      - easyrsa
 
   kerberos:
     image: kerberos/psmdb
@@ -57,18 +61,29 @@ services:
       - psmdb
 
   ldap:
-    image: bitnamilegacy/openldap
+    image: ldap/psmdb
+    build:
+      dockerfile: Dockerfile-ldap
+      context: .
     hostname: ldap
     environment:
       - LDAP_ADMIN_USERNAME=admin
       - LDAP_ADMIN_PASSWORD=password
       - LDAP_USERS=pbm
       - LDAP_PASSWORDS=pbmpass
+      - LDAP_ENABLE_TLS=yes
+      - LDAP_REQUIRE_TLS=yes
+      - LDAP_TLS_CERT_FILE=/opt/bitnami/openldap/certs/ldap.crt
+      - LDAP_TLS_KEY_FILE=/opt/bitnami/openldap/certs/ldap.key
+      - LDAP_TLS_CA_FILE=/opt/bitnami/openldap/certs/ca.crt
+      - LDAP_TLS_VERIFY_CLIENTS=never
     ports:
       - "1389:1389"
       - "1636:1636"
     networks:
       - psmdb
+    depends_on:
+      - easyrsa
 
   keycloak:
     image: keycloak/psmdb
