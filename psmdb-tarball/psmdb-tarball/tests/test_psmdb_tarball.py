@@ -56,6 +56,8 @@ def test_jstests(host, jstest):
 
 @pytest.mark.parametrize("suites", SUITES)
 def test_suites(host, suites):
+    if host.system_info.distribution == "ubuntu" and "26.04" in host.system_info.release:
+        pytest.skip("Skip Ubuntu 26.04 as no last-lts tarball is available for multiversion tests")
     cmd = "cd /percona-server-mongodb && /opt/venv/bin/python buildscripts/resmoke.py run --suite "  + suites
     with host.sudo():
         result = host.run(cmd)
