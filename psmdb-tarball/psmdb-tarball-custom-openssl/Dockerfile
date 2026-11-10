@@ -5,6 +5,7 @@ FROM ${OS_IMAGE}
 USER 0
 
 COPY percona-server-mongodb-*.tar.gz /tmp/psmdb-dist/
+COPY conf/check-bundle-libs.sh /usr/local/bin/check-bundle-libs.sh
 RUN set -eu; \
     pkg_tar=$(ls /tmp/psmdb-dist/percona-server-mongodb-*.tar.gz | grep -v -- '-runtime-libs.tar.gz'); \
     rt_tar=$(ls /tmp/psmdb-dist/percona-server-mongodb-*-runtime-libs.tar.gz); \
@@ -50,7 +51,8 @@ RUN set -eu; \
     LD_LIBRARY_PATH="$L/opt/mongo/openssl3/lib:$L/lib" \
         OPENSSL_CONF="$L/openssl-fips.cnf" \
         OPENSSL_MODULES="$L/lib/ossl-modules" \
-        /opt/psmdb/bin/mongos --version
+        /opt/psmdb/bin/mongos --version; \
+    sh /usr/local/bin/check-bundle-libs.sh
 
 # Library path and FIPS config are not image-wide. Each test passes them to mongod and mongos.
 ENTRYPOINT []

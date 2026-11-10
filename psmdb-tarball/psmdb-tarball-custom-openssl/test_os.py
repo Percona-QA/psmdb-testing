@@ -8,6 +8,7 @@ The default OS image is oraclelinux:9. Pass --client-log, or set CLIENT_LOG=1,
 to print each client URI and server response.
 """
 
+import base64
 import io
 import json
 import logging
@@ -50,6 +51,25 @@ LOGGER.setLevel(logging.INFO)
 
 def client_log_enabled():
     return os.environ.get("CLIENT_LOG", "").lower() in ("1", "true", "yes")
+
+
+def wait_until(probe, what, timeout=60):
+    deadline = time.time() + timeout
+    detail = ""
+    while time.time() < deadline:
+        ready, detail = probe()
+        if ready:
+            return detail
+        time.sleep(1)
+    raise AssertionError(what + " was not ready\n" + detail)
+
+
+def tcp_open(node, host, port):
+    output = node.exec(
+        "bash -c 'echo >/dev/tcp/" + host + "/" + str(port) + "' >/dev/null 2>&1; echo EXIT:$?",
+        check=False,
+    )
+    return output.strip().endswith("EXIT:0"), output
 
 STOP_SCRIPT = """
 i=0
@@ -404,6 +424,7 @@ def test_version(node):
             raise AssertionError(binary + " does not report PSMDB " + PSMDB_VERSION + "\n" + output)
         if OPENSSL_VERSION not in output:
             raise AssertionError(binary + " does not report OpenSSL " + OPENSSL_VERSION + "\n" + output)
+    node.exec("sh /usr/local/bin/check-bundle-libs.sh")
 
 
 @pytest.mark.timeout(180, func_only=True)
@@ -509,8 +530,11 @@ def test_ldap(node):
         authSource="$external",
         authMechanism="PLAIN",
     )
-    client.admin.command("ping")
+    client.ldapprobe.docs.insert_one({"_id": "probe", "value": "kept"})
+    doc = client.ldapprobe.docs.find_one({"_id": "probe"})
     client.close()
+    if doc is None or doc.get("value") != "kept":
+        raise AssertionError("LDAP role did not grant readWrite: " + str(doc))
 
 
 @pytest.mark.timeout(180, func_only=True)
@@ -521,8 +545,20 @@ def test_oidc(node):
         "client_secret": "pbm-secret",
     }).encode()
     request = urllib.request.Request("https://keycloak:8443/realms/test/protocol/openid-connect/token", data=body)
-    with urllib.request.urlopen(request, context=ssl._create_unverified_context(), timeout=30) as response:
-        token = json.loads(response.read())["access_token"]
+
+    def fetch_token():
+        try:
+            with urllib.request.urlopen(request, context=ssl._create_unverified_context(), timeout=5) as response:
+                return True, json.loads(response.read())["access_token"]
+        except (OSError, ValueError, KeyError) as exc:
+            return False, str(exc)
+
+    token = wait_until(fetch_token, "Keycloak token endpoint")
+    payload = token.split(".")[1]
+    payload += "=" * (-len(payload) % 4)
+    claims = json.loads(base64.urlsafe_b64decode(payload))
+    if claims.get("client_id") != "pbmclient":
+        raise AssertionError("access token client_id claim is not pbmclient: " + json.dumps(claims))
     # serverCAFile is the EasyRSA CA that signed Keycloak.
     providers = (
         'oidcIdentityProviders=[{'
@@ -656,6 +692,7 @@ def test_kmip(node):
         "--kmipServerCAFile", "/etc/pykmip/ca.crt",
         "--kmipClientCertificateFile", "/etc/pykmip/mongod.pem",
     ]
+    wait_until(lambda: tcp_open(node, "cosmian", 5696), "Cosmian KMIP")
     node.start("mongod", args)
     node.wait_ready()
     remember_document(node)
@@ -666,25 +703,31 @@ def test_kmip(node):
 
 
 def vault_secret_version():
-    vault = None
-    for container in docker.from_env().containers.list():
-        if container.attrs.get("Config", {}).get("Hostname") == "vault":
-            vault = container
-            break
-    if vault is None:
-        raise AssertionError("vault container is not running")
-    result = vault.exec_run(
-        ["bao", "kv", "metadata", "get", "-format=json", "secret/mongo"],
-        environment={
-            "BAO_ADDR": "https://vault:8200",
-            "BAO_CACERT": "/openbao/tls/ca.crt",
-            "BAO_TOKEN": "vaulttoken",
-        },
-    )
-    output = result.output.decode("utf-8", errors="replace")
-    if result.exit_code != 0:
-        raise AssertionError(output)
-    return json.loads(output)["data"]["current_version"]
+    def read_version():
+        vault = None
+        for container in docker.from_env().containers.list():
+            if container.attrs.get("Config", {}).get("Hostname") == "vault":
+                vault = container
+                break
+        if vault is None:
+            return False, "vault container is not running"
+        result = vault.exec_run(
+            ["bao", "kv", "metadata", "get", "-format=json", "secret/mongo"],
+            environment={
+                "BAO_ADDR": "https://vault:8200",
+                "BAO_CACERT": "/openbao/tls/ca.crt",
+                "BAO_TOKEN": "vaulttoken",
+            },
+        )
+        output = result.output.decode("utf-8", errors="replace")
+        if result.exit_code != 0:
+            return False, output
+        try:
+            return True, json.loads(output)["data"]["current_version"]
+        except (ValueError, KeyError, TypeError) as exc:
+            return False, str(exc) + "\n" + output
+
+    return wait_until(read_version, "Vault secret metadata")
 
 
 @pytest.mark.timeout(180, func_only=True)
@@ -697,6 +740,7 @@ def test_vault(node):
         "--vaultSecret", "secret/data/mongo",
         "--vaultServerCAFile", "/etc/x509/ca.crt",
     ]
+    wait_until(lambda: tcp_open(node, "vault", 8200), "Vault")
     node.start("mongod", args)
     node.wait_ready()
     remember_document(node)

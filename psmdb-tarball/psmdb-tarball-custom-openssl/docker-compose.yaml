@@ -14,11 +14,16 @@ services:
     networks:
       - psmdb
     depends_on:
-      - kerberos
-      - ldap
-      - keycloak
-      - cosmian
-      - vault
+      kerberos:
+        condition: service_healthy
+      ldap:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      cosmian:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
 
   easyrsa:
     image: easyrsa/psmdb
@@ -33,6 +38,12 @@ services:
       dockerfile: Dockerfile-cosmian
       context: .
     hostname: cosmian
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z -w 2 cosmian 5696"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
     networks:
       - psmdb
     depends_on:
@@ -44,6 +55,12 @@ services:
       dockerfile: Dockerfile-vault
       context: .
     hostname: vault
+    healthcheck:
+      test: ["CMD-SHELL", "BAO_ADDR=https://vault:8200 BAO_CACERT=/openbao/tls/ca.crt BAO_TOKEN=vaulttoken bao token lookup >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
     networks:
       - psmdb
     depends_on:
@@ -55,6 +72,12 @@ services:
       dockerfile: Dockerfile-kerberos
       context: .
     hostname: kerberos
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z -w 2 127.0.0.1 88"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     networks:
       - psmdb
 
@@ -69,12 +92,29 @@ services:
       - LDAP_ADMIN_PASSWORD=password
       - LDAP_USERS=pbm
       - LDAP_PASSWORDS=pbmpass
+      - LDAP_GROUP=readers
+      - LDAP_GROUP_OU=groups
       - LDAP_ENABLE_TLS=yes
       - LDAP_REQUIRE_TLS=yes
       - LDAP_TLS_CERT_FILE=/opt/bitnami/openldap/certs/ldap.crt
       - LDAP_TLS_KEY_FILE=/opt/bitnami/openldap/certs/ldap.key
       - LDAP_TLS_CA_FILE=/opt/bitnami/openldap/certs/ca.crt
       - LDAP_TLS_VERIFY_CLIENTS=never
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          LDAPTLS_CACERT=/opt/bitnami/openldap/certs/ca.crt
+          LDAPTLS_REQCERT=demand
+          /opt/bitnami/openldap/bin/ldapsearch -x -H ldaps://ldap:1636
+          -D cn=pbm,ou=users,dc=example,dc=org -w pbmpass
+          -b cn=readers,ou=groups,dc=example,dc=org
+          '(member=cn=pbm,ou=users,dc=example,dc=org)' member
+          | grep -q 'member: cn=pbm,ou=users,dc=example,dc=org'
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
     networks:
       - psmdb
     depends_on:
@@ -86,6 +126,12 @@ services:
       dockerfile: Dockerfile-keycloak
       context: .
     hostname: keycloak
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo >/dev/tcp/127.0.0.1/8443'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
     networks:
       - psmdb
     depends_on:

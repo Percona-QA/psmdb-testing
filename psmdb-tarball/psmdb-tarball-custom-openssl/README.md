@@ -19,7 +19,7 @@ From this directory:
 OS_IMAGE=oraclelinux:9 docker compose run --rm --build test
 ```
 
-`OS_IMAGE` is the base image. It defaults to `oraclelinux:9`. `PSMDB_VERSION` defaults to `8.0.34-15` and `OPENSSL_VERSION` defaults to `3.5.9`. `test_version` checks that `mongod` and `mongos` report those values.
+`OS_IMAGE` is the base image. It defaults to `oraclelinux:9`. `PSMDB_VERSION` defaults to `8.0.34-15` and `OPENSSL_VERSION` defaults to `3.5.9`. `test_version` checks that `mongod` and `mongos` report those values, and that `ldd` resolves Kerberos and SASL from the bundle's `opt/mongo/openssl3/lib` and OpenLDAP, curl, OpenSSL, zlib, and c-ares from the bundle's `lib`.
 
 ```bash
 OS_IMAGE=ubuntu:22.04 docker compose run --rm --build test
@@ -33,7 +33,7 @@ OS_IMAGE=oraclelinux:9 docker compose run --rm test pytest test_os.py::test_vaul
 
 Pass `--client-log`, or set `CLIENT_LOG=1`, to print each client URI and server response.
 
-Compose starts EasyRSA, Cosmian, OpenBao, Kerberos, LDAP, and Keycloak on the `psmdb-os` network. Tests reach them by those hostnames. The test build unpacks the tarballs, runs `fipsinstall`, and starts `mongod` and `mongos` with `LD_LIBRARY_PATH`, `OPENSSL_CONF`, and `OPENSSL_MODULES` set only for those processes.
+Compose starts EasyRSA, Cosmian, OpenBao, Kerberos, LDAP, and Keycloak on the `psmdb-os` network and waits until their health checks pass. Tests reach them by those hostnames. The test build unpacks the tarballs, runs `fipsinstall`, and starts `mongod` and `mongos` with `LD_LIBRARY_PATH`, `OPENSSL_CONF`, and `OPENSSL_MODULES` set only for those processes.
 
 ## Connections
 
@@ -45,13 +45,13 @@ The test client connects to the container hostname, verifies that name, and pres
 
 | Test | What it checks |
 | --- | --- |
-| `test_version` | `mongod` and `mongos` report `PSMDB_VERSION` and `OPENSSL_VERSION` |
+| `test_version` | `mongod` and `mongos` report `PSMDB_VERSION` and `OPENSSL_VERSION`, and the bundled Kerberos, SASL, LDAP, curl, OpenSSL, zlib, and c-ares libraries are the ones `mongod` loads |
 | `test_standalone_fips_scram` | The log contains `FIPS 140 mode activated`, then a SCRAM-SHA-256 user can authenticate |
 | `test_replset_keyfile` | A one-member replica set with a keyfile elects a primary |
 | `test_mongos` | A config server replica set accepts a `mongos` connection |
 | `test_x509` | `MONGODB-X509` authenticates the `pbm` client certificate |
-| `test_ldap` | LDAPS on `ldap:1636` authenticates `cn=pbm,ou=users,dc=example,dc=org` with PLAIN, and libldap verifies the LDAP certificate |
-| `test_oidc` | A Keycloak client-credentials token authenticates `keycloak/pbmclient` with `MONGODB-OIDC` |
+| `test_ldap` | LDAPS on `ldap:1636` authenticates `cn=pbm,ou=users,dc=example,dc=org` with PLAIN. The `cn=readers,ou=groups,dc=example,dc=org` group grants `readWriteAnyDatabase`, and the test writes a document with that role |
+| `test_oidc` | A Keycloak client-credentials token carries a `client_id` claim of `pbmclient` and authenticates `keycloak/pbmclient` with `MONGODB-OIDC` |
 | `test_kerberos` | GSSAPI authenticates `pbm@PERCONATEST.COM` against the Kerberos KDC |
 | `test_kmip` | Cosmian KMIP encrypts a document, `--kmipRotateMasterKey` exits after rotation, and the document is readable after restart |
 | `test_vault` | OpenBao encrypts a document, `--vaultRotateMasterKey` writes a new KV version and exits, and the document is readable after restart |

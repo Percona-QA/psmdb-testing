@@ -22,7 +22,24 @@ RUN cat > /opt/keycloak/data/import/test-realm.json <<'JSON'
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "secret": "pbm-secret"
+      "secret": "pbm-secret",
+      "protocolMappers": [
+        {
+          "name": "client_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "client_id",
+            "claim.value": "pbmclient",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "lightweight.claim": "true",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
     }
   ]
 }
