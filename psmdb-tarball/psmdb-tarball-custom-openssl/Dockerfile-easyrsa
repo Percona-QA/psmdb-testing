@@ -1,0 +1,44 @@
+FROM alpine
+USER root
+ENV EASYRSA_DN=org
+ENV EASYRSA_REQ_COUNTRY=US
+ENV EASYRSA_REQ_PROVINCE=California
+ENV EASYRSA_REQ_CITY=SanFrancisco
+ENV EASYRSA_REQ_ORG=Percona
+ENV EASYRSA_REQ_EMAIL=pbm@percona.com
+RUN apk add --no-cache bash git openssl && cd ~ && \
+    git clone https://github.com/OpenVPN/easy-rsa.git && \
+    cd easy-rsa/easyrsa3/ && \
+    ./easyrsa init-pki && \
+    ./easyrsa --req-cn=Percona --batch --days=365 build-ca nopass 
+WORKDIR /root/easy-rsa/easyrsa3
+#For X509 authorization
+RUN ./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:localhost,DNS:rscfg01,DNS:rs101,IP:127.0.0.1 --batch build-server-full psmdb nopass && \
+    ./easyrsa --req-ou=client --days=90 --batch build-client-full pbm nopass && \
+    mkdir -p /etc/x509 && \
+    cp pki/ca.crt /etc/x509/ && \
+    cat pki/issued/psmdb.crt pki/private/psmdb.key > /etc/x509/psmdb.pem && \
+    cat pki/issued/pbm.crt pki/private/pbm.key > /etc/x509/pbm.pem
+#For cosmian kms server
+RUN ./easyrsa --batch --days=90 build-server-full cosmian nopass && \
+    ./easyrsa --batch --days=90 build-client-full mongod nopass && \
+    mkdir -p /etc/cosmian && \
+    cp pki/ca.crt /etc/cosmian/ && \
+    cat pki/issued/mongod.crt pki/private/mongod.key > /etc/cosmian/mongod.pem && \
+    cp pki/issued/cosmian.crt /etc/cosmian/ && \
+    cp pki/private/cosmian.key /etc/cosmian/ && \
+    openssl pkcs12 -export -in /etc/cosmian/cosmian.crt -inkey /etc/cosmian/cosmian.key -out /etc/cosmian/cosmian.p12 -passin pass:password -passout pass:password
+#For nginx proxy to minio 
+RUN ./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:nginx-minio --batch build-server-full nginx-minio nopass && \
+    mkdir -p /etc/nginx-minio && \
+    cp pki/ca.crt /etc/nginx-minio/ && \
+    cp pki/issued/nginx-minio.crt /etc/nginx-minio/ && \
+    cp pki/private/nginx-minio.key /etc/nginx-minio/
+
+#For keycloak
+RUN ./easyrsa --batch build-server-full keycloak nopass && \
+    mkdir -p /etc/keycloak && \
+    cp pki/ca.crt /etc/keycloak/ && \
+    cat pki/issued/keycloak.crt pki/private/keycloak.key > /etc/keycloak/keycloak.pem && \
+    cp pki/issued/keycloak.crt /etc/keycloak/ && \
+    cp pki/private/keycloak.key /etc/keycloak/

@@ -1,0 +1,88 @@
+services:
+  test:
+    build:
+      dockerfile: Dockerfile.test
+      context: .
+    volumes:
+      - .:/os-smoke
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - OS_IMAGE=${OS_IMAGE:-oraclelinux:9}
+    networks:
+      - psmdb
+    depends_on:
+      - kerberos
+      - ldap
+      - keycloak
+      - cosmian
+      - vault
+
+  easyrsa:
+    image: easyrsa/psmdb
+    build:
+      dockerfile: Dockerfile-easyrsa
+      context: .
+    command: /bin/true
+
+  cosmian:
+    image: cosmian/psmdb
+    build:
+      dockerfile: Dockerfile-cosmian
+      context: .
+    hostname: cosmian
+    ports:
+      - "9998:9998"
+    networks:
+      - psmdb
+    depends_on:
+      - easyrsa
+
+  vault:
+    image: openbao/openbao
+    hostname: vault
+    ports:
+      - "8200:8200"
+    environment:
+      - BAO_DEV_ROOT_TOKEN_ID=vaulttoken
+    networks:
+      - psmdb
+
+  kerberos:
+    image: kerberos/psmdb
+    build:
+      dockerfile: Dockerfile-kerberos
+      context: .
+    hostname: kerberos
+    networks:
+      - psmdb
+
+  ldap:
+    image: bitnamilegacy/openldap
+    hostname: ldap
+    environment:
+      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ADMIN_PASSWORD=password
+      - LDAP_USERS=pbm
+      - LDAP_PASSWORDS=pbmpass
+    ports:
+      - "1389:1389"
+      - "1636:1636"
+    networks:
+      - psmdb
+
+  keycloak:
+    image: keycloak/psmdb
+    build:
+      dockerfile: Dockerfile-keycloak
+      context: .
+    hostname: keycloak
+    ports:
+      - "8443:8443"
+    networks:
+      - psmdb
+    depends_on:
+      - easyrsa
+
+networks:
+  psmdb:
+    name: psmdb-os

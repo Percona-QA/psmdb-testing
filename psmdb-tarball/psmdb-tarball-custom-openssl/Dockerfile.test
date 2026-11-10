@@ -1,0 +1,4 @@
+FROM python:3.11-slim
+RUN pip install --no-cache-dir docker pymongo pytest pytest-timeout
+WORKDIR /os-smoke
+CMD ["pytest", "test_os.py"]
