@@ -9,6 +9,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - OS_IMAGE=${OS_IMAGE:-oraclelinux:9}
+      - PSMDB_VERSION=${PSMDB_VERSION:-8.0.34-15}
+      - OPENSSL_VERSION=${OPENSSL_VERSION:-3.5.9}
     networks:
       - psmdb
     depends_on:
@@ -31,8 +33,6 @@ services:
       dockerfile: Dockerfile-cosmian
       context: .
     hostname: cosmian
-    ports:
-      - "9998:9998"
     networks:
       - psmdb
     depends_on:
@@ -44,8 +44,6 @@ services:
       dockerfile: Dockerfile-vault
       context: .
     hostname: vault
-    ports:
-      - "8200:8200"
     networks:
       - psmdb
     depends_on:
@@ -77,9 +75,6 @@ services:
       - LDAP_TLS_KEY_FILE=/opt/bitnami/openldap/certs/ldap.key
       - LDAP_TLS_CA_FILE=/opt/bitnami/openldap/certs/ca.crt
       - LDAP_TLS_VERIFY_CLIENTS=never
-    ports:
-      - "1389:1389"
-      - "1636:1636"
     networks:
       - psmdb
     depends_on:
@@ -91,8 +86,6 @@ services:
       dockerfile: Dockerfile-keycloak
       context: .
     hostname: keycloak
-    ports:
-      - "8443:8443"
     networks:
       - psmdb
     depends_on:

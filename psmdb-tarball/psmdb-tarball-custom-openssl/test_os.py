@@ -20,19 +20,22 @@ import ssl
 import tarfile
 import tempfile
 import time
-import uuid
 import urllib.parse
 import urllib.request
+import uuid
 from pathlib import Path
 
-import docker
-import pytest
 import pymongo
+import pytest
 from bson import json_util
+
+import docker
 
 ROOT = Path(__file__).resolve().parent
 NETWORK = "psmdb-os"
 OS_IMAGE = os.environ.get("OS_IMAGE", "oraclelinux:9")
+PSMDB_VERSION = os.environ.get("PSMDB_VERSION", "8.0.34-15")
+OPENSSL_VERSION = os.environ.get("OPENSSL_VERSION", "3.5.9")
 RUNTIME = "/opt/psmdb-runtime-libs"
 BASE_ENV = {
     "LD_LIBRARY_PATH": RUNTIME + "/opt/mongo/openssl3/lib:" + RUNTIME + "/lib",
@@ -197,7 +200,7 @@ class OsNode:
                     log_exchange(client.uri, doc)
                     return doc
                 last = doc
-            except Exception as exc:
+            except pymongo.errors.PyMongoError as exc:
                 last = exc
             finally:
                 client.close()
@@ -225,7 +228,7 @@ def mongo_uri(host, port, kwargs):
         else:
             continue
         options.append(urllib.parse.quote(str(key), safe="") + "=" + urllib.parse.quote(text, safe=""))
-    uri = "mongodb://%s%s:%s/" % (auth, host, port)
+    uri = f"mongodb://{auth}{host}:{port}/"
     if options:
         uri += "?" + "&".join(options)
     return uri
@@ -306,15 +309,15 @@ def issue_certs(docker_client, server_host, client_hosts):
         "set -eu",
         "cd /root/easy-rsa/easyrsa3",
         "mkdir -p /etc/issued",
-        "./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:%s --batch build-server-full %s nopass" % (server_host, server_host),
-        "cat pki/issued/%s.crt pki/private/%s.key > /etc/issued/server.pem" % (server_host, server_host),
+        f"./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:{server_host} --batch build-server-full {server_host} nopass",
+        f"cat pki/issued/{server_host}.crt pki/private/{server_host}.key > /etc/issued/server.pem",
     ]
     for hostname in client_hosts:
         commands.append(
-            "./easyrsa --req-ou=client --days=90 --subject-alt-name=DNS:%s --batch build-client-full %s nopass" % (hostname, hostname)
+            f"./easyrsa --req-ou=client --days=90 --subject-alt-name=DNS:{hostname} --batch build-client-full {hostname} nopass"
         )
         commands.append(
-            "cat pki/issued/%s.crt pki/private/%s.key > /etc/issued/%s.pem" % (hostname, hostname, hostname)
+            f"cat pki/issued/{hostname}.crt pki/private/{hostname}.key > /etc/issued/{hostname}.pem"
         )
     holder = docker_client.containers.create("easyrsa/psmdb", entrypoint=["/bin/sh", "-c", "; ".join(commands)])
     try:
@@ -395,10 +398,12 @@ def node(psmdb_image):
 
 @pytest.mark.timeout(180, func_only=True)
 def test_version(node):
-    mongod = node.exec("mongod --version")
-    mongos = node.exec("mongos --version")
-    assert "OpenSSL 3.5.9" in mongod
-    assert "OpenSSL 3.5.9" in mongos
+    for binary in ("mongod", "mongos"):
+        output = node.exec(binary + " --version")
+        if PSMDB_VERSION not in output:
+            raise AssertionError(binary + " does not report PSMDB " + PSMDB_VERSION + "\n" + output)
+        if OPENSSL_VERSION not in output:
+            raise AssertionError(binary + " does not report OpenSSL " + OPENSSL_VERSION + "\n" + output)
 
 
 @pytest.mark.timeout(180, func_only=True)
@@ -518,8 +523,7 @@ def test_oidc(node):
     request = urllib.request.Request("https://keycloak:8443/realms/test/protocol/openid-connect/token", data=body)
     with urllib.request.urlopen(request, context=ssl._create_unverified_context(), timeout=30) as response:
         token = json.loads(response.read())["access_token"]
-    # Same IdP document as the PBM OIDC tests. serverCAFile is the EasyRSA CA that
-    # signed Keycloak. Incoming client TLS uses that CA through with_fips.
+    # serverCAFile is the EasyRSA CA that signed Keycloak.
     providers = (
         'oidcIdentityProviders=[{'
         '"issuer":"https://keycloak:8443/realms/test",'
@@ -564,6 +568,59 @@ def test_oidc(node):
     except Exception as exc:
         raise AssertionError("OIDC authorization failed: " + str(exc) + "\n" + node.read_log()) from exc
     client.close()
+
+
+def openssl_enc(node, args):
+    script = (
+        "set +e; " + RUNTIME + "/bin/openssl enc " + args
+        + " -in /tmp/plain -out /tmp/cipher.out -nosalt >/tmp/enc.err 2>&1; "
+        "code=$?; printf 'EXIT:%s\\n' \"$code\"; cat /tmp/enc.err"
+    )
+    return node.exec(script, check=False)
+
+
+def assert_cipher_rejected(node, mode):
+    node.start("mongod", [
+        "--dbpath", "/var/lib/mongo", "--port", "27017",
+        "--enableEncryption",
+        "--encryptionCipherMode", mode,
+        "--encryptionKeyFile", "/etc/keyfile",
+    ])
+    needle = "security.encryptionCipherMode expects either 'AES256-CBC' or 'AES256-GCM'"
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        log = node.read_log()
+        if "Waiting for connections" in log:
+            raise AssertionError(mode + " encryption started\n" + log)
+        if needle in log and not node.server_running():
+            return
+        time.sleep(0.2)
+    raise AssertionError(mode + " encryption was not rejected\n" + node.read_log())
+
+
+@pytest.mark.timeout(180, func_only=True)
+def test_non_fips_encryption_rejected(node):
+    node.exec("printf hello > /tmp/plain")
+    aes = openssl_enc(
+        node,
+        "-aes-256-cbc -K 0000000000000000000000000000000000000000000000000000000000000000 "
+        "-iv 00000000000000000000000000000000",
+    )
+    if "EXIT:0" not in aes:
+        raise AssertionError("AES-256-CBC encryption failed\n" + aes)
+    rejected = {
+        "DES-CBC": "-des-cbc -K 0000000000000000 -iv 0000000000000000",
+        "RC4": "-rc4 -K 00000000000000000000000000000000",
+        "ChaCha20": "-chacha20 -K 0000000000000000000000000000000000000000000000000000000000000000 "
+        "-iv 00000000000000000000000000000000",
+        "BF-CBC": "-bf-cbc -K 00000000000000000000000000000000 -iv 0000000000000000",
+    }
+    for name, args in rejected.items():
+        output = openssl_enc(node, args)
+        if "EXIT:0" in output or "unsupported" not in output:
+            raise AssertionError(name + " encryption was not rejected\n" + output)
+    for mode in ("DES", "RC4", "ChaCha20", "BF"):
+        assert_cipher_rejected(node, mode)
 
 
 def remember_document(node):
@@ -647,7 +704,7 @@ def test_vault(node):
     rotate_master_key(node, args, "--vaultRotateMasterKey")
     after = vault_secret_version()
     if after <= before:
-        raise AssertionError("vault secret version did not increase: %s -> %s" % (before, after))
+        raise AssertionError(f"vault secret version did not increase: {before} -> {after}")
     node.start("mongod", args, fresh=False)
     node.wait_ready()
     read_document(node)

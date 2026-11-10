@@ -12,14 +12,13 @@ RUN apk add --no-cache bash git openssl && cd ~ && \
     ./easyrsa init-pki && \
     ./easyrsa --req-cn=Percona --batch --days=365 build-ca nopass 
 WORKDIR /root/easy-rsa/easyrsa3
-#For X509 authorization
-RUN ./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:localhost,DNS:rscfg01,DNS:rs101,IP:127.0.0.1 --batch build-server-full psmdb nopass && \
-    ./easyrsa --req-ou=client --days=90 --batch build-client-full pbm nopass && \
+# Client certificate for x509 authentication and cluster membership.
+# The node server certificate is issued at test time for that container's hostname.
+RUN ./easyrsa --req-ou=client --days=90 --batch build-client-full pbm nopass && \
     mkdir -p /etc/x509 && \
     cp pki/ca.crt /etc/x509/ && \
-    cat pki/issued/psmdb.crt pki/private/psmdb.key > /etc/x509/psmdb.pem && \
     cat pki/issued/pbm.crt pki/private/pbm.key > /etc/x509/pbm.pem
-#For cosmian kms server
+# KMIP server and the mongod client certificate.
 RUN ./easyrsa --batch --days=90 build-server-full cosmian nopass && \
     ./easyrsa --batch --days=90 build-client-full mongod nopass && \
     mkdir -p /etc/cosmian && \
@@ -28,21 +27,14 @@ RUN ./easyrsa --batch --days=90 build-server-full cosmian nopass && \
     cp pki/issued/cosmian.crt /etc/cosmian/ && \
     cp pki/private/cosmian.key /etc/cosmian/ && \
     openssl pkcs12 -export -in /etc/cosmian/cosmian.crt -inkey /etc/cosmian/cosmian.key -out /etc/cosmian/cosmian.p12 -passin pass:password -passout pass:password
-#For nginx proxy to minio 
-RUN ./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:nginx-minio --batch build-server-full nginx-minio nopass && \
-    mkdir -p /etc/nginx-minio && \
-    cp pki/ca.crt /etc/nginx-minio/ && \
-    cp pki/issued/nginx-minio.crt /etc/nginx-minio/ && \
-    cp pki/private/nginx-minio.key /etc/nginx-minio/
 
-#For keycloak
+# Keycloak HTTPS certificate.
 RUN ./easyrsa --batch build-server-full keycloak nopass && \
     mkdir -p /etc/keycloak && \
     cp pki/ca.crt /etc/keycloak/ && \
-    cat pki/issued/keycloak.crt pki/private/keycloak.key > /etc/keycloak/keycloak.pem && \
     cp pki/issued/keycloak.crt /etc/keycloak/ && \
     cp pki/private/keycloak.key /etc/keycloak/
-#For LDAP and Vault. The names are the Docker hostnames mongod dials.
+# LDAP and Vault. The names are the Docker hostnames mongod dials.
 RUN ./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:ldap --batch build-server-full ldap nopass && \
     ./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:vault --batch build-server-full vault nopass && \
     mkdir -p /etc/ldap /etc/vault && \
