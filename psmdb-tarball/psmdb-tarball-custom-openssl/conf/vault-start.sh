@@ -20,11 +20,11 @@ while [ "$i" -lt 30 ]; do
 done
 
 if grep -q 'Initialized[[:space:]]*false' /tmp/bao-status; then
-  bao operator init -key-shares=1 -key-threshold=1 > /openbao/file/init.txt
+  bao operator init -key-shares=1 -key-threshold=1 > /tmp/init.txt
 fi
 
-key=$(awk '/Unseal Key 1:/ {print $NF}' /openbao/file/init.txt)
-root=$(awk '/Initial Root Token:/ {print $NF}' /openbao/file/init.txt)
+key=$(awk '/Unseal Key 1:/ {print $NF}' /tmp/init.txt)
+root=$(awk '/Initial Root Token:/ {print $NF}' /tmp/init.txt)
 bao operator unseal "$key"
 export BAO_TOKEN="$root"
 bao secrets enable -path=secret kv-v2 || true
