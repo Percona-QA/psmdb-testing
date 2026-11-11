@@ -1,4 +1,8 @@
 FROM python:3.11-slim
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
 RUN pip install --no-cache-dir docker pymongo pytest pytest-timeout
 WORKDIR /os-smoke
 CMD ["pytest", "test_os.py"]

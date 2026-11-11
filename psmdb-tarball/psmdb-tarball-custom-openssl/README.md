@@ -11,6 +11,14 @@ Download both archives into this directory before building:
 
 The image build fails if either file is missing. The runtime-libs name must contain `-runtime-libs`.
 
+GitHub Actions (`.github/workflows/PSMDB-CUSTOM-OPENSSL3.yml`) downloads the server tarball from the repository secret `PSMDB_CUSTOM_TARBALL_URL`. The final path segment, without the query string, is the filename saved into this directory. The workflow keeps that query string and builds the other three URLs by replacing the `.tar.gz` suffix:
+
+- `<name>-runtime-libs.tar.gz`
+- `<name>.sbom.cdx.json`
+- `<name>-runtime-libs.sbom.cdx.json`
+
+The workflow runs on `ubuntu-22.04`, once for each OS image in its matrix, and publishes the JUnit report written to `junit.xml`.
+
 ## Run
 
 From this directory:
@@ -46,6 +54,9 @@ The test client connects to the container hostname, verifies that name, and pres
 | Test | What it checks |
 | --- | --- |
 | `test_version` | `mongod` and `mongos` report `PSMDB_VERSION` and `OPENSSL_VERSION`, and the bundled Kerberos, SASL, LDAP, curl, OpenSSL, zlib, and c-ares libraries are the ones `mongod` loads |
+| `test_server_sbom` | The server CycloneDX SBOM names this PSMDB version, records the tarball SHA-256, lists OpenSSL `OPENSSL_VERSION`, and its commit matches `mongod --version` |
+| `test_runtime_libs_sbom` | The runtime-libs CycloneDX SBOM records that tarball's SHA-256 and lists bundled OpenSSL, zlib, c-ares, krb5, Cyrus SASL, OpenLDAP, and curl |
+| `test_sbom_vulnerability_report` | Grype scans both SBOMs for fixed vulnerabilities and writes a table report beside each SBOM. Findings are reported; a grype failure fails the test |
 | `test_standalone_fips_scram` | The log contains `FIPS 140 mode activated`, then a SCRAM-SHA-256 user can authenticate |
 | `test_replset_keyfile` | A one-member replica set with a keyfile elects a primary |
 | `test_mongos` | A config server replica set accepts a `mongos` connection |

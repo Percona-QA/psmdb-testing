@@ -9,6 +9,7 @@ to print each client URI and server response.
 """
 
 import base64
+import hashlib
 import io
 import json
 import logging
@@ -18,6 +19,7 @@ import shlex
 import shutil
 import socket
 import ssl
+import subprocess
 import tarfile
 import tempfile
 import time
@@ -416,6 +418,48 @@ def node(psmdb_image):
         shutil.rmtree(workdir, ignore_errors=True)
 
 
+def dist_files(suffix):
+    paths = list(ROOT.glob("percona-server-mongodb-*" + suffix))
+    runtime = [path for path in paths if "-runtime-libs" + suffix in path.name]
+    server = [path for path in paths if path not in runtime]
+    if len(server) != 1 or len(runtime) != 1:
+        found = ", ".join(path.name for path in paths)
+        raise AssertionError("expected one server and one runtime-libs " + suffix + ": " + found)
+    return server[0], runtime[0]
+
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def load_sbom(path):
+    bom = json.loads(path.read_text())
+    if bom.get("bomFormat") != "CycloneDX":
+        raise AssertionError(path.name + " is not CycloneDX")
+    return bom
+
+
+def sbom_sha256(bom, path):
+    for item in bom["metadata"]["component"].get("hashes", []):
+        if item.get("alg") == "SHA-256":
+            return item["content"]
+    raise AssertionError(path.name + " has no SHA-256 for the archive")
+
+
+def component_version(bom, name):
+    versions = [item.get("version") for item in bom.get("components", []) if item.get("name") == name]
+    if len(versions) != 1 or not versions[0]:
+        raise AssertionError("expected one " + name + " component, found " + str(versions))
+    return versions[0]
+
+
+RUNTIME_LIBS = ("openssl", "zlib", "c-ares", "krb5", "cyrus-sasl", "openldap", "curl")
+
+
 @pytest.mark.timeout(180, func_only=True)
 def test_version(node):
     for binary in ("mongod", "mongos"):
@@ -425,6 +469,81 @@ def test_version(node):
         if OPENSSL_VERSION not in output:
             raise AssertionError(binary + " does not report OpenSSL " + OPENSSL_VERSION + "\n" + output)
     node.exec("sh /usr/local/bin/check-bundle-libs.sh")
+
+
+@pytest.mark.timeout(180, func_only=True)
+def test_server_sbom(node):
+    tarball, _ = dist_files(".tar.gz")
+    sbom_path, _ = dist_files(".sbom.cdx.json")
+    bom = load_sbom(sbom_path)
+    component = bom["metadata"]["component"]
+    if component.get("name") != "percona-server-mongodb" or component.get("version") != PSMDB_VERSION:
+        raise AssertionError(sbom_path.name + " does not describe PSMDB " + PSMDB_VERSION)
+    archive_hash = sha256(tarball)
+    recorded = sbom_sha256(bom, sbom_path)
+    if archive_hash != recorded:
+        raise AssertionError(tarball.name + " SHA-256 " + archive_hash + " != SBOM " + recorded)
+    if component_version(bom, "openssl") != OPENSSL_VERSION:
+        raise AssertionError(sbom_path.name + " openssl component is not " + OPENSSL_VERSION)
+    commit = ""
+    for prop in component.get("properties", []):
+        if prop.get("name") == "percona:commit":
+            commit = prop.get("value", "")
+    mongod = node.exec("mongod --version")
+    if not commit or commit not in mongod:
+        raise AssertionError("SBOM commit " + commit + " is not in mongod --version\n" + mongod)
+
+
+@pytest.mark.timeout(60, func_only=True)
+def test_runtime_libs_sbom():
+    _, tarball = dist_files(".tar.gz")
+    _, sbom_path = dist_files(".sbom.cdx.json")
+    bom = load_sbom(sbom_path)
+    component = bom["metadata"]["component"]
+    if component.get("version") != PSMDB_VERSION or "runtime-libs" not in component.get("name", ""):
+        raise AssertionError(sbom_path.name + " does not describe the runtime-libs for " + PSMDB_VERSION)
+    archive_hash = sha256(tarball)
+    recorded = sbom_sha256(bom, sbom_path)
+    if archive_hash != recorded:
+        raise AssertionError(tarball.name + " SHA-256 " + archive_hash + " != SBOM " + recorded)
+    bundled = {}
+    for item in bom.get("components", []):
+        props = {prop.get("name"): prop.get("value") for prop in item.get("properties", [])}
+        if props.get("percona:bundled") == "true":
+            bundled[item.get("name")] = item.get("version")
+    missing = [name for name in RUNTIME_LIBS if name not in bundled]
+    if missing:
+        raise AssertionError(sbom_path.name + " is missing bundled libraries: " + ", ".join(missing))
+    if bundled.get("openssl") != OPENSSL_VERSION:
+        raise AssertionError(sbom_path.name + " bundled openssl is " + str(bundled.get("openssl")))
+
+
+def vulnerability_report(sbom_path):
+    report_path = sbom_path.with_name(sbom_path.name.replace(".sbom.cdx.json", ".vulnerability-report.txt"))
+    env = dict(os.environ)
+    env["GRYPE_CHECK_FOR_APP_UPDATE"] = "false"
+    env["GRYPE_DB_CACHE_DIR"] = str(ROOT / ".grype")
+    result = subprocess.run(
+        ["grype", "sbom:" + str(sbom_path), "--only-fixed", "-o", "table"],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
+    )
+    report = result.stdout
+    if result.stderr:
+        report = report + ("\n" if report else "") + result.stderr
+    report_path.write_text(report)
+    print(report)
+    if result.returncode != 0:
+        raise AssertionError("grype scan failed for " + sbom_path.name + "\n" + report)
+    return report_path
+
+
+@pytest.mark.timeout(600, func_only=True)
+def test_sbom_vulnerability_report():
+    for sbom_path in dist_files(".sbom.cdx.json"):
+        vulnerability_report(sbom_path)
 
 
 @pytest.mark.timeout(180, func_only=True)

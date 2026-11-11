@@ -1,0 +1,133 @@
+name: PSMDB-CUSTOM-OPENSSL3
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    paths:
+      - psmdb-tarball/psmdb-tarball-custom-openssl/**
+      - .github/workflows/PSMDB-CUSTOM-OPENSSL3.yml
+
+  push:
+    branches:
+      - main
+    paths:
+      - psmdb-tarball/psmdb-tarball-custom-openssl/**
+      - .github/workflows/PSMDB-CUSTOM-OPENSSL3.yml
+
+concurrency:
+  group: psmdb-custom-openssl3-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  smoke:
+    name: ${{ matrix.id }}
+    # PSMDB 8.0 refuses to start on Linux kernels >= 6.19.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: rhel8
+            image: registry.access.redhat.com/ubi8/ubi-minimal
+          - id: rhel9
+            image: registry.access.redhat.com/ubi9/ubi-minimal
+          - id: rhel10
+            image: registry.access.redhat.com/ubi10/ubi-minimal
+          - id: rocky8
+            image: rockylinux/rockylinux:8
+          - id: rocky9
+            image: rockylinux/rockylinux:9
+          - id: alma8
+            image: almalinux:8
+          - id: alma9
+            image: almalinux:9
+          - id: ol8
+            image: oraclelinux:8
+          - id: ol9
+            image: oraclelinux:9
+          - id: jammy
+            image: ubuntu:22.04
+          - id: noble
+            image: ubuntu:24.04
+          - id: resolute
+            image: ubuntu:26.04
+          - id: debian12
+            image: debian:12
+          - id: debian13
+            image: debian:13
+          - id: sles15sp7
+            image: registry.suse.com/bci/bci-base:15.7
+          - id: sles16
+            image: registry.suse.com/bci/bci-base:16.0
+          - id: al2023
+            image: amazonlinux:2023
+    defaults:
+      run:
+        working-directory: psmdb-tarball/psmdb-tarball-custom-openssl
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download tarballs and SBOMs
+        env:
+          PSMDB_CUSTOM_TARBALL_URL: ${{ secrets.PSMDB_CUSTOM_TARBALL_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PSMDB_CUSTOM_TARBALL_URL}" ]; then
+            echo "GitHub secret PSMDB_CUSTOM_TARBALL_URL is required." >&2
+            exit 1
+          fi
+          base="${PSMDB_CUSTOM_TARBALL_URL%%\?*}"
+          query=""
+          if [ "$base" != "$PSMDB_CUSTOM_TARBALL_URL" ]; then
+            query="?${PSMDB_CUSTOM_TARBALL_URL#*\?}"
+          fi
+          case "$base" in
+            *.tar.gz) ;;
+            *)
+              echo "PSMDB_CUSTOM_TARBALL_URL must end in .tar.gz." >&2
+              exit 1
+              ;;
+          esac
+          stem="${base%.tar.gz}"
+          fetch() {
+            url=$1
+            name=$(basename "${url%%\?*}")
+            curl -fL --retry 5 --retry-delay 2 -o "$name" "$url"
+          }
+          fetch "$PSMDB_CUSTOM_TARBALL_URL"
+          fetch "${stem}-runtime-libs.tar.gz${query}"
+          fetch "${stem}.sbom.cdx.json${query}"
+          fetch "${stem}-runtime-libs.sbom.cdx.json${query}"
+
+      - name: Run smoke tests on ${{ matrix.image }}
+        env:
+          OS_IMAGE: ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          docker compose build easyrsa
+          docker compose build --pull=false
+          docker compose run --rm test
+
+      - name: Upload vulnerability reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vulnerability-report-${{ matrix.id }}
+          path: psmdb-tarball/psmdb-tarball-custom-openssl/*.vulnerability-report.txt
+          if-no-files-found: ignore
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: always() && hashFiles('psmdb-tarball/psmdb-tarball-custom-openssl/junit.xml') != ''
+        with:
+          report_paths: psmdb-tarball/psmdb-tarball-custom-openssl/junit.xml
+          check_name: OS smoke ${{ matrix.id }}
+          include_passed: true
+          detailed_summary: true
+          include_time_in_summary: true
