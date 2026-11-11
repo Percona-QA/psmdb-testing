@@ -9,7 +9,7 @@ Download both archives into this directory before building:
 - `percona-server-mongodb-*.tar.gz` — server binaries
 - `percona-server-mongodb-*-runtime-libs.tar.gz` — OpenSSL, FIPS provider, Kerberos, and SASL libraries
 
-The image build fails if either file is missing. The runtime-libs name must contain `-runtime-libs`.
+The image build fails if either file is missing. The runtime-libs name must contain `-runtime-libs`. Base images without `tar` and `gzip`, including UBI minimal and Amazon Linux 2023, install those packages before the archives are unpacked.
 
 GitHub Actions (`.github/workflows/PSMDB-CUSTOM-OPENSSL3.yml`) downloads the server tarball from the repository secret `PSMDB_CUSTOM_TARBALL_URL`. The final path segment, without the query string, is the filename saved into this directory. The workflow keeps that query string and builds the other three URLs by replacing the `.tar.gz` suffix:
 
