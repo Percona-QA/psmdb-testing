@@ -1,0 +1,48 @@
+FROM easyrsa/psmdb AS easyrsa
+
+FROM quay.io/keycloak/keycloak:latest
+
+ENV KEYCLOAK_ADMIN=admin
+ENV KEYCLOAK_ADMIN_PASSWORD=admin
+
+COPY --from=easyrsa --chown=keycloak /etc/keycloak/keycloak.crt /opt/keycloak/conf/server.crt.pem
+COPY --from=easyrsa --chown=keycloak /etc/keycloak/keycloak.key /opt/keycloak/conf/server.key.pem
+
+RUN mkdir -p /opt/keycloak/data/import
+RUN cat > /opt/keycloak/data/import/test-realm.json <<'JSON'
+{
+  "realm": "test",
+  "enabled": true,
+  "sslRequired": "external",
+  "clients": [
+    {
+      "clientId": "pbmclient",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "secret": "pbm-secret",
+      "protocolMappers": [
+        {
+          "name": "client_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "client_id",
+            "claim.value": "pbmclient",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "lightweight.claim": "true",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ]
+}
+JSON
+
+CMD ["start-dev","--https-certificate-file=/opt/keycloak/conf/server.crt.pem","--https-certificate-key-file=/opt/keycloak/conf/server.key.pem","--hostname=keycloak","--hostname-strict=false","--import-realm"]

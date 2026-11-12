@@ -1,0 +1,23 @@
+[tls]
+
+tls_p12_file = "/etc/cosmian/cosmian.p12"
+
+tls_p12_password = "password"
+
+clients_ca_cert_file = "/etc/cosmian/ca.crt"
+
+[socket_server]
+
+socket_server_start = true
+
+socket_server_hostname = "cosmian"
+
+[db]
+
+database_type = "sqlite"
+
+sqlite_path = "/etc/sqlite-data"
+
+[logging]
+
+rust_log = "debug"

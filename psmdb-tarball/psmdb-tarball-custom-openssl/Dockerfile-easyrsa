@@ -1,0 +1,46 @@
+FROM alpine
+USER root
+ENV EASYRSA_DN=org
+ENV EASYRSA_REQ_COUNTRY=US
+ENV EASYRSA_REQ_PROVINCE=California
+ENV EASYRSA_REQ_CITY=SanFrancisco
+ENV EASYRSA_REQ_ORG=Percona
+ENV EASYRSA_REQ_EMAIL=pbm@percona.com
+RUN apk add --no-cache bash git openssl && cd ~ && \
+    git clone https://github.com/OpenVPN/easy-rsa.git && \
+    cd easy-rsa/easyrsa3/ && \
+    ./easyrsa init-pki && \
+    ./easyrsa --req-cn=Percona --batch --days=365 build-ca nopass 
+WORKDIR /root/easy-rsa/easyrsa3
+# Client certificate for x509 authentication and cluster membership.
+# The node server certificate is issued at test time for that container's hostname.
+RUN ./easyrsa --req-ou=client --days=90 --batch build-client-full pbm nopass && \
+    mkdir -p /etc/x509 && \
+    cp pki/ca.crt /etc/x509/ && \
+    cat pki/issued/pbm.crt pki/private/pbm.key > /etc/x509/pbm.pem
+# KMIP server and the mongod client certificate.
+RUN ./easyrsa --batch --days=90 build-server-full cosmian nopass && \
+    ./easyrsa --batch --days=90 build-client-full mongod nopass && \
+    mkdir -p /etc/cosmian && \
+    cp pki/ca.crt /etc/cosmian/ && \
+    cat pki/issued/mongod.crt pki/private/mongod.key > /etc/cosmian/mongod.pem && \
+    cp pki/issued/cosmian.crt /etc/cosmian/ && \
+    cp pki/private/cosmian.key /etc/cosmian/ && \
+    openssl pkcs12 -export -in /etc/cosmian/cosmian.crt -inkey /etc/cosmian/cosmian.key -out /etc/cosmian/cosmian.p12 -passin pass:password -passout pass:password
+
+# Keycloak HTTPS certificate.
+RUN ./easyrsa --batch build-server-full keycloak nopass && \
+    mkdir -p /etc/keycloak && \
+    cp pki/ca.crt /etc/keycloak/ && \
+    cp pki/issued/keycloak.crt /etc/keycloak/ && \
+    cp pki/private/keycloak.key /etc/keycloak/
+# LDAP and Vault. The names are the Docker hostnames mongod dials.
+RUN ./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:ldap --batch build-server-full ldap nopass && \
+    ./easyrsa --req-ou=server --days=90 --subject-alt-name=DNS:vault --batch build-server-full vault nopass && \
+    mkdir -p /etc/ldap /etc/vault && \
+    cp pki/ca.crt /etc/ldap/ca.crt && \
+    cp pki/issued/ldap.crt /etc/ldap/ldap.crt && \
+    cp pki/private/ldap.key /etc/ldap/ldap.key && \
+    cp pki/ca.crt /etc/vault/ca.crt && \
+    cp pki/issued/vault.crt /etc/vault/vault.crt && \
+    cp pki/private/vault.key /etc/vault/vault.key

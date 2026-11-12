@@ -1,0 +1,12 @@
+FROM easyrsa/psmdb AS easyrsa
+
+FROM bitnamilegacy/openldap
+
+USER 0
+COPY --from=easyrsa /etc/ldap/ca.crt /opt/bitnami/openldap/certs/ca.crt
+COPY --from=easyrsa /etc/ldap/ldap.crt /opt/bitnami/openldap/certs/ldap.crt
+COPY --from=easyrsa /etc/ldap/ldap.key /opt/bitnami/openldap/certs/ldap.key
+RUN chown 1001:0 /opt/bitnami/openldap/certs/ca.crt /opt/bitnami/openldap/certs/ldap.crt /opt/bitnami/openldap/certs/ldap.key && \
+    chmod 644 /opt/bitnami/openldap/certs/ca.crt /opt/bitnami/openldap/certs/ldap.crt && \
+    chmod 600 /opt/bitnami/openldap/certs/ldap.key
+USER 1001

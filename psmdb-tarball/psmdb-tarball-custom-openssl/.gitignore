@@ -1,0 +1,5 @@
+*.tar.gz
+*.sbom.cdx.json
+junit.xml
+*.vulnerability-report.txt
+.grype/
