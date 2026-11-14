@@ -27,7 +27,7 @@ From this directory:
 OS_IMAGE=oraclelinux:9 docker compose run --rm --build test
 ```
 
-`OS_IMAGE` is the base image. It defaults to `oraclelinux:9`. `PSMDB_VERSION` defaults to `8.0.34-15` and `OPENSSL_VERSION` defaults to `3.5.9`. `test_version` checks that `mongod` and `mongos` report those values, and that `ldd` resolves Kerberos and SASL from the bundle's `opt/mongo/openssl3/lib` and OpenLDAP, curl, OpenSSL, zlib, and c-ares from the bundle's `lib`.
+`OS_IMAGE` is the base image. It defaults to `oraclelinux:9`. `PSMDB_VERSION` defaults to `8.0.38-16` and `OPENSSL_VERSION` defaults to `3.5.9`. `test_version` checks that `mongod` and `mongos` report those values, and that `ldd` resolves Kerberos and SASL from the bundle's `opt/mongo/openssl3/lib` and OpenLDAP, curl, OpenSSL, zlib, and c-ares from the bundle's `lib`.
 
 ```bash
 OS_IMAGE=ubuntu:22.04 docker compose run --rm --build test

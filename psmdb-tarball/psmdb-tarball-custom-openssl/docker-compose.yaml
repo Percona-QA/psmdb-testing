@@ -9,7 +9,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - OS_IMAGE=${OS_IMAGE:-oraclelinux:9}
-      - PSMDB_VERSION=${PSMDB_VERSION:-8.0.34-15}
+      - PSMDB_VERSION=${PSMDB_VERSION:-8.0.38-16}
       - OPENSSL_VERSION=${OPENSSL_VERSION:-3.5.9}
     networks:
       - psmdb

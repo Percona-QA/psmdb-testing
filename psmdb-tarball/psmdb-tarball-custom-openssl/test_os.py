@@ -37,7 +37,7 @@ import docker
 ROOT = Path(__file__).resolve().parent
 NETWORK = "psmdb-os"
 OS_IMAGE = os.environ.get("OS_IMAGE", "oraclelinux:9")
-PSMDB_VERSION = os.environ.get("PSMDB_VERSION", "8.0.34-15")
+PSMDB_VERSION = os.environ.get("PSMDB_VERSION", "8.0.38-16")
 OPENSSL_VERSION = os.environ.get("OPENSSL_VERSION", "3.5.9")
 RUNTIME = "/opt/psmdb-runtime-libs"
 BASE_ENV = {
