@@ -58,6 +58,13 @@ def test_jstests(host, jstest):
 def test_suites(host, suites):
     if host.system_info.distribution == "ubuntu" and "26.04" in host.system_info.release:
         pytest.skip("Skip Ubuntu 26.04 as no last-lts tarball is available for multiversion tests")
+    distro = host.system_info.distribution.lower()
+    release = host.system_info.release.split(".")[0]
+    if version.parse(psmdb_version) < version.parse("7.0.0") and (
+        (distro in ["redhat", "rhel", "centos", "rocky"] and release == "9")
+        or (distro in ["amzn", "amazon"] and release == "2023")
+    ):
+        pytest.skip("Skip multiversion suites on RHEL/Rocky 9 and AL2023 for PSMDB <= 6.0")
     cmd = "cd /percona-server-mongodb && /opt/venv/bin/python buildscripts/resmoke.py run --suite "  + suites
     with host.sudo():
         result = host.run(cmd)
@@ -78,6 +85,9 @@ def test_fips(host, fips):
 
 def test_psmdb_sbom(host):
     """Verify SBOM exists in the tarball and is valid CycloneDX 1.6; report vulnerability scan (non-fatal)"""
+    if version.parse(psmdb_version) < version.parse("7.0.0"):
+        pytest.skip("SBOM is not shipped for PSMDB <= 6.0")
+
     sbom_path = "/usr/doc/sbom.cdx.json"
     assert host.file(sbom_path).exists, f"SBOM not found in tarball at {sbom_path}"
 

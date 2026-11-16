@@ -139,6 +139,9 @@ def test_cli_version(host):
 
 def test_psmdb_sbom(host):
     """Verify SBOM exists and is valid CycloneDX 1.6; report vulnerability scan (non-fatal)"""
+    if version.parse(PSMDB_VER) < version.parse("7.0.0"):
+        pytest.skip("SBOM is not shipped for PSMDB <= 6.0")
+
     is_rpm = host.system_info.distribution.lower() in ["redhat", "centos", "rhel", "rocky", "almalinux", "ol", "amzn"]
 
     if is_rpm:

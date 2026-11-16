@@ -81,6 +81,44 @@
       replace: '# \1'
     when: ansible_distribution_release == 'bullseye'
 
+  - name: Point archived Debian 11 apt mirrors at archive.debian.org
+    shell: |
+      set -euo pipefail
+      cat > /etc/apt/apt.conf.d/99debian-archive << 'EOF'
+      Acquire::Check-Valid-Until "false";
+      Acquire::AllowReleaseInfoChange "true";
+      EOF
+      # A Default-Release pin keeps the older bullseye point-release as the
+      # candidate and then conflicts with security updates already installed.
+      shopt -s nullglob
+      for f in /etc/apt/apt.conf.d/*; do
+        [ -f "$f" ] || continue
+        sed -i -E '/APT::Default-Release/d' "$f"
+      done
+      mkdir -p /etc/apt/sources.list.d
+      for f in /etc/apt/sources.list.d/*; do
+        [ -f "$f" ] || continue
+        case "$f" in
+          *.disabled) continue ;;
+        esac
+        if grep -Eq 'debian\.org|debian-security|bullseye' "$f"; then
+          mv "$f" "$f.disabled"
+        fi
+      done
+      cat > /etc/apt/sources.list << 'EOF'
+      deb http://archive.debian.org/debian bullseye main
+      deb http://archive.debian.org/debian bullseye-updates main
+      deb http://archive.debian.org/debian-security bullseye-security main
+      EOF
+      apt-get update
+      DEBIAN_FRONTEND=noninteractive apt-get -y \
+        -o Dpkg::Options::=--force-confdef \
+        -o Dpkg::Options::=--force-confold \
+        dist-upgrade
+    args:
+      executable: /bin/bash
+    when: ansible_distribution == "Debian" and ansible_distribution_major_version == "11"
+
   - name: Check if there are broken CentOS7 repos
     stat:
       path: /etc/yum.repos.d/CentOS-Base.repo
