@@ -58,7 +58,6 @@
         - resolute
         - buster
         - bookworm
-        - bullseye
         - trixie
       ignore_errors: yes
 
