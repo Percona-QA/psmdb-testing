@@ -123,11 +123,12 @@
   when: psmdb_custom_version.split('.')[0] | int >= 6
 
 - name: Install Python modules required by Ansible Docker modules
-  dnf:
+  yum:
     name:
       - python3-pip
       - python3-requests
     state: present
+  when: ansible_distribution_major_version | int >= 8
 
 - name: Install the Python Docker SDK for the Ansible interpreter
   command: /usr/bin/python3 -m pip install --upgrade --ignore-installed docker requests
@@ -136,3 +137,64 @@
   delay: 5
   until: psmdb_python_modules.rc == 0
   changed_when: "'Successfully installed' in psmdb_python_modules.stdout"
+  when: ansible_distribution_major_version | int >= 8
+
+# EL7 has no dnf. /usr/bin/python3 is 3.6, and the base pip cannot install
+# current docker/requests or manylinux2014 wheels. The package image does
+# not build /opt/python, so upgrade pip to 21.3.1 (the last Python 3.6
+# release) and use it to download the same pure-Python wheels as the
+# tarball role, then install them into the system interpreter.
+- name: Install pip for the EL7 system Python
+  yum:
+    name: python3-pip
+    state: present
+  when: ansible_distribution_major_version | int == 7
+
+- name: Upgrade pip to the last release that supports Python 3.6
+  command: /usr/bin/python3 -m pip install --upgrade pip==21.3.1
+  register: psmdb_el7_pip
+  retries: 5
+  delay: 5
+  until: psmdb_el7_pip.rc == 0
+  changed_when: "'Successfully installed' in psmdb_el7_pip.stdout"
+  when: ansible_distribution_major_version | int == 7
+
+- name: Download Docker client wheels for the EL7 system Python
+  command:
+    argv:
+      - /usr/bin/python3
+      - -m
+      - pip
+      - download
+      - --dest
+      - /tmp/psmdb-py36-wheels
+      - --python-version
+      - "36"
+      - --abi
+      - none
+      - "--only-binary=:all:"
+      - docker==5.0.3
+      - requests==2.27.1
+      - urllib3==1.26.18
+      - websocket-client==1.3.1
+  register: psmdb_py36_wheels
+  retries: 5
+  delay: 5
+  until: psmdb_py36_wheels.rc == 0
+  when: ansible_distribution_major_version | int == 7
+
+- name: Install the Python Docker SDK for the EL7 Ansible interpreter
+  command:
+    argv:
+      - /usr/bin/python3
+      - -m
+      - pip
+      - install
+      - --no-index
+      - --find-links
+      - /tmp/psmdb-py36-wheels
+      - docker==5.0.3
+      - requests==2.27.1
+      - urllib3==1.26.18
+      - websocket-client==1.3.1
+  when: ansible_distribution_major_version | int == 7
