@@ -1,10 +1,11 @@
+import json
 import os
 import re
 import time
+
 import pytest
-import json
-import yaml
 import testinfra.utils.ansible_runner
+import yaml
 from packaging import version
 
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -104,7 +105,7 @@ def apply_conf(node,conf,clear_data=False,check=True):
     print("Applying config:")
     print(conf_string)
     with node.sudo():
-        node.check_output("cat > /etc/mongod.conf <<'EOF'\n%s\nEOF" % conf_string)
+        node.check_output(f"cat > /etc/mongod.conf <<'EOF'\n{conf_string}\nEOF")
     if clear_data:
         erase_data(node)
         erase_logs(node)
@@ -238,7 +239,7 @@ def test_telemetry(host):
         telemetry_content = host.check_output(f"cat {telemetry_path}")
         try:
             data = json.loads(telemetry_content)
-        except Exception as e:
+        except json.JSONDecodeError as e:
             pytest.fail(f"Telemetry file {telemetry_path} is not valid JSON: {e}\nContent:\n{telemetry_content}")
         if version.parse(PSMDB_VER) >= version.parse("7.0.0"):
             assert data.get("tde_key_storage") == "vault", (
