@@ -1,0 +1,200 @@
+---
+- name: Resolve custom package coordinates
+  vars:
+    psmdb_rpm_arch_map:
+      x86_64: x86_64
+      amd64: x86_64
+      aarch64: aarch64
+      arm64: aarch64
+  block:
+    - name: Require a supported CPU architecture
+      assert:
+        that:
+          - ansible_architecture in psmdb_rpm_arch_map
+        fail_msg: "Unsupported CPU architecture {{ ansible_architecture }}. Supported values are x86_64, amd64, aarch64, and arm64."
+
+    - name: Record the rpm architecture for this CPU
+      set_fact:
+        psmdb_custom_base_url: "{{ lookup('env', 'PSMDB_CUSTOM_BASE_URL') }}"
+        psmdb_custom_version: "{{ lookup('env', 'PSMDB_VERSION') }}"
+        psmdb_custom_dist: "{{ 'el9' if ansible_distribution == 'Amazon' else 'el' ~ ansible_distribution_major_version }}"
+        psmdb_custom_arch: "{{ psmdb_rpm_arch_map[ansible_architecture] }}"
+        psmdb_mongosh_version: "{{ lookup('env', 'PSMDB_MONGOSH_VERSION') | default('2.14.1', true) }}"
+        psmdb_tools_version: "{{ lookup('env', 'MONGO_TOOLS_VERSION') | default('100.20.1', true) }}"
+        psmdb_tools_revision: "{{ lookup('env', 'MONGO_TOOLS_REVISION') | default('1', true) }}"
+        psmdb_install_dbg: "{{ lookup('env', 'PSMDB_INSTALL_DBG') | default('true', true) | bool }}"
+
+- name: Build custom rpm URLs
+  set_fact:
+    psmdb_custom_rpm_urls:
+      - "{{ psmdb_custom_base_url }}/percona-server-mongodb-server-{{ psmdb_custom_version }}.{{ psmdb_custom_dist }}.{{ psmdb_custom_arch }}.rpm"
+      - "{{ psmdb_custom_base_url }}/percona-server-mongodb-mongos-{{ psmdb_custom_version }}.{{ psmdb_custom_dist }}.{{ psmdb_custom_arch }}.rpm"
+      - "{{ psmdb_custom_base_url }}/percona-server-mongodb-shell-{{ psmdb_custom_version }}.{{ psmdb_custom_dist }}.{{ psmdb_custom_arch }}.rpm"
+      - "{{ psmdb_custom_base_url }}/percona-mongodb-mongosh-{{ psmdb_mongosh_version }}.{{ psmdb_custom_dist }}.{{ psmdb_custom_arch }}.rpm"
+      - "{{ psmdb_custom_base_url }}/percona-server-mongodb-{{ psmdb_custom_version }}.{{ psmdb_custom_dist }}.{{ psmdb_custom_arch }}.rpm"
+    psmdb_tools_rpm_url: "{{ psmdb_custom_base_url }}/percona-server-mongodb-tools-{{ psmdb_tools_version }}-{{ psmdb_tools_revision }}.{{ psmdb_custom_dist }}.{{ psmdb_custom_arch }}.rpm"
+    psmdb_tools_rpm_server_url: "{{ psmdb_custom_base_url }}/percona-server-mongodb-tools-{{ psmdb_custom_version }}.{{ psmdb_custom_dist }}.{{ psmdb_custom_arch }}.rpm"
+
+- name: Add custom debug package URLs
+  set_fact:
+    psmdb_custom_rpm_urls: "{{ psmdb_custom_rpm_urls + [psmdb_custom_base_url ~ '/percona-server-mongodb-debuginfo-' ~ psmdb_custom_version ~ '.' ~ psmdb_custom_dist ~ '.' ~ psmdb_custom_arch ~ '.rpm'] }}"
+    psmdb_tools_dbg_rpm_url: "{{ psmdb_custom_base_url }}/percona-server-mongodb-tools-debuginfo-{{ psmdb_tools_version }}-{{ psmdb_tools_revision }}.{{ psmdb_custom_dist }}.{{ psmdb_custom_arch }}.rpm"
+    psmdb_tools_dbg_rpm_server_url: "{{ psmdb_custom_base_url }}/percona-server-mongodb-tools-debuginfo-{{ psmdb_custom_version }}.{{ psmdb_custom_dist }}.{{ psmdb_custom_arch }}.rpm"
+  when: psmdb_install_dbg | bool
+
+- name: Reset custom package download directory
+  file:
+    path: /tmp/psmdb-custom
+    state: absent
+
+- name: Create custom package download directory
+  file:
+    path: /tmp/psmdb-custom
+    state: directory
+    mode: "0755"
+
+- name: Download custom PSMDB packages
+  get_url:
+    url: "{{ item }}"
+    dest: "/tmp/psmdb-custom/{{ item | basename }}"
+    mode: "0644"
+  loop: "{{ psmdb_custom_rpm_urls }}"
+
+- name: Download the tools package
+  block:
+    - name: Download the tools package at the tools version
+      get_url:
+        url: "{{ psmdb_tools_rpm_url }}"
+        dest: "/tmp/psmdb-custom/{{ psmdb_tools_rpm_url | basename }}"
+        mode: "0644"
+  rescue:
+    - name: Download the tools package at the server version
+      get_url:
+        url: "{{ psmdb_tools_rpm_server_url }}"
+        dest: "/tmp/psmdb-custom/{{ psmdb_tools_rpm_server_url | basename }}"
+        mode: "0644"
+
+- name: Download the tools debug package
+  when: psmdb_install_dbg | bool
+  block:
+    - name: Download the tools debug package at the tools version
+      get_url:
+        url: "{{ psmdb_tools_dbg_rpm_url }}"
+        dest: "/tmp/psmdb-custom/{{ psmdb_tools_dbg_rpm_url | basename }}"
+        mode: "0644"
+  rescue:
+    - name: Download the tools debug package at the server version
+      get_url:
+        url: "{{ psmdb_tools_dbg_rpm_server_url }}"
+        dest: "/tmp/psmdb-custom/{{ psmdb_tools_dbg_rpm_server_url | basename }}"
+        mode: "0644"
+
+- name: Collect downloaded rpm paths
+  find:
+    paths: /tmp/psmdb-custom
+    patterns: "*.rpm"
+  register: psmdb_custom_rpm_files
+
+- name: Record downloaded rpm paths
+  set_fact:
+    psmdb_custom_rpm_paths: "{{ psmdb_custom_rpm_files.files | map(attribute='path') | list }}"
+
+- name: Install percona-release
+  include_tasks: ../../../tasks/install_percona_release.yml
+
+- name: Enable the Percona telemetry repository
+  command: percona-release enable telemetry release
+
+- name: Install custom PSMDB rpm packages and percona-telemetry-agent
+  command:
+    argv: "{{ ['yum', '-y', 'install', 'percona-telemetry-agent'] + psmdb_custom_rpm_paths }}"
+  environment:
+    PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
+
+- name: backup old mongo CLI binary
+  command: mv -f /usr/bin/mongo /usr/bin/mongo.bcp
+  when: psmdb_custom_version.split('.')[0] | int >= 6
+
+- name: copy mongosh binary to mongo path for test scripts
+  file:
+    src: /usr/bin/mongosh
+    dest: /usr/bin/mongo
+    state: link
+  when: psmdb_custom_version.split('.')[0] | int >= 6
+
+- name: Install Python modules required by Ansible Docker modules
+  yum:
+    name:
+      - python3-pip
+      - python3-requests
+    state: present
+  when: ansible_distribution_major_version | int >= 8
+
+- name: Install the Python Docker SDK for the Ansible interpreter
+  command: /usr/bin/python3 -m pip install --upgrade --ignore-installed docker requests
+  register: psmdb_python_modules
+  retries: 5
+  delay: 5
+  until: psmdb_python_modules.rc == 0
+  changed_when: "'Successfully installed' in psmdb_python_modules.stdout"
+  when: ansible_distribution_major_version | int >= 8
+
+# EL7 has no dnf. /usr/bin/python3 is 3.6, and the base pip cannot install
+# current docker/requests or manylinux2014 wheels. The package image does
+# not build /opt/python, so upgrade pip to 21.3.1 (the last Python 3.6
+# release) and use it to download the same pure-Python wheels as the
+# tarball role, then install them into the system interpreter.
+- name: Install pip for the EL7 system Python
+  yum:
+    name: python3-pip
+    state: present
+  when: ansible_distribution_major_version | int == 7
+
+- name: Upgrade pip to the last release that supports Python 3.6
+  command: /usr/bin/python3 -m pip install --upgrade pip==21.3.1
+  register: psmdb_el7_pip
+  retries: 5
+  delay: 5
+  until: psmdb_el7_pip.rc == 0
+  changed_when: "'Successfully installed' in psmdb_el7_pip.stdout"
+  when: ansible_distribution_major_version | int == 7
+
+- name: Download Docker client wheels for the EL7 system Python
+  command:
+    argv:
+      - /usr/bin/python3
+      - -m
+      - pip
+      - download
+      - --dest
+      - /tmp/psmdb-py36-wheels
+      - --python-version
+      - "36"
+      - --abi
+      - none
+      - "--only-binary=:all:"
+      - docker==5.0.3
+      - requests==2.27.1
+      - urllib3==1.26.18
+      - websocket-client==1.3.1
+  register: psmdb_py36_wheels
+  retries: 5
+  delay: 5
+  until: psmdb_py36_wheels.rc == 0
+  when: ansible_distribution_major_version | int == 7
+
+- name: Install the Python Docker SDK for the EL7 Ansible interpreter
+  command:
+    argv:
+      - /usr/bin/python3
+      - -m
+      - pip
+      - install
+      - --no-index
+      - --find-links
+      - /tmp/psmdb-py36-wheels
+      - docker==5.0.3
+      - requests==2.27.1
+      - urllib3==1.26.18
+      - websocket-client==1.3.1
+  when: ansible_distribution_major_version | int == 7

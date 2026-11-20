@@ -1,0 +1,203 @@
+---
+# tasks file for PSMDB
+- set_fact:
+    toolkit: "{{ lookup('env', 'ENABLE_TOOLKIT') | default('false', true) }}"
+
+- name: Install binutils (readelf) and file for RHEL 8+
+  yum:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+      - binutils
+      - file
+  when: ansible_os_family == "RedHat"
+
+- name: Install PSMDB from custom deb links
+  include_tasks: install_custom_debs.yml
+  when: ansible_os_family == "Debian"
+
+- name: Install PSMDB from custom rpm links
+  include_tasks: install_custom_rpms.yml
+  when: ansible_os_family == "RedHat"
+
+- name: Attempt to start mongod service
+  block:
+    - name: start mongod service
+      service: name=mongod state=started
+
+  rescue:
+    - name: Check the journal content
+      shell: |
+        journalctl -n 100 --no-pager
+      register: journal_content
+
+    - name: Print the journal
+      debug:
+        msg: "{{ journal_content }}"
+
+    - name: Check mongod logs
+      shell: |
+        cat /var/log/mongo/mongod.log
+      register: mongod_logs
+      when: ansible_os_family == "RedHat"
+
+    - name: Check mongod logs
+      shell: |
+        cat /var/log/mongodb/mongod.log
+      register: mongod_logs
+      when: ansible_os_family == "Debian"
+
+    - name: Print mongod logs
+      debug:
+        msg: "{{ mongod_logs }}"
+
+    - name: Fail
+      command: /bin/false
+
+- set_fact:
+    job_name: "{{ lookup('env', 'JOB_NAME') | default(lookup('env', 'MOLECULE_SCENARIO_NAME'), true) | default('local', true) | lower }}"
+
+- name: Reconfigure mongod for fips
+  block:
+    - name: stop mongod service
+      service: name=mongod state=stopped
+
+    - name: Truncate logs
+      shell: truncate -s 0 /var/log/mongo/mongod.log
+      when: ansible_os_family == "RedHat"
+
+    - name: Truncate logs
+      shell: truncate -s 0 /var/log/mongodb/mongod.log
+      when: ansible_os_family == "Debian"
+     
+    - name: Reconfigure mongod.conf
+      blockinfile:
+        path: /etc/mongod.conf
+        marker: "# {mark} ANSIBLE MANAGED BLOCK"
+        insertafter: "net:"
+        block: |
+          {% filter indent(width=2, first=true) %}
+          tls:
+            FIPSMode: true
+          {% endfilter %}
+
+    - name: start mongod service
+      service: name=mongod state=started
+
+  rescue:
+    - name: Check mongod conf
+      shell: |
+        cat /etc/mongod.conf
+      register: mongod_conf
+
+    - name: Print mongod conf
+      debug:
+        msg: "{{ mongod_conf }}"
+
+    - name: Check mongod logs
+      shell: |
+        cat /var/log/mongo/mongod.log
+      register: mongod_logs   
+      when: ansible_os_family == "RedHat"
+
+    - name: Check mongod logs
+      shell: |
+        cat /var/log/mongodb/mongod.log
+      register: mongod_logs
+      when: ansible_os_family == "Debian"   
+
+    - name: Print mongod logs
+      debug:
+        msg: "{{ mongod_logs }}"
+
+    - name: Fail
+      command: /bin/false
+
+  when: "'fips' in job_name"
+
+- name: download package-testing repo with wget
+  command: "{{ item }}"
+  with_items:
+    - rm -rf /package-testing
+    - rm -f master.zip
+    - wget --no-check-certificate -O main.zip https://github.com/Percona-QA/psmdb-testing/archive/refs/heads/main.zip
+    - unzip main.zip
+    - rm -f main.zip
+    - mv psmdb-testing-main /package-testing
+
+- name: Check whether curl is available
+  shell: command -v curl
+  register: curl_check
+  changed_when: false
+  failed_when: false
+
+- name: Install curl for grype installer
+  package:
+    name: curl
+    state: present
+  when: curl_check.rc != 0
+
+- name: Install grype
+  shell: curl -sSfL --retry 5 --retry-delay 10 https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+  args:
+    creates: /usr/local/bin/grype
+
+- name: Install CycloneDX CLI
+  shell: >
+    curl -sSfL --retry 5 --retry-delay 10
+    "https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-{{ 'arm64' if ansible_architecture == 'aarch64' else 'x64' }}"
+    -o /usr/local/bin/cyclonedx && chmod 0755 /usr/local/bin/cyclonedx
+  args:
+    creates: /usr/local/bin/cyclonedx
+
+- name: setup tools repo with percona-release
+  command: percona-release enable tools
+  when: toolkit != false
+
+- name: Install pt package Debian
+  apt:
+    name: percona-toolkit
+  when: ansible_os_family == "Debian" and toolkit != false
+
+- name: Install pt package RHEL
+  yum:
+    name: percona-toolkit
+  when: ansible_os_family == "RedHat" and toolkit != false
+
+- name: Make the backup of mongod.conf
+  shell: |
+    cp -r /etc/mongod.conf /etc/mongod.conf.default
+
+- name: Get OIDC token endpoint from metadata
+  uri:
+    url: "https://percona.oktapreview.com/oauth2/ausoxk7qawOSbws7w1d7/.well-known/openid-configuration"
+    method: GET
+    return_content: yes
+    validate_certs: no
+  register: oidc_metadata
+  when: (psmdb_local_testing | default('false') | string | lower) != 'true'
+
+- name: Request OIDC access token
+  uri:
+    url: "{{ oidc_metadata.json.token_endpoint }}"
+    method: POST
+    user: "{{ lookup('env', 'OIDC_CLIENT_ID') }}"
+    password: "{{ lookup('env', 'OIDC_CLIENT_SECRET') }}"
+    force_basic_auth: yes
+    body_format: form-urlencoded
+    body:
+      grant_type: client_credentials
+      scope: offline_access
+    return_content: yes
+    validate_certs: no
+  register: oidc_token
+  when: (psmdb_local_testing | default('false') | string | lower) != 'true'
+
+- name: Save OIDC token to file for Testinfra
+  copy:
+    dest: /tmp/oidc_access_token
+    content: "{{ oidc_token.json.access_token }}"
+    mode: '0644'
+  when: (psmdb_local_testing | default('false') | string | lower) != 'true'

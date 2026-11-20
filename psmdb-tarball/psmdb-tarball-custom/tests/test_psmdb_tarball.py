@@ -1,0 +1,115 @@
+import os
+import re
+
+import pytest
+import requests
+import testinfra.utils.ansible_runner
+from packaging import version
+
+testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
+    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
+
+
+SERVER_BINARIES = ['mongod', 'mongos', 'mongobridge']
+TOOLS_BINARIES = ['bsondump', 'mongodump', 'mongoexport', 'mongofiles', 'mongoimport',
+                  'mongorestore', 'mongotop', 'mongostat']
+BINARIES = SERVER_BINARIES + TOOLS_BINARIES
+
+psmdb_version = os.environ["PSMDB_VERSION"]
+testing_branch = os.environ.get("TESTING_BRANCH", "main")
+
+def get_tools_ver():
+    url = "https://raw.githubusercontent.com/Percona-QA/psmdb-testing/" + testing_branch + "/MONGO_TOOLS_VERSION"
+    r = requests.get(url, timeout=30)
+    r.raise_for_status()
+    return r.text.rstrip()
+
+mongo_tools_version = get_tools_ver()
+
+JSTESTS = ['test_kerberos_simple.js', 'test_ldap_simple.js']
+if version.parse(psmdb_version) >= version.parse("7.0.0"):
+    JSTESTS.append('test_oidc_simple.js')
+SUITES = ['multiversion_kmip', 'multiversion_vault']
+FIPS = ['ssl jstests/ssl/ssl_fips.js']
+
+def is_ubuntu_pro(host):
+    proStatus = host.run("sudo pro status")
+    return "This machine is not attached to an Ubuntu Pro subscription." not in proStatus.stdout
+
+@pytest.mark.parametrize("binary", SERVER_BINARIES)
+def test_binary_version(host, binary):
+    result = host.check_output(f"/usr/bin/{binary} --version")
+    if re.search(r'-\d{1,2}$', psmdb_version):
+        version_pattern = re.escape(psmdb_version) + r'(?![\d.])'
+        expected = psmdb_version
+    else:
+        version_pattern = re.escape(psmdb_version) + r'-\d{1,2}'
+        expected = f"{psmdb_version}-XX"
+    assert re.search(version_pattern, result), \
+        f"Expected version pattern {expected} not found in output: {result}"
+
+@pytest.mark.parametrize("binary", TOOLS_BINARIES)
+def test_tools_binary_version(host, binary):
+    assert host.file(f"/usr/bin/{binary}").exists, f"/usr/bin/{binary} not installed"
+    result = host.check_output(f"/usr/bin/{binary} --version")
+    assert mongo_tools_version in result, f"{result}"
+
+@pytest.mark.parametrize("jstest", JSTESTS)
+def test_jstests(host, jstest):
+    cmd = "cd /percona-server-mongodb && /opt/venv/bin/python buildscripts/resmoke.py run --suite no_server /package-testing/jstests/"  + jstest
+    with host.sudo():
+        result = host.run(cmd)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout
+
+@pytest.mark.parametrize("suites", SUITES)
+def test_suites(host, suites):
+    local_testing = os.environ.get("LOCAL_TESTING", "")
+    if not local_testing:
+        local_testing = "true" if os.environ.get("MOLECULE_DRIVER_NAME") == "vagrant" else "false"
+    if local_testing.lower() == "true" and suites in ("multiversion_vault", "multiversion_kmip"):
+        pytest.skip("Vault is skipped for local testing")
+    if host.system_info.distribution == "ubuntu" and "26.04" in host.system_info.release:
+        pytest.skip("Skip Ubuntu 26.04 as no last-lts tarball is available for multiversion tests")
+    distro = host.system_info.distribution.lower()
+    release = host.system_info.release.split(".")[0]
+    if version.parse(psmdb_version) < version.parse("7.0.0") and (
+        (distro in ["redhat", "rhel", "centos", "rocky"] and release == "9")
+        or (distro in ["amzn", "amazon"] and release == "2023")
+    ):
+        pytest.skip("Skip multiversion suites on RHEL/Rocky 9 and AL2023 for PSMDB <= 6.0")
+    cmd = "cd /percona-server-mongodb && /opt/venv/bin/python buildscripts/resmoke.py run --suite "  + suites
+    with host.sudo():
+        result = host.run(cmd)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout
+
+@pytest.mark.parametrize("fips", FIPS)
+def test_fips(host, fips):
+    if host.system_info.distribution == "debian" or (host.system_info.distribution == "ubuntu" and not (is_ubuntu_pro(host) and "22.04" in host.system_info.release)):
+        pytest.skip("Skip debian12 as no openssl with FIPS available")
+    if version.parse(psmdb_version) >= version.parse("8.3.0"):
+        pytest.skip("PSMDB 8.3+ requires additional ssl certs setup")
+    cmd = f"cd /percona-server-mongodb && /opt/venv/bin/python buildscripts/resmoke.py run --suite {fips}"
+    with host.sudo():
+        result = host.run(cmd)
+        print(result.stderr)
+    assert result.rc == 0, result.stdout
+
+def test_psmdb_sbom(host):
+    """Verify SBOM exists in the tarball and is valid CycloneDX 1.6; report vulnerability scan (non-fatal)"""
+    if version.parse(psmdb_version) < version.parse("7.0.0"):
+        pytest.skip("SBOM is not shipped for PSMDB <= 6.0")
+
+    sbom_path = "/usr/doc/sbom.cdx.json"
+    assert host.file(sbom_path).exists, f"SBOM not found in tarball at {sbom_path}"
+
+    # grype (not trivy) recognises the `github` type components in PSMDB's SBOM.
+    # Report vulnerabilities only; do not fail the test if any are found.
+    grype_result = host.run(f'grype sbom:"{sbom_path}" --only-fixed')
+    assert grype_result.rc == 0, f"grype scan failed: {grype_result.stdout}\n{grype_result.stderr}"
+    print(f"grype scan result:\n{grype_result.stdout}\n{grype_result.stderr}")
+
+    cdx_cmd = "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /usr/local/bin/cyclonedx"
+    cdx_result = host.run(f"{cdx_cmd} validate --input-file {sbom_path} --input-format json --input-version v1_6")
+    assert cdx_result.rc == 0, f"CycloneDX 1.6 schema validation failed: {cdx_result.stdout}\n{cdx_result.stderr}"

@@ -1,0 +1,59 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: vagrant
+  provision: true
+  provider:
+    name: virtualbox
+platforms:
+  - name: debian-10
+    box: debian/buster64
+    memory: 4096
+    cpus: 2
+    instance_raw_config_args:
+      - "vm.provision 'shell', inline: 'if ! command -v python3 >/dev/null 2>&1; then if grep -q buster /etc/os-release; then printf \"%s\\n\" \"deb http://archive.debian.org/debian buster main\" \"deb http://archive.debian.org/debian-security buster/updates main\" > /etc/apt/sources.list; printf \"%s\\n\" \"Acquire::Check-Valid-Until \\\"false\\\";\" > /etc/apt/apt.conf.d/99archive; fi; apt-get update; DEBIAN_FRONTEND=noninteractive apt-get install -y python3; fi'"
+    provider_raw_config_args:
+      - "customize ['modifyvm', :id, '--natdnshostresolver1', 'on']"
+provisioner:
+  name: ansible
+  log: true
+  config_options:
+    defaults:
+      interpreter_python: auto_silent
+      host_key_checking: false
+  inventory:
+    group_vars:
+      all:
+        ansible_python_interpreter: /usr/bin/python3
+  env:
+    REPO: ${REPO:-testing}
+    JOB_NAME: ${JOB_NAME:-local}
+    LOCAL_TESTING: "${LOCAL_TESTING:-true}"
+  playbooks:
+    prepare: ../../playbooks/prepare.yml
+    cleanup: ../../playbooks/cleanup.yml
+    converge: ../../playbooks/playbook.yml
+verifier:
+  name: testinfra
+  directory: ../../tests/
+  env:
+    LOCAL_TESTING: "${LOCAL_TESTING:-true}"
+  options:
+    verbose: true
+    capture: sys
+    o: junit_logging=system-out
+    junitxml: debian-10-vagrant-report.xml
+scenario:
+  name: debian-10-vagrant
+  destroy_sequence:
+    - destroy
+  cleanup_sequence:
+    - cleanup
+  test_sequence:
+    - destroy
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy

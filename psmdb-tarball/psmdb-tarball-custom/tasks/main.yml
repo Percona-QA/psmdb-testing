@@ -1,0 +1,437 @@
+---
+- name: Map the CPU architecture to the tarball filename
+  vars:
+    psmdb_tarball_arch_map:
+      x86_64: x86_64
+      amd64: x86_64
+      aarch64: aarch64
+      arm64: aarch64
+  block:
+    - name: Require a supported CPU architecture
+      assert:
+        that:
+          - ansible_architecture in psmdb_tarball_arch_map
+        fail_msg: "Unsupported CPU architecture {{ ansible_architecture }}. Supported values are x86_64, amd64, aarch64, and arm64."
+
+    - name: Record the tarball architecture for this CPU
+      set_fact:
+        psmdb_version: "{{ lookup('env', 'PSMDB_VERSION') }}"
+        psmdb_testing_version: "{{ testing_branch | default(lookup('env', 'TESTING_BRANCH') | default('main', true), true) }}"
+        psmdb_tarball_arch: "{{ psmdb_tarball_arch_map[ansible_architecture] }}"
+
+- name: Get mongodb version
+  set_fact:
+    mongodb_ver: "{{ psmdb_version | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+
+- name: Get git repo branch
+  set_fact:
+    repo_branch: "{{ psmdb_version | regex_search('([0-9]+\\.[0-9]+)', '\\1') }}"
+
+- name: Detect last-lts
+  set_fact:
+    last_lts: "{{ item }}"
+  loop:
+    - "4.4"
+    - "5.0"
+    - "6.0"
+    - "7.0"
+    - "8.0"
+  when:
+    - ( repo_branch[0] == "9.0" and item == "8.0" ) or
+      ( repo_branch[0] == "8.3" and item == "8.0" ) or
+      ( repo_branch[0] == "8.0" and item == "7.0" ) or
+      ( repo_branch[0] == "7.0" and item == "6.0" ) or
+      ( repo_branch[0] == "6.0" and item == "5.0" ) or
+      ( repo_branch[0] == "5.0" and item == "4.4" )
+
+- debug:
+    var: last_lts
+
+- name: Detect OS
+  set_fact:
+    os: "{{ item }}"
+  loop:
+    - ol7
+    - ol8
+    - ol9
+    - ol10
+    - ol2023
+    - jammy
+    - focal
+    - noble
+    - resolute
+    - bookworm
+    - bullseye
+    - buster
+    - trixie
+  when:
+    - ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "20" and item == "focal") or
+      ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "22" and item == "jammy") or
+      ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "24" and item == "noble") or
+      ( ansible_distribution == "Ubuntu" and ansible_distribution_major_version == "26" and item == "resolute") or
+      ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" and item == "buster") or
+      ( ansible_distribution == "Debian" and ansible_distribution_major_version == "11" and item == "bullseye") or
+      ( ansible_distribution == "Debian" and ansible_distribution_major_version == "12" and item == "bookworm") or
+      ( ansible_distribution == "Debian" and ansible_distribution_major_version == "13" and item == "trixie") or
+      ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "7" and item == "ol7") or
+      ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" and item == "ol8") or
+      ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "9" and item == "ol9") or
+      ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "10" and item == "ol10") or
+      ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "2023" and item == "ol2023")
+
+- name: Copy tarball
+  copy:
+    src: /tmp/percona-server-mongodb-{{ psmdb_tarball_arch }}-{{ os }}.tar.gz
+    dest: /tmp/percona-server-mongodb.tar.gz
+    mode: '0644'
+
+- name: Query latest last-lts version
+  uri:
+    url: https://www.percona.com/wp-admin/admin-ajax.php
+    method: POST
+    body_format: form-urlencoded
+    body:
+      action: percona_downloads
+      product_id: percona-server-mongodb-{{ last_lts }}
+      hydrate: 1
+    return_content: true
+  register: result
+
+- name: Debug result
+  debug:
+    var: result.json
+
+- name: Parse latest last-lts version
+  set_fact:
+    psmdb_last_lts: "{{ result.json.data.versions[0] }}"
+
+#output be like percona-server-mongodb-5.0.29-25
+- debug:
+    var: psmdb_last_lts
+
+#generate uri for last_lts
+#https://downloads.percona.com/downloads/percona-server-mongodb-7.0/percona-server-mongodb-7.0.18-11/binary/tarball/percona-server-mongodb-7.0.18-11-x86_64.focal-minimal.tar.gz
+- name: Download last_lts tarball from url
+  get_url:
+    url: 'https://downloads.percona.com/downloads/percona-server-mongodb-{{ last_lts }}/{{ psmdb_last_lts }}/binary/tarball/{{ psmdb_last_lts }}-x86_64.{{ os }}-minimal.tar.gz'
+    dest: /tmp/percona-server-mongodb-{{ last_lts }}-{{ os }}.tar.gz
+  ignore_errors: yes
+
+- name: Unpack tarball
+  unarchive:
+    src: /tmp/percona-server-mongodb.tar.gz
+    dest: /
+    remote_src: yes
+    extra_opts:
+    - --transform
+    - 's,^/*[^/]*,/usr,S'
+
+- name: Check for a custom tools tarball
+  stat:
+    path: "/tmp/percona-server-mongodb-tools-{{ psmdb_tarball_arch }}-{{ os }}.tar.gz"
+  delegate_to: localhost
+  become: false
+  register: psmdb_tools_tarball
+  failed_when: false
+
+- name: Copy tools tarball
+  copy:
+    src: /tmp/percona-server-mongodb-tools-{{ psmdb_tarball_arch }}-{{ os }}.tar.gz
+    dest: /tmp/percona-server-mongodb-tools.tar.gz
+    mode: '0644'
+  when: psmdb_tools_tarball.stat.exists | default(false)
+
+- name: Unpack tools tarball
+  unarchive:
+    src: /tmp/percona-server-mongodb-tools.tar.gz
+    dest: /
+    remote_src: yes
+    extra_opts:
+    - --transform
+    - 's,^/*[^/]*,/usr,S'
+  when: psmdb_tools_tarball.stat.exists | default(false)
+
+- name: Check whether curl is available
+  shell: command -v curl
+  register: curl_check
+  changed_when: false
+  failed_when: false
+
+- name: Install curl for grype installer
+  package:
+    name: curl
+    state: present
+  when: curl_check.rc != 0
+
+- name: Install grype
+  shell: curl -sSfL --retry 5 --retry-delay 10 https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+  args:
+    creates: /usr/local/bin/grype
+- name: Install CycloneDX CLI
+  shell: >
+    curl -sSfL --retry 5 --retry-delay 10
+    "https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-{{ 'arm64' if ansible_architecture == 'aarch64' else 'x64' }}"
+    -o /usr/local/bin/cyclonedx && chmod 0755 /usr/local/bin/cyclonedx
+  args:
+    creates: /usr/local/bin/cyclonedx
+
+- name: Create dirs for multiversion setup
+  shell:
+    cmd: |
+      mkdir -p /data/install
+      mkdir -p /data/multiversion
+
+- name: Unpack last-lts tarball
+  unarchive:
+    src: /tmp/percona-server-mongodb-{{ last_lts }}-{{ os }}.tar.gz
+    dest: /data/install
+    remote_src: yes
+    extra_opts:
+    - --transform
+    - 's,^/*[^/]*,,S'
+  ignore_errors: yes
+
+- name: Install mongod last-lts
+  file:
+    src: /data/install/bin/mongod
+    dest: /data/multiversion/mongod-{{ last_lts }}
+    state: link
+    force: yes
+  ignore_errors: yes
+
+- name: Install mongos last-lts
+  file:
+    src: /data/install/bin/mongos
+    dest: /data/multiversion/mongos-{{ last_lts }}
+    state: link
+    force: yes
+  ignore_errors: yes
+
+- name: Clone PSMDB repo
+  git:
+    repo: 'https://github.com/percona/percona-server-mongodb.git'
+    dest: /percona-server-mongodb
+    version: "v{{ repo_branch[0] }}"
+    single_branch: yes
+
+- name: Clone psmdb-testing repo
+  git:
+    repo: 'https://github.com/Percona-QA/psmdb-testing.git'
+    dest: /package-testing
+    version: "{{ psmdb_testing_version }}"
+
+- name: Check if mongo cli exists in PATH
+  stat:
+    path: /usr/bin/mongo
+  register: mongo
+
+- name: Install percona release package
+  include_tasks: ../../../tasks/install_percona_release.yml
+
+- name: Enable psmdb testing repo
+  command: percona-release enable psmdb-{{ repo_branch[0].split('.')[0] }}{{ repo_branch[0].split('.')[1] }} testing
+  when: not mongo.stat.exists and repo_branch[0] | float >= 6.0
+
+- name: Install mongosh deb packages
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+    - percona-mongodb-mongosh
+    - percona-server-mongodb-shell
+  when: ansible_os_family == "Debian" and not mongo.stat.exists
+
+- name: Install mongosh rpm packages
+  yum:
+    name: "{{ packages }}"
+    state: latest
+  vars:
+    packages:
+    - percona-mongodb-mongosh
+    - percona-server-mongodb-shell
+  when: ansible_os_family == "RedHat" and not mongo.stat.exists
+
+- name: Copy mongo binary to workdir
+  copy:
+    src: /usr/bin/mongo
+    dest: /percona-server-mongodb/mongo
+    mode: '0755'
+    remote_src: yes
+  when: not mongo.stat.exists
+
+- name: Link mongosh binary to mongo path for test scripts
+  file:
+    src: /usr/bin/mongosh
+    dest: /usr/bin/mongo
+    state: link
+    force: yes
+  when: not mongo.stat.exists
+
+- name: Keep greenlet on a CentOS 7 binary wheel
+  copy:
+    dest: /tmp/psmdb-centos7-pip-constraints.txt
+    mode: "0644"
+    content: |
+      greenlet<=3.0.3
+  when:
+    - repo_branch[0] | float <= 7.0
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version == "7"
+
+- name: Install Python utilities
+  pip:
+    requirements: /percona-server-mongodb/etc/pip/dev-requirements.txt
+    virtualenv: /opt/venv
+    extra_args: "{{ '--constraint /tmp/psmdb-centos7-pip-constraints.txt' if (ansible_os_family == 'RedHat' and ansible_distribution_major_version == '7') else omit }}"
+  when: repo_branch[0] | float <= 7.0
+
+- name: Install poetry for PSMDB 8.0
+  pip:
+    name:
+      - poetry==2.0.0
+    state: present
+    virtualenv: /opt/venv
+  when: repo_branch[0] | float >= 8.0
+
+- name: Install Python utilities for PSMDB 8.0
+  shell: /opt/venv/bin/poetry install --sync --no-root
+  retries: 5
+  delay: 1
+  register: result
+  until: result.rc == 0
+  args:
+    chdir: /percona-server-mongodb
+  environment:
+    POETRY_VIRTUALENVS_CREATE: false
+    VIRTUAL_ENV: /opt/venv
+  when: repo_branch[0] | float >= 8.0
+
+- name: Fix files permissions
+  shell: "find /percona-server-mongodb/jstests -type f | xargs chmod 400"
+
+- name: Install necessary rpm packages for tarball
+  yum:
+    name: "{{ packages }}"
+    state: latest
+  vars:
+    packages:
+    - cyrus-sasl-lib
+    - cyrus-sasl-plain
+    - cyrus-sasl-gssapi
+  when: ansible_os_family == "RedHat"
+
+- name: Install necessary deb packages for tarball
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+    - libcurl4
+    - libsasl2-modules
+    - libsasl2-modules-gssapi-mit
+    - libsasl2-modules-ldap
+  when: ansible_os_family == "Debian"
+
+- name: Erase .git folder
+  shell: rm -rf /percona-server-mongodb/.git
+
+- name: Add mongo version
+  lineinfile:
+    path: /percona-server-mongodb/.resmoke_mongo_version.yml
+    line: "mongo_version: {{mongodb_ver[0]}}"
+    create: yes
+
+- name: Fix test
+  shell: sed -E 's/.+last-continuous.+//g' -i /percona-server-mongodb/jstests/multiVersion/genericSetFCVUsage/do_upgrade_downgrade.js
+
+- name: Copy suites
+  shell: cp -rp /package-testing/suites/* /percona-server-mongodb/buildscripts/resmokeconfig/suites/
+  ignore_errors: true
+
+- name: Disable OTEL tracing in multiversion suites for PSMDB 8.3+
+  lineinfile:
+    path: "/percona-server-mongodb/buildscripts/resmokeconfig/suites/{{ item }}"
+    regexp: '^\s*enableOTELTracing:'
+    insertafter: '^\s+encryptionCipherMode:'
+    line: '          enableOTELTracing: false'
+  loop:
+    - multiversion_kmip.yml
+    - multiversion_vault.yml
+  when: repo_branch[0] | float >= 8.3
+
+# community.docker imports requests from the interpreter Ansible is using
+# (/usr/bin/python3) inside the openldap role, before later roles switch to a venv.
+- name: Install Python modules required by Ansible Docker modules
+  apt:
+    name:
+      - python3-requests
+      - python3-docker
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Install Python modules required by Ansible Docker modules
+  yum:
+    name:
+      - python3-pip
+      - python3-requests
+    state: present
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version | int >= 8
+
+- name: Install the Python Docker SDK for the Ansible interpreter
+  command: /usr/bin/python3 -m pip install --upgrade --ignore-installed docker requests
+  register: psmdb_python_modules
+  retries: 5
+  delay: 5
+  until: psmdb_python_modules.rc == 0
+  changed_when: "'Successfully installed' in psmdb_python_modules.stdout"
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version | int >= 8
+
+# CentOS 7's /usr/bin/python3 is 3.6, and its pip is too old to install
+# manylinux2014 wheels. Download pure-Python wheels with the /opt/python
+# toolchain, then install the last releases that still support Python 3.6.
+- name: Download Docker client wheels for the CentOS 7 system Python
+  command:
+    argv:
+      - /opt/python/bin/pip3
+      - download
+      - --dest
+      - /tmp/psmdb-py36-wheels
+      - --python-version
+      - "36"
+      - --abi
+      - none
+      - "--only-binary=:all:"
+      - docker==5.0.3
+      - requests==2.27.1
+      - urllib3==1.26.18
+      - websocket-client==1.3.1
+  register: psmdb_py36_wheels
+  retries: 5
+  delay: 5
+  until: psmdb_py36_wheels.rc == 0
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version == "7"
+
+- name: Install the Python Docker SDK for the CentOS 7 Ansible interpreter
+  command:
+    argv:
+      - /usr/bin/python3
+      - -m
+      - pip
+      - install
+      - --no-index
+      - --find-links
+      - /tmp/psmdb-py36-wheels
+      - docker==5.0.3
+      - requests==2.27.1
+      - urllib3==1.26.18
+      - websocket-client==1.3.1
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version == "7"
