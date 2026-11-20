@@ -1,0 +1,136 @@
+---
+# Keep the OpenSSL packages shipped in the box. Later package updates,
+# including the shared Docker role, install the latest openssl.
+# Versionlock keeps the installed release as the only candidate.
+# An exclude would make that explicit update fail.
+- name: Pin the installed OpenSSL packages
+  hosts: all
+  become: true
+  become_method: "{{ ansible_become_method | default('sudo') }}"
+  gather_facts: false
+  tasks:
+    - name: Read the installed OpenSSL version
+      command: rpm -q --qf '%{NAME} %{VERSION}-%{RELEASE}\n' openssl openssl-libs
+      register: psmdb_openssl_versions
+      changed_when: false
+
+    - name: Read the OpenSSL FIPS provider when it is installed
+      command: rpm -q --qf '%{NAME} %{VERSION}-%{RELEASE}\n' openssl-fips-provider
+      register: psmdb_openssl_fips_provider
+      changed_when: false
+      failed_when: false
+
+    - name: Record the OpenSSL packages shipped in the box
+      set_fact:
+        psmdb_openssl_lock_packages: "{{ ['openssl', 'openssl-libs'] + (['openssl-fips-provider'] if psmdb_openssl_fips_provider.rc == 0 else []) }}"
+
+    - name: Show the OpenSSL versions that will stay installed
+      debug:
+        msg: "{{ psmdb_openssl_versions.stdout_lines + (psmdb_openssl_fips_provider.stdout_lines if psmdb_openssl_fips_provider.rc == 0 else []) }}"
+
+    - name: Create the dnf drop-in directory
+      file:
+        path: /etc/dnf/dnf.conf.d
+        state: directory
+        mode: "0755"
+
+    - name: Block OpenSSL upgrades while the versionlock plugin is installed
+      copy:
+        dest: /etc/dnf/dnf.conf.d/psmdb-openssl-pin.conf
+        mode: "0644"
+        content: |
+          excludepkgs={{ psmdb_openssl_lock_packages | join(' ') }}
+
+    - name: Install the dnf versionlock plugin
+      dnf:
+        name: python3-dnf-plugin-versionlock
+        state: present
+
+    - name: Remove the temporary OpenSSL exclude
+      file:
+        path: /etc/dnf/dnf.conf.d/psmdb-openssl-pin.conf
+        state: absent
+
+    - name: Lock the installed OpenSSL packages
+      command:
+        argv: "{{ ['dnf', 'versionlock', 'add'] + psmdb_openssl_lock_packages }}"
+      register: psmdb_openssl_lock
+      changed_when: "'Adding versionlock' in psmdb_openssl_lock.stdout"
+
+- import_playbook: ../../../playbooks/prepare.yml
+
+- name: Enable FIPS mode
+  hosts: all
+  become: true
+  become_method: "{{ ansible_become_method | default('sudo') }}"
+  gather_facts: true
+  tasks:
+    - name: Install fips-mode-setup
+      dnf:
+        name: crypto-policies-scripts
+        state: present
+
+    - name: Detect the current SSH key type
+      command: ssh-keygen -l -f {{ ansible_private_key_file }}
+      delegate_to: localhost
+      become: false
+      register: psmdb_ssh_key
+      changed_when: false
+
+    - name: Install an RSA SSH key before FIPS mode disables ed25519
+      when: "'(RSA)' not in psmdb_ssh_key.stdout"
+      block:
+        - name: Create an RSA SSH key
+          command: ssh-keygen -t rsa -b 3072 -N '' -f {{ ansible_private_key_file }}.rsa -q
+          args:
+            creates: "{{ ansible_private_key_file }}.rsa"
+          delegate_to: localhost
+          become: false
+
+        - name: Read the RSA public key
+          slurp:
+            src: "{{ ansible_private_key_file }}.rsa.pub"
+          delegate_to: localhost
+          become: false
+          register: psmdb_rsa_public_key
+
+        - name: Authorize the RSA key for the login user
+          authorized_key:
+            user: "{{ ansible_user }}"
+            key: "{{ psmdb_rsa_public_key.content | b64decode }}"
+            state: present
+
+        - name: Switch the Ansible private key to RSA
+          copy:
+            src: "{{ ansible_private_key_file }}.rsa"
+            dest: "{{ ansible_private_key_file }}"
+            mode: "0600"
+            remote_src: true
+          delegate_to: localhost
+          become: false
+
+    - name: Check whether FIPS mode is already enabled
+      command: fips-mode-setup --check
+      register: psmdb_fips_check
+      changed_when: false
+      failed_when: false
+
+    - name: Enable FIPS mode
+      command: fips-mode-setup --enable
+      when: "'FIPS mode is enabled.' not in psmdb_fips_check.stdout"
+
+    - name: Reboot so FIPS mode takes effect
+      reboot:
+        reboot_timeout: 900
+      when: "'FIPS mode is enabled.' not in psmdb_fips_check.stdout"
+
+    - name: Verify that FIPS mode is enabled
+      command: fips-mode-setup --check
+      register: psmdb_fips_verify
+      changed_when: false
+
+    - name: Require FIPS mode
+      assert:
+        that:
+          - "'FIPS mode is enabled.' in psmdb_fips_verify.stdout"
+        fail_msg: "{{ psmdb_fips_verify.stdout }}"

@@ -1,0 +1,143 @@
+---
+- name: Resolve custom package coordinates
+  vars:
+    psmdb_deb_arch_map:
+      x86_64: amd64
+      amd64: amd64
+      aarch64: arm64
+      arm64: arm64
+  block:
+    - name: Require a supported CPU architecture
+      assert:
+        that:
+          - ansible_architecture in psmdb_deb_arch_map
+        fail_msg: "Unsupported CPU architecture {{ ansible_architecture }}. Supported values are x86_64, amd64, aarch64, and arm64."
+
+    - name: Record the deb architecture for this CPU
+      set_fact:
+        psmdb_custom_base_url: "{{ lookup('env', 'PSMDB_CUSTOM_BASE_URL') }}"
+        psmdb_custom_version: "{{ lookup('env', 'PSMDB_VERSION') }}"
+        psmdb_custom_codename: "{{ ansible_distribution_release }}"
+        psmdb_custom_arch: "{{ psmdb_deb_arch_map[ansible_architecture] }}"
+        psmdb_mongosh_version: "{{ lookup('env', 'PSMDB_MONGOSH_VERSION') | default('2.14.1', true) }}"
+        psmdb_tools_version: "{{ lookup('env', 'MONGO_TOOLS_VERSION') | default('100.20.1', true) }}"
+        psmdb_tools_revision: "{{ lookup('env', 'MONGO_TOOLS_REVISION') | default('1', true) }}"
+        psmdb_install_dbg: "{{ lookup('env', 'PSMDB_INSTALL_DBG') | default('true', true) | bool }}"
+
+- name: Build custom deb URLs
+  set_fact:
+    psmdb_custom_deb_urls:
+      - "{{ psmdb_custom_base_url }}/percona-server-mongodb-server_{{ psmdb_custom_version }}.{{ psmdb_custom_codename }}_{{ psmdb_custom_arch }}.deb"
+      - "{{ psmdb_custom_base_url }}/percona-server-mongodb-mongos_{{ psmdb_custom_version }}.{{ psmdb_custom_codename }}_{{ psmdb_custom_arch }}.deb"
+      - "{{ psmdb_custom_base_url }}/percona-server-mongodb-shell_{{ psmdb_custom_version }}.{{ psmdb_custom_codename }}_{{ psmdb_custom_arch }}.deb"
+      - "{{ psmdb_custom_base_url }}/percona-mongodb-mongosh_{{ psmdb_mongosh_version }}.{{ psmdb_custom_codename }}_{{ psmdb_custom_arch }}.deb"
+      - "{{ psmdb_custom_base_url }}/percona-server-mongodb_{{ psmdb_custom_version }}.{{ psmdb_custom_codename }}_{{ psmdb_custom_arch }}.deb"
+    psmdb_tools_deb_url: "{{ psmdb_custom_base_url }}/percona-server-mongodb-tools_{{ psmdb_tools_version }}-{{ psmdb_tools_revision }}.{{ psmdb_custom_codename }}_{{ psmdb_custom_arch }}.deb"
+    psmdb_tools_deb_server_url: "{{ psmdb_custom_base_url }}/percona-server-mongodb-tools_{{ psmdb_custom_version }}.{{ psmdb_custom_codename }}_{{ psmdb_custom_arch }}.deb"
+
+- name: Add custom debug package URLs
+  set_fact:
+    psmdb_custom_deb_urls: "{{ psmdb_custom_deb_urls + [psmdb_custom_base_url ~ '/percona-server-mongodb-dbg_' ~ psmdb_custom_version ~ '.' ~ psmdb_custom_codename ~ '_' ~ psmdb_custom_arch ~ '.deb'] }}"
+    psmdb_tools_dbg_deb_url: "{{ psmdb_custom_base_url }}/percona-server-mongodb-tools-dbg_{{ psmdb_tools_version }}-{{ psmdb_tools_revision }}.{{ psmdb_custom_codename }}_{{ psmdb_custom_arch }}.deb"
+    psmdb_tools_dbg_deb_server_url: "{{ psmdb_custom_base_url }}/percona-server-mongodb-tools-dbg_{{ psmdb_custom_version }}.{{ psmdb_custom_codename }}_{{ psmdb_custom_arch }}.deb"
+  when: psmdb_install_dbg | bool
+
+- name: Reset custom package download directory
+  file:
+    path: /tmp/psmdb-custom
+    state: absent
+
+- name: Create custom package download directory
+  file:
+    path: /tmp/psmdb-custom
+    state: directory
+    mode: "0755"
+
+- name: Download custom PSMDB packages
+  get_url:
+    url: "{{ item }}"
+    dest: "/tmp/psmdb-custom/{{ item | basename }}"
+    mode: "0644"
+  loop: "{{ psmdb_custom_deb_urls }}"
+
+- name: Download the tools package
+  block:
+    - name: Download the tools package at the tools version
+      get_url:
+        url: "{{ psmdb_tools_deb_url }}"
+        dest: "/tmp/psmdb-custom/{{ psmdb_tools_deb_url | basename }}"
+        mode: "0644"
+  rescue:
+    - name: Download the tools package at the server version
+      get_url:
+        url: "{{ psmdb_tools_deb_server_url }}"
+        dest: "/tmp/psmdb-custom/{{ psmdb_tools_deb_server_url | basename }}"
+        mode: "0644"
+
+- name: Download the tools debug package
+  when: psmdb_install_dbg | bool
+  block:
+    - name: Download the tools debug package at the tools version
+      get_url:
+        url: "{{ psmdb_tools_dbg_deb_url }}"
+        dest: "/tmp/psmdb-custom/{{ psmdb_tools_dbg_deb_url | basename }}"
+        mode: "0644"
+  rescue:
+    - name: Download the tools debug package at the server version
+      get_url:
+        url: "{{ psmdb_tools_dbg_deb_server_url }}"
+        dest: "/tmp/psmdb-custom/{{ psmdb_tools_dbg_deb_server_url | basename }}"
+        mode: "0644"
+
+- name: Collect downloaded deb paths
+  find:
+    paths: /tmp/psmdb-custom
+    patterns: "*.deb"
+  register: psmdb_custom_deb_files
+
+- name: Record downloaded deb paths
+  set_fact:
+    psmdb_custom_deb_paths: "{{ psmdb_custom_deb_files.files | map(attribute='path') | list }}"
+
+- name: Install packages needed to inspect binaries
+  apt:
+    name:
+      - binutils
+      - file
+    state: present
+    update_cache: yes
+
+- name: Install percona-release
+  include_tasks: ../../../tasks/install_percona_release.yml
+
+- name: Enable the Percona telemetry repository
+  command: percona-release enable telemetry release
+
+- name: Update apt cache after enabling telemetry
+  apt:
+    update_cache: yes
+
+- name: Install custom PSMDB deb packages and percona-telemetry-agent
+  command:
+    argv: "{{ ['apt-get', '-y', '-o', 'Dpkg::Options::=--force-confdef', '-o', 'Dpkg::Options::=--force-confold', 'install', 'percona-telemetry-agent'] + psmdb_custom_deb_paths }}"
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+    PERCONA_TELEMETRY_URL: "https://check-dev.percona.com/v1/telemetry/GenericReport"
+
+- name: backup old mongo CLI binary
+  command: mv -f /usr/bin/mongo /usr/bin/mongo.bcp
+  when: psmdb_custom_version.split('.')[0] | int >= 6
+
+- name: copy mongosh binary to mongo path for test scripts
+  file:
+    src: /usr/bin/mongosh
+    dest: /usr/bin/mongo
+    state: link
+  when: psmdb_custom_version.split('.')[0] | int >= 6
+
+- name: Install Python modules required by Ansible Docker modules
+  apt:
+    name:
+      - python3-requests
+      - python3-docker
+    state: present

@@ -1,0 +1,49 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: ec2
+platforms:
+  - name: ujammy-pro-${BUILD_NUMBER}-${JOB_NAME}
+    region: us-west-2
+    image: "${MOLECULE_UJAMMY_PRO_AMI:-ami-058168290d30b9c52}"
+    vpc_subnet_id: subnet-07f71e1a3117a32f9
+    instance_type: t3.large
+    ssh_user: ubuntu
+    root_device_name: /dev/sda1
+    instance_tags:
+      iit-billing-tag: jenkins-psmdb-worker
+      job-name: ${JOB_NAME}
+provisioner:
+  name: ansible
+  log: True
+  playbooks:
+    create: ../../../../playbooks/create.yml
+    destroy: ../../../../playbooks/destroy.yml
+    prepare: ../../../../playbooks/prepare-ubuntu-pro.yml
+    cleanup: ../../playbooks/cleanup.yml
+    converge: ../../playbooks/playbook.yml
+verifier:
+  name: testinfra
+#  directory: ../../../fips-tests/
+  directory: ../../../tests/
+  additional_files_or_dirs:
+    - ../psmdb-custom/tests/
+  options:
+    verbose: true
+    s: true
+    junitxml: ubuntu-jammy-pro-report.xml
+scenario:
+  name: ubuntu-jammy-pro
+  destroy_sequence:
+    - destroy
+  cleanup_sequence:
+    - cleanup
+  test_sequence:
+    - destroy
+    - create
+    - prepare
+    - converge
+    - verify
+    - cleanup
+    - destroy

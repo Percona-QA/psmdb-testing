@@ -157,10 +157,33 @@
         deb http://archive.debian.org/debian-security bullseye-security main
         EOF
         apt-get update
-        DEBIAN_FRONTEND=noninteractive apt-get -y \
+        # grub-pc postinst exits when the recorded install disk is missing.
+        # Vagrant has no interactive debconf, so point it at the root disk.
+        grub_disk="$(findmnt -n -o SOURCE / | sed -E 's/p?[0-9]+$//')"
+        if [ ! -b "$grub_disk" ]; then
+          grub_disk=/dev/sda
+        fi
+        debconf-set-selections <<EOF
+        grub-pc grub-pc/install_devices multiselect $grub_disk
+        grub-pc grub-pc/install_devices_disks_changed multiselect $grub_disk
+        grub-pc grub-pc/install_devices_empty boolean false
+        EOF
+        export DEBIAN_FRONTEND=noninteractive
+        dpkg --configure -a || true
+        if ! apt-get -y \
           -o Dpkg::Options::=--force-confdef \
           -o Dpkg::Options::=--force-confold \
-          dist-upgrade
+          dist-upgrade; then
+          debconf-set-selections <<EOF
+        grub-pc grub-pc/install_devices_empty boolean true
+        grub-pc grub-pc/install_devices multiselect
+        EOF
+          dpkg --configure -a
+          apt-get -y \
+            -o Dpkg::Options::=--force-confdef \
+            -o Dpkg::Options::=--force-confold \
+            -f install
+        fi
       args:
         executable: /bin/bash
       when: ansible_distribution == "Debian" and ansible_distribution_major_version == "11"
@@ -203,9 +226,25 @@
     - name: fix repos for CentOS7
       shell:
        cmd: |
-        sed -i 's/mirror.centos.org/vault.centos.org/g' /etc/yum.repos.d/CentOS-Base.repo
-        sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/CentOS-Base.repo
-        sed -i 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/CentOS-Base.repo
+        for f in /etc/yum.repos.d/CentOS-*.repo; do
+          [ -f "$f" ] || continue
+          sed -i \
+            -e 's/mirror.centos.org/vault.centos.org/g' \
+            -e 's#https://vault.centos.org#http://vault.centos.org#g' \
+            "$f"
+        done
+        # CentOS-Base.repo is the only file whose sections stay active while
+        # baseurl is commented. Other CentOS-*.repo files comment the whole
+        # stanza, including the [section] line. Uncommenting only baseurl=
+        # there leaves a directive outside any section and yum rejects the file.
+        sed -i \
+          -e 's/^# *baseurl=/baseurl=/g' \
+          -e 's/^mirrorlist=/#mirrorlist=/g' \
+          /etc/yum.repos.d/CentOS-Base.repo
+        grep -q '^sslverify=' /etc/yum.conf || echo 'sslverify=false' >> /etc/yum.conf
+        yum clean all
+      args:
+        executable: /bin/bash
       when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7" and repo_file.stat.exists
 
     - name: install needed packages for running tests with yum

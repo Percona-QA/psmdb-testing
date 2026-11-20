@@ -1,0 +1,19 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  become_method: "{{ ansible_become_method | default('sudo') }}"
+  pre_tasks:
+    - name: Resolve local testing mode
+      set_fact:
+        psmdb_local_testing: "{{ lookup('env', 'LOCAL_TESTING') | default('true' if lookup('env', 'MOLECULE_DRIVER_NAME') == 'vagrant' else 'false', true) }}"
+        testing_branch: "{{ lookup('env', 'TESTING_BRANCH') | default('main', true) }}"
+  roles:
+    - role: '../../../roles/easyrsa'
+    - role: '../../psmdb-custom'
+    - role: '../../../roles/docker'
+    - role: '../../../roles/openldap'
+    - role: '../../../roles/kmip-vault'
+      when: (psmdb_local_testing | string | lower) != 'true'
+    - role: '../../../roles/kerberos-docker'
+    - role: '../../../roles/keycloak'
