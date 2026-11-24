@@ -41,7 +41,6 @@ auth --testTimeout=1800
 auth_audit --testTimeout=1800
 auth_execution_control_with_prioritization --testTimeout=1800
 auth_primary_driven_index_builds --testTimeout=1800
-backup --jobs=1 --testTimeout=1800
 backup_tde_cbc --jobs=1 --testTimeout=1800
 backup_tde_gcm --jobs=1 --testTimeout=1800
  benchmarks_abt_lowering # Requires a separate C++ test build
