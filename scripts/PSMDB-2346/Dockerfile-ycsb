@@ -1,0 +1,8 @@
+FROM maven
+RUN apt -y update && apt -y install python3 git && \
+    git clone https://github.com/mongodb-labs/YCSB.git && \
+    mkdir -p /ycsb && cp -r /YCSB/ycsb-mongodb/* /ycsb/ && \
+    cd /ycsb && mvn clean package && rm -rf /YCSB && \
+    apt clean all
+WORKDIR /ycsb
+ENTRYPOINT ["bin/ycsb"]
