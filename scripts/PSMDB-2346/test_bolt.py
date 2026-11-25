@@ -11,10 +11,10 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
-import docker
 import pytest
-
 from summarize import write_summary
+
+import docker
 
 RESULTS = Path(os.environ.get("YCSB_RESULTS_DIR", "/results"))
 PSMDB_IMAGE = os.environ.get("PSMDB_IMAGE", "perconalab/percona-server-mongodb:9.0.4")
@@ -77,9 +77,9 @@ def _host_results():
 def _nsenter(*args, check=True):
     result = subprocess.run(
         ["nsenter", "-t", "1", "-m", "--", *args],
+        check=False,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
     )
     if check and result.returncode != 0:
         raise RuntimeError(
@@ -97,9 +97,9 @@ def _copy_mongod(client, image, dest):
     container = client.containers.create(image)
     try:
         stream, _ = container.get_archive("/usr/bin/mongod")
-        archive = tarfile.open(fileobj=io.BytesIO(b"".join(stream)))
-        member = archive.extractfile(archive.getmembers()[0])
-        dest.write_bytes(member.read())
+        with tarfile.open(fileobj=io.BytesIO(b"".join(stream))) as archive:
+            member = archive.extractfile(archive.getmembers()[0])
+            dest.write_bytes(member.read())
     finally:
         container.remove()
 
@@ -115,12 +115,14 @@ def _inspect(client, name, image):
     _copy_mongod(client, image, binary)
     note = subprocess.run(
         ["readelf", "-p", ".note.bolt_info", str(binary)],
+        check=False,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
     sections = subprocess.run(
         ["readelf", "-S", "-W", str(binary)],
+        check=False,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -326,8 +328,8 @@ def _warmup(client):
     finally:
         try:
             (dest / "mongod.log").write_bytes(container.logs())
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 - saving the log must not hide the test failure
+            print(f"could not save mongod log: {exc}", flush=True)
         container.remove(force=True)
 
 
@@ -414,8 +416,8 @@ def mongo(request, bench):
     finally:
         try:
             (run_dir / "mongod.log").write_bytes(container.logs())
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 - saving the log must not hide the test failure
+            print(f"could not save mongod log: {exc}", flush=True)
         container.remove(force=True)
 
 
@@ -435,7 +437,7 @@ def test_ycsb_slot(mongo, bench):
             logs = _ycsb(bench["client"], phase, mongo.name)
         (run_dir / f"ycsb-{phase}.txt").write_bytes(logs)
         perf_text = local_outfile.read_text(errors="replace")
-        if "<not counted>" in perf_text and not re.search(r"^\s*[\d,]+\s+\S+", perf_text, re.M):
+        if "<not counted>" in perf_text and not re.search(r"^\s*[\d,]+\s+\S+", perf_text, re.MULTILINE):
             raise RuntimeError(f"perf attached to pid {pid} counted no events\n{perf_text}")
         if b"Throughput(ops/sec)" not in logs:
             raise RuntimeError(

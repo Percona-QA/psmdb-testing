@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-import os
-from pathlib import Path
 import json
+import os
 import re
+from pathlib import Path
 
 
 def write_summary(root):
