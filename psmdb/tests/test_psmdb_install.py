@@ -16,7 +16,7 @@ TOOLS_BINARIES = ['bsondump', 'mongodump', 'mongoexport', 'mongofiles', 'mongoim
 BINARIES = SERVER_BINARIES + TOOLS_BINARIES
 
 PSMDB_VER = os.environ.get("PSMDB_VERSION")
-TESTING_BRANCH = os.environ.get("TESTING_BRANCH")
+TESTING_BRANCH = os.environ.get("TESTING_BRANCH") or "main"
 MONGOSH_VER_RHEL7 = '2.1.5'
 
 def get_mongosh_ver():
@@ -80,13 +80,19 @@ def test_telemetry_service(host):
         telemetry = host.service("percona-telemetry-agent")
         assert telemetry.is_running
 
+def server_version_pattern(version):
+    if re.search(r'-\d{1,2}$', version):
+        return re.escape(version) + r'(?![\d.])'
+    return re.escape(version) + r'-\d{1,2}'
+
 @pytest.mark.parametrize("binary", SERVER_BINARIES)
 def test_binary_version(host, binary):
     result = host.run(f"{binary} --version")
     output = result.stdout
-    version_pattern = re.escape(PSMDB_VER) + r'-\d{1,2}'
+    version_pattern = server_version_pattern(PSMDB_VER)
+    expected = PSMDB_VER if re.search(r'-\d{1,2}$', PSMDB_VER) else f"{PSMDB_VER}-XX"
     assert re.search(version_pattern, output), \
-        f"Expected version pattern {PSMDB_VER}-XX not found in output: {output}"
+        f"Expected version pattern {expected} not found in output: {output}"
     expected_version = get_server_package_version(host)
     # mongod, mongos, and mongobridge have extra version field outside build info
     for line in output.split('\n'):

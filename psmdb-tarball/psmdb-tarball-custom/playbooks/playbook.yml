@@ -1,0 +1,83 @@
+---
+- name: Detect target CPU architecture
+  hosts: all
+  gather_facts: true
+  vars:
+    psmdb_tarball_arch_map:
+      x86_64: x86_64
+      amd64: x86_64
+      aarch64: aarch64
+      arm64: aarch64
+  tasks:
+    - name: Require a supported CPU architecture
+      assert:
+        that:
+          - ansible_architecture in psmdb_tarball_arch_map
+        fail_msg: "Unsupported CPU architecture {{ ansible_architecture }}. Supported values are x86_64, amd64, aarch64, and arm64."
+
+    - name: Record the tarball architecture for this CPU
+      set_fact:
+        psmdb_tarball_arch: "{{ psmdb_tarball_arch_map[ansible_architecture] }}"
+
+- name: Download packages to localhost
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Resolve custom tarball coordinates
+      set_fact:
+        full_ver: "{{ lookup('env', 'PSMDB_VERSION') }}"
+        custom_base_url: "{{ lookup('env', 'PSMDB_CUSTOM_BASE_URL') }}"
+        tools_ver: "{{ lookup('env', 'MONGO_TOOLS_VERSION') | default('100.20.1', true) }}"
+        tools_rev: "{{ lookup('env', 'MONGO_TOOLS_REVISION') | default('1', true) }}"
+        custom_tarball_arches: "{{ groups['all'] | map('extract', hostvars, 'psmdb_tarball_arch') | unique | list }}"
+        custom_tarball_oses:
+          - ol7
+          - ol8
+          - ol9
+          - ol10
+          - ol2023
+          - jammy
+          - focal
+          - noble
+          - resolute
+          - buster
+          - bullseye
+          - bookworm
+          - trixie
+
+    - name: Download custom PSMDB tarballs
+      get_url:
+        url: "{{ custom_base_url }}/percona-server-mongodb-{{ full_ver }}-{{ item.0 }}.{{ item.1 }}-minimal.tar.gz"
+        dest: "/tmp/percona-server-mongodb-{{ item.0 }}-{{ item.1 }}.tar.gz"
+        mode: "0644"
+      loop: "{{ custom_tarball_arches | product(custom_tarball_oses) | list }}"
+      ignore_errors: yes
+
+    - name: Download custom tools tarballs
+      get_url:
+        url: "{{ custom_base_url }}/percona-server-mongodb-tools-{{ tools_ver }}-{{ tools_rev }}-{{ item.0 }}.{{ item.1 }}.tar.gz"
+        dest: "/tmp/percona-server-mongodb-tools-{{ item.0 }}-{{ item.1 }}.tar.gz"
+        mode: "0644"
+      loop: "{{ custom_tarball_arches | product(custom_tarball_oses) | list }}"
+      ignore_errors: yes
+
+- name: Converge
+  hosts: all
+  become: true
+  become_method: sudo
+  gather_facts: yes
+  pre_tasks:
+    - name: Resolve local testing mode
+      set_fact:
+        psmdb_local_testing: "{{ lookup('env', 'LOCAL_TESTING') | default('true' if lookup('env', 'MOLECULE_DRIVER_NAME') == 'vagrant' else 'false', true) }}"
+        testing_branch: "{{ lookup('env', 'TESTING_BRANCH') | default('main', true) }}"
+  roles:
+    - role: '../../../roles/easyrsa'
+    - role: '../../psmdb-tarball-custom'
+    - role: '../../../roles/docker'
+    - role: '../../../roles/openldap'
+    - role: '../../../roles/kmip-vault'
+      when: (psmdb_local_testing | string | lower) != 'true'
+    - role: '../../../roles/kerberos-docker'
+    - role: '../../../roles/keycloak'

@@ -1,0 +1,56 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: vagrant
+  provision: true
+  provider:
+    name: virtualbox
+platforms:
+  - name: el9.6-fips
+    # 9.6 images live in the vault. Named 9.6 so Vagrant does not reuse another Rocky box.
+    box: rockylinux/9.6
+    box_url: https://dl.rockylinux.org/vault/rocky/9.6/images/x86_64/Rocky-9-Vagrant-Vbox-9.6-20250531.0.x86_64.box
+    memory: 4096
+    cpus: 2
+    instance_raw_config_args:
+      - "vm.provision 'shell', inline: 'if ! command -v python3 >/dev/null 2>&1; then dnf -y install python3; fi'"
+    provider_raw_config_args:
+      - "customize ['modifyvm', :id, '--natdnshostresolver1', 'on']"
+provisioner:
+  name: ansible
+  log: true
+  config_options:
+    defaults:
+      interpreter_python: auto_silent
+      host_key_checking: false
+  inventory:
+    group_vars:
+      all:
+        ansible_python_interpreter: /usr/bin/python3
+  playbooks:
+    prepare: ../../playbooks/prepare-el9-fips.yml
+    cleanup: ../../playbooks/cleanup.yml
+    converge: ../../playbooks/playbook.yml
+verifier:
+  name: testinfra
+  directory: ../../../fips-tests/
+  additional_files_or_dirs:
+    - ../psmdb-custom/tests/
+  options:
+    verbose: true
+    s: true
+    junitxml: el9.6-fips-vagrant-report.xml
+scenario:
+  name: el9.6-fips-vagrant
+  destroy_sequence:
+    - destroy
+  cleanup_sequence:
+    - cleanup
+  test_sequence:
+    - destroy
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy
