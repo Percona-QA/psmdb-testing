@@ -106,6 +106,22 @@ def arm_failpoint(cleanup: ExitStack, client: pymongo.MongoClient, name: str) ->
 def wait_for_failpoint(client: pymongo.MongoClient, name: str, count: int) -> None:
     client.admin.command("waitForFailPoint", name, timesEntered=count, maxTimeMS=10000)
 
+def extend_t139_election_timeouts(
+    primary: pymongo.MongoClient, secondaries: list[pymongo.MongoClient],
+) -> None:
+    # This fixture stalls majority acknowledgments, not the target primary.
+    config = primary.admin.command("replSetGetConfig")["config"]
+    config["version"] += 1
+    config["settings"]["electionTimeoutMillis"] = 60000
+    config["settings"]["heartbeatTimeoutSecs"] = 60
+    primary.admin.command("replSetReconfig", config, maxTimeMS=10000)
+
+    deadline = time.monotonic() + 10
+    while not all(secondary.admin.command("hello").get("setVersion") == config["version"]
+                  for secondary in secondaries):
+        assert time.monotonic() < deadline, "target secondaries did not install the test replica set config"
+        time.sleep(0.2)
+
 def has_pending_clone_ddl(client: pymongo.MongoClient) -> bool:
     # Clone can wait on the majority drop before it reaches the majority create.
     return bool(client.admin.command({
@@ -275,6 +291,7 @@ def test_majority_unreachable_during_clone_PML_T139(start_cluster, src_cluster, 
         ]
         for secondary in secondaries:
             assert secondary.admin.command("hello")["secondary"], "target node is not a secondary"
+        extend_t139_election_timeouts(primary, secondaries)
 
         with ExitStack() as source:
             source_primary = source.enter_context(node_client(src_cluster, src_cluster.primary_hosts[0]))
@@ -303,12 +320,16 @@ def test_majority_unreachable_during_clone_PML_T139(start_cluster, src_cluster, 
         deadline = time.monotonic() + outage_secs
         while time.monotonic() < deadline:
             time.sleep(1)
-            assert csync.role() == "ACTIVE", (
+            # Leave time for /status to return even if its HA lookup times out.
+            status_code, data = csync.request("GET", "/status")
+            assert status_code == 200 and isinstance(data, dict), (
+                f"could not read ACTIVE status during the outage: HTTP {status_code}, {data!r}")
+            assert data.get("role", "ACTIVE") == "ACTIVE", (
                 f"csync stepped down before the raised lease TTL expired: {csync.logs(tail=30)}")
-            data = csync.status(timeout=5).get("data") or {}
             assert data.get("state") == "running", f"run left the running state during the outage: {data}"
             assert (data.get("initialSync") or {}).get("cloneCompleted") is False, (
                 f"clone completed while majority was unreachable: {data}")
+        assert primary.admin.command("hello")["isWritablePrimary"], "target primary changed during the outage"
         assert has_pending_clone_ddl(primary), "majority clone DDL stopped waiting before target recovery"
 
     assert csync.wait_for_repl_stage(timeout=180), "run didn't continue once the secondaries caught up"
