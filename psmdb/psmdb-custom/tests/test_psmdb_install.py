@@ -23,6 +23,8 @@ def local_testing():
 MONGO_FEATURES = ['MemoryEngine', 'HotBackup', 'BackupCursorAggregationStage', 'BackupCursorExtendAggregationStage', 'AWSIAM', 'Kerberos', 'LDAP', 'TDE', 'FIPSMode', 'Auditing', 'ProfilingRateLimit', 'LogRedaction', 'ngram']
 if version.parse(PSMDB_VER) >= version.parse("7.0.0"):
     MONGO_FEATURES.extend(['OIDC', 'FCBIS'])
+if version.parse(PSMDB_VER) >= version.parse("9.0.0"):
+    MONGO_FEATURES.remove('HotBackup')
 
 def get_default_conf(node):
     with node.sudo():
@@ -76,6 +78,9 @@ def check_db_start(node):
 
 def start_mongod(node,check=True):
     with node.sudo():
+        # Encryption tests restart mongod more often than systemd's default
+        # StartLimitBurst (5 starts in 10s). Clear that counter first.
+        node.run('systemctl reset-failed mongod')
         result = node.run('systemctl start mongod')
         if check:
             if result.rc != 0:
@@ -116,22 +121,25 @@ def check_hotbackup(node):
     node.check_output('mongo --quiet --eval "for(i=1; i <= 1000; i++) { db.series.insert( { id: i, name: \'series\'+i })}"')
     result = node.check_output('mongo --quiet --eval "db.series.countDocuments({})"')
     assert "1000" in result
-    with node.sudo():
-        node.check_output('mkdir -p /tmp/backup')
-        node.check_output('chown -R mongod /tmp/backup')
-    node.check_output('mongo admin --quiet --eval "db.runCommand({createBackup: 1, backupDir: \'/tmp/backup\'})"')
-    stop_mongod(node)
-    erase_data(node)
-    with node.sudo():
-        if node.system_info.distribution == "debian" or node.system_info.distribution == "ubuntu":
-            node.check_output('cp -r /tmp/backup/* /var/lib/mongodb/')
-            node.check_output('chown -R mongod /var/lib/mongodb')
-        else:
-            node.check_output('cp -r /tmp/backup/* /var/lib/mongo/')
-            node.check_output('chown -R mongod /var/lib/mongo')
-    start_mongod(node)
-    result = node.check_output('mongo --quiet --eval "db.series.countDocuments({})"')
-    assert "1000" in result
+    if version.parse(PSMDB_VER) < version.parse("9.0.0"):
+        with node.sudo():
+            node.check_output('mkdir -p /tmp/backup')
+            node.check_output('chown -R mongod /tmp/backup')
+        node.check_output('mongo admin --quiet --eval "db.runCommand({createBackup: 1, backupDir: \'/tmp/backup\'})"')
+        stop_mongod(node)
+        erase_data(node)
+        with node.sudo():
+            if node.system_info.distribution == "debian" or node.system_info.distribution == "ubuntu":
+                node.check_output('cp -r /tmp/backup/* /var/lib/mongodb/')
+                node.check_output('chown -R mongod /var/lib/mongodb')
+            else:
+                node.check_output('cp -r /tmp/backup/* /var/lib/mongo/')
+                node.check_output('chown -R mongod /var/lib/mongo')
+        start_mongod(node)
+        result = node.check_output('mongo --quiet --eval "db.series.countDocuments({})"')
+        assert "1000" in result
+    else:
+        print("Skipping createBackup: the command was removed in PSMDB 9.0")
 
 def test_version_features(host):
     result = host.run("/usr/bin/mongod --version")
