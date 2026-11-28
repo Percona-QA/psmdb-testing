@@ -1,922 +1,471 @@
-aggregation|wiredTiger
-aggregation_auth|wiredTiger
- aggregation_column_store_index_passthrough|wiredTiger
-aggregation_disabled_optimization|wiredTiger
- aggregation_ese|wiredTiger
- aggregation_ese_gcm|wiredTiger
- aggregation_expression_multiversion_fuzzer_last_continuous|wiredTiger
- aggregation_expression_multiversion_fuzzer_last_lts|wiredTiger
-aggregation_facet_unwind_passthrough|wiredTiger
-aggregation_mongos_passthrough|wiredTiger
- aggregation_multiversion_fuzzer_last_continuous|wiredTiger
- aggregation_multiversion_fuzzer_last_lts|wiredTiger
-aggregation_one_shard_sharded_collections|wiredTiger
-aggregation_read_concern_majority_passthrough|wiredTiger
-aggregation_repeat_queries_multiplan_single_solutions|wiredTiger
-aggregation_secondary_reads|wiredTiger
-aggregation_sharded_collections_causally_consistent_passthrough|wiredTiger
-aggregation_sharded_collections_passthrough|wiredTiger
-aggregation_tde_cbc|wiredTiger
-aggregation_tde_gcm|wiredTiger
-aggregation_unsplittable_collections_on_random_shard_passthrough|wiredTiger
+aggregation --jobs=1|wiredTiger
+aggregation --jobs=1|inMemory
+aggregation_auth --jobs=1|wiredTiger
+ aggregation_column_store_index_passthrough|wiredTiger # Implicit columnstore-index creation requires default-off featureFlagColumnstoreIndexes, not enabled by this suite
+aggregation_disabled_optimization --jobs=1|wiredTiger
+ aggregation_ese|wiredTiger # Requires the absent upstream encryption helper/key src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
+ aggregation_ese_gcm|wiredTiger # Requires the absent upstream encryption helper/key src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
+ aggregation_expression_multiversion_fuzzer_deterministic_last_lts|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+aggregation_facet_unwind_passthrough --jobs=1|wiredTiger
+aggregation_mongos_passthrough --jobs=1|wiredTiger
+ aggregation_multiversion_fuzzer_deterministic_last_lts|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+aggregation_one_shard_sharded_collections --jobs=1|wiredTiger
+aggregation_read_concern_majority_passthrough --jobs=1|wiredTiger
+aggregation_repeat_queries_multiplan_single_solutions --jobs=1|wiredTiger
+aggregation_secondary_reads --jobs=1|wiredTiger
+aggregation_sharded_collections_causally_consistent_passthrough --jobs=1|wiredTiger
+aggregation_sharded_collections_passthrough --jobs=1|wiredTiger
+aggregation_tde_cbc --jobs=1|wiredTiger
+aggregation_tde_gcm --jobs=1|wiredTiger
+aggregation_unsplittable_collections_on_random_shard_passthrough --jobs=1|wiredTiger
 aggregation_unsplittable_collections_on_random_shard_passthrough_with_config_transitions|wiredTiger
-analyze_shard_key_jscore_passthrough|wiredTiger
+analyze_shard_key_jscore_passthrough --jobs=1|wiredTiger
 audit --jobs=1|wiredTiger
+audit --jobs=1|inMemory
 auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 auth_audit|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
-backup|wiredTiger
-backup_tde_cbc|wiredTiger
-backup_tde_gcm|wiredTiger
-benchmarks_abt|wiredTiger
-benchmarks_abt_lowering|wiredTiger
-benchmarks_abt_path_lowering|wiredTiger
-benchmarks_bsoncolumn|wiredTiger
-benchmarks_expression|wiredTiger
-benchmarks_expression_sbe|wiredTiger
-benchmarks_first_half|wiredTiger
-benchmarks_namespace_string|wiredTiger
-benchmarks_query|wiredTiger
-benchmarks_replication|wiredTiger
-benchmarks_second_half|wiredTiger
-benchmarks_sep|wiredTiger
-benchmarks_sharding|wiredTiger
-benchmarks_streams|wiredTiger
- buildscripts_test|wiredTiger
-bulk_write_causally_consistent_jscore_passthrough|wiredTiger
+backup --jobs=1|wiredTiger
+backup_tde_cbc --jobs=1|wiredTiger
+backup_tde_gcm --jobs=1|wiredTiger
+ benchmarks_abt|wiredTiger # Requires a separate C++ benchmark build
+ benchmarks_abt_lowering --jobs=1|wiredTiger # Requires a separate C++ benchmark build
+ benchmarks_abt_path_lowering|wiredTiger # Requires a separate C++ benchmark build
+ benchmarks_bsoncolumn --jobs=1|wiredTiger # Requires a separate C++ benchmark build
+ benchmarks_expression --jobs=1|wiredTiger # Requires a separate C++ benchmark build
+ benchmarks_expression_sbe --jobs=1|wiredTiger # Requires a separate C++ benchmark build
+ benchmarks_first_half --jobs=1|wiredTiger # Requires a separate C++ benchmark build
+ benchmarks_namespace_string --jobs=1|wiredTiger # Requires a separate C++ benchmark build
+ benchmarks_query --jobs=1|wiredTiger # Requires a separate C++ benchmark build
+ benchmarks_replication --jobs=1|wiredTiger # Requires a separate C++ benchmark build
+ benchmarks_second_half --jobs=1|wiredTiger # Requires a separate C++ benchmark build
+ benchmarks_sep --jobs=1|wiredTiger # Requires a separate C++ benchmark build
+ benchmarks_sharding --jobs=1|wiredTiger # Requires a separate C++ benchmark build
+ benchmarks_streams --jobs=1|wiredTiger # Requires a separate C++ benchmark build
+ buildscripts_test --jobs=1|wiredTiger # Python build/resmoke infrastructure self-tests; outside server binary regression scope
+bulk_write_causally_consistent_jscore_passthrough --jobs=1|wiredTiger
 bulk_write_multi_op_causally_consistent_jscore_passthrough|wiredTiger
 bulk_write_multi_op_sharded_collections_jscore_passthrough|wiredTiger
-bulk_write_replica_sets_jscore_passthrough|wiredTiger
+bulk_write_replica_sets_jscore_passthrough --jobs=1|wiredTiger
 bulk_write_replica_sets_kill_stepdown_terminate_jscore_passthrough|wiredTiger
 bulk_write_replica_sets_multi_stmt_txn_jscore_passthrough|wiredTiger
 bulk_write_replica_sets_multi_stmt_txn_kill_stepdown_terminate_jscore_passthrough|wiredTiger
-bulk_write_sharded_causally_consistent_jscore_passthrough|wiredTiger
-bulk_write_sharded_collections_jscore_passthrough|wiredTiger
+bulk_write_sharded_causally_consistent_jscore_passthrough --jobs=1|wiredTiger
+bulk_write_sharded_collections_jscore_passthrough --jobs=1|wiredTiger
 bulk_write_sharded_multi_stmt_txn_jscore_passthrough|wiredTiger
-bulk_write_targeted_override|wiredTiger
+bulk_write_targeted_override --jobs=1|wiredTiger
 causally_consistent_hedged_reads_jscore_passthrough|wiredTiger
-causally_consistent_jscore_passthrough|wiredTiger
-causally_consistent_jscore_passthrough_auth|wiredTiger
+causally_consistent_jscore_passthrough --jobs=1|wiredTiger
+causally_consistent_jscore_passthrough_auth --jobs=1|wiredTiger
 causally_consistent_jscore_txns_passthrough|wiredTiger
-causally_consistent_read_concern_snapshot_passthrough|wiredTiger
-change_streams|wiredTiger
+causally_consistent_read_concern_snapshot_passthrough --jobs=1|wiredTiger
+change_streams --jobs=1|wiredTiger
 change_streams_change_collection_replica_sets_kill_secondary_jscore_passthrough|wiredTiger
 change_streams_change_collection_replica_sets_stepdown_primary_jscore_passthrough|wiredTiger
 change_streams_downgrade|wiredTiger
- change_streams_downgrade_last_continuous_new_old_old_new|wiredTiger
- change_streams_downgrade_last_lts_new_old_old_new|wiredTiger
- change_streams_last_continuous_new_new_old|wiredTiger
- change_streams_last_continuous_new_old_new|wiredTiger
- change_streams_last_continuous_old_new_new|wiredTiger
- change_streams_last_lts_new_new_old|wiredTiger
- change_streams_last_lts_new_old_new|wiredTiger
- change_streams_last_lts_old_new_new|wiredTiger
-change_streams_mongos_passthrough|wiredTiger
-change_streams_mongos_sessions_passthrough|wiredTiger
+ change_streams_downgrade_last_continuous_new_old_old_new|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+change_streams_downgrade_last_lts_new_old_old_new --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,change_streams_downgrade_last_lts_new_old_old_new_backport_required_multiversion,change_streams_downgrade_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+ change_streams_last_continuous_new_new_old --jobs=1|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ change_streams_last_continuous_new_old_new --jobs=1|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ change_streams_last_continuous_old_new_new --jobs=1|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+change_streams_last_lts_new_new_old --jobs=1 --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,change_streams_last_lts_new_new_old_backport_required_multiversion,change_streams_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+change_streams_last_lts_new_old_new --jobs=1 --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,change_streams_last_lts_new_old_new_backport_required_multiversion,change_streams_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+change_streams_last_lts_old_new_new --jobs=1 --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,change_streams_last_lts_old_new_new_backport_required_multiversion,change_streams_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+change_streams_mongos_passthrough --jobs=1|wiredTiger
+change_streams_mongos_sessions_passthrough --jobs=1|wiredTiger
 change_streams_multi_stmt_txn_mongos_passthrough|wiredTiger
 change_streams_multi_stmt_txn_passthrough|wiredTiger
-change_streams_multi_stmt_txn_passthrough_with_replica_set_endpoint|wiredTiger
+ change_streams_multi_stmt_txn_passthrough_with_replica_set_endpoint|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
 change_streams_multi_stmt_txn_sharded_collections_passthrough|wiredTiger
- change_streams_multitenant_passthrough|wiredTiger
- change_streams_multitenant_sharded_collections_passthrough|wiredTiger
-change_streams_per_shard_cursor_passthrough|wiredTiger
-change_streams_pre_images_replica_sets_kill_secondary_jscore_passthrough|wiredTiger
+ change_streams_multitenant_passthrough|wiredTiger # Requires Atlas/serverless multitenancy and tenant-aware routing; outside the standard non-Atlas PSMDB regression environment
+ change_streams_multitenant_sharded_collections_passthrough|wiredTiger # Requires Atlas/serverless multitenancy and tenant-aware routing; outside the standard non-Atlas PSMDB regression environment
+change_streams_per_shard_cursor_passthrough --jobs=1|wiredTiger
+change_streams_pre_images_replica_sets_kill_secondary_jscore_passthrough --jobs=1|wiredTiger
 change_streams_pre_images_replica_sets_stepdown_primary_jscore_passthrough|wiredTiger
-change_streams_secondary_reads|wiredTiger
-change_streams_secondary_reads_sharded_collections|wiredTiger
-change_streams_sharded_collections_passthrough|wiredTiger
- change_streams_sharded_collections_passthrough_last_continuous_new_old_old_new|wiredTiger
- change_streams_sharded_collections_passthrough_last_lts_new_old_old_new|wiredTiger
-change_streams_whole_cluster_mongos_passthrough|wiredTiger
-change_streams_whole_cluster_passthrough|wiredTiger
-change_streams_whole_cluster_passthrough_with_replica_set_endpoint|wiredTiger
-change_streams_whole_cluster_secondary_reads_passthrough|wiredTiger
-change_streams_whole_cluster_secondary_reads_sharded_collections|wiredTiger
-change_streams_whole_cluster_sharded_collections_passthrough|wiredTiger
-change_streams_whole_db_mongos_passthrough|wiredTiger
-change_streams_whole_db_passthrough|wiredTiger
-change_streams_whole_db_passthrough_with_replica_set_endpoint|wiredTiger
-change_streams_whole_db_secondary_reads_passthrough|wiredTiger
-change_streams_whole_db_secondary_reads_sharded_collections|wiredTiger
-change_streams_whole_db_sharded_collections_passthrough|wiredTiger
-change_streams_with_replica_set_endpoint|wiredTiger
-client_encrypt|wiredTiger
-clustered_collection_passthrough|wiredTiger
-concurrency|wiredTiger
- concurrency_compute_mode|wiredTiger
-concurrency_metrics|wiredTiger
- concurrency_multitenancy_replication_with_atlas_proxy|wiredTiger
-concurrency_replication|wiredTiger
-concurrency_replication_bulk_write|wiredTiger
-concurrency_replication_bulk_write_with_replica_set_endpoint|wiredTiger
-concurrency_replication_causal_consistency|wiredTiger
-concurrency_replication_causal_consistency_with_replica_set_endpoint|wiredTiger
- concurrency_replication_for_backup_restore|wiredTiger
- concurrency_replication_for_export_import|wiredTiger
- concurrency_replication_last_continuous_new_new_old|wiredTiger
- concurrency_replication_last_continuous_new_old_new|wiredTiger
- concurrency_replication_last_continuous_old_new_new|wiredTiger
- concurrency_replication_last_lts_new_new_old|wiredTiger
- concurrency_replication_last_lts_new_old_new|wiredTiger
- concurrency_replication_last_lts_old_new_new|wiredTiger
-concurrency_replication_metrics|wiredTiger
-concurrency_replication_metrics_with_replica_set_endpoint|wiredTiger
-concurrency_replication_multi_stmt_txn|wiredTiger
-concurrency_replication_multi_stmt_txn_with_replica_set_endpoint|wiredTiger
-concurrency_replication_wiredtiger_cursor_sweeps|wiredTiger
-concurrency_replication_wiredtiger_cursor_sweeps_with_replica_set_endpoint|wiredTiger
-concurrency_replication_with_replica_set_endpoint|wiredTiger
-concurrency_sharded_causal_consistency|wiredTiger
-concurrency_sharded_causal_consistency_and_balancer|wiredTiger
-concurrency_sharded_clusterwide_ops_add_remove_shards|wiredTiger
-concurrency_sharded_initial_sync|wiredTiger
-concurrency_sharded_kill_primary_with_balancer|wiredTiger
-concurrency_sharded_kill_primary_with_balancer_and_config_transitions|wiredTiger
-concurrency_sharded_local_read_write_multi_stmt_txn|wiredTiger
-concurrency_sharded_local_read_write_multi_stmt_txn_with_balancer|wiredTiger
-concurrency_sharded_multi_stmt_txn|wiredTiger
-concurrency_sharded_multi_stmt_txn_kill_primary|wiredTiger
-concurrency_sharded_multi_stmt_txn_terminate_primary|wiredTiger
-concurrency_sharded_multi_stmt_txn_with_balancer|wiredTiger
-concurrency_sharded_multi_stmt_txn_with_balancer_and_config_transitions|wiredTiger
-concurrency_sharded_multi_stmt_txn_with_stepdowns|wiredTiger
-concurrency_sharded_replication|wiredTiger
-concurrency_sharded_replication_bulk_write|wiredTiger
- concurrency_sharded_replication_last_continuous_new_old_old_new|wiredTiger
- concurrency_sharded_replication_last_lts_new_old_old_new|wiredTiger
-concurrency_sharded_replication_with_balancer|wiredTiger
-concurrency_sharded_replication_with_balancer_and_config_transitions|wiredTiger
- concurrency_sharded_replication_with_balancer_and_config_transitions_and_add_remove_shard|wiredTiger
-concurrency_sharded_terminate_primary_with_balancer|wiredTiger
-concurrency_sharded_with_auto_bootstrap|wiredTiger
-concurrency_sharded_with_balancer_and_auto_bootstrap|wiredTiger
-concurrency_sharded_with_stepdowns  --jobs=1|wiredTiger
-concurrency_sharded_with_stepdowns_and_balancer|wiredTiger
-concurrency_sharded_with_stepdowns_and_balancer_and_config_transitions|wiredTiger
-concurrency_simultaneous|wiredTiger
-concurrency_simultaneous_replication|wiredTiger
-concurrency_simultaneous_replication_wiredtiger_cursor_sweeps|wiredTiger
-core|wiredTiger
-core_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
- core_column_store_indexes|wiredTiger
- core_ese|wiredTiger
- core_ese_gcm|wiredTiger
-core_heap_profiling|wiredTiger
- core_min_batch_repeat_queries_multiplan_single_solutions_ese_gsm|wiredTiger
-core_minimum_batch_size --excludeWithAnyTags=requires_fcv_70|wiredTiger
-core_repeat_queries|wiredTiger
-core_tde_cbc|wiredTiger
-core_tde_gcm|wiredTiger
+change_streams_secondary_reads --jobs=1|wiredTiger
+change_streams_secondary_reads_sharded_collections --jobs=1|wiredTiger
+change_streams_sharded_collections_passthrough --jobs=1|wiredTiger
+ change_streams_sharded_collections_passthrough_last_continuous_new_old_old_new --jobs=1|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+change_streams_sharded_collections_passthrough_last_lts_new_old_old_new --jobs=1 --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,change_streams_sharded_collections_passthrough_last_lts_new_old_old_new_backport_required_multiversion,change_streams_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+change_streams_whole_cluster_mongos_passthrough --jobs=1|wiredTiger
+change_streams_whole_cluster_passthrough --jobs=1|wiredTiger
+ change_streams_whole_cluster_passthrough_with_replica_set_endpoint|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
+change_streams_whole_cluster_secondary_reads_passthrough --jobs=1|wiredTiger
+change_streams_whole_cluster_secondary_reads_sharded_collections --jobs=1|wiredTiger
+change_streams_whole_cluster_sharded_collections_passthrough --jobs=1|wiredTiger
+change_streams_whole_db_mongos_passthrough --jobs=1|wiredTiger
+change_streams_whole_db_passthrough --jobs=1|wiredTiger
+ change_streams_whole_db_passthrough_with_replica_set_endpoint|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
+change_streams_whole_db_secondary_reads_passthrough --jobs=1|wiredTiger
+change_streams_whole_db_secondary_reads_sharded_collections --jobs=1|wiredTiger
+change_streams_whole_db_sharded_collections_passthrough --jobs=1|wiredTiger
+ change_streams_with_replica_set_endpoint|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
+client_encrypt --jobs=1|wiredTiger
+clustered_collection_passthrough --jobs=1|wiredTiger
+concurrency --jobs=1|wiredTiger
+ concurrency_compute_mode --jobs=1|wiredTiger # No tests: selector.roots is empty in the current v8.0 suite
+concurrency_metrics --jobs=1|wiredTiger
+ concurrency_multitenancy_replication_with_atlas_proxy --jobs=1|wiredTiger # Requires Atlas/serverless multitenancy and tenant-aware routing; outside the standard non-Atlas PSMDB regression environment
+concurrency_replication --jobs=1|wiredTiger
+concurrency_replication_bulk_write --jobs=1|wiredTiger
+ concurrency_replication_bulk_write_with_replica_set_endpoint --jobs=1|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
+concurrency_replication_causal_consistency --jobs=1|wiredTiger
+ concurrency_replication_causal_consistency_with_replica_set_endpoint --jobs=1|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
+ concurrency_replication_for_backup_restore --jobs=1|wiredTiger # ExternalFixture helper requires an existing cluster and --shellConnString/--shellPort; not an independently provisioned regression suite
+ concurrency_replication_for_export_import --jobs=1|wiredTiger # ExternalFixture helper requires an existing cluster and --shellConnString/--shellPort; not an independently provisioned regression suite
+ concurrency_replication_last_continuous_new_new_old --jobs=1|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ concurrency_replication_last_continuous_new_old_new --jobs=1|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ concurrency_replication_last_continuous_old_new_new --jobs=1|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+concurrency_replication_last_lts_new_new_old --jobs=1 --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,concurrency_replication_last_lts_new_new_old_backport_required_multiversion,concurrency_replication_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+concurrency_replication_last_lts_new_old_new --jobs=1 --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,concurrency_replication_last_lts_new_old_new_backport_required_multiversion,concurrency_replication_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+concurrency_replication_last_lts_old_new_new --jobs=1 --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,concurrency_replication_last_lts_old_new_new_backport_required_multiversion,concurrency_replication_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+concurrency_replication_metrics --jobs=1|wiredTiger
+ concurrency_replication_metrics_with_replica_set_endpoint --jobs=1|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
+concurrency_replication_multi_stmt_txn --jobs=1|wiredTiger
+ concurrency_replication_multi_stmt_txn_with_replica_set_endpoint --jobs=1|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
+concurrency_replication_wiredtiger_cursor_sweeps --jobs=1|wiredTiger
+ concurrency_replication_wiredtiger_cursor_sweeps_with_replica_set_endpoint --jobs=1|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
+ concurrency_replication_with_replica_set_endpoint --jobs=1|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
+concurrency_sharded_causal_consistency --jobs=1|wiredTiger
+concurrency_sharded_causal_consistency_and_balancer --jobs=1|wiredTiger
+concurrency_sharded_clusterwide_ops_add_remove_shards --jobs=1|wiredTiger
+concurrency_sharded_initial_sync --jobs=1|wiredTiger
+concurrency_sharded_kill_primary_with_balancer --jobs=1|wiredTiger
+concurrency_sharded_kill_primary_with_balancer_and_config_transitions --jobs=1|wiredTiger
+concurrency_sharded_local_read_write_multi_stmt_txn --jobs=1|wiredTiger
+concurrency_sharded_local_read_write_multi_stmt_txn_with_balancer --jobs=1|wiredTiger
+concurrency_sharded_multi_stmt_txn --jobs=1|wiredTiger
+concurrency_sharded_multi_stmt_txn_kill_primary --jobs=1|wiredTiger
+concurrency_sharded_multi_stmt_txn_terminate_primary --jobs=1|wiredTiger
+concurrency_sharded_multi_stmt_txn_with_balancer --jobs=1|wiredTiger
+concurrency_sharded_multi_stmt_txn_with_balancer_and_config_transitions --jobs=1|wiredTiger
+concurrency_sharded_multi_stmt_txn_with_stepdowns --jobs=1|wiredTiger
+concurrency_sharded_replication --jobs=1|wiredTiger
+concurrency_sharded_replication_bulk_write --jobs=1|wiredTiger
+ concurrency_sharded_replication_last_continuous_new_old_old_new --jobs=1|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+concurrency_sharded_replication_last_lts_new_old_old_new --jobs=1 --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,concurrency_sharded_replication_last_lts_new_old_old_new_backport_required_multiversion,concurrency_sharded_replication_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml --extraExcludeTest=jstests/concurrency/fsm_workloads/schema_validator_with_expr_variables.js
+concurrency_sharded_replication_with_balancer --jobs=1|wiredTiger
+concurrency_sharded_replication_with_balancer_and_config_transitions --jobs=1|wiredTiger
+ concurrency_sharded_replication_with_balancer_and_config_transitions_and_add_remove_shard --jobs=1|wiredTiger # Reproduced FSM/background-hook timeout on 9.0: acknowledgement waits 90s but ContinuousAddRemoveShard removal took 134.95s; the same synchronization protocol is used in 8.0
+concurrency_sharded_terminate_primary_with_balancer --jobs=1|wiredTiger
+concurrency_sharded_with_auto_bootstrap --jobs=1|wiredTiger
+concurrency_sharded_with_balancer_and_auto_bootstrap --jobs=1|wiredTiger
+concurrency_sharded_with_stepdowns --jobs=1|wiredTiger
+concurrency_sharded_with_stepdowns_and_balancer --jobs=1|wiredTiger
+concurrency_sharded_with_stepdowns_and_balancer_and_config_transitions --jobs=1|wiredTiger
+concurrency_simultaneous --jobs=1|wiredTiger
+concurrency_simultaneous_replication --jobs=1|wiredTiger
+concurrency_simultaneous_replication_wiredtiger_cursor_sweeps --jobs=1|wiredTiger
+core --jobs=1|wiredTiger
+core --jobs=1|inMemory
+core_auth --jobs=1|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+core_auth --jobs=1|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+ core_column_store_indexes|wiredTiger # Implicit columnstore-index creation requires default-off featureFlagColumnstoreIndexes, not enabled by this suite
+ core_ese|wiredTiger # Requires the absent upstream encryption helper/key src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
+ core_ese_gcm|wiredTiger # Requires the absent upstream encryption helper/key src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
+core_heap_profiling --jobs=1|wiredTiger
+ core_min_batch_repeat_queries_multiplan_single_solutions_ese_gsm|wiredTiger # Requires the absent upstream encryption helper/key src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
+core_minimum_batch_size --excludeWithAnyTags=requires_fcv_70 --jobs=1|wiredTiger
+core_repeat_queries --jobs=1|wiredTiger
+core_tde_cbc --jobs=1|wiredTiger
+core_tde_gcm --jobs=1|wiredTiger
 core_txns|wiredTiger
 core_txns_large_txns_format|wiredTiger
-core_wildcard_indexes|wiredTiger
+core_wildcard_indexes --jobs=1|wiredTiger
 cst_jscore_passthrough --excludeWithAnyTags=requires_fcv_80,requires_fcv_70|wiredTiger
 cursor_hints_to_query_settings_replset_passthrough|wiredTiger
 cursor_hints_to_query_settings_sharded_collections_passthrough|wiredTiger
 cursor_hints_to_query_settings_unsharded_collections_passthrough|wiredTiger
-cwrwc_passthrough|wiredTiger
-cwrwc_rc_majority_passthrough|wiredTiger
- cwrwc_wc_majority_passthrough|wiredTiger
+cwrwc_passthrough --jobs=1|wiredTiger
+cwrwc_rc_majority_passthrough --jobs=1|wiredTiger
+ cwrwc_wc_majority_passthrough --jobs=1|wiredTiger # Disabled upstream: secondary reads after majority writes require causal consistency; the passthrough makes an invalid read-visibility assumption
 decimal|wiredTiger
-disk_wiredtiger|wiredTiger
- ese|wiredTiger
+disk_wiredtiger --jobs=1|wiredTiger
+ ese|wiredTiger # No tests: selector roots are absent: src/mongo/db/modules/*/jstests/encryptdb/*.js
 external_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
- external_auth_aws|wiredTiger
- external_auth_oidc|wiredTiger
- external_auth_oidc_azure|wiredTiger
- external_auth_oidc_gcp|wiredTiger
+ external_auth_aws|wiredTiger # No tests: selector roots are absent: src/mongo/db/modules/enterprise/jstests/external_auth_aws/*.js
+ external_auth_oidc|wiredTiger # No tests: selector roots are absent: src/mongo/db/modules/enterprise/jstests/external_auth_oidc/*.js
+ external_auth_oidc_azure|wiredTiger # No tests: selector roots are absent: src/mongo/db/modules/enterprise/jstests/external_auth_oidc_azure/*.js
+ external_auth_oidc_gcp|wiredTiger # No tests: selector roots are absent: src/mongo/db/modules/enterprise/jstests/external_auth_oidc_gcp/*.js
 failpoints|wiredTiger
 failpoints_auth|wiredTiger
 fcv_upgrade_downgrade_replica_sets_jscore_passthrough|wiredTiger
 fcv_upgrade_downgrade_sharded_collections_jscore_passthrough|wiredTiger
 fcv_upgrade_downgrade_sharding_jscore_passthrough|wiredTiger
- feature_flag_multiversion|wiredTiger
- fle|wiredTiger
+ feature_flag_multiversion|wiredTiger # Its only test requires default-off featureFlagToaster and featureFlagSpoon; this is feature-flag harness validation
+ fle --jobs=1|wiredTiger # No tests: selector roots are absent: src/mongo/db/modules/*/jstests/fle/*.js
 fle2|wiredTiger
 fle2_high_cardinality|wiredTiger
- fle2_query_analysis|wiredTiger
+ fle2_query_analysis|wiredTiger # No tests: selector roots are absent: src/mongo/db/modules/*/jstests/fle/*.js, src/mongo/db/modules/*/jstests/fle2_query_analysis/*.js
 fle2_sharding|wiredTiger
 fle2_sharding_high_cardinality|wiredTiger
- generational_fuzzer|wiredTiger
- generational_fuzzer_replication|wiredTiger
- generational_fuzzer_replication_last_continuous|wiredTiger
- generational_fuzzer_replication_last_lts|wiredTiger
+ generational_fuzzer --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ generational_fuzzer_replication|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ generational_fuzzer_replication_last_continuous|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ generational_fuzzer_replication_last_lts|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
 implicit_query_settings_fallback|wiredTiger
 index_filters_to_query_settings|wiredTiger
- initial_sync_fuzzer|wiredTiger
- initial_sync_fuzzer_last_continuous|wiredTiger
- initial_sync_fuzzer_last_lts|wiredTiger
+ initial_sync_fuzzer --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ initial_sync_fuzzer_last_continuous|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ initial_sync_fuzzer_last_lts|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
 integration_tests_replset|wiredTiger
 integration_tests_replset_ssl_auth|wiredTiger
 integration_tests_sharded|wiredTiger
 integration_tests_standalone|wiredTiger
 integration_tests_standalone_audit|wiredTiger
-json_schema|wiredTiger
- jstestfuzz|wiredTiger
- jstestfuzz_interrupt|wiredTiger
- jstestfuzz_interrupt_replication|wiredTiger
- jstestfuzz_replication|wiredTiger
- jstestfuzz_replication_continuous_stepdown|wiredTiger
- jstestfuzz_replication_fcbis|wiredTiger
- jstestfuzz_replication_initsync|wiredTiger
- jstestfuzz_replication_last_continuous_new_new_old|wiredTiger
- jstestfuzz_replication_last_continuous_new_old_new|wiredTiger
- jstestfuzz_replication_last_continuous_old_new_new|wiredTiger
- jstestfuzz_replication_last_lts_new_new_old|wiredTiger
- jstestfuzz_replication_last_lts_new_old_new|wiredTiger
- jstestfuzz_replication_last_lts_old_new_new|wiredTiger
- jstestfuzz_replication_session|wiredTiger
- jstestfuzz_replication_with_replica_set_endpoint|wiredTiger
- jstestfuzz_replication_write_conflicts|wiredTiger
- jstestfuzz_sharded|wiredTiger
- jstestfuzz_sharded_causal_consistency|wiredTiger
- jstestfuzz_sharded_continuous_stepdown|wiredTiger
- jstestfuzz_sharded_last_continuous_new_old_old_new|wiredTiger
- jstestfuzz_sharded_last_lts_new_old_old_new|wiredTiger
- jstestfuzz_sharded_session|wiredTiger
- jstestfuzz_sharded_with_config_transitions|wiredTiger
- jstestfuzz_sharded_with_replica_set_endpoint|wiredTiger
+json_schema --jobs=1|wiredTiger
+ jstestfuzz --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_interrupt --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_interrupt_replication --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_replication --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_replication_continuous_stepdown|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_replication_fcbis --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_replication_initsync --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_replication_last_continuous_new_new_old|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ jstestfuzz_replication_last_continuous_new_old_new|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ jstestfuzz_replication_last_continuous_old_new_new|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ jstestfuzz_replication_last_lts_new_new_old|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_replication_last_lts_new_old_new|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_replication_last_lts_old_new_new|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_replication_session|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_replication_with_replica_set_endpoint|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_replication_write_conflicts --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_sharded --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_sharded_causal_consistency --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_sharded_continuous_stepdown|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_sharded_last_continuous_new_old_old_new|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ jstestfuzz_sharded_last_lts_new_old_old_new|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_sharded_session|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_sharded_with_config_transitions|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ jstestfuzz_sharded_with_replica_set_endpoint|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
 knobs|wiredTiger
 ldapauthz --jobs=1|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
-libfuzzer --jobs=1|wiredTiger|buildscripts/scons.py MONGO_VERSION=8.0.0 CC=/usr/bin/clang CXX=/usr/bin/clang++ --disable-warnings-as-errors --ssl --use-sasl-client --wiredtiger --audit --inmemory --hotbackup CPPPATH=/tmp/lib/aws/include LIBPATH=/tmp/lib/aws/lib LLVM_SYMBOLIZER=/usr/lib/llvm-14/bin/llvm-symbolizer --dbg=on --opt=on --allocator=system --sanitize=fuzzer --ocsp-stapling=off -j8 install-fuzzertests
+ libfuzzer --jobs=1|wiredTiger # Requires a separate libFuzzer-instrumented C++ build
 libunwind|wiredTiger
- logging_perf|wiredTiger
- magic_restore_replica_sets_jscore_passthrough|wiredTiger
- magic_restore_sharded_collections_jscore_passthrough|wiredTiger
- magic_restore_sharding_jscore_passthrough|wiredTiger
+ logging_perf|wiredTiger # Logging-infrastructure sleep test has no server regression selector
+ magic_restore_replica_sets_jscore_passthrough|wiredTiger # Enterprise magic-restore workflow is outside the supported PSMDB backupCursor contract; Percona backupCursor availability does not establish compatibility
+ magic_restore_sharded_collections_jscore_passthrough|wiredTiger # Enterprise magic-restore workflow is outside the supported PSMDB backupCursor contract; Percona backupCursor availability does not establish compatibility
+ magic_restore_sharding_jscore_passthrough|wiredTiger # Enterprise magic-restore workflow is outside the supported PSMDB backupCursor contract; Percona backupCursor availability does not establish compatibility
 mongos_test|wiredTiger
- mql_model_haskell|wiredTiger
- mql_model_mongod|wiredTiger
+ mongot_e2e_sharded_cluster --jobs=1|wiredTiger # Requires mongot-localdev; Search/vectorSearch suites are excluded from the agreed PSMDB 8.0 regression scope
+ mongot_e2e_sharded_collections|wiredTiger # Requires mongot-localdev; Search/vectorSearch suites are excluded from the agreed PSMDB 8.0 regression scope
+ mongot_e2e_single_node|wiredTiger # Requires mongot-localdev; Search/vectorSearch suites are excluded from the agreed PSMDB 8.0 regression scope
+ mongot_e2e_single_shard --jobs=1|wiredTiger # Requires mongot-localdev; Search/vectorSearch suites are excluded from the agreed PSMDB 8.0 regression scope
+ mql_model_haskell|wiredTiger # Requires the absent mql-model/test/**/*.json corpus and associated model environment
+ mql_model_mongod|wiredTiger # Requires the absent mql-model/test/**/*.json corpus and associated model environment
 multi_shard_local_read_write_multi_stmt_txn_jscore_passthrough|wiredTiger
 multi_shard_multi_stmt_txn_jscore_passthrough|wiredTiger
 multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough|wiredTiger
 multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|wiredTiger
 multi_stmt_txn_jscore_passthrough_with_migration|wiredTiger
-multitenancy_with_atlas_proxy_jscore_passthrough|wiredTiger
-multitenancy_with_mongoq_jscore_passthrough|wiredTiger
-multitenancy_with_mongoq_unsigned_token_jscore_passthrough|wiredTiger
-multiversion|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4 5.0 6.0 6.3 7.0 7.3
-multiversion_auth|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4 5.0 6.0 6.3 7.0 7.3
- multiversion_auth_future_git_tag|wiredTiger
- multiversion_future_git_tag|wiredTiger
-multiversion_sanity_check|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.0 4.2 4.4 5.0 6.0 6.3 7.0 7.3
- multiversion_sanity_check_last_continuous_new_new_old|wiredTiger
- multiversion_sanity_check_last_continuous_new_old_new|wiredTiger
- multiversion_sanity_check_last_continuous_old_new_new|wiredTiger
- multiversion_sanity_check_last_lts_new_new_old|wiredTiger
- multiversion_sanity_check_last_lts_new_old_new|wiredTiger
- multiversion_sanity_check_last_lts_old_new_new|wiredTiger
-no_passthrough|wiredTiger
+ multitenancy_with_atlas_proxy_jscore_passthrough|wiredTiger # Requires Atlas/serverless multitenancy and tenant-aware routing; outside the standard non-Atlas PSMDB regression environment
+ multitenancy_with_mongoq_jscore_passthrough --jobs=1|wiredTiger # Requires Atlas/serverless multitenancy and tenant-aware routing; outside the standard non-Atlas PSMDB regression environment
+ multitenancy_with_mongoq_unsigned_token_jscore_passthrough --jobs=1|wiredTiger # Requires Atlas/serverless multitenancy and tenant-aware routing; outside the standard non-Atlas PSMDB regression environment
+multiversion --jobs=1 --excludeWithAnyTags=psmdb_enterprise_encryption_shell_unavailable,psmdb_historical_binary_unavailable,psmdb_last_continuous_unavailable,psmdb_multiversion_missing_prerequisites --tagFile=generated_resmoke_config/multiversion_self_managed_tags.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && mkdir -p generated_resmoke_config && printf '%s\\n' selector: '  js_test:' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_primary.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_record_does_not_match.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_record_not_found.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_secondary.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_keys_basic.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_missing_keys.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_missing_keys_primary.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_missing_keys_secondaries.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_multi_version_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_multi_version_transaction.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_read_oplog_after_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/1_test_launching_replset.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/3_upgrade_replset.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/add_invalid_shard.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/cluster_cardinality_parameter.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/cluster_parameters_disabled_correctly_after_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/collection_validator_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/crash_mongos_against_upgraded_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/do_upgrade_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/downgrade_replset.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/feature_compatibility_version_lagging_secondary.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/initial_sync_downgraded_from_latest.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/initial_sync_latest_from_downgraded.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/initialize_from_old_node.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/major_version_upgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/rollback_downgraded_to_latest.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/rollback_latest_to_downgraded.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/rs_endpoint_upgrade_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/set_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/set_feature_compatibility_version_confirm.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/upgrade_downgrade_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/upgrade_downgrade_idempotency.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/upgrade_downgrade_sharded_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/view_definition_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/replsets/fcbis_rolling_upgrade_from_4_0.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/targetedTestsLastLtsFeatures/fle2_range_preview_rename.js:' '      - psmdb_enterprise_encryption_shell_unavailable' '    jstests/multiVersion/genericSetFCVUsage/2_test_launching_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericBinVersion/invalid_wildcard_index_log_at_startup.js:' '      - psmdb_multiversion_missing_prerequisites' '    jstests/multiVersion/targetedTestsLastLtsFeatures/oidc_multipurpose_idp.js:' '      - psmdb_multiversion_missing_prerequisites' > generated_resmoke_config/multiversion_self_managed_tags.yml
+multiversion_auth --jobs=1 --excludeWithAnyTags=psmdb_enterprise_encryption_shell_unavailable,psmdb_historical_binary_unavailable,psmdb_last_continuous_unavailable,psmdb_multiversion_missing_prerequisites --tagFile=generated_resmoke_config/multiversion_self_managed_tags.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && mkdir -p generated_resmoke_config && printf '%s\\n' selector: '  js_test:' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_primary.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_record_does_not_match.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_record_not_found.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_secondary.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_keys_basic.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_missing_keys.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_missing_keys_primary.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_missing_keys_secondaries.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_multi_version_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_multi_version_transaction.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_read_oplog_after_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/1_test_launching_replset.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/3_upgrade_replset.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/add_invalid_shard.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/cluster_cardinality_parameter.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/cluster_parameters_disabled_correctly_after_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/collection_validator_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/crash_mongos_against_upgraded_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/do_upgrade_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/downgrade_replset.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/feature_compatibility_version_lagging_secondary.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/initial_sync_downgraded_from_latest.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/initial_sync_latest_from_downgraded.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/initialize_from_old_node.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/major_version_upgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/rollback_downgraded_to_latest.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/rollback_latest_to_downgraded.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/rs_endpoint_upgrade_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/set_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/set_feature_compatibility_version_confirm.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/upgrade_downgrade_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/upgrade_downgrade_idempotency.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/upgrade_downgrade_sharded_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/view_definition_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/replsets/fcbis_rolling_upgrade_from_4_0.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/targetedTestsLastLtsFeatures/fle2_range_preview_rename.js:' '      - psmdb_enterprise_encryption_shell_unavailable' '    jstests/multiVersion/genericSetFCVUsage/2_test_launching_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericBinVersion/invalid_wildcard_index_log_at_startup.js:' '      - psmdb_multiversion_missing_prerequisites' '    jstests/multiVersion/targetedTestsLastLtsFeatures/oidc_multipurpose_idp.js:' '      - psmdb_multiversion_missing_prerequisites' > generated_resmoke_config/multiversion_self_managed_tags.yml
+multiversion_auth_future_git_tag --jobs=1 --excludeWithAnyTags=psmdb_enterprise_encryption_shell_unavailable,psmdb_historical_binary_unavailable,psmdb_last_continuous_unavailable,psmdb_multiversion_missing_prerequisites --tagFile=generated_resmoke_config/multiversion_self_managed_tags.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && mkdir -p generated_resmoke_config && printf '%s\\n' selector: '  js_test:' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_primary.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_record_does_not_match.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_record_not_found.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_secondary.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_keys_basic.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_missing_keys.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_missing_keys_primary.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_missing_keys_secondaries.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_multi_version_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_multi_version_transaction.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_read_oplog_after_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/1_test_launching_replset.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/3_upgrade_replset.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/add_invalid_shard.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/cluster_cardinality_parameter.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/cluster_parameters_disabled_correctly_after_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/collection_validator_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/crash_mongos_against_upgraded_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/do_upgrade_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/downgrade_replset.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/feature_compatibility_version_lagging_secondary.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/initial_sync_downgraded_from_latest.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/initial_sync_latest_from_downgraded.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/initialize_from_old_node.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/major_version_upgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/rollback_downgraded_to_latest.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/rollback_latest_to_downgraded.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/rs_endpoint_upgrade_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/set_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/set_feature_compatibility_version_confirm.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/upgrade_downgrade_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/upgrade_downgrade_idempotency.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/upgrade_downgrade_sharded_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/view_definition_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/replsets/fcbis_rolling_upgrade_from_4_0.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/targetedTestsLastLtsFeatures/fle2_range_preview_rename.js:' '      - psmdb_enterprise_encryption_shell_unavailable' '    jstests/multiVersion/genericSetFCVUsage/2_test_launching_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericBinVersion/invalid_wildcard_index_log_at_startup.js:' '      - psmdb_multiversion_missing_prerequisites' '    jstests/multiVersion/targetedTestsLastLtsFeatures/oidc_multipurpose_idp.js:' '      - psmdb_multiversion_missing_prerequisites' > generated_resmoke_config/multiversion_self_managed_tags.yml
+multiversion_future_git_tag --jobs=1 --excludeWithAnyTags=psmdb_enterprise_encryption_shell_unavailable,psmdb_historical_binary_unavailable,psmdb_last_continuous_unavailable,psmdb_multiversion_missing_prerequisites --tagFile=generated_resmoke_config/multiversion_self_managed_tags.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && mkdir -p generated_resmoke_config && printf '%s\\n' selector: '  js_test:' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_primary.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_record_does_not_match.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_record_not_found.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_extra_keys_secondary.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_keys_basic.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_missing_keys.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_missing_keys_primary.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericBinVersion/dbcheck_old_format_missing_keys_secondaries.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_multi_version_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_multi_version_transaction.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericChangeStreams/change_streams_read_oplog_after_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/1_test_launching_replset.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/3_upgrade_replset.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/add_invalid_shard.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/cluster_cardinality_parameter.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/cluster_parameters_disabled_correctly_after_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/collection_validator_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/crash_mongos_against_upgraded_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/do_upgrade_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/downgrade_replset.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/feature_compatibility_version_lagging_secondary.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/initial_sync_downgraded_from_latest.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/initial_sync_latest_from_downgraded.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/initialize_from_old_node.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/major_version_upgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/rollback_downgraded_to_latest.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/rollback_latest_to_downgraded.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/rs_endpoint_upgrade_downgrade.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/set_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/set_feature_compatibility_version_confirm.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/upgrade_downgrade_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/upgrade_downgrade_idempotency.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/upgrade_downgrade_sharded_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericSetFCVUsage/view_definition_feature_compatibility_version.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/replsets/fcbis_rolling_upgrade_from_4_0.js:' '      - psmdb_historical_binary_unavailable' '    jstests/multiVersion/targetedTestsLastLtsFeatures/fle2_range_preview_rename.js:' '      - psmdb_enterprise_encryption_shell_unavailable' '    jstests/multiVersion/genericSetFCVUsage/2_test_launching_cluster.js:' '      - psmdb_last_continuous_unavailable' '    jstests/multiVersion/genericBinVersion/invalid_wildcard_index_log_at_startup.js:' '      - psmdb_multiversion_missing_prerequisites' '    jstests/multiVersion/targetedTestsLastLtsFeatures/oidc_multipurpose_idp.js:' '      - psmdb_multiversion_missing_prerequisites' > generated_resmoke_config/multiversion_self_managed_tags.yml
+multiversion_sanity_check|wiredTiger
+ multiversion_sanity_check_last_continuous_new_new_old|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ multiversion_sanity_check_last_continuous_new_old_new|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ multiversion_sanity_check_last_continuous_old_new_new|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+multiversion_sanity_check_last_lts_new_new_old --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,multiversion_sanity_check_last_lts_new_new_old_backport_required_multiversion,replica_sets_jscore_passthrough_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+multiversion_sanity_check_last_lts_new_old_new --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,multiversion_sanity_check_last_lts_new_old_new_backport_required_multiversion,replica_sets_jscore_passthrough_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+multiversion_sanity_check_last_lts_old_new_new --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,multiversion_sanity_check_last_lts_old_new_new_backport_required_multiversion,replica_sets_jscore_passthrough_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+no_passthrough --jobs=1|wiredTiger
 no_passthrough_with_mongod|wiredTiger
-ocsp --jobs=1|wiredTiger|pip uninstall -y oscrypto --break-system-packages && pip install -I git+https://github.com/wbond/oscrypto.git --break-system-packages
-oidc|wiredTiger
-parallel|wiredTiger
+ocsp --jobs=1|wiredTiger|python -m pip install --no-deps --force-reinstall https://github.com/wbond/oscrypto/archive/refs/heads/master.zip
+oidc --jobs=1|wiredTiger
+parallel --jobs=1|wiredTiger
 percona_no_passthrough_with_mongod|wiredTiger
- pretty-printer-tests|wiredTiger
+percona_no_passthrough_with_mongod|inMemory
+ pretty-printer-tests|wiredTiger # GDB pretty-printer self-tests require debugger-specific builds; outside released server binary regression scope
 query_golden_classic|wiredTiger
+query_golden_sharding --jobs=1|wiredTiger
 query_stats_aggregation_passthrough|wiredTiger
 query_stats_mongos_aggregation_passthrough|wiredTiger
 query_stats_mongos_passthrough|wiredTiger
 query_stats_passthrough|wiredTiger
 ratelimit|wiredTiger
-read_concern_linearizable_passthrough|wiredTiger
-read_concern_majority_passthrough|wiredTiger
+read_concern_linearizable_passthrough --jobs=1|wiredTiger
+read_concern_majority_passthrough --jobs=1|wiredTiger
 read_only|wiredTiger
 read_only_sharded|wiredTiger
 redaction|wiredTiger
-replica_sets|wiredTiger
-replica_sets_api_version_jscore_passthrough|wiredTiger
-replica_sets_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
- replica_sets_configsvr_param_jscore_passthrough|wiredTiger
- replica_sets_ese|wiredTiger
- replica_sets_ese_gcm|wiredTiger
-replica_sets_fcbis_jscore_passthrough|wiredTiger
-replica_sets_initsync_jscore_passthrough|wiredTiger
-replica_sets_initsync_lagged_sync_source_jscore_passthrough|wiredTiger
-replica_sets_initsync_static_jscore_passthrough|wiredTiger
-replica_sets_jscore_passthrough|wiredTiger
- replica_sets_jscore_passthrough_last_continuous_new_new_old|wiredTiger
- replica_sets_jscore_passthrough_last_continuous_new_old_new|wiredTiger
- replica_sets_jscore_passthrough_last_continuous_old_new_new|wiredTiger
- replica_sets_jscore_passthrough_last_lts_new_new_old|wiredTiger
- replica_sets_jscore_passthrough_last_lts_new_old_new|wiredTiger
- replica_sets_jscore_passthrough_last_lts_old_new_new|wiredTiger
-replica_sets_jscore_passthrough_with_replica_set_endpoint|wiredTiger
+replica_sets --jobs=1|wiredTiger
+replica_sets_api_version_jscore_passthrough --jobs=1|wiredTiger
+replica_sets_auth --jobs=1|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+replica_sets_auth --jobs=1|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+ replica_sets_configsvr_param_jscore_passthrough --jobs=1|wiredTiger # Sets mongod configsvr without replset_config_options.configsvr=true; ReplicaSetFixture omits configsvr from replSetInitiate/replSetReconfig
+ replica_sets_ese|wiredTiger # Requires the absent upstream encryption helper/key src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
+ replica_sets_ese_gcm|wiredTiger # Requires the absent upstream encryption helper/key src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
+replica_sets_fcbis_jscore_passthrough --jobs=1|wiredTiger
+replica_sets_initsync_jscore_passthrough --jobs=1|wiredTiger
+replica_sets_initsync_jscore_passthrough --jobs=1 --mongodSetParameters='{initialSyncMethod: logical}'|inMemory
+replica_sets_initsync_lagged_sync_source_jscore_passthrough --jobs=1|wiredTiger
+replica_sets_initsync_static_jscore_passthrough --jobs=1|wiredTiger
+replica_sets_initsync_static_jscore_passthrough --jobs=1 --mongodSetParameters='{initialSyncMethod: logical}'|inMemory
+replica_sets_jscore_passthrough --jobs=1|wiredTiger
+replica_sets_jscore_passthrough --jobs=1|inMemory
+ replica_sets_jscore_passthrough_last_continuous_new_new_old --jobs=1|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ replica_sets_jscore_passthrough_last_continuous_new_old_new --jobs=1|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ replica_sets_jscore_passthrough_last_continuous_old_new_new --jobs=1|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+replica_sets_jscore_passthrough_last_lts_new_new_old --jobs=1 --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,replica_sets_jscore_passthrough_last_lts_new_new_old_backport_required_multiversion,replica_sets_jscore_passthrough_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+replica_sets_jscore_passthrough_last_lts_new_old_new --jobs=1 --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,replica_sets_jscore_passthrough_last_lts_new_old_new_backport_required_multiversion,replica_sets_jscore_passthrough_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+replica_sets_jscore_passthrough_last_lts_old_new_new --jobs=1 --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,replica_sets_jscore_passthrough_last_lts_old_new_new_backport_required_multiversion,replica_sets_jscore_passthrough_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml --extraExcludeTest=jstests/core/query/plan_cache/cache_correctness_pbt.js --extraExcludeTest=jstests/core/query/index_correctness_pbt.js --extraExcludeTest=jstests/core/query/run_all_plans_pbt.js --extraExcludeTest=jstests/core/query/or/subplanning_pbt.js
+ replica_sets_jscore_passthrough_with_replica_set_endpoint|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
 replica_sets_kill_primary_jscore_passthrough|wiredTiger
- replica_sets_kill_primary_jscore_passthrough_last_lts_new_new_old|wiredTiger
- replica_sets_kill_primary_jscore_passthrough_last_lts_new_old_old|wiredTiger
-replica_sets_kill_secondaries_jscore_passthrough|wiredTiger
-replica_sets_lag_oplog_application_jscore_passthrough|wiredTiger
-replica_sets_large_txns_format|wiredTiger
+replica_sets_kill_primary_jscore_passthrough_last_lts_new_new_old --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,replica_sets_kill_primary_jscore_passthrough_last_lts_new_new_old_backport_required_multiversion,replica_sets_jscore_passthrough_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+replica_sets_kill_primary_jscore_passthrough_last_lts_new_old_old --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,replica_sets_kill_primary_jscore_passthrough_last_lts_new_old_old_backport_required_multiversion,replica_sets_jscore_passthrough_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+replica_sets_kill_secondaries_jscore_passthrough --jobs=1|wiredTiger
+replica_sets_lag_oplog_application_jscore_passthrough --jobs=1|wiredTiger
+replica_sets_large_txns_format --jobs=1|wiredTiger
 replica_sets_large_txns_format_jscore_passthrough|wiredTiger
- replica_sets_last_continuous|wiredTiger
- replica_sets_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
-replica_sets_max_mirroring|wiredTiger
+ replica_sets_last_continuous --jobs=1|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+replica_sets_last_lts --jobs=1 --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,replica_sets_last_lts_backport_required_multiversion,replica_sets_backport_required_multiversion,replica_sets_multiversion_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+ replica_sets_last_patch --jobs=1|wiredTiger # Requires previous-release Git tag resolution and mongo*-last-patch binaries; the image has no Git metadata or last-patch provisioning
+replica_sets_max_mirroring --jobs=1|wiredTiger
 replica_sets_max_mirroring_large_txns_format|wiredTiger
- replica_sets_max_mirroring_large_txns_format_ese|wiredTiger
- replica_sets_max_mirroring_large_txns_format_ese_gcm|wiredTiger
+ replica_sets_max_mirroring_large_txns_format_ese|wiredTiger # Requires the absent upstream encryption helper/key src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
+ replica_sets_max_mirroring_large_txns_format_ese_gcm|wiredTiger # Requires the absent upstream encryption helper/key src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
 replica_sets_multi_stmt_txn_jscore_passthrough|wiredTiger
 replica_sets_multi_stmt_txn_kill_primary_jscore_passthrough|wiredTiger
 replica_sets_multi_stmt_txn_stepdown_jscore_passthrough|wiredTiger
 replica_sets_multi_stmt_txn_terminate_primary_jscore_passthrough|wiredTiger
-replica_sets_reconfig_jscore_passthrough|wiredTiger
+replica_sets_reconfig_jscore_passthrough --jobs=1|wiredTiger
 replica_sets_reconfig_jscore_stepdown_passthrough|wiredTiger
 replica_sets_reconfig_kill_primary_jscore_passthrough|wiredTiger
- replica_sets_recordids_replicated_jscore_passthrough|wiredTiger
-replica_sets_tde_cbc|wiredTiger
-replica_sets_tde_gcm|wiredTiger
+ replica_sets_recordids_replicated_jscore_passthrough|wiredTiger # Blindly enables recordIdsReplicated through set_recordids_replicated.js but requires default-off featureFlagRecordIdsReplicated
+replica_sets_tde_cbc --jobs=1|wiredTiger
+replica_sets_tde_gcm --jobs=1|wiredTiger
 replica_sets_terminate_primary_jscore_passthrough|wiredTiger
-replica_sets_uninitialized_fcv_jscore_passthrough|wiredTiger
- resharding_fuzzer|wiredTiger
- resharding_fuzzer_idempotency|wiredTiger
- resmoke_end2end_tests|wiredTiger
- resmoke_validation_tests|wiredTiger
+replica_sets_uninitialized_fcv_jscore_passthrough --jobs=1|wiredTiger
+ resharding_fuzzer --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ resharding_fuzzer_idempotency --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ resmoke_end2end_tests --jobs=1|wiredTiger # Python build/resmoke infrastructure self-tests; outside server binary regression scope
+ resmoke_validation_tests|wiredTiger # Python build/resmoke infrastructure self-tests; outside server binary regression scope
 retryable_writes_downgrade|wiredTiger
- retryable_writes_downgrade_last_continuous|wiredTiger
- retryable_writes_downgrade_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
-retryable_writes_jscore_passthrough|wiredTiger
+ retryable_writes_downgrade_last_continuous|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+retryable_writes_downgrade_last_lts --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,retryable_writes_downgrade_last_lts_backport_required_multiversion,retryable_writes_downgrade_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+retryable_writes_jscore_passthrough --jobs=1|wiredTiger
 retryable_writes_jscore_stepdown_passthrough|wiredTiger
- rollback_fuzzer|wiredTiger
- rollback_fuzzer_clean_shutdowns|wiredTiger
- rollback_fuzzer_last_continuous|wiredTiger
- rollback_fuzzer_last_lts|wiredTiger
- rollback_fuzzer_unclean_shutdowns|wiredTiger
- sasl|wiredTiger
- sasl_windows_cyrussasl|wiredTiger
-sdam_json_test|wiredTiger|buildscripts/scons.py MONGO_VERSION=8.0.0 --disable-warnings-as-errors --ssl --opt=size -j6 --jlink=2 --use-sasl-client --wiredtiger --audit --inmemory --hotbackup CPPPATH=/tmp/lib/aws/include LIBPATH=/tmp/lib/aws/lib build/install/bin/sdam_json_test
- search|wiredTiger
- search_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
- search_end_to_end_sharded_cluster|wiredTiger
- search_end_to_end_single_node|wiredTiger
- search_pinned_connections_auth|wiredTiger
- search_ssl|wiredTiger
-secondary_reads_passthrough|wiredTiger
-secondary_reads_passthrough_with_replica_set_endpoint|wiredTiger
-serial_run|wiredTiger
-server_selection_json_test|wiredTiger|buildscripts/scons.py MONGO_VERSION=8.0.0 --disable-warnings-as-errors --ssl --opt=size -j6 --jlink=2 --use-sasl-client --wiredtiger --audit --inmemory --hotbackup CPPPATH=/tmp/lib/aws/include LIBPATH=/tmp/lib/aws/lib build/install/bin/server_selection_json_test
- serverless|wiredTiger
- serverless_MTM|wiredTiger
-session_jscore_passthrough|wiredTiger
- shard_merge_causally_consistent_jscore_passthrough|wiredTiger
- shard_merge_jscore_passthrough|wiredTiger
- shard_merge_multi_stmt_txn_jscore_passthrough|wiredTiger
- shard_split_causally_consistent_jscore_passthrough|wiredTiger
- shard_split_jscore_passthrough|wiredTiger
- shard_split_kill_primary_jscore_passthrough|wiredTiger
- shard_split_multi_stmt_txn_jscore_passthrough|wiredTiger
- shard_split_stepdown_jscore_passthrough|wiredTiger
- shard_split_terminate_primary_jscore_passthrough|wiredTiger
-sharded_causally_consistent_jscore_passthrough|wiredTiger
+ rollback_fuzzer --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ rollback_fuzzer_clean_shutdowns --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ rollback_fuzzer_last_continuous|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+ rollback_fuzzer_last_lts|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ rollback_fuzzer_unclean_shutdowns --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ rseq_kernel_check|wiredTiger # Requires a dedicated Linux kernel/rseq/tcmalloc compatibility environment; Docker shares the host kernel
+ rseq_kernel_check_7014|wiredTiger # Requires a dedicated Linux kernel/rseq/tcmalloc compatibility environment; Docker shares the host kernel
+ sasl|wiredTiger # No tests: selector roots are absent: src/mongo/db/modules/*/jstests/sasl/*.js
+ sasl_windows_cyrussasl|wiredTiger # No tests: selector roots are absent: src/mongo/db/modules/*/jstests/sasl/sasl_plugins.js
+ sdam_json_test|wiredTiger # Requires separately built sdam_json_test executable, absent from the supplied image
+ search --jobs=1|wiredTiger # Requires mongotmock; Search/vectorSearch suites are excluded from the agreed PSMDB 8.0 regression scope
+ search_auth --jobs=1|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start # Requires mongotmock; Search/vectorSearch suites are excluded from the agreed PSMDB 8.0 regression scope
+ search_no_pinned_connections_auth --jobs=1|wiredTiger # Requires mongotmock; Search/vectorSearch suites are excluded from the agreed PSMDB 8.0 regression scope
+ search_ssl --jobs=1|wiredTiger # Requires mongotmock; Search/vectorSearch suites are excluded from the agreed PSMDB 8.0 regression scope
+secondary_reads_passthrough --jobs=1|wiredTiger
+ secondary_reads_passthrough_with_replica_set_endpoint|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
+serial_run --jobs=1|wiredTiger
+ server_selection_json_test|wiredTiger # Requires separately built server_selection_json_test executable, absent from the supplied image
+ serverless|wiredTiger # Requires Atlas/serverless multitenancy and tenant-aware routing; outside the standard non-Atlas PSMDB regression environment
+session_jscore_passthrough --jobs=1|wiredTiger
+sharded_causally_consistent_jscore_passthrough --jobs=1|wiredTiger
 sharded_causally_consistent_jscore_txns_passthrough|wiredTiger
-sharded_causally_consistent_read_concern_snapshot_passthrough|wiredTiger
+sharded_causally_consistent_read_concern_snapshot_passthrough --jobs=1|wiredTiger
 sharded_collections_causally_consistent_jscore_txns_passthrough|wiredTiger
-sharded_collections_jscore_passthrough|wiredTiger
- sharded_collections_jscore_passthrough_last_continuous_new_old_old_new|wiredTiger
- sharded_collections_jscore_passthrough_last_lts_new_old_old_new|wiredTiger
+sharded_collections_jscore_passthrough --jobs=1|wiredTiger
+sharded_collections_jscore_passthrough --jobs=1|inMemory
+ sharded_collections_jscore_passthrough_last_continuous_new_old_old_new --jobs=1|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+sharded_collections_jscore_passthrough_last_lts_new_old_old_new --jobs=1 --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,sharded_collections_jscore_passthrough_last_lts_new_old_old_new_backport_required_multiversion,sharded_collections_jscore_passthrough_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
 sharded_collections_jscore_passthrough_with_auto_bootstrap|wiredTiger
 sharded_collections_jscore_passthrough_with_config_transitions|wiredTiger
-sharded_collections_jscore_passthrough_with_replica_set_endpoint|wiredTiger
+ sharded_collections_jscore_passthrough_with_replica_set_endpoint|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
 sharded_collections_single_writes_without_shard_key_jscore_passthrough|wiredTiger
 sharded_collections_txns_uninitialized_fcv_jscore_passthrough|wiredTiger
-sharded_collections_uninitialized_fcv_jscore_passthrough|wiredTiger
+sharded_collections_uninitialized_fcv_jscore_passthrough --jobs=1|wiredTiger
 sharded_jscore_txns|wiredTiger
 sharded_jscore_txns_sharded_collections|wiredTiger
-sharded_jscore_txns_sharded_collections_with_replica_set_endpoint|wiredTiger
-sharded_jscore_txns_with_replica_set_endpoint|wiredTiger
+ sharded_jscore_txns_sharded_collections_with_replica_set_endpoint|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
+ sharded_jscore_txns_with_replica_set_endpoint|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
 sharded_multi_stmt_txn_jscore_passthrough|wiredTiger
 sharded_retryable_writes_downgrade|wiredTiger
- sharded_retryable_writes_downgrade_last_continuous_new_old_old_new|wiredTiger
- sharded_retryable_writes_downgrade_last_lts_new_old_old_new|wiredTiger
+ sharded_retryable_writes_downgrade_last_continuous_new_old_old_new|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+sharded_retryable_writes_downgrade_last_lts_new_old_old_new --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,sharded_retryable_writes_downgrade_last_lts_new_old_old_new_backport_required_multiversion,sharded_retryable_writes_downgrade_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
 sharding|wiredTiger
 sharding_api_strict_passthrough|wiredTiger
 sharding_api_version_jscore_passthrough|wiredTiger
 sharding_auth|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
+sharding_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 sharding_auth_audit|wiredTiger|/etc/init.d/slapd start && /etc/init.d/saslauthd start
 sharding_auto_bootstrap|wiredTiger
 sharding_clustered_collections|wiredTiger
 sharding_csrs_continuous_config_stepdown|wiredTiger
- sharding_ese|wiredTiger
- sharding_ese_gcm|wiredTiger
-sharding_hello_failures|wiredTiger
+ sharding_ese|wiredTiger # Requires the absent upstream encryption helper/key src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
+ sharding_ese_gcm|wiredTiger # Requires the absent upstream encryption helper/key src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
+sharding_hello_failures --jobs=1|wiredTiger
 sharding_jscore_passthrough|wiredTiger
- sharding_jscore_passthrough_last_continuous_new_old_old_new|wiredTiger
- sharding_jscore_passthrough_last_lts_new_old_old_new|wiredTiger
+sharding_jscore_passthrough|inMemory
+ sharding_jscore_passthrough_last_continuous_new_old_old_new|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+sharding_jscore_passthrough_last_lts_new_old_old_new --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,sharding_jscore_passthrough_last_lts_new_old_old_new_backport_required_multiversion,sharding_jscore_passthrough_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml --extraExcludeTest=jstests/core/query/plan_cache/cache_correctness_pbt.js --extraExcludeTest=jstests/core/query/index_correctness_pbt.js --extraExcludeTest=jstests/core/query/run_all_plans_pbt.js --extraExcludeTest=jstests/core/query/or/subplanning_pbt.js
+ sharding_jscore_passthrough_last_patch_new_old_old_new|wiredTiger # Requires previous-release Git tag resolution and mongo*-last-patch binaries; the image has no Git metadata or last-patch provisioning
 sharding_jscore_passthrough_with_auto_bootstrap|wiredTiger
-sharding_jscore_passthrough_with_balancer|wiredTiger
+sharding_jscore_passthrough_with_balancer --jobs=1|wiredTiger
 sharding_jscore_passthrough_with_config_transitions|wiredTiger
-sharding_jscore_passthrough_with_replica_set_endpoint|wiredTiger
- sharding_last_continuous|wiredTiger
- sharding_last_lts|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
- sharding_last_lts_mongos_and_mixed_shards|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
+sharding_jscore_passthrough_with_injected_catalog_metadata|wiredTiger
+ sharding_jscore_passthrough_with_replica_set_endpoint|wiredTiger # Requires replica-set endpoint/auto-bootstrap mode with featureFlagAllMongodsAreSharded; outside standard released-binary regression scope
+ sharding_last_continuous|wiredTiger # Requires last-continuous 7.3 binaries; PSMDB 7.3 is unavailable and upstream binaries are excluded from this regression
+sharding_last_lts --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,sharding_last_lts_backport_required_multiversion,sharding_backport_required_multiversion,replica_sets_multiversion_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+sharding_last_lts_mongos_and_mixed_shards --excludeWithAnyTags=requires_fcv_71,requires_fcv_72,requires_fcv_73,requires_fcv_80,multiversion_incompatible,backport_required_multiversion,sharding_last_lts_mongos_and_mixed_shards_backport_required_multiversion --tagFile=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml|wiredTiger|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 7.0 && curl -fL https://raw.githubusercontent.com/Percona-QA/psmdb-testing/main/regression-tests/generate_multiversion_exclude_tags_v80.py -o /tmp/generate_multiversion_exclude_tags_v80.py && python /tmp/generate_multiversion_exclude_tags_v80.py --oldBinVersion=last_lts --multiversionDir=/data/multiversion --excludeTagsFilePath=generated_resmoke_config/multiversion_exclude_tags_last_lts.yml
+ sharding_last_patch|wiredTiger # Requires previous-release Git tag resolution and mongo*-last-patch binaries; the image has no Git metadata or last-patch provisioning
 sharding_max_mirroring|wiredTiger
 sharding_max_mirroring_opportunistic_secondary_targeting|wiredTiger
- sharding_max_mirroring_opportunistic_secondary_targeting_ese|wiredTiger
- sharding_max_mirroring_opportunistic_secondary_targeting_ese_gcm|wiredTiger
+ sharding_max_mirroring_opportunistic_secondary_targeting_ese|wiredTiger # Requires the absent upstream encryption helper/key src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
+ sharding_max_mirroring_opportunistic_secondary_targeting_ese_gcm|wiredTiger # Requires the absent upstream encryption helper/key src/mongo/db/modules/enterprise/jstests/encryptdb/libs/ekf2
 sharding_opportunistic_secondary_targeting|wiredTiger
+sharding_task_executor_pool_size_8|wiredTiger
 sharding_tde_cbc|wiredTiger
 sharding_tde_gcm|wiredTiger
 sharding_txns_uninitialized_fcv_jscore_passthrough|wiredTiger
 sharding_uninitialized_fcv_jscore_passthrough|wiredTiger
-simulate_crash_concurrency_replication|wiredTiger
-slow1|wiredTiger
-ssl|wiredTiger
-ssl_linear|wiredTiger
+simulate_crash_concurrency_replication --jobs=1|wiredTiger
+slow1 --jobs=1|wiredTiger
+ssl --excludeWithAnyTags=psmdb_fips_unavailable --tagFile=generated_resmoke_config/ssl_environment_tags.yml|wiredTiger|mkdir -p generated_resmoke_config && printf '%s\\n' 'selector:' '  js_test:' '    jstests/ssl/ssl_fips.js:' '      - psmdb_fips_unavailable' > generated_resmoke_config/ssl_environment_tags.yml
+ssl_linear --jobs=1|wiredTiger
+ ssl_linear_macos --jobs=1|wiredTiger # macOS-only certificate-store tests require macOS system trust configuration; regression execution is Linux-only
 ssl_special|wiredTiger
 ssl_x509|wiredTiger
- streams|wiredTiger
- streams_kafka|wiredTiger
+ streams|wiredTiger # No tests: selector roots are absent: src/mongo/db/modules/*/jstests/streams/*.js
+ streams_kafka --jobs=1|wiredTiger # No tests: selector roots are absent: src/mongo/db/modules/*/jstests/streams_kafka/*.js
 tde_cbc|wiredTiger
 tde_gcm|wiredTiger
 telemetry --jobs=1|wiredTiger
- tenant_migration_causally_consistent_jscore_passthrough|wiredTiger
- tenant_migration_jscore_passthrough|wiredTiger
- tenant_migration_kill_primary_jscore_passthrough|wiredTiger
- tenant_migration_multi_stmt_txn_jscore_passthrough|wiredTiger
- tenant_migration_stepdown_jscore_passthrough|wiredTiger
- tenant_migration_terminate_primary_jscore_passthrough|wiredTiger
 timeseries_crud_jscore_passthrough|wiredTiger
-tla_plus --jobs=1|wiredTiger|apt install -y default-jre && mkdir -p /opt/java/jdk11/bin/ && ln -s /usr/bin/java /opt/java/jdk11/bin/java && ./src/mongo/tla_plus/download-tlc.sh && cp tla2tools.jar src/mongo/tla_plus/
- unittest_shell_hang_analyzer|wiredTiger
-unittests|wiredTiger
- unittests_auth|wiredTiger
- unittests_client|wiredTiger
- unittests_first_quarter|wiredTiger
- unittests_fourth_quarter|wiredTiger
- unittests_query|wiredTiger
- unittests_repl|wiredTiger
- unittests_second_quarter|wiredTiger
- unittests_sharding|wiredTiger
- unittests_third_quarter|wiredTiger
-unsplittable_collections_created_on_any_shard_jscore_passthrough|wiredTiger
-unsplittable_collections_on_random_shard_jscore_txns|wiredTiger
- update_fuzzer|wiredTiger
- update_fuzzer_last_continuous|wiredTiger
- update_fuzzer_last_lts|wiredTiger
- update_fuzzer_replication|wiredTiger
- update_fuzzer_replication_last_continuous|wiredTiger
- update_fuzzer_replication_last_lts|wiredTiger
-v1index_jscore_passthrough|wiredTiger
- vector_search|wiredTiger
- vector_search_auth|wiredTiger
- vector_search_ssl|wiredTiger
-watchdog|wiredTiger|apt install -y libtool && chmod +x jstests/watchdog/charybdefs_setup.sh && jstests/watchdog/charybdefs_setup.sh
- write_concern_majority_passthrough|wiredTiger
-aggregation|inMemory
-aggregation_auth|inMemory
- aggregation_column_store_index_passthrough|inMemory
-aggregation_disabled_optimization|inMemory
- aggregation_ese|inMemory
- aggregation_ese_gcm|inMemory
- aggregation_expression_multiversion_fuzzer_last_continuous|inMemory
- aggregation_expression_multiversion_fuzzer_last_lts|inMemory
-aggregation_facet_unwind_passthrough|inMemory
-aggregation_mongos_passthrough|inMemory
- aggregation_multiversion_fuzzer_last_continuous|inMemory
- aggregation_multiversion_fuzzer_last_lts|inMemory
-aggregation_one_shard_sharded_collections|inMemory
-aggregation_read_concern_majority_passthrough|inMemory
-aggregation_repeat_queries_multiplan_single_solutions|inMemory
-aggregation_secondary_reads|inMemory
-aggregation_sharded_collections_causally_consistent_passthrough|inMemory
-aggregation_sharded_collections_passthrough|inMemory
- aggregation_tde_cbc|inMemory
- aggregation_tde_gcm|inMemory
-aggregation_unsplittable_collections_on_random_shard_passthrough|inMemory
-aggregation_unsplittable_collections_on_random_shard_passthrough_with_config_transitions|inMemory
-analyze_shard_key_jscore_passthrough|inMemory
-audit --jobs=1|inMemory
-auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
-auth_audit|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
- backup|inMemory
- backup_tde_cbc|inMemory
- backup_tde_gcm|inMemory
- benchmarks_abt|inMemory
- benchmarks_abt_lowering|inMemory
- benchmarks_abt_path_lowering|inMemory
- benchmarks_bsoncolumn|inMemory
- benchmarks_expression|inMemory
- benchmarks_expression_sbe|inMemory
- benchmarks_first_half|inMemory
- benchmarks_namespace_string|inMemory
- benchmarks_query|inMemory
- benchmarks_replication|inMemory
- benchmarks_second_half|inMemory
- benchmarks_sep|inMemory
- benchmarks_sharding|inMemory
- benchmarks_streams|inMemory
- buildscripts_test|inMemory
-bulk_write_causally_consistent_jscore_passthrough|inMemory
-bulk_write_multi_op_causally_consistent_jscore_passthrough|inMemory
-bulk_write_multi_op_sharded_collections_jscore_passthrough|inMemory
-bulk_write_replica_sets_jscore_passthrough|inMemory
-bulk_write_replica_sets_kill_stepdown_terminate_jscore_passthrough|inMemory
-bulk_write_replica_sets_multi_stmt_txn_jscore_passthrough|inMemory
-bulk_write_replica_sets_multi_stmt_txn_kill_stepdown_terminate_jscore_passthrough|inMemory
-bulk_write_sharded_causally_consistent_jscore_passthrough|inMemory
-bulk_write_sharded_collections_jscore_passthrough|inMemory
-bulk_write_sharded_multi_stmt_txn_jscore_passthrough|inMemory
-bulk_write_targeted_override|inMemory
-causally_consistent_hedged_reads_jscore_passthrough|inMemory
-causally_consistent_jscore_passthrough|inMemory
-causally_consistent_jscore_passthrough_auth|inMemory
-causally_consistent_jscore_txns_passthrough|inMemory
-causally_consistent_read_concern_snapshot_passthrough|inMemory
-change_streams|inMemory
- change_streams_change_collection_replica_sets_kill_secondary_jscore_passthrough|inMemory
-change_streams_change_collection_replica_sets_stepdown_primary_jscore_passthrough|inMemory
-change_streams_downgrade|inMemory
- change_streams_downgrade_last_continuous_new_old_old_new|inMemory
- change_streams_downgrade_last_lts_new_old_old_new|inMemory
- change_streams_last_continuous_new_new_old|inMemory
- change_streams_last_continuous_new_old_new|inMemory
- change_streams_last_continuous_old_new_new|inMemory
- change_streams_last_lts_new_new_old|inMemory
- change_streams_last_lts_new_old_new|inMemory
- change_streams_last_lts_old_new_new|inMemory
-change_streams_mongos_passthrough|inMemory
-change_streams_mongos_sessions_passthrough|inMemory
-change_streams_multi_stmt_txn_mongos_passthrough|inMemory
-change_streams_multi_stmt_txn_passthrough|inMemory
- change_streams_multi_stmt_txn_passthrough_with_replica_set_endpoint|inMemory
-change_streams_multi_stmt_txn_sharded_collections_passthrough|inMemory
-change_streams_multitenant_passthrough|inMemory
- change_streams_multitenant_sharded_collections_passthrough|inMemory
-change_streams_per_shard_cursor_passthrough|inMemory
- change_streams_pre_images_replica_sets_kill_secondary_jscore_passthrough|inMemory
-change_streams_pre_images_replica_sets_stepdown_primary_jscore_passthrough|inMemory
-change_streams_secondary_reads|inMemory
-change_streams_secondary_reads_sharded_collections|inMemory
-change_streams_sharded_collections_passthrough|inMemory
- change_streams_sharded_collections_passthrough_last_continuous_new_old_old_new|inMemory
- change_streams_sharded_collections_passthrough_last_lts_new_old_old_new|inMemory
-change_streams_whole_cluster_mongos_passthrough|inMemory
-change_streams_whole_cluster_passthrough|inMemory
- change_streams_whole_cluster_passthrough_with_replica_set_endpoint|inMemory
-change_streams_whole_cluster_secondary_reads_passthrough|inMemory
-change_streams_whole_cluster_secondary_reads_sharded_collections|inMemory
-change_streams_whole_cluster_sharded_collections_passthrough|inMemory
-change_streams_whole_db_mongos_passthrough|inMemory
-change_streams_whole_db_passthrough|inMemory
- change_streams_whole_db_passthrough_with_replica_set_endpoint|inMemory
-change_streams_whole_db_secondary_reads_passthrough|inMemory
-change_streams_whole_db_secondary_reads_sharded_collections|inMemory
-change_streams_whole_db_sharded_collections_passthrough|inMemory
- change_streams_with_replica_set_endpoint|inMemory
-client_encrypt|inMemory
-clustered_collection_passthrough|inMemory
-concurrency|inMemory
- concurrency_compute_mode|inMemory
-concurrency_metrics|inMemory
- concurrency_multitenancy_replication_with_atlas_proxy|inMemory
-concurrency_replication|inMemory
-concurrency_replication_bulk_write|inMemory
- concurrency_replication_bulk_write_with_replica_set_endpoint|inMemory
-concurrency_replication_causal_consistency|inMemory
- concurrency_replication_causal_consistency_with_replica_set_endpoint|inMemory
- concurrency_replication_for_backup_restore|inMemory
- concurrency_replication_for_export_import|inMemory
- concurrency_replication_last_continuous_new_new_old|inMemory
- concurrency_replication_last_continuous_new_old_new|inMemory
- concurrency_replication_last_continuous_old_new_new|inMemory
- concurrency_replication_last_lts_new_new_old|inMemory
- concurrency_replication_last_lts_new_old_new|inMemory
- concurrency_replication_last_lts_old_new_new|inMemory
-concurrency_replication_metrics|inMemory
- concurrency_replication_metrics_with_replica_set_endpoint|inMemory
-concurrency_replication_multi_stmt_txn|inMemory
- concurrency_replication_multi_stmt_txn_with_replica_set_endpoint|inMemory
-concurrency_replication_wiredtiger_cursor_sweeps|inMemory
- concurrency_replication_wiredtiger_cursor_sweeps_with_replica_set_endpoint|inMemory
- concurrency_replication_with_replica_set_endpoint|inMemory
-concurrency_sharded_causal_consistency|inMemory
-concurrency_sharded_causal_consistency_and_balancer|inMemory
-concurrency_sharded_clusterwide_ops_add_remove_shards|inMemory
- concurrency_sharded_initial_sync|inMemory
- concurrency_sharded_kill_primary_with_balancer|inMemory
- concurrency_sharded_kill_primary_with_balancer_and_config_transitions|inMemory
-concurrency_sharded_local_read_write_multi_stmt_txn|inMemory
-concurrency_sharded_local_read_write_multi_stmt_txn_with_balancer|inMemory
-concurrency_sharded_multi_stmt_txn|inMemory
- concurrency_sharded_multi_stmt_txn_kill_primary|inMemory
- concurrency_sharded_multi_stmt_txn_terminate_primary|inMemory
-concurrency_sharded_multi_stmt_txn_with_balancer|inMemory
- concurrency_sharded_multi_stmt_txn_with_balancer_and_config_transitions|inMemory
- concurrency_sharded_multi_stmt_txn_with_stepdowns|inMemory
-concurrency_sharded_replication|inMemory
-concurrency_sharded_replication_bulk_write|inMemory
- concurrency_sharded_replication_last_continuous_new_old_old_new|inMemory
- concurrency_sharded_replication_last_lts_new_old_old_new|inMemory
- concurrency_sharded_replication_with_balancer|inMemory
- concurrency_sharded_replication_with_balancer_and_config_transitions|inMemory
- concurrency_sharded_replication_with_balancer_and_config_transitions_and_add_remove_shard|inMemory
- concurrency_sharded_terminate_primary_with_balancer|inMemory
-concurrency_sharded_with_auto_bootstrap|inMemory
-concurrency_sharded_with_balancer_and_auto_bootstrap|inMemory
- concurrency_sharded_with_stepdowns|inMemory
- concurrency_sharded_with_stepdowns_and_balancer|inMemory
- concurrency_sharded_with_stepdowns_and_balancer_and_config_transitions|inMemory
-concurrency_simultaneous|inMemory
-concurrency_simultaneous_replication|inMemory
-concurrency_simultaneous_replication_wiredtiger_cursor_sweeps|inMemory
-core|inMemory
- core_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
- core_column_store_indexes|inMemory
- core_ese|inMemory
- core_ese_gcm|inMemory
-core_heap_profiling|inMemory
- core_min_batch_repeat_queries_multiplan_single_solutions_ese_gsm|inMemory
-core_minimum_batch_size --excludeWithAnyTags=requires_fcv_70|inMemory
-core_repeat_queries|inMemory
- core_tde_cbc|inMemory
- core_tde_gcm|inMemory
-core_txns|inMemory
-core_txns_large_txns_format|inMemory
-core_wildcard_indexes|inMemory
-cst_jscore_passthrough --excludeWithAnyTags=requires_fcv_80,requires_fcv_70|inMemory
-cursor_hints_to_query_settings_replset_passthrough|inMemory
-cursor_hints_to_query_settings_sharded_collections_passthrough|inMemory
-cursor_hints_to_query_settings_unsharded_collections_passthrough|inMemory
-cwrwc_passthrough|inMemory
-cwrwc_rc_majority_passthrough|inMemory
- cwrwc_wc_majority_passthrough|inMemory
-decimal|inMemory
- disk_wiredtiger|inMemory
- ese|inMemory
- external_auth|inMemory
- external_auth_aws|inMemory
- external_auth_oidc|inMemory
- external_auth_oidc_azure|inMemory
- external_auth_oidc_gcp|inMemory
-failpoints|inMemory
-failpoints_auth|inMemory
-fcv_upgrade_downgrade_replica_sets_jscore_passthrough|inMemory
-fcv_upgrade_downgrade_sharded_collections_jscore_passthrough|inMemory
-fcv_upgrade_downgrade_sharding_jscore_passthrough|inMemory
- feature_flag_multiversion|inMemory
- fle|inMemory
-fle2|inMemory
-fle2_high_cardinality|inMemory
- fle2_query_analysis|inMemory
-fle2_sharding|inMemory
-fle2_sharding_high_cardinality|inMemory
- generational_fuzzer|inMemory
- generational_fuzzer_replication|inMemory
- generational_fuzzer_replication_last_continuous|inMemory
- generational_fuzzer_replication_last_lts|inMemory
-implicit_query_settings_fallback|inMemory
-index_filters_to_query_settings|inMemory
- initial_sync_fuzzer|inMemory
- initial_sync_fuzzer_last_continuous|inMemory
- initial_sync_fuzzer_last_lts|inMemory
- integration_tests_replset|inMemory
- integration_tests_replset_ssl_auth|inMemory
- integration_tests_sharded|inMemory
- integration_tests_standalone|inMemory
- integration_tests_standalone_audit|inMemory
-json_schema|inMemory
- jstestfuzz|inMemory
- jstestfuzz_interrupt|inMemory
- jstestfuzz_interrupt_replication|inMemory
- jstestfuzz_replication|inMemory
- jstestfuzz_replication_continuous_stepdown|inMemory
- jstestfuzz_replication_fcbis|inMemory
- jstestfuzz_replication_initsync|inMemory
- jstestfuzz_replication_last_continuous_new_new_old|inMemory
- jstestfuzz_replication_last_continuous_new_old_new|inMemory
- jstestfuzz_replication_last_continuous_old_new_new|inMemory
- jstestfuzz_replication_last_lts_new_new_old|inMemory
- jstestfuzz_replication_last_lts_new_old_new|inMemory
- jstestfuzz_replication_last_lts_old_new_new|inMemory
- jstestfuzz_replication_session|inMemory
- jstestfuzz_replication_with_replica_set_endpoint|inMemory
- jstestfuzz_replication_write_conflicts|inMemory
- jstestfuzz_sharded|inMemory
- jstestfuzz_sharded_causal_consistency|inMemory
- jstestfuzz_sharded_continuous_stepdown|inMemory
- jstestfuzz_sharded_last_continuous_new_old_old_new|inMemory
- jstestfuzz_sharded_last_lts_new_old_old_new|inMemory
- jstestfuzz_sharded_session|inMemory
- jstestfuzz_sharded_with_config_transitions|inMemory
- jstestfuzz_sharded_with_replica_set_endpoint|inMemory
-knobs|inMemory
-ldapauthz  --jobs=1|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
- libfuzzer|inMemory
-libunwind|inMemory
- logging_perf|inMemory
- magic_restore_replica_sets_jscore_passthrough|inMemory
- magic_restore_sharded_collections_jscore_passthrough|inMemory
- magic_restore_sharding_jscore_passthrough|inMemory
-mongos_test|inMemory
- mql_model_haskell|inMemory
- mql_model_mongod|inMemory
-multi_shard_local_read_write_multi_stmt_txn_jscore_passthrough|inMemory
-multi_shard_multi_stmt_txn_jscore_passthrough|inMemory
- multi_shard_multi_stmt_txn_kill_primary_jscore_passthrough|inMemory
-multi_shard_multi_stmt_txn_stepdown_primary_jscore_passthrough|inMemory
-multi_stmt_txn_jscore_passthrough_with_migration|inMemory
-multitenancy_with_atlas_proxy_jscore_passthrough|inMemory
-multitenancy_with_mongoq_jscore_passthrough|inMemory
-multitenancy_with_mongoq_unsigned_token_jscore_passthrough|inMemory
- multiversion|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
- multiversion_auth|inMemory
- multiversion_auth_future_git_tag|inMemory
- multiversion_future_git_tag|inMemory
- multiversion_sanity_check|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
- multiversion_sanity_check_last_continuous_new_new_old|inMemory
- multiversion_sanity_check_last_continuous_new_old_new|inMemory
- multiversion_sanity_check_last_continuous_old_new_new|inMemory
- multiversion_sanity_check_last_lts_new_new_old|inMemory
- multiversion_sanity_check_last_lts_new_old_new|inMemory
- multiversion_sanity_check_last_lts_old_new_new|inMemory
-no_passthrough|inMemory
-no_passthrough_with_mongod|inMemory
- ocsp|inMemory
-parallel|inMemory
-percona_no_passthrough_with_mongod|inMemory
- pretty-printer-tests|inMemory
-query_golden_classic|inMemory
-query_stats_aggregation_passthrough|inMemory
-query_stats_mongos_aggregation_passthrough|inMemory
-query_stats_mongos_passthrough|inMemory
-query_stats_passthrough|inMemory
-ratelimit|inMemory
-read_concern_linearizable_passthrough|inMemory
-read_concern_majority_passthrough|inMemory
- read_only|inMemory
- read_only_sharded|inMemory
-redaction|inMemory
-replica_sets|inMemory
-replica_sets_api_version_jscore_passthrough|inMemory
-replica_sets_auth|inMemory|/etc/init.d/slapd start && /etc/init.d/saslauthd start
- replica_sets_configsvr_param_jscore_passthrough|inMemory
- replica_sets_ese|inMemory
- replica_sets_ese_gcm|inMemory
- replica_sets_fcbis_jscore_passthrough|inMemory
-replica_sets_initsync_jscore_passthrough|inMemory
-replica_sets_initsync_lagged_sync_source_jscore_passthrough|inMemory
-replica_sets_initsync_static_jscore_passthrough|inMemory
-replica_sets_jscore_passthrough|inMemory
- replica_sets_jscore_passthrough_last_continuous_new_new_old|inMemory
- replica_sets_jscore_passthrough_last_continuous_new_old_new|inMemory
- replica_sets_jscore_passthrough_last_continuous_old_new_new|inMemory
- replica_sets_jscore_passthrough_last_lts_new_new_old|inMemory
- replica_sets_jscore_passthrough_last_lts_new_old_new|inMemory
- replica_sets_jscore_passthrough_last_lts_old_new_new|inMemory
- replica_sets_jscore_passthrough_with_replica_set_endpoint|inMemory
-replica_sets_kill_primary_jscore_passthrough|inMemory
- replica_sets_kill_primary_jscore_passthrough_last_lts_new_new_old|inMemory
- replica_sets_kill_primary_jscore_passthrough_last_lts_new_old_old|inMemory
- replica_sets_kill_secondaries_jscore_passthrough|inMemory
-replica_sets_lag_oplog_application_jscore_passthrough|inMemory
-replica_sets_large_txns_format|inMemory
-replica_sets_large_txns_format_jscore_passthrough|inMemory
- replica_sets_last_continuous|inMemory
- replica_sets_last_lts|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
-replica_sets_max_mirroring|inMemory
-replica_sets_max_mirroring_large_txns_format|inMemory
- replica_sets_max_mirroring_large_txns_format_ese|inMemory
- replica_sets_max_mirroring_large_txns_format_ese_gcm|inMemory
-replica_sets_multi_stmt_txn_jscore_passthrough|inMemory
-replica_sets_multi_stmt_txn_kill_primary_jscore_passthrough|inMemory
-replica_sets_multi_stmt_txn_stepdown_jscore_passthrough|inMemory
-replica_sets_multi_stmt_txn_terminate_primary_jscore_passthrough|inMemory
-replica_sets_reconfig_jscore_passthrough|inMemory
-replica_sets_reconfig_jscore_stepdown_passthrough|inMemory
- replica_sets_reconfig_kill_primary_jscore_passthrough|inMemory
- replica_sets_recordids_replicated_jscore_passthrough|inMemory
- replica_sets_tde_cbc|inMemory
- replica_sets_tde_gcm|inMemory
-replica_sets_terminate_primary_jscore_passthrough|inMemory
-replica_sets_uninitialized_fcv_jscore_passthrough|inMemory
- resharding_fuzzer|inMemory
- resharding_fuzzer_idempotency|inMemory
- resmoke_end2end_tests|inMemory
- resmoke_validation_tests|inMemory
-retryable_writes_downgrade|inMemory
- retryable_writes_downgrade_last_continuous|inMemory
- retryable_writes_downgrade_last_lts|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0
-retryable_writes_jscore_passthrough|inMemory
-retryable_writes_jscore_stepdown_passthrough|inMemory
- rollback_fuzzer|inMemory
- rollback_fuzzer_clean_shutdowns|inMemory
- rollback_fuzzer_last_continuous|inMemory
- rollback_fuzzer_last_lts|inMemory
- rollback_fuzzer_unclean_shutdowns|inMemory
- sasl|inMemory
- sasl_windows_cyrussasl|inMemory
- sdam_json_test|inMemory
- search|inMemory
- search_auth|inMemory
- search_end_to_end_sharded_cluster|inMemory
- search_end_to_end_single_node|inMemory
- search_pinned_connections_auth|inMemory
- search_ssl|inMemory
-secondary_reads_passthrough|inMemory
- secondary_reads_passthrough_with_replica_set_endpoint|inMemory
-serial_run|inMemory
- server_selection_json_test|inMemory
- serverless|inMemory
- serverless_MTM|inMemory
-session_jscore_passthrough|inMemory
- shard_merge_causally_consistent_jscore_passthrough|inMemory
- shard_merge_jscore_passthrough|inMemory
- shard_merge_multi_stmt_txn_jscore_passthrough|inMemory
- shard_split_causally_consistent_jscore_passthrough|inMemory
- shard_split_jscore_passthrough|inMemory
- shard_split_kill_primary_jscore_passthrough|inMemory
- shard_split_multi_stmt_txn_jscore_passthrough|inMemory
- shard_split_stepdown_jscore_passthrough|inMemory
- shard_split_terminate_primary_jscore_passthrough|inMemory
-sharded_causally_consistent_jscore_passthrough|inMemory
-sharded_causally_consistent_jscore_txns_passthrough|inMemory
-sharded_causally_consistent_read_concern_snapshot_passthrough|inMemory
-sharded_collections_causally_consistent_jscore_txns_passthrough|inMemory
-sharded_collections_jscore_passthrough|inMemory
- sharded_collections_jscore_passthrough_last_continuous_new_old_old_new|inMemory
- sharded_collections_jscore_passthrough_last_lts_new_old_old_new|inMemory
-sharded_collections_jscore_passthrough_with_auto_bootstrap|inMemory
-sharded_collections_jscore_passthrough_with_config_transitions|inMemory
- sharded_collections_jscore_passthrough_with_replica_set_endpoint|inMemory
-sharded_collections_single_writes_without_shard_key_jscore_passthrough|inMemory
-sharded_collections_txns_uninitialized_fcv_jscore_passthrough|inMemory
-sharded_collections_uninitialized_fcv_jscore_passthrough|inMemory
-sharded_jscore_txns|inMemory
-sharded_jscore_txns_sharded_collections|inMemory
- sharded_jscore_txns_sharded_collections_with_replica_set_endpoint|inMemory
- sharded_jscore_txns_with_replica_set_endpoint|inMemory
-sharded_multi_stmt_txn_jscore_passthrough|inMemory
-sharded_retryable_writes_downgrade|inMemory
- sharded_retryable_writes_downgrade_last_continuous_new_old_old_new|inMemory
- sharded_retryable_writes_downgrade_last_lts_new_old_old_new|inMemory
-sharding|inMemory
-sharding_api_strict_passthrough|inMemory
-sharding_api_version_jscore_passthrough|inMemory
-sharding_auth|inMemory
-sharding_auth_audit|inMemory
-sharding_auto_bootstrap|inMemory
-sharding_clustered_collections|inMemory
-sharding_csrs_continuous_config_stepdown|inMemory
- sharding_ese|inMemory
- sharding_ese_gcm|inMemory
-sharding_hello_failures|inMemory
-sharding_jscore_passthrough|inMemory
- sharding_jscore_passthrough_last_continuous_new_old_old_new|inMemory
- sharding_jscore_passthrough_last_lts_new_old_old_new|inMemory
-sharding_jscore_passthrough_with_auto_bootstrap|inMemory
-sharding_jscore_passthrough_with_balancer|inMemory
-sharding_jscore_passthrough_with_config_transitions|inMemory
- sharding_jscore_passthrough_with_replica_set_endpoint|inMemory
- sharding_last_continuous|inMemory
- sharding_last_lts|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
- sharding_last_lts_mongos_and_mixed_shards|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
-sharding_max_mirroring|inMemory
-sharding_max_mirroring_opportunistic_secondary_targeting|inMemory
- sharding_max_mirroring_opportunistic_secondary_targeting_ese|inMemory
- sharding_max_mirroring_opportunistic_secondary_targeting_ese_gcm|inMemory
-sharding_opportunistic_secondary_targeting|inMemory
- sharding_tde_cbc|inMemory
- sharding_tde_gcm|inMemory
-sharding_txns_uninitialized_fcv_jscore_passthrough|inMemory
-sharding_uninitialized_fcv_jscore_passthrough|inMemory
-simulate_crash_concurrency_replication|inMemory
-slow1|inMemory
-ssl|inMemory
-ssl_linear|inMemory
-ssl_special|inMemory
-ssl_x509|inMemory
- streams|inMemory
- streams_kafka|inMemory
- tde_cbc|inMemory
- tde_gcm|inMemory
- tenant_migration_causally_consistent_jscore_passthrough|inMemory
- tenant_migration_jscore_passthrough|inMemory
- tenant_migration_kill_primary_jscore_passthrough|inMemory
- tenant_migration_multi_stmt_txn_jscore_passthrough|inMemory
- tenant_migration_stepdown_jscore_passthrough|inMemory
- tenant_migration_terminate_primary_jscore_passthrough|inMemory
 timeseries_crud_jscore_passthrough|inMemory
- tla_plus|inMemory
- unittest_shell_hang_analyzer|inMemory
- unittests|inMemory
- unittests_auth|inMemory
- unittests_client|inMemory
- unittests_first_quarter|inMemory
- unittests_fourth_quarter|inMemory
- unittests_query|inMemory
- unittests_repl|inMemory
- unittests_second_quarter|inMemory
- unittests_sharding|inMemory
- unittests_third_quarter|inMemory
-unsplittable_collections_created_on_any_shard_jscore_passthrough|inMemory
-unsplittable_collections_on_random_shard_jscore_txns|inMemory
- update_fuzzer|inMemory
- update_fuzzer_last_continuous|inMemory
- update_fuzzer_last_lts|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0 7.3
- update_fuzzer_replication|inMemory
- update_fuzzer_replication_last_continuous|inMemory
- update_fuzzer_replication_last_lts|inMemory|python buildscripts/setup_multiversion_mongodb.py --installDir /data/install --linkDir /data/multiversion --edition base --platform ubuntu2204 --architecture x86_64 4.2 4.4 5.0 6.0 6.3 7.0
- v1index_jscore_passthrough|inMemory
- vector_search|inMemory
- vector_search_auth|inMemory
- vector_search_ssl|inMemory
- watchdog|inMemory
- write_concern_majority_passthrough|inMemory
+ tla_plus --jobs=1|wiredTiger # TLA+/Java model checking is outside server binary regression scope and requires /opt/java/jdk11/bin/java plus TLC
+ unittest_shell_hang_analyzer|wiredTiger # Hang-analyzer infrastructure self-test requires Evergreen/debugger setup; outside server binary regression scope
+unittests|wiredTiger
+ unittests_auth|wiredTiger # Requires a separate C++ test build; only the base unittests workflow is retained
+ unittests_client|wiredTiger # Requires a separate C++ test build; only the base unittests workflow is retained
+ unittests_eighth_group|wiredTiger # Requires a separate C++ test build; only the base unittests workflow is retained
+ unittests_fifth_group|wiredTiger # Requires a separate C++ test build; only the base unittests workflow is retained
+ unittests_first_group|wiredTiger # Requires a separate C++ test build; only the base unittests workflow is retained
+ unittests_fourth_group|wiredTiger # Requires a separate C++ test build; only the base unittests workflow is retained
+ unittests_query|wiredTiger # Requires a separate C++ test build; only the base unittests workflow is retained
+ unittests_repl|wiredTiger # Requires a separate C++ test build; only the base unittests workflow is retained
+ unittests_second_group|wiredTiger # Requires a separate C++ test build; only the base unittests workflow is retained
+ unittests_seventh_group|wiredTiger # Requires a separate C++ test build; only the base unittests workflow is retained
+ unittests_sharding|wiredTiger # Requires a separate C++ test build; only the base unittests workflow is retained
+ unittests_sixth_group|wiredTiger # Requires a separate C++ test build; only the base unittests workflow is retained
+ unittests_third_group|wiredTiger # Requires a separate C++ test build; only the base unittests workflow is retained
+unsplittable_collections_created_on_any_shard_jscore_passthrough --jobs=1|wiredTiger
+unsplittable_collections_on_random_shard_jscore_txns|wiredTiger
+ update_fuzzer --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ update_fuzzer_deterministic_last_lts|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ update_fuzzer_replication --jobs=1|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+ update_fuzzer_replication_deterministic_last_lts|wiredTiger # Requires jstestfuzz/out/*.js generated from the closed https://github.com/10gen/jstestfuzz repository
+v1index_jscore_passthrough --jobs=1|wiredTiger
+ vector_search --jobs=1|wiredTiger # Requires mongotmock; Search/vectorSearch suites are excluded from the agreed PSMDB 8.0 regression scope
+ vector_search_auth --jobs=1|wiredTiger # Requires mongotmock; Search/vectorSearch suites are excluded from the agreed PSMDB 8.0 regression scope
+ vector_search_ssl --jobs=1|wiredTiger # Requires mongotmock; Search/vectorSearch suites are excluded from the agreed PSMDB 8.0 regression scope
+ watchdog --jobs=1|wiredTiger # Requires Charybdefs at /data/charybdefs/mongo/control.py and FUSE mount access, absent from the standard regression container
+ write_concern_majority_passthrough --jobs=1|wiredTiger # Disabled upstream: secondary reads after majority writes require causal consistency; the passthrough makes an invalid read-visibility assumption
