@@ -1,5 +1,6 @@
 import re
 import time
+from contextlib import ExitStack
 
 import pymongo
 import pytest
@@ -90,6 +91,47 @@ def set_secondary_delay(cluster, delay_secs):
     config["version"] += 1
     client.admin.command("replSetReconfig", config)
     Cluster.log(f"Set secondaryDelaySecs={delay_secs} on {cluster.config['_id']} secondaries")
+
+def node_client(cluster: Cluster, host: str) -> pymongo.MongoClient:
+    return pymongo.MongoClient(
+        f"mongodb://root:root@{host}:27017/?replicaSet={cluster.config['_id']}&directConnection=true",
+        serverSelectionTimeoutMS=5000, socketTimeoutMS=20000,
+    )
+
+def arm_failpoint(cleanup: ExitStack, client: pymongo.MongoClient, name: str) -> int:
+    # Even if the enable command's response is lost, try to turn it off.
+    cleanup.callback(client.admin.command, "configureFailPoint", name, mode="off")
+    return client.admin.command("configureFailPoint", name, mode="alwaysOn")["count"] + 1
+
+def wait_for_failpoint(client: pymongo.MongoClient, name: str, count: int) -> None:
+    client.admin.command("waitForFailPoint", name, timesEntered=count, maxTimeMS=10000)
+
+def extend_t139_election_timeouts(
+    primary: pymongo.MongoClient, secondaries: list[pymongo.MongoClient],
+) -> None:
+    # This fixture stalls majority acknowledgments, not the target primary.
+    config = primary.admin.command("replSetGetConfig")["config"]
+    config["version"] += 1
+    config["settings"]["electionTimeoutMillis"] = 60000
+    config["settings"]["heartbeatTimeoutSecs"] = 60
+    primary.admin.command("replSetReconfig", config, maxTimeMS=10000)
+
+    deadline = time.monotonic() + 10
+    while not all(secondary.admin.command("hello").get("setVersion") == config["version"]
+                  for secondary in secondaries):
+        assert time.monotonic() < deadline, "target secondaries did not install the test replica set config"
+        time.sleep(0.2)
+
+def has_pending_clone_ddl(client: pymongo.MongoClient) -> bool:
+    # Clone can wait on the majority drop before it reaches the majority create.
+    return bool(client.admin.command({
+        "currentOp": 1,
+        "active": True,
+        "secs_running": {"$gte": 1},
+        "command.$db": "wc_db",
+        "command.writeConcern.w": "majority",
+        "$or": [{"command.drop": "clone_coll"}, {"command.create": "clone_coll"}],
+    })["inprog"])
 
 
 @pytest.mark.parametrize("cluster_configs", ["replicaset"], indirect=True)
@@ -186,18 +228,18 @@ def test_lagging_target_secondaries_during_replication_PML_T138(start_cluster, s
     src = pymongo.MongoClient(src_cluster.connection)["wc_db"][coll_name]
     dst = pymongo.MongoClient(dst_cluster.connection)["wc_db"][coll_name]
     src.insert_one({"_id": "seed"})
+    options = {
+        "targetWriteConcern": write_concern,
+        "replNumWorkers": 1,
+        "replBulkOpsSize": 1,
+        "replWorkerBulkQueueSize": 1,
+    }
+    assert csync.start(raw_args=options), f"failed to start with w:{write_concern}"
+    assert csync.wait_for_repl_stage(timeout=180), "failed to reach the replication stage"
+    assert_wc_logged(csync, write_concern)
+
     set_secondary_delay(dst_cluster, delay_secs)
     try:
-        options = {
-            "targetWriteConcern": write_concern,
-            "replNumWorkers": 1,
-            "replBulkOpsSize": 1,
-            "replWorkerBulkQueueSize": 1,
-        }
-        assert csync.start(raw_args=options), f"failed to start with w:{write_concern}"
-        assert csync.wait_for_repl_stage(timeout=180), "failed to reach the replication stage"
-        assert_wc_logged(csync, write_concern)
-
         for i in range(docs):
             src.insert_one({"_id": i})
         deadline = time.time() + window_secs
@@ -224,17 +266,13 @@ def test_lagging_target_secondaries_during_replication_PML_T138(start_cluster, s
 @pytest.mark.parametrize("cluster_configs", ["replicaset_3n"], indirect=True)
 @pytest.mark.parametrize("write_concern", ["majority", "1"])
 @pytest.mark.csync_env({"PCSM_HA_LEASE_TTL": "60s"})
+@pytest.mark.mongod_extra_args("--setParameter enableTestCommands=1")
 @pytest.mark.timeout(600, func_only=True)
 def test_majority_unreachable_during_clone_PML_T139(start_cluster, src_cluster, dst_cluster, csync, write_concern):
     """
-    Verify PCSM moves to standby mode, stays alive, and becomes active again
-    once majority writes succeed again when lease TTL is raised
-
-    With default 10s TTL an outage makes PCSM lose lease: tenure ends and
-    interrupted clone is not resumed (state failed, needs a new /start).
-    With 60s TTL lease survives the outage, so PCSM stays ACTIVE and waits.
-    Once majority is reachable again the same run continues, with no new
-    /start, and ends with the data in sync.
+    After a healthy start, clone must wait for majority target DDL even with
+    w:1 data writes. The 60s lease must survive a 20s outage so the same run
+    can finish once the secondaries resume.
     """
     outage_secs = 20
     seed_source(src_cluster)
@@ -244,23 +282,55 @@ def test_majority_unreachable_during_clone_PML_T139(start_cluster, src_cluster, 
     transitions_before = metrics["percona_clustersync_mongodb_ha_role_transitions_total"]
     term_before = metrics["percona_clustersync_mongodb_ha_term"]
 
-    set_secondary_delay(dst_cluster, 3600)
-    try:
-        assert csync.start(raw_args={"targetWriteConcern": write_concern}), f"failed to start with w:{write_concern}"
-        assert_wc_logged(csync, write_concern)
+    with ExitStack() as target:
+        primary = target.enter_context(node_client(dst_cluster, dst_cluster.primary_hosts[0]))
+        assert primary.admin.command("hello")["isWritablePrimary"], "unexpected target primary"
+        secondaries = [
+            target.enter_context(node_client(dst_cluster, host))
+            for host in dst_cluster.mongod_hosts[1:]
+        ]
+        for secondary in secondaries:
+            assert secondary.admin.command("hello")["secondary"], "target node is not a secondary"
+        extend_t139_election_timeouts(primary, secondaries)
 
-        data = {}
-        deadline = time.time() + outage_secs
-        while time.time() < deadline:
+        with ExitStack() as source:
+            source_primary = source.enter_context(node_client(src_cluster, src_cluster.primary_hosts[0]))
+            assert source_primary.admin.command("hello")["isWritablePrimary"], "unexpected source primary"
+            source_gate = "hangInAppendOplogNote"
+            source_count = arm_failpoint(source, source_primary, source_gate)
+            assert csync.start(raw_args={"targetWriteConcern": write_concern}), (
+                f"failed to start with w:{write_concern}: {csync.cmd_stdout} {csync.cmd_stderr}")
+            assert_wc_logged(csync, write_concern)
+            wait_for_failpoint(source_primary, source_gate, source_count)
+
+            # The start checkpoint has committed. Hold clone at its source
+            # anchor only until both target secondaries stop fetching the oplog.
+            target_gate = "stopReplProducer"
+            counts = [arm_failpoint(target, secondary, target_gate) for secondary in secondaries]
+            for secondary, count in zip(secondaries, counts, strict=True):
+                wait_for_failpoint(secondary, target_gate, count)
+
+        # The source gate is off. Verify that a real clone DDL is still
+        # pending on the target before timing the outage observation.
+        deadline = time.monotonic() + 10
+        while not has_pending_clone_ddl(primary):
+            assert time.monotonic() < deadline, "no pending majority clone DDL on target"
+            time.sleep(0.2)
+
+        deadline = time.monotonic() + outage_secs
+        while time.monotonic() < deadline:
             time.sleep(1)
-            assert csync.role() == "ACTIVE", (
+            # Leave time for /status to return even if its HA lookup times out.
+            status_code, data = csync.request("GET", "/status")
+            assert status_code == 200 and isinstance(data, dict), (
+                f"could not read ACTIVE status during the outage: HTTP {status_code}, {data!r}")
+            assert data.get("role", "ACTIVE") == "ACTIVE", (
                 f"csync stepped down before the raised lease TTL expired: {csync.logs(tail=30)}")
-            data = csync.status().get("data") or {}
             assert data.get("state") == "running", f"run left the running state during the outage: {data}"
-            assert not (data.get("initialSync") or {}).get("cloneCompleted"), (
+            assert (data.get("initialSync") or {}).get("cloneCompleted") is False, (
                 f"clone completed while majority was unreachable: {data}")
-    finally:
-        set_secondary_delay(dst_cluster, 0)
+        assert primary.admin.command("hello")["isWritablePrimary"], "target primary changed during the outage"
+        assert has_pending_clone_ddl(primary), "majority clone DDL stopped waiting before target recovery"
 
     assert csync.wait_for_repl_stage(timeout=180), "run didn't continue once the secondaries caught up"
     metrics = csync.metrics()["data"]
