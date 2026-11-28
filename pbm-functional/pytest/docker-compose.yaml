@@ -29,20 +29,28 @@ services:
       - test
     command: azurite-blob --skipApiVersionCheck --blobHost 0.0.0.0 -d /dev/stdout
 
-  minio:
-    image: pgsty/minio
-    container_name: minio
+  seaweedfs:
+    image: chrislusf/seaweedfs
+    container_name: seaweedfs
+    hostname: seaweedfs
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "8333:8333"
     networks:
       - test
     volumes:
-      - backups:/backups
-    environment:
-      - "MINIO_ROOT_USER=minio1234"
-      - "MINIO_ROOT_PASSWORD=minio1234"
-    command: server /backups --console-address ":9001"
+      - seaweedfs-data:/data
+      - ./conf/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    command:
+      - server
+      - -ip.bind=0.0.0.0
+      - -dir=/data
+      - -s3
+      - -s3.port=8333
+      - -s3.config=/etc/seaweedfs/s3.json
+    ulimits:
+      nofile:
+        soft: 20000
+        hard: 20000
 
   nginx-minio:
     build:
@@ -53,18 +61,28 @@ services:
     networks:
       - test
     depends_on:
-      - minio
+      - seaweedfs
       - easyrsa
 
   createbucket:
     container_name: createbucket
-    image: pgsty/mc
+    image: amazon/aws-cli
     networks:
       - test
     depends_on:
-      - minio
-    entrypoint: >
-      /bin/sh -c " sleep 5; /usr/bin/mc alias set myminio http://minio:9000 minio1234 minio1234; /usr/bin/mc mb myminio/bcp; exit 0; "
+      - seaweedfs
+    environment:
+      AWS_ACCESS_KEY_ID: minio1234
+      AWS_SECRET_ACCESS_KEY: minio1234
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until aws --endpoint-url http://seaweedfs:8333 s3 ls >/dev/null 2>&1; do sleep 2; done
+        aws --endpoint-url http://seaweedfs:8333 s3 mb s3://bcp || true
+    command: []
 
   fake-metadata:
     image: salrashid123/gcemetadataserver:latest
@@ -187,8 +205,8 @@ networks:
     name: test
 
 volumes:
-  backups:
-    name: backups
+  seaweedfs-data:
+    name: seaweedfs-data
   fs:
     name: fs
   keytabs:
